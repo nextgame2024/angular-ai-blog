@@ -25,7 +25,7 @@ export class TagFeedComponent implements OnInit {
   ngOnInit(): void {
     this.route.params.subscribe((params: Params) => {
       this.tagName = params['slug'];
-      this.apiUrl = `articles?tag=${this.tagName}`;
+      this.apiUrl = `/articles?tag=${this.tagName}`;
     });
   }
 }
