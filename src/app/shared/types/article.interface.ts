@@ -1,5 +1,5 @@
-import { PopularTagType } from '../../types/popularTag.type';
-import { ProfileInterface } from './profile.interface';
+import { PopularTagType } from './popularTag.type';
+import { ProfileInterface } from '../components/types/profile.interface';
 
 export interface ArticleInterface {
   body: string;

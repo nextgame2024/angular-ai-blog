@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { UtilsService } from './../feed/services/utils.service';
+import { UtilsService } from '../../services/utils.service';
 import {
   Component,
   Input,
