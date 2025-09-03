@@ -23,6 +23,7 @@ import { environment } from 'src/environments/environment.development';
 import { PaginationComponent } from '../pagination/pagination.component';
 import queryString from 'query-string';
 import { TagListComponent } from '../tagList/tagList.component';
+import { AddToFavoritesComponent } from '../addToFavorites/addToFavorites.component';
 
 @Component({
   selector: 'mc-feed',
@@ -36,10 +37,22 @@ import { TagListComponent } from '../tagList/tagList.component';
     LoadingComponent,
     PaginationComponent,
     TagListComponent,
+    AddToFavoritesComponent,
   ],
 })
 export class FeedComponent implements OnInit, OnChanges {
   @Input() apiUrl: string = '';
+
+  defaultAvatar =
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
+  setFallback(evt: Event) {
+    const img = evt.target as HTMLImageElement | null;
+    if (!img) return;
+    // avoid infinite loop if the fallback also fails
+    if (img.src !== this.defaultAvatar) {
+      img.src = this.defaultAvatar;
+    }
+  }
 
   data$ = combineLatest({
     isLoading: this.store.select(selectIsLoading),

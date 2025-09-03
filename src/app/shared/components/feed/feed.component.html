@@ -9,7 +9,11 @@
     <div class="article-preview" *ngFor="let article of data.feed.articles">
       <div class="article-meta">
         <a [routerLink]="['/profiles', article.author.username]">
-          <img [src]="article.author.image" />
+          <img
+            [src]="article.author.image || defaultAvatar"
+            [alt]="article.author.username + ' avatar'"
+            (error)="setFallback($event)"
+          />
         </a>
         <div class="info">
           <a [routerLink]="['/profiles', article.author.username]">
@@ -17,7 +21,13 @@
           </a>
           <span class="date">{{ article.createdAt }}</span>
         </div>
-        <div class="pull-xs-right">ADD TO FAVORITES</div>
+        <div class="pull-xs-right">
+          <mc-add-to-favorites
+            [isFavorited]="article.favorited"
+            [articleSlug]="article.slug"
+            [favoritesCount]="article.favoritesCount"
+          ></mc-add-to-favorites>
+        </div>
       </div>
       <a [routerLink]="['/articles', article.slug]" class="preview-link">
         <h1>{{ article.title }}</h1>

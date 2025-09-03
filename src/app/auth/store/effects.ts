@@ -20,7 +20,7 @@ export const getCurrentUserEffect = createEffect(
         const token = persistanceService.get('accessToken');
 
         if (!token) {
-          return of(authActions.getCurrentUserFailure);
+          return of(authActions.getCurrentUserFailure());
         }
 
         return authService.getCurrentUser().pipe(
@@ -130,7 +130,7 @@ export const updateCurrentUserEffect = createEffect(
           catchError((errorReponse: HttpErrorResponse) => {
             return of(
               authActions.updateCurrentUserFailure({
-                errors: errorReponse.error.erros,
+                errors: errorReponse.error.errors,
               })
             );
           })
