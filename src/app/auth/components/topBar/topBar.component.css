@@ -1,21 +1,5 @@
-/* Scope to this component; override Lara theme safely */
 :host ::ng-deep .menubar-plain.p-menubar {
   background: transparent !important;
   border: 0 !important;
   box-shadow: none !important;
-}
-
-/* Optional: also clear the mobile menu panel background/border if you want it transparent too */
-:host ::ng-deep .menubar-plain.p-menubar .p-menubar-root-list,
-:host ::ng-deep .menubar-plain.p-menubar .p-submenu-list {
-  background: white;
-  border: 0;
-  box-shadow: none;
-}
-
-/* Optional: hamburger button look (no border) */
-:host ::ng-deep .menubar-plain .p-menubar-button {
-  border: 0;
-  box-shadow: none;
-  background: white;
 }

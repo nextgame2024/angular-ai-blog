@@ -1,19 +1,17 @@
-/* Tailwind layers */
 @tailwind base;
 @tailwind components;
+@tailwind utilities;
 
-/* ✅ Use a theme that exists in node_modules/primeng/resources/themes */
-@import "primeng/resources/themes/lara-light-blue/theme.css";
-/* If you do have lara-light-green, you can use that instead:
-   @import "primeng/resources/themes/lara-light-green/theme.css";
-*/
-
+/* Keep Prime base + icons only */
 @import "primeng/resources/primeng.min.css";
 @import "primeicons/primeicons.css";
 
-@tailwind utilities;
+/* Optional: sensible page bg/text that reacts to Tailwind dark mode */
+html,
+body {
+  @apply bg-white text-gray-900 dark:bg-neutral-900 dark:text-gray-100;
+}
 
-/* Optional tiny overrides */
 .logo-font {
   font-family: "Titillium Web", sans-serif;
 }

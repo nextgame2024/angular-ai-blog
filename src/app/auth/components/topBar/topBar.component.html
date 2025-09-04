@@ -17,16 +17,24 @@
         ]"
         styleClass="menubar-plain"
       >
-        <!-- Brand (left) -->
+        <!-- Brand -->
         <ng-template pTemplate="start">
-          <a class="logo-font text-xl md:text-2xl mr-4" routerLink="/"
-            >aurora</a
-          >
+          <a class="logo-font text-xl md:text-2xl" routerLink="/">sophia</a>
         </ng-template>
 
-        <!-- Right side: desktop nav (mirrors model) + auth/profile -->
+        <!-- Right -->
         <ng-template pTemplate="end">
           <div class="flex items-center gap-1 md:gap-2">
+            <!-- Theme toggle -->
+            <button
+              pButton
+              type="button"
+              class="p-button-text"
+              [icon]="(isDark$ | async) ? 'pi pi-sun' : 'pi pi-moon'"
+              (click)="toggleTheme()"
+              aria-label="Toggle theme"
+            ></button>
+
             <!-- Auth/Profile -->
             <ng-container *ngIf="data.currentUser as user; else loggedOut">
               <a
