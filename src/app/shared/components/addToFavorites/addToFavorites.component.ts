@@ -6,11 +6,14 @@ import { take } from 'rxjs';
 import { addToFavoritesActions } from './store/actions';
 import { selectCurrentUser } from 'src/app/auth/store/reducers';
 
+/* PrimeNG */
+import { ButtonModule } from 'primeng/button';
+
 @Component({
   selector: 'mc-add-to-favorites',
   templateUrl: './addToFavorites.component.html',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ButtonModule],
 })
 export class AddToFavoritesComponent {
   @Input() isFavorited = false;

@@ -1,0 +1,13 @@
+/* Scoped tweaks so p-password matches pInputText inside InputGroup */
+:host ::ng-deep .p-inputgroup .p-password,
+:host ::ng-deep .p-inputgroup .p-password .p-inputtext,
+:host ::ng-deep .p-inputgroup .p-password-input {
+  width: 100%;
+}
+
+:host ::ng-deep .p-inputgroup .p-password .p-inputtext {
+  display: block;
+  /* when used with left addon, align border radius with input text */
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}

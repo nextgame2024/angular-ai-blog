@@ -1,12 +1,12 @@
 <button
+  pButton
+  type="button"
   (click)="handleLike()"
-  [ngClass]="{
-    btn: true,
-    'btn-sm': true,
-    'btn-primary': isFavorited,
-    'btn-outline-primary': !isFavorited
-  }"
+  class="p-button-sm"
+  [class.p-button-danger]="isFavorited"
+  [class.p-button-outlined]="!isFavorited"
+  [attr.aria-pressed]="isFavorited"
 >
-  <i class="ion-heart"></i>
-  <span>&nbsp; {{ favoritesCount }}</span>
+  <i class="pi pi-heart mr-2"></i>
+  <span>{{ favoritesCount }}</span>
 </button>

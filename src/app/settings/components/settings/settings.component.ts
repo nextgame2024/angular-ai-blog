@@ -10,11 +10,30 @@ import { BackendErrorMessages } from 'src/app/shared/components/backendErrorMess
 import { CurrentUserRequestInterface } from 'src/app/shared/types/currentUserRequest.interface';
 import { authActions } from 'src/app/auth/store/actions';
 
+/* PrimeNG */
+import { CardModule } from 'primeng/card';
+import { InputTextModule } from 'primeng/inputtext';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+import { PasswordModule } from 'primeng/password';
+import { ButtonModule } from 'primeng/button';
+import { AvatarModule } from 'primeng/avatar';
+
 @Component({
   selector: 'mc-settings',
   templateUrl: './settings.component.html',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, BackendErrorMessages],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    BackendErrorMessages,
+    // PrimeNG
+    CardModule,
+    InputTextModule,
+    InputTextareaModule,
+    PasswordModule,
+    ButtonModule,
+    AvatarModule,
+  ],
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   form = this.fb.nonNullable.group({
@@ -24,6 +43,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
     email: '',
     password: '',
   });
+
+  // default avatar preview if image is empty/broken
+  defaultAvatar =
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
 
   currentUser?: CurrentUserInterface;
   data$ = combineLatest({
@@ -48,9 +71,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   initializeForm(): void {
-    if (!this.currentUser) {
-      throw new Error('Current user is not set');
-    }
+    if (!this.currentUser) throw new Error('Current user is not set');
     this.form.patchValue({
       image: this.currentUser.image ?? '',
       username: this.currentUser.username,
@@ -65,9 +86,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   submit(): void {
-    if (!this.currentUser) {
-      throw new Error('Current user is not set');
-    }
+    if (!this.currentUser) throw new Error('Current user is not set');
     const currentUserRequest: CurrentUserRequestInterface = {
       user: {
         ...this.currentUser,

@@ -1,10 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import {
   ActivatedRoute,
   Params,
   Router,
   RouterLink,
   RouterLinkActive,
+  NavigationEnd,
 } from '@angular/router';
 import { select, Store } from '@ngrx/store';
 import { userProfileActions } from '../store/actions';
@@ -20,26 +21,43 @@ import { UserProfileInterface } from '../types/userProfile.interface';
 import { CommonModule } from '@angular/common';
 import { FeedComponent } from 'src/app/shared/components/feed/feed.component';
 
+/* PrimeNG */
+import { TabMenuModule } from 'primeng/tabmenu';
+import { MenuItem } from 'primeng/api';
+import { ButtonModule } from 'primeng/button';
+import { AvatarModule } from 'primeng/avatar';
+import { CardModule } from 'primeng/card';
+
 @Component({
   selector: 'mc-user-profile',
   templateUrl: './userProfile.component.html',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive, FeedComponent],
+  imports: [
+    CommonModule,
+    RouterLink,
+    RouterLinkActive,
+    FeedComponent,
+    // PrimeNG
+    TabMenuModule,
+    ButtonModule,
+    AvatarModule,
+    CardModule,
+  ],
 })
 export class UserProfileComponent implements OnInit {
   defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
-  setFallback(evt: Event) {
-    const img = evt.target as HTMLImageElement | null;
-    if (!img) return;
-    if (img.src !== this.defaultAvatar) {
-      img.src = this.defaultAvatar;
-    }
-  }
+
   route = inject(ActivatedRoute);
   store = inject(Store);
   router = inject(Router);
+
   slug: string = '';
+
+  // Tab items for "My Posts" / "Favorite Posts"
+  items: MenuItem[] = [];
+  activeItem!: MenuItem;
+
   isCurrentUserProfile$ = combineLatest({
     currentUser: this.store.pipe(
       select(selectCurrentUser),
@@ -59,6 +77,7 @@ export class UserProfileComponent implements OnInit {
       return currentUser?.username === userProfile.username;
     })
   );
+
   data$ = combineLatest({
     isLoading: this.store.select(selectIsLoading),
     error: this.store.select(selectError),
@@ -66,17 +85,19 @@ export class UserProfileComponent implements OnInit {
     isCurrentUserProfile: this.isCurrentUserProfile$,
   });
 
-  // constructor(
-  //   private route: ActivatedRoute,
-  //   private store: Store,
-  //   private router: Router
-  // ) {}
-
   ngOnInit(): void {
+    // react to route change
     this.route.params.subscribe((params: Params) => {
       this.slug = params['slug'];
       this.fetchUserProfile();
+      this.buildTabs();
+      this.setActiveFromUrl();
     });
+
+    // react to navigation
+    this.router.events
+      .pipe(filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd)) // ✅ typed
+      .subscribe(() => this.setActiveFromUrl());
   }
 
   fetchUserProfile(): void {
@@ -88,5 +109,38 @@ export class UserProfileComponent implements OnInit {
     return isFavorites
       ? `/articles?favorited=${this.slug}`
       : `/articles?author=${this.slug}`;
+  }
+
+  private buildTabs(): void {
+    this.items = [
+      {
+        label: 'My Posts',
+        icon: 'pi pi-file',
+        routerLink: ['/profiles', this.slug],
+      },
+      {
+        label: 'Favorite Posts',
+        icon: 'pi pi-heart',
+        routerLink: ['/profiles', this.slug, 'favorites'],
+      },
+    ];
+  }
+
+  private setActiveFromUrl(): void {
+    const path = this.router.url.split('?')[0];
+
+    const match = this.items.find((it) => {
+      const link = Array.isArray(it.routerLink)
+        ? it.routerLink.join('/')
+        : (it.routerLink as string);
+      const normalized = link.startsWith('/') ? link : `/${link}`;
+      return path === normalized || path.startsWith(normalized + '/');
+    });
+
+    this.activeItem = match ?? this.items[0];
+  }
+
+  getUserImage(user: UserProfileInterface | null): string {
+    return user?.image || this.defaultAvatar;
   }
 }

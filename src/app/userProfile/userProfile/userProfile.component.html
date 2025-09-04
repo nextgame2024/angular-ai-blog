@@ -1,61 +1,62 @@
 <ng-container *ngIf="data$ | async as data">
-  <div class="profile-page" *ngIf="data.userProfile">
-    <div class="user-info">
-      <div class="container">
-        <div class="row">
-          <div class="col-xs-12 col-md-10 offset-md-1">
-            <img
-              class="user-img"
-              [src]="data.userProfile.image || defaultAvatar"
-              [alt]="data.userProfile.username + ' avatar'"
-              (error)="setFallback($event)"
-            />
-            <h4>{{ data.userProfile.username }}</h4>
-            <p>{{ data.userProfile.bio }}</p>
-            <div>
-              FOLLOW USER BUTTON
-              <a
-                *ngIf="data.isCurrentUserProfile"
-                class="btn btn-sm btn-outline-secondary action-btn"
-                routerLink="/settings"
-                >Edit Profile Settings</a
-              >
-            </div>
+  <div *ngIf="data.userProfile">
+    <!-- Header -->
+    <section class="bg-gray-50 border-b">
+      <div class="container mx-auto px-4 py-8">
+        <div class="max-w-3xl mx-auto flex items-center gap-4">
+          <p-avatar
+            [image]="getUserImage(data.userProfile)"
+            shape="circle"
+            size="xlarge"
+          >
+          </p-avatar>
+
+          <div class="min-w-0">
+            <h2 class="text-xl md:text-2xl font-semibold truncate">
+              {{ data.userProfile.username }}
+            </h2>
+            <p class="text-gray-600 text-sm md:text-base break-words">
+              {{ data.userProfile.bio || " " }}
+            </p>
+          </div>
+
+          <div class="ml-auto">
+            <!-- Show Edit for owner; otherwise show a placeholder Follow button -->
+            <a
+              *ngIf="data.isCurrentUserProfile; else followBtn"
+              routerLink="/settings"
+              pButton
+              icon="pi pi-cog"
+              label="Edit Profile"
+              class="p-button-outlined p-button-secondary p-button-sm"
+            >
+            </a>
+
+            <ng-template #followBtn>
+              <button
+                pButton
+                label="Follow"
+                icon="pi pi-user-plus"
+                class="p-button-sm"
+                disabled
+              ></button>
+            </ng-template>
           </div>
         </div>
       </div>
-    </div>
-    <div class="container">
-      <div class="row">
-        <div class="col-xs-12 col-md-10 offset-md-1">
-          <div class="article-toggler">
-            <ul class="nav nav-pills outline-active">
-              <li class="nav-item">
-                <a
-                  [routerLink]="['/profiles', data.userProfile.username]"
-                  class="nav-link"
-                  routerLinkActive="active"
-                  [routerLinkActiveOptions]="{ exact: true }"
-                  >My Posts</a
-                >
-              </li>
-              <li class="nav-item">
-                <a
-                  [routerLink]="[
-                    '/profiles',
-                    data.userProfile.username,
-                    'favorites'
-                  ]"
-                  class="nav-link"
-                  routerLinkActive="active"
-                  [routerLinkActiveOptions]="{ exact: true }"
-                  >Favorite Posts</a
-                >
-              </li>
-            </ul>
-          </div>
-          <mc-feed [apiUrl]="getApiUrl()"></mc-feed>
-        </div>
+    </section>
+
+    <!-- Tabs + Feed -->
+    <div class="container mx-auto px-4 py-6">
+      <div class="max-w-3xl mx-auto">
+        <p-tabMenu
+          [model]="items"
+          [activeItem]="activeItem || items[0]"
+          class="overflow-x-auto whitespace-nowrap text-sm md:text-base mb-4"
+        >
+        </p-tabMenu>
+
+        <mc-feed [apiUrl]="getApiUrl()"></mc-feed>
       </div>
     </div>
   </div>

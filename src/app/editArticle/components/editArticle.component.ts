@@ -16,24 +16,25 @@ import { LoadingComponent } from 'src/app/shared/components/loading/loading.comp
 import { ActivatedRoute } from '@angular/router';
 import { ArticleInterface } from 'src/app/shared/types/article.interface';
 
+/* PrimeNG */
+import { CardModule } from 'primeng/card';
+
 @Component({
   selector: 'mc-edit-create',
   templateUrl: './editArticle.component.html',
   standalone: true,
-  imports: [CommonModule, ArticleFormComponent, LoadingComponent],
+  imports: [CommonModule, ArticleFormComponent, LoadingComponent, CardModule],
 })
 export class EditArticleComponent implements OnInit {
   initialValues$: Observable<ArticleFormValuesInterface> = this.store.pipe(
     select(selectArticle),
     filter((article): article is ArticleInterface => article !== null),
-    map((article: ArticleInterface) => {
-      return {
-        title: article.title,
-        description: article.description,
-        body: article.body,
-        tagList: article.tagList,
-      };
-    })
+    map((article: ArticleInterface) => ({
+      title: article.title,
+      description: article.description,
+      body: article.body,
+      tagList: article.tagList,
+    }))
   );
 
   slug = this.route.snapshot.paramMap.get('slug') ?? '';
@@ -44,6 +45,7 @@ export class EditArticleComponent implements OnInit {
     isLoading: this.store.select(selectIsLoading),
     initialValues: this.initialValues$,
   });
+
   constructor(private store: Store, private route: ActivatedRoute) {}
 
   ngOnInit(): void {
@@ -51,9 +53,7 @@ export class EditArticleComponent implements OnInit {
   }
 
   onSubmit(articleFormValues: ArticleFormValuesInterface): void {
-    const request: ArticleRequestInterface = {
-      article: articleFormValues,
-    };
+    const request: ArticleRequestInterface = { article: articleFormValues };
     this.store.dispatch(
       editArticleActions.updateArticle({ request, slug: this.slug })
     );

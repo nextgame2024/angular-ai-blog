@@ -1,14 +1,20 @@
 <div class="home-page">
   <mc-banner></mc-banner>
-  <div class="container page">
-    <div class="row">
-      <div class="col-md-9">
+
+  <div class="container mx-auto px-4 py-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+      <!-- Main column -->
+      <section class="md:col-span-2 space-y-4">
         <mc-feed-toggler></mc-feed-toggler>
         <mc-feed [apiUrl]="apiUrl"></mc-feed>
-      </div>
-      <div class="col-md-3">
-        <mc-popular-tags></mc-popular-tags>
-      </div>
+      </section>
+
+      <!-- Sidebar -->
+      <aside class="md:col-span-1">
+        <p-card class="shadow-sm">
+          <mc-popular-tags></mc-popular-tags>
+        </p-card>
+      </aside>
     </div>
   </div>
 </div>

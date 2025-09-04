@@ -1,0 +1,18 @@
+/* Make the p-password wrapper and its inner input fill available width */
+:host ::ng-deep .p-inputgroup .p-password,
+:host ::ng-deep .p-inputgroup .p-password .p-inputtext,
+:host ::ng-deep .p-inputgroup .p-password-input {
+  width: 100%;
+}
+
+/* Ensure heights match pInputText in the same input group */
+:host ::ng-deep .p-inputgroup .p-password .p-inputtext {
+  /* inherit padding/line-height from theme; ensure display block */
+  display: block;
+}
+
+/* Make border radii consistent when used with left addon */
+:host ::ng-deep .p-inputgroup .p-password .p-inputtext {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}

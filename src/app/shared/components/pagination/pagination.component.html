@@ -1,11 +1,104 @@
-<ul class="pagination">
-  <li
-    *ngFor="let page of pages"
-    class="page-item"
-    [ngClass]="{ active: currentPage === page }"
+<!-- Desktop / Tablet: full paginator -->
+<div class="hidden md:block">
+  <p-paginator
+    [first]="first"
+    [rows]="limit"
+    [totalRecords]="total"
+    [pageLinkSize]="pageLinkSize"
+    [alwaysShow]="false"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
+    [showJumpToPageInput]="true"
+    (onPageChange)="onPageChange($event)"
+    class="w-full"
   >
-    <a [routerLink]="url" class="page-link" [queryParams]="{ page: page }">{{
-      page
-    }}</a>
-  </li>
-</ul>
+    <!-- Right-side: extra Go-to control -->
+    <ng-template pTemplate="right">
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-gray-600">Go to</span>
+        <p-inputNumber
+          [(ngModel)]="gotoPage"
+          [min]="1"
+          [max]="pagesCount"
+          [showButtons]="false"
+          [useGrouping]="false"
+          [inputStyle]="{ width: '5rem' }"
+          (keydown.enter)="onGoto()"
+          placeholder="Page"
+        >
+        </p-inputNumber>
+        <button
+          pButton
+          type="button"
+          label="Go"
+          class="p-button-text p-button-sm"
+          (click)="onGoto()"
+        ></button>
+      </div>
+    </ng-template>
+  </p-paginator>
+</div>
+
+<!-- Mobile: compact controls -->
+<div class="md:hidden space-y-2">
+  <div class="flex items-center justify-between">
+    <button
+      pButton
+      type="button"
+      class="p-button-text"
+      icon="pi pi-angle-double-left"
+      [disabled]="currentPage <= 1"
+      (click)="navigateToPage(1)"
+    ></button>
+
+    <button
+      pButton
+      type="button"
+      class="p-button-text"
+      icon="pi pi-angle-left"
+      [disabled]="currentPage <= 1"
+      (click)="prevPage()"
+    ></button>
+
+    <span class="text-sm">Page {{ currentPage }} / {{ pagesCount }}</span>
+
+    <button
+      pButton
+      type="button"
+      class="p-button-text"
+      icon="pi pi-angle-right"
+      [disabled]="currentPage >= pagesCount"
+      (click)="nextPage()"
+    ></button>
+
+    <button
+      pButton
+      type="button"
+      class="p-button-text"
+      icon="pi pi-angle-double-right"
+      [disabled]="currentPage >= pagesCount"
+      (click)="navigateToPage(pagesCount)"
+    ></button>
+  </div>
+
+  <div class="flex items-center justify-center gap-2">
+    <p-inputNumber
+      [(ngModel)]="gotoPage"
+      [min]="1"
+      [max]="pagesCount"
+      [showButtons]="false"
+      [useGrouping]="false"
+      [inputStyle]="{ width: '4rem', textAlign: 'center' }"
+      (keydown.enter)="onGoto()"
+      placeholder="Pg"
+    >
+    </p-inputNumber>
+    <button
+      pButton
+      type="button"
+      label="Go"
+      class="p-button-sm p-button-text"
+      (click)="onGoto()"
+    ></button>
+  </div>
+</div>

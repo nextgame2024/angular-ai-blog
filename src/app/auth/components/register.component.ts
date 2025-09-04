@@ -1,4 +1,3 @@
-import { RegisterRequestInterface } from './../types/registerRequest.interface';
 import { Component } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
@@ -8,22 +7,39 @@ import { selectIsSubmitting, selectValidationErrors } from '../store/reducers';
 import { CommonModule } from '@angular/common';
 import { combineLatest } from 'rxjs';
 import { BackendErrorMessages } from '../../shared/components/backendErrorMessages.component';
+import { RegisterRequestInterface } from './../types/registerRequest.interface';
+
+/* PrimeNG */
+import { CardModule } from 'primeng/card';
+import { InputTextModule } from 'primeng/inputtext';
+import { PasswordModule } from 'primeng/password';
+import { ButtonModule } from 'primeng/button';
 
 @Component({
   selector: 'mc-register',
   templateUrl: './register.component.html',
+  styleUrls: ['./register.component.css'],
   standalone: true,
   imports: [
+    // Angular
     ReactiveFormsModule,
     RouterLink,
     CommonModule,
+
+    // Your shared component
     BackendErrorMessages,
+
+    // PrimeNG
+    CardModule,
+    InputTextModule,
+    PasswordModule,
+    ButtonModule,
   ],
 })
 export class RegisterComponent {
   form = this.fb.nonNullable.group({
     username: ['', Validators.required],
-    email: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
   });
 
@@ -36,10 +52,8 @@ export class RegisterComponent {
   constructor(private fb: FormBuilder, private store: Store) {}
 
   onSubmit() {
-    console.log('form', this.form.getRawValue());
-    const request: RegisterRequestInterface = {
-      user: this.form.getRawValue(),
-    };
+    if (this.form.invalid) return;
+    const request: RegisterRequestInterface = { user: this.form.getRawValue() };
     this.store.dispatch(authActions.register({ request }));
   }
 }

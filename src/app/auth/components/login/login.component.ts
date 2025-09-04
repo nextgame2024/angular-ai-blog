@@ -13,20 +13,36 @@ import { combineLatest } from 'rxjs';
 import { BackendErrorMessages } from '../../../shared/components/backendErrorMessages.component';
 import { LoginRequestInterface } from '../../types/loginRequest.interface';
 
+/* PrimeNG standalone modules */
+import { CardModule } from 'primeng/card';
+import { InputTextModule } from 'primeng/inputtext';
+import { PasswordModule } from 'primeng/password';
+import { ButtonModule } from 'primeng/button';
+
 @Component({
   selector: 'mc-login',
   templateUrl: './login.component.html',
+  styleUrls: ['./login.component.css'],
   standalone: true,
   imports: [
+    // Angular
     ReactiveFormsModule,
     RouterLink,
     CommonModule,
+
+    // Your error component
     BackendErrorMessages,
+
+    // PrimeNG
+    CardModule,
+    InputTextModule,
+    PasswordModule,
+    ButtonModule,
   ],
 })
 export class LoginComponent {
   form = this.fb.nonNullable.group({
-    email: ['', Validators.required],
+    email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
   });
 
@@ -43,10 +59,8 @@ export class LoginComponent {
   ) {}
 
   onSubmit() {
-    console.log('form', this.form.getRawValue());
-    const request: LoginRequestInterface = {
-      user: this.form.getRawValue(),
-    };
+    if (this.form.invalid) return;
+    const request: LoginRequestInterface = { user: this.form.getRawValue() };
     this.store.dispatch(authActions.login({ request }));
   }
 }

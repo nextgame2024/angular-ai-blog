@@ -25,6 +25,11 @@ import queryString from 'query-string';
 import { TagListComponent } from '../tagList/tagList.component';
 import { AddToFavoritesComponent } from '../addToFavorites/addToFavorites.component';
 
+/* PrimeNG */
+import { CardModule } from 'primeng/card';
+import { AvatarModule } from 'primeng/avatar';
+import { ButtonModule } from 'primeng/button';
+
 @Component({
   selector: 'mc-feed',
   templateUrl: './feed.component.html',
@@ -38,6 +43,11 @@ import { AddToFavoritesComponent } from '../addToFavorites/addToFavorites.compon
     PaginationComponent,
     TagListComponent,
     AddToFavoritesComponent,
+
+    // PrimeNG
+    CardModule,
+    AvatarModule,
+    ButtonModule,
   ],
 })
 export class FeedComponent implements OnInit, OnChanges {
@@ -48,7 +58,6 @@ export class FeedComponent implements OnInit, OnChanges {
   setFallback(evt: Event) {
     const img = evt.target as HTMLImageElement | null;
     if (!img) return;
-    // avoid infinite loop if the fallback also fails
     if (img.src !== this.defaultAvatar) {
       img.src = this.defaultAvatar;
     }
@@ -82,9 +91,7 @@ export class FeedComponent implements OnInit, OnChanges {
       !changes['apiUrl'].firstChange &&
       changes['apiUrl'].currentValue !== changes['apiUrl'].previousValue;
 
-    if (isApiUrlChanged) {
-      this.fetchFeed();
-    }
+    if (isApiUrlChanged) this.fetchFeed();
   }
 
   fetchFeed(): void {

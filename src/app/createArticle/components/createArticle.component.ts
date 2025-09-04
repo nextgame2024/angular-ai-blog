@@ -8,11 +8,14 @@ import { selectIsSubmitting, selectValidationErrors } from '../store/reducers';
 import { ArticleRequestInterface } from 'src/app/shared/types/articleRequest.interface';
 import { createArticleActions } from '../store/actions';
 
+/* PrimeNG */
+import { CardModule } from 'primeng/card';
+
 @Component({
   selector: 'mc-component-create',
   templateUrl: './createArticle.component.html',
   standalone: true,
-  imports: [CommonModule, ArticleFormComponent],
+  imports: [CommonModule, ArticleFormComponent, CardModule],
 })
 export class CreateArticleComponent {
   initialValues = {
@@ -26,12 +29,11 @@ export class CreateArticleComponent {
     isSubmitting: this.store.select(selectIsSubmitting),
     backendErrors: this.store.select(selectValidationErrors),
   });
+
   constructor(private store: Store) {}
 
   onSubmit(articleFormValues: ArticleFormValuesInterface): void {
-    const request: ArticleRequestInterface = {
-      article: articleFormValues,
-    };
+    const request: ArticleRequestInterface = { article: articleFormValues };
     this.store.dispatch(createArticleActions.createArticle({ request }));
   }
 }

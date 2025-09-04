@@ -1,43 +1,56 @@
 <ng-container *ngIf="data$ | async as data">
-  <nav class="navbar navbar-light">
-    <div class="container">
-      <a class="navbar-brand" routerLink="/">medium</a>
-      <ul class="nav navbar-nav pull-xs-right">
-        <li class="nav-item">
-          <a routerLink="/" class="nav-link">Home</a>
-        </li>
-        <ng-container *ngIf="data.currentUser">
-          <li class="nav-item">
-            <a routerLink="/articles/new" class="nav-link">
-              <i class="ion-compose"></i>
-              &nbsp; New Post
-            </a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/settings" class="nav-link">
-              <i class="ion-gear-a"></i>
-              &nbsp; Settings
-            </a>
-          </li>
-          <li class="nav-item">
-            <a
-              [routerLink]="['/profiles', data.currentUser.username]"
-              class="nav-link"
-            >
-              <img class="user-pic" [src]="data.currentUser.image" />
-              &nbsp; {{ data.currentUser.username }}
-            </a>
-          </li>
-        </ng-container>
-        <ng-container *ngIf="data.currentUser === null">
-          <li class="nav-item">
-            <a routerLink="/login" class="nav-link"> Sign in</a>
-          </li>
-          <li class="nav-item">
-            <a routerLink="/register" class="nav-link">Sign up</a>
-          </li>
-        </ng-container>
-      </ul>
+  <div>
+    <div class="container mx-auto px-4">
+      <p-menubar
+        [model]="[
+          { label: 'Home', routerLink: '/' },
+          {
+            label: 'New Post',
+            routerLink: '/articles/new',
+            visible: !!data.currentUser
+          },
+          {
+            label: 'Settings',
+            routerLink: '/settings',
+            visible: !!data.currentUser
+          }
+        ]"
+        styleClass="menubar-plain"
+      >
+        <!-- Brand (left) -->
+        <ng-template pTemplate="start">
+          <a class="logo-font text-xl md:text-2xl mr-4" routerLink="/"
+            >aurora</a
+          >
+        </ng-template>
+
+        <!-- Right side: desktop nav (mirrors model) + auth/profile -->
+        <ng-template pTemplate="end">
+          <div class="flex items-center gap-1 md:gap-2">
+            <!-- Auth/Profile -->
+            <ng-container *ngIf="data.currentUser as user; else loggedOut">
+              <a
+                [routerLink]="['/profiles', user.username]"
+                class="flex items-center pl-1"
+              >
+                <p-avatar
+                  [image]="getUserImage(user.image)"
+                  shape="circle"
+                  styleClass="mr-2"
+                ></p-avatar>
+                <span class="hidden sm:inline">{{ user.username }}</span>
+              </a>
+            </ng-container>
+
+            <ng-template #loggedOut>
+              <a routerLink="/login" class="p-button p-button-text">Sign in</a>
+              <a routerLink="/register" class="p-button p-button-text"
+                >Sign up</a
+              >
+            </ng-template>
+          </div>
+        </ng-template>
+      </p-menubar>
     </div>
-  </nav>
+  </div>
 </ng-container>

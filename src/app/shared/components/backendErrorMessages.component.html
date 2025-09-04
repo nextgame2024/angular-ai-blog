@@ -1,5 +1,7 @@
-<ul class="error-messages">
-  <li *ngFor="let errorMessage of errorMessages">
-    {{ errorMessage }}
-  </li>
-</ul>
+<p-messages
+  *ngIf="errorItems.length"
+  [value]="errorItems"
+  [closable]="false"
+  aria-live="polite"
+>
+</p-messages>

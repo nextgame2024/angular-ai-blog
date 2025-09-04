@@ -1,60 +1,62 @@
-<div class="editor-page">
-  <div class="container page">
-    <div class="row">
-      <div class="col-md-10 offset-md-1 col-xs-12">
-        <mc-backend-error-messages
-          *ngIf="errors"
-          [backendErrors]="errors"
-        ></mc-backend-error-messages>
+<mc-backend-error-messages
+  *ngIf="errors"
+  [backendErrors]="errors"
+></mc-backend-error-messages>
 
-        <form [formGroup]="form" (ngSubmit)="onSubmit()">
-          <fieldset class="form-group">
-            <input
-              type="text"
-              class="form-control form-control-lg"
-              placeholder="Article title"
-              formControlName="title"
-            />
-          </fieldset>
-
-          <fieldset class="form-group">
-            <input
-              type="text"
-              class="form-control form-control-lg"
-              placeholder="What is this article about"
-              formControlName="description"
-            />
-          </fieldset>
-
-          <fieldset class="form-group">
-            <textarea
-              class="form-control form-control-lg"
-              rows="8"
-              placeholder="Write your article (in markdown)"
-              formControlName="body"
-            ></textarea>
-          </fieldset>
-
-          <fieldset class="form-group">
-            <input
-              type="text"
-              class="form-control form-control-lg"
-              placeholder="Enter tags"
-              formControlName="tagList"
-            />
-          </fieldset>
-
-          <fieldset>
-            <button
-              type="submit"
-              class="btn btn-lg pull-xs-right btn-primary"
-              [disabled]="form.invalid || isSubmitting"
-            >
-              Publish article
-            </button>
-          </fieldset>
-        </form>
-      </div>
-    </div>
+<form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4">
+  <!-- Title -->
+  <div class="p-inputgroup">
+    <span class="p-inputgroup-addon"><i class="pi pi-book"></i></span>
+    <input
+      pInputText
+      type="text"
+      formControlName="title"
+      placeholder="Article title"
+      class="w-full"
+    />
   </div>
-</div>
+
+  <!-- Description -->
+  <div class="p-inputgroup">
+    <span class="p-inputgroup-addon"><i class="pi pi-align-left"></i></span>
+    <input
+      pInputText
+      type="text"
+      formControlName="description"
+      placeholder="What is this article about?"
+      class="w-full"
+    />
+  </div>
+
+  <!-- Body -->
+  <textarea
+    pInputTextarea
+    formControlName="body"
+    rows="8"
+    placeholder="Write your article (in markdown)"
+    class="w-full"
+  >
+  </textarea>
+
+  <!-- Tags (space-separated) -->
+  <div class="p-inputgroup">
+    <span class="p-inputgroup-addon"><i class="pi pi-tags"></i></span>
+    <input
+      pInputText
+      type="text"
+      formControlName="tagList"
+      placeholder="Enter tags (space-separated)"
+      class="w-full"
+    />
+  </div>
+
+  <div class="flex justify-end">
+    <button
+      pButton
+      type="submit"
+      label="Publish article"
+      class="w-full md:w-auto"
+      [disabled]="form.invalid || isSubmitting"
+    ></button>
+  </div>
+</form>

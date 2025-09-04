@@ -15,6 +15,12 @@ import { LoadingComponent } from 'src/app/shared/components/loading/loading.comp
 import { ErrorMessageComponent } from 'src/app/shared/components/errorMessage/errorMessage.component';
 import { TagListComponent } from 'src/app/shared/components/tagList/tagList.component';
 
+/* PrimeNG */
+import { AvatarModule } from 'primeng/avatar';
+import { ButtonModule } from 'primeng/button';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { ConfirmationService } from 'primeng/api';
+
 @Component({
   selector: 'mc-article',
   templateUrl: './article.component.html',
@@ -25,10 +31,25 @@ import { TagListComponent } from 'src/app/shared/components/tagList/tagList.comp
     LoadingComponent,
     ErrorMessageComponent,
     TagListComponent,
+    AvatarModule,
+    ButtonModule,
+    ConfirmDialogModule,
   ],
+  providers: [ConfirmationService],
 })
 export class ArticleComponent implements OnInit {
   slug = this.route.snapshot.paramMap.get('slug') ?? '';
+
+  // ✅ Default avatar as requested
+  defaultAvatar =
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
+
+  // ✅ Helper so template always gets a plain string
+  getAuthorImage(
+    article: { author?: { image?: string | null } } | null | undefined
+  ): string {
+    return article?.author?.image || this.defaultAvatar;
+  }
 
   isAuthor$ = combineLatest({
     article: this.store.select(selectArticleData),
@@ -42,9 +63,7 @@ export class ArticleComponent implements OnInit {
       ),
   }).pipe(
     map(({ article, currentUser }) => {
-      if (!article || !currentUser) {
-        return false;
-      }
+      if (!article || !currentUser) return false;
       return article.author.username === currentUser.username;
     })
   );
@@ -56,7 +75,11 @@ export class ArticleComponent implements OnInit {
     isAuthor: this.isAuthor$,
   });
 
-  constructor(private store: Store, private route: ActivatedRoute) {}
+  constructor(
+    private store: Store,
+    private route: ActivatedRoute,
+    private confirmation: ConfirmationService
+  ) {}
 
   ngOnInit(): void {
     this.store.dispatch(articleActions.getArticle({ slug: this.slug }));
@@ -64,5 +87,18 @@ export class ArticleComponent implements OnInit {
 
   deleteArticle(): void {
     this.store.dispatch(articleActions.deleteArticle({ slug: this.slug }));
+  }
+
+  confirmDelete(): void {
+    this.confirmation.confirm({
+      message: 'Delete this article? This action cannot be undone.',
+      header: 'Confirm Delete',
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Delete',
+      rejectLabel: 'Cancel',
+      acceptButtonStyleClass: 'p-button-danger',
+      rejectButtonStyleClass: 'p-button-text',
+      accept: () => this.deleteArticle(),
+    });
   }
 }

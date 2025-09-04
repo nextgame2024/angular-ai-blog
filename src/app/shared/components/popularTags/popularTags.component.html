@@ -1,23 +1,20 @@
 <ng-container *ngIf="data$ | async as data">
   <mc-loading *ngIf="data.isLoading"></mc-loading>
-
   <mc-error-message
     *ngIf="data.error"
     [message]="data.error"
   ></mc-error-message>
 
-  <div
-    class="sidebar"
-    *ngIf="!data.isLoading && !data.error && data.popularTags?.length"
-  >
-    <p>Popular Tags</p>
-    <div class="tag-list">
+  <div *ngIf="!data.isLoading && !data.error && data.popularTags?.length">
+    <p class="font-medium mb-3">Popular Tags</p>
+
+    <div class="flex flex-wrap gap-2">
       <a
         *ngFor="let popularTag of data.popularTags"
         [routerLink]="['/tag', popularTag]"
-        class="tag-default tag-pill"
+        class="inline-block"
       >
-        {{ popularTag }}
+        <p-chip [label]="popularTag"></p-chip>
       </a>
     </div>
   </div>

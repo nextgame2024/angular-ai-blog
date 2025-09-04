@@ -12,11 +12,20 @@ import { LoadingComponent } from '../loading/loading.component';
 import { ErrorMessageComponent } from '../errorMessage/errorMessage.component';
 import { RouterLink } from '@angular/router';
 
+/* PrimeNG */
+import { ChipModule } from 'primeng/chip';
+
 @Component({
   selector: 'mc-popular-tags',
   templateUrl: './popularTags.component.html',
   standalone: true,
-  imports: [CommonModule, LoadingComponent, ErrorMessageComponent, RouterLink],
+  imports: [
+    CommonModule,
+    LoadingComponent,
+    ErrorMessageComponent,
+    RouterLink,
+    ChipModule,
+  ],
 })
 export class PopularTagsComponent implements OnInit {
   data$ = combineLatest({

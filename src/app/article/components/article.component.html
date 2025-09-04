@@ -1,50 +1,76 @@
 <ng-container *ngIf="data$ | async as data">
-  <div class="article-page">
-    <div class="banner">
-      <div class="container" *ngIf="data.article">
-        <h1>{{ data.article.title }}</h1>
-        <div class="article-meta">
-          <a [routerLink]="['/profiles', data.article.author.username]">
-            <img [src]="data.article.author.image" />
+  <section class="bg-gray-50 border-b">
+    <div class="container mx-auto px-4 py-8" *ngIf="data.article">
+      <h1 class="text-2xl md:text-3xl font-semibold mb-4">
+        {{ data.article.title }}
+      </h1>
+
+      <div class="flex items-center gap-3">
+        <a
+          [routerLink]="['/profiles', data.article.author.username]"
+          class="shrink-0"
+        >
+          <p-avatar
+            [image]="getAuthorImage(data.article)"
+            shape="circle"
+            size="large"
+          >
+          </p-avatar>
+        </a>
+
+        <div class="min-w-0">
+          <a
+            [routerLink]="['/profiles', data.article.author.username]"
+            class="block font-medium truncate"
+          >
+            {{ data.article.author.username }}
           </a>
-          <div class="info">
-            <a [routerLink]="['/profiles', data.article.author.username]">
-              {{ data.article.author.username }}
-            </a>
-            <span class="data">{{ data.article.createdAt }}</span>
-          </div>
-          <span *ngIf="data.isAuthor">
-            <a
-              [routerLink]="['/articles', data.article.slug, 'edit']"
-              class="btn btn-outline-secondary btn-sm"
-            >
-              <i class="ion-edit"></i>
-              Edit Article
-            </a>
-            <button
-              class="btn btn-outline-danger btn-sm"
-              (click)="deleteArticle()"
-            >
-              Delete Article
-            </button>
+          <span class="text-sm text-gray-500">
+            {{ data.article.createdAt | date : "mediumDate" }}
           </span>
+        </div>
+
+        <div class="ml-auto" *ngIf="data.isAuthor">
+          <a
+            [routerLink]="['/articles', data.article.slug, 'edit']"
+            pButton
+            icon="pi pi-pencil"
+            label="Edit"
+            class="p-button-outlined p-button-secondary p-button-sm mr-2"
+          >
+          </a>
+
+          <button
+            pButton
+            type="button"
+            icon="pi pi-trash"
+            label="Delete"
+            class="p-button-outlined p-button-danger p-button-sm"
+            (click)="confirmDelete()"
+          ></button>
         </div>
       </div>
     </div>
-    <div class="container page">
-      <mc-loading *ngIf="data.isLoading"></mc-loading>
-      <mc-error-message
-        *ngIf="data.error"
-        [message]="data.error"
-      ></mc-error-message>
-      <div class="row article-content" *ngIf="data.article">
-        <div class="col-xs-12">
-          <div>
-            <p>{{ data.article.body }}</p>
-          </div>
-          <mc-tag-list [tags]="data.article.tagList"></mc-tag-list>
-        </div>
+  </section>
+
+  <div class="container mx-auto px-4 py-6">
+    <mc-loading *ngIf="data.isLoading"></mc-loading>
+
+    <mc-error-message *ngIf="data.error" [message]="data.error">
+    </mc-error-message>
+
+    <div *ngIf="data.article">
+      <article class="prose max-w-none">
+        <p class="whitespace-pre-line leading-relaxed">
+          {{ data.article.body }}
+        </p>
+      </article>
+
+      <div class="mt-6">
+        <mc-tag-list [tags]="data.article.tagList"></mc-tag-list>
       </div>
     </div>
   </div>
+
+  <p-confirmDialog></p-confirmDialog>
 </ng-container>

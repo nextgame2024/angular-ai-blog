@@ -1,5 +1,24 @@
-<ul class="tag-list">
-  <li *ngFor="let tag of tags" class="tag-default tag-pill tag-outline">
-    {{ tag }}
-  </li>
-</ul>
+<ng-container *ngIf="tags?.length; else noTags">
+  <div class="flex flex-wrap gap-2">
+    <ng-container *ngFor="let tag of tags">
+      <!-- With links -->
+      <a
+        *ngIf="clickable; else plainChip"
+        class="inline-block"
+        [routerLink]="[linkBase, tag]"
+        [attr.aria-label]="'Filter by tag ' + tag"
+      >
+        <p-chip [label]="tag"></p-chip>
+      </a>
+
+      <!-- Without links -->
+      <ng-template #plainChip>
+        <p-chip [label]="tag"></p-chip>
+      </ng-template>
+    </ng-container>
+  </div>
+</ng-container>
+
+<ng-template #noTags>
+  <span class="text-sm text-gray-500">No tags</span>
+</ng-template>
