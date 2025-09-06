@@ -1,8 +1,83 @@
-<section class="bg-gradient-to-r from-emerald-500 to-emerald-400 text-white">
-  <div class="container mx-auto px-4 py-10 text-center">
-    <h1 class="text-2xl md:text-4xl font-bold">Medium Clone</h1>
-    <p class="mt-2 text-sm md:text-base opacity-90">
-      A place to share knowledge
-    </p>
+<section class="relative w-full">
+  <div class="w-full">
+    <div class="relative overflow-hidden">
+      <!-- Video: full width, mobile-first height; no loop, autoplay handled by IO -->
+      <video
+        #heroVideo
+        *ngIf="videoSrc"
+        class="block w-full h-[180px] md:h-[300px] object-cover"
+        [attr.src]="videoSrc"
+        [muted]="isMuted"
+        playsinline
+        preload="metadata"
+      ></video>
+
+      <!-- Black gradient overlay for readability -->
+      <div
+        class="absolute inset-0 bg-gradient-to-r from-black/80 to-black/40"
+        aria-hidden="true"
+      ></div>
+
+      <!-- Headline copy -->
+      <div
+        class="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-4"
+      >
+        <h1 class="text-2xl md:text-4xl font-bold">Medium Clone</h1>
+        <p class="mt-2 text-sm md:text-base opacity-90">
+          A place to share knowledge
+        </p>
+      </div>
+
+      <!-- Custom controls (bottom-right) -->
+      <div
+        class="absolute bottom-2 right-2 flex items-center gap-2 bg-black/50 backdrop-blur-sm text-white rounded-full px-2 py-1"
+      >
+        <!-- Play -->
+        <button
+          class="px-2 py-1 rounded-full hover:bg-white/10 disabled:opacity-50"
+          (click)="playVideo()"
+          [disabled]="isPlaying"
+          aria-label="Play"
+          title="Play"
+        >
+          <i class="pi pi-play"></i>
+        </button>
+
+        <!-- Pause -->
+        <button
+          class="px-2 py-1 rounded-full hover:bg-white/10 disabled:opacity-50"
+          (click)="pauseVideo()"
+          [disabled]="!isPlaying"
+          aria-label="Pause"
+          title="Pause"
+        >
+          <i class="pi pi-pause"></i>
+        </button>
+
+        <!-- Stop (pause + go to start) -->
+        <button
+          class="px-2 py-1 rounded-full hover:bg-white/10"
+          (click)="stopVideo()"
+          aria-label="Stop"
+          title="Stop"
+        >
+          <i class="pi pi-stop"></i>
+        </button>
+
+        <!-- Mute/Unmute -->
+        <button
+          class="px-2 py-1 rounded-full hover:bg-white/10"
+          (click)="toggleMute()"
+          [attr.aria-pressed]="!isMuted"
+          [attr.aria-label]="isMuted ? 'Unmute' : 'Mute'"
+          [title]="isMuted ? 'Unmute' : 'Mute'"
+        >
+          <i
+            class="pi"
+            [ngClass]="isMuted ? 'pi-volume-off' : 'pi-volume-up'"
+          ></i>
+        </button>
+      </div>
+    </div>
   </div>
 </section>
