@@ -55,6 +55,7 @@ export class FeedTogglerComponent implements OnChanges {
         label: 'Your feed',
         icon: 'pi pi-user',
         routerLink: ['/feed'],
+        routerLinkActiveOptions: { exact: true }, // ✅ exact match
       });
     }
 
@@ -62,22 +63,19 @@ export class FeedTogglerComponent implements OnChanges {
       label: 'Global feed',
       icon: 'pi pi-globe',
       routerLink: ['/'],
+      routerLinkActiveOptions: { exact: true }, // ✅ exact match
     });
 
     if (this.tagName) {
       items.push({
         label: `#${this.tagName}`,
         icon: 'pi pi-tag',
-        routerLink: ['/tags', this.tagName],
+        routerLink: ['/tag', this.tagName],
+        routerLinkActiveOptions: { exact: true }, // ✅ exact match
       });
     }
 
     this.items = items;
-
-    // Ensure activeItem is *always* set to a valid item
-    if (this.items.length && !this.activeItem) {
-      this.activeItem = this.items[0];
-    }
   }
 
   private setActiveFromUrl(): void {

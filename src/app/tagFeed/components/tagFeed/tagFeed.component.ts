@@ -6,9 +6,6 @@ import { BannerComponent } from '../../../shared/components/banner/banner.compon
 import { PopularTagsComponent } from '../../../shared/components/popularTags/popularTags.component';
 import { FeedTogglerComponent } from 'src/app/shared/components/feedToggler/feedToggler.component';
 
-/* PrimeNG */
-import { CardModule } from 'primeng/card';
-
 @Component({
   selector: 'mc-tag-feed',
   templateUrl: './tagFeed.component.html',
@@ -18,9 +15,6 @@ import { CardModule } from 'primeng/card';
     BannerComponent,
     PopularTagsComponent,
     FeedTogglerComponent,
-
-    // PrimeNG
-    CardModule,
   ],
 })
 export class TagFeedComponent implements OnInit {
@@ -32,7 +26,7 @@ export class TagFeedComponent implements OnInit {
   ngOnInit(): void {
     this.route.params.subscribe((params: Params) => {
       this.tagName = params['slug'];
-      this.apiUrl = `/articles?tag=${this.tagName}`;
+      this.apiUrl = `/articles?tag=${encodeURIComponent(this.tagName)}`;
     });
   }
 }

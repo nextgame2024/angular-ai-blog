@@ -33,6 +33,9 @@ import * as popularTagsEffects from './app/shared/components/popularTags/store/e
 import * as addToFavoritesEffects from './app/shared/components/addToFavorites/store/effects';
 import { AddToFavoritesService } from './app/shared/components/addToFavorites/services/addToFavorites.service';
 
+import { followFeatureKey, followReducer } from './app/follow/store/reducers';
+import * as followEffects from './app/follow/store/effects';
+
 import { authInterceptor } from './app/shared/services/authInterceptor';
 
 // PrimeNG modules (add/remove as you need)
@@ -61,11 +64,13 @@ bootstrapApplication(AppComponent, {
     provideState(authFeatureKey, authReducer),
     provideState(feedFeatureKey, feedReducer),
     provideState(popularTagsFeatureKey, popularTagsReducer),
+    provideState(followFeatureKey, followReducer),
     provideEffects(
       authEffects,
       feedEffects,
       popularTagsEffects,
-      addToFavoritesEffects
+      addToFavoritesEffects,
+      followEffects
     ),
     provideStoreDevtools({
       maxAge: 25,

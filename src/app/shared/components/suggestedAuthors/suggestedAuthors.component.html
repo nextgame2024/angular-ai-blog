@@ -1,0 +1,47 @@
+<div class="flex items-center justify-between mb-3">
+  <p class="font-medium">Suggested authors</p>
+  <a class="p-button p-button-text p-button-sm" (click)="refresh()">Refresh</a>
+</div>
+
+<div *ngIf="loading$ | async" class="text-sm text-gray-500">Loading…</div>
+
+<ng-container *ngIf="suggestions$ | async as items">
+  <div
+    *ngIf="items.length; else noSuggestions"
+    class="grid gap-3 md:grid-cols-1"
+  >
+    <div
+      *ngFor="let p of items; trackBy: trackByUser"
+      class="flex items-center gap-3 border rounded p-2 dark:border-neutral-700"
+    >
+      <a
+        [routerLink]="['/profiles', p.username]"
+        class="shrink-0"
+        [attr.aria-label]="'Open ' + p.username + ' profile'"
+      >
+        <p-avatar [image]="getUserImage(p.image)" shape="circle"></p-avatar>
+      </a>
+
+      <div class="min-w-0">
+        <a
+          [routerLink]="['/profiles', p.username]"
+          class="font-medium block truncate"
+        >
+          {{ p.username }}
+        </a>
+        <p class="text-xs text-gray-500 line-clamp-2">{{ p.bio }}</p>
+      </div>
+
+      <div class="ml-auto">
+        <mc-follow-button
+          [username]="p.username"
+          [following]="p.following"
+        ></mc-follow-button>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #noSuggestions>
+    <p class="text-sm text-gray-500">No suggestions yet. Try Refresh.</p>
+  </ng-template>
+</ng-container>

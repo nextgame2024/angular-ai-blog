@@ -4,9 +4,6 @@ import { BannerComponent } from '../../../shared/components/banner/banner.compon
 import { PopularTagsComponent } from '../../../shared/components/popularTags/popularTags.component';
 import { FeedTogglerComponent } from 'src/app/shared/components/feedToggler/feedToggler.component';
 
-/* PrimeNG */
-import { CardModule } from 'primeng/card';
-
 @Component({
   selector: 'mc-your-feed',
   templateUrl: './yourFeed.component.html',
@@ -16,9 +13,6 @@ import { CardModule } from 'primeng/card';
     BannerComponent,
     PopularTagsComponent,
     FeedTogglerComponent,
-
-    // PrimeNG
-    CardModule,
   ],
 })
 export class YourFeedComponent {

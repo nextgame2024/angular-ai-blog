@@ -1,0 +1,8 @@
+<button
+  pButton
+  class="p-button-sm"
+  [label]="following ? 'Unfollow' : 'Follow'"
+  [icon]="following ? 'pi pi-user-minus' : 'pi pi-user-plus'"
+  (click)="toggle()"
+  [attr.aria-label]="following ? 'Unfollow ' + username : 'Follow ' + username"
+></button>

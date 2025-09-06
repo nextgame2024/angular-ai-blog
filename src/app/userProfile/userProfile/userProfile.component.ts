@@ -4,7 +4,6 @@ import {
   Params,
   Router,
   RouterLink,
-  RouterLinkActive,
   NavigationEnd,
 } from '@angular/router';
 import { select, Store } from '@ngrx/store';
@@ -28,6 +27,9 @@ import { ButtonModule } from 'primeng/button';
 import { AvatarModule } from 'primeng/avatar';
 import { CardModule } from 'primeng/card';
 
+/* Follow button (standalone) */
+import { FollowButtonComponent } from 'src/app/shared/components/followButton/followButton.component';
+
 @Component({
   selector: 'mc-user-profile',
   templateUrl: './userProfile.component.html',
@@ -35,13 +37,14 @@ import { CardModule } from 'primeng/card';
   imports: [
     CommonModule,
     RouterLink,
-    RouterLinkActive,
     FeedComponent,
     // PrimeNG
     TabMenuModule,
     ButtonModule,
     AvatarModule,
     CardModule,
+    // 👇 Add the follow button here so the element is known
+    FollowButtonComponent,
   ],
 })
 export class UserProfileComponent implements OnInit {
@@ -54,7 +57,6 @@ export class UserProfileComponent implements OnInit {
 
   slug: string = '';
 
-  // Tab items for "My Posts" / "Favorite Posts"
   items: MenuItem[] = [];
   activeItem!: MenuItem;
 
@@ -86,7 +88,6 @@ export class UserProfileComponent implements OnInit {
   });
 
   ngOnInit(): void {
-    // react to route change
     this.route.params.subscribe((params: Params) => {
       this.slug = params['slug'];
       this.fetchUserProfile();
@@ -94,9 +95,8 @@ export class UserProfileComponent implements OnInit {
       this.setActiveFromUrl();
     });
 
-    // react to navigation
     this.router.events
-      .pipe(filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd)) // ✅ typed
+      .pipe(filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd))
       .subscribe(() => this.setActiveFromUrl());
   }
 
@@ -117,18 +117,19 @@ export class UserProfileComponent implements OnInit {
         label: 'My Posts',
         icon: 'pi pi-file',
         routerLink: ['/profiles', this.slug],
+        routerLinkActiveOptions: { exact: true },
       },
       {
         label: 'Favorite Posts',
         icon: 'pi pi-heart',
         routerLink: ['/profiles', this.slug, 'favorites'],
+        routerLinkActiveOptions: { exact: true },
       },
     ];
   }
 
   private setActiveFromUrl(): void {
     const path = this.router.url.split('?')[0];
-
     const match = this.items.find((it) => {
       const link = Array.isArray(it.routerLink)
         ? it.routerLink.join('/')
@@ -136,11 +137,10 @@ export class UserProfileComponent implements OnInit {
       const normalized = link.startsWith('/') ? link : `/${link}`;
       return path === normalized || path.startsWith(normalized + '/');
     });
-
     this.activeItem = match ?? this.items[0];
   }
 
-  getUserImage(user: UserProfileInterface | null): string {
-    return user?.image || this.defaultAvatar;
+  getUserImage(image: string | null | undefined): string {
+    return image || this.defaultAvatar;
   }
 }

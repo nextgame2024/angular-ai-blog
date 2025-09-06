@@ -6,16 +6,14 @@
   ></mc-error-message>
 
   <div *ngIf="!data.isLoading && !data.error && data.popularTags?.length">
-    <p class="font-medium mb-3">Popular Tags</p>
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
+      <p class="font-medium mr-2 shrink-0">Popular Tags:</p>
 
-    <div class="flex flex-wrap gap-2">
-      <a
-        *ngFor="let popularTag of data.popularTags"
-        [routerLink]="['/tag', popularTag]"
-        class="inline-block"
-      >
-        <p-chip [label]="popularTag"></p-chip>
-      </a>
+      <ng-container *ngFor="let popularTag of data.popularTags">
+        <a [routerLink]="['/tag', popularTag]" class="inline-block">
+          <p-chip [label]="popularTag"></p-chip>
+        </a>
+      </ng-container>
     </div>
   </div>
 </ng-container>
