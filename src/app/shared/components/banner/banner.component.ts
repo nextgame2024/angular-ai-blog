@@ -20,10 +20,13 @@ export class BannerComponent implements AfterViewInit, OnDestroy {
   @ViewChild('heroVideo', { static: false })
   videoRef?: ElementRef<HTMLVideoElement>;
 
-  isMuted = false;
+  isMuted = false; // default unmuted
   isPlaying = false;
   private hasAutoPlayedOnce = false;
   private io?: IntersectionObserver;
+
+  // toggle if you want re-play on visibility
+  private autoResumeOnVisible = true;
 
   ngAfterViewInit(): void {
     const vid = this.videoRef?.nativeElement;
@@ -34,16 +37,39 @@ export class BannerComponent implements AfterViewInit, OnDestroy {
     vid.addEventListener('pause', () => (this.isPlaying = false));
     vid.addEventListener('ended', () => (this.isPlaying = false));
 
-    // try autoplay once when ≥60% visible
+    // Autoplay/resume when ≥60% visible; pause when not visible enough
     this.io = new IntersectionObserver(
       async ([entry]) => {
         if (!entry) return;
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+        const visibleEnough =
+          entry.isIntersecting && entry.intersectionRatio >= 0.6;
+
+        if (visibleEnough) {
+          if (vid.ended) {
+            if (this.autoResumeOnVisible) {
+              try {
+                vid.currentTime = 0;
+                await vid.play();
+                this.hasAutoPlayedOnce = true;
+              } catch {}
+            }
+            this.hasAutoPlayedOnce = true;
+            return;
+          }
+
+          // First-time visible: try a single autoplay (unmuted)
           if (!this.hasAutoPlayedOnce) {
             await this.tryAutoplayOnce(vid);
           }
+          // Subsequent times: resume if paused
+          else if (this.autoResumeOnVisible && vid.paused) {
+            try {
+              await vid.play(); // may be blocked; safe to ignore
+            } catch {}
+          }
         } else {
-          vid.pause();
+          // Off-screen: pause (don’t reset time)
+          if (!vid.paused) vid.pause();
         }
       },
       { threshold: [0, 0.6, 1] }
@@ -58,22 +84,10 @@ export class BannerComponent implements AfterViewInit, OnDestroy {
 
   private async tryAutoplayOnce(vid: HTMLVideoElement) {
     try {
-      // first try with current (unmuted) state
       await vid.play();
       this.hasAutoPlayedOnce = true;
     } catch {
-      // if blocked by the browser, fall back to muted autoplay
       this.hasAutoPlayedOnce = true;
-      // if (!vid.muted) {
-      //   this.isMuted = true;
-      //   vid.muted = true;
-      //   try {
-      //     await vid.play();
-      //     this.hasAutoPlayedOnce = true;
-      //   } catch {
-      //     // still blocked – give up silently; user can press Play
-      //   }
-      // }
     }
   }
 

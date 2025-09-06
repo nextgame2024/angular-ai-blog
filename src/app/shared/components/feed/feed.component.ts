@@ -26,6 +26,7 @@ import queryString from 'query-string';
 import { TagListComponent } from '../tagList/tagList.component';
 import { AddToFavoritesComponent } from '../addToFavorites/addToFavorites.component';
 import { SuggestedAuthorsComponent } from '../suggestedAuthors/suggestedAuthors.component';
+import { ArticleMediaComponent } from '../articleMedia/articleMedia.component';
 
 /* PrimeNG */
 import { CardModule } from 'primeng/card';
@@ -50,6 +51,7 @@ import { followActions } from 'src/app/follow/store/actions';
     TagListComponent,
     AddToFavoritesComponent,
     SuggestedAuthorsComponent,
+    ArticleMediaComponent,
 
     // PrimeNG
     CardModule,

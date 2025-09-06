@@ -99,26 +99,37 @@
           </div>
         </div>
 
-        <!-- content -->
-        <a [routerLink]="['/articles', article.slug]" class="block mt-3">
-          <h2 class="text-lg md:text-xl font-semibold leading-snug">
-            {{ article.title }}
-          </h2>
-          <p class="text-gray-600 mt-1 line-clamp-3">
-            {{ article.description }}
-          </p>
-        </a>
+        <!-- 1-col on mobile, 2-cols on md+ -->
+        <div class="mt-3 grid grid-cols-1 md:grid-cols-5 gap-3 md:gap-4">
+          <!-- LEFT: media (video / image / audio / placeholder) -->
+          <div class="md:col-span-2">
+            <mc-article-media [assets]="article.assets"></mc-article-media>
+          </div>
 
-        <!-- footer: tags + read more -->
-        <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-          <mc-tag-list [tags]="article.tagList"></mc-tag-list>
-          <a
-            [routerLink]="['/articles', article.slug]"
-            pButton
-            label="Read more"
-            class="p-button-text p-button-sm"
-          >
-          </a>
+          <!-- RIGHT: text content -->
+          <div class="md:col-span-3">
+            <a [routerLink]="['/articles', article.slug]" class="block">
+              <h2 class="text-lg md:text-xl font-semibold leading-snug">
+                {{ article.title }}
+              </h2>
+              <p class="text-gray-600 mt-1 line-clamp-3">
+                {{ article.description }}
+              </p>
+            </a>
+
+            <!-- footer: tags + read more -->
+            <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+              <mc-tag-list [tags]="article.tagList"></mc-tag-list>
+
+              <a
+                [routerLink]="['/articles', article.slug]"
+                pButton
+                label="Read more"
+                class="p-button-text p-button-sm"
+              >
+              </a>
+            </div>
+          </div>
         </div>
       </p-card>
     </div>

@@ -1,5 +1,6 @@
 import { PopularTagType } from './popularTag.type';
 import { ProfileInterface } from '../components/types/profile.interface';
+import { AssetInterface } from './asset.interface';
 
 export interface ArticleInterface {
   body: string;
@@ -12,4 +13,5 @@ export interface ArticleInterface {
   title: string;
   updatedAt: string;
   author: ProfileInterface;
+  assets?: AssetInterface[];
 }

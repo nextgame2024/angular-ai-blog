@@ -34,7 +34,7 @@ export class TopBarComponent {
   defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
 
-  isDark$ = this.theme.mode$.pipe(map((m) => m === 'dark'));
+  isDark$ = this.theme.mode$.pipe(map((m) => m !== 'dark'));
 
   constructor(private store: Store, private theme: ThemeService) {}
 
