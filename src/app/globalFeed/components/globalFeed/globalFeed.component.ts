@@ -4,6 +4,7 @@ import { BannerComponent } from '../../../shared/components/banner/banner.compon
 import { PopularTagsComponent } from '../../../shared/components/popularTags/popularTags.component';
 import { FeedTogglerComponent } from 'src/app/shared/components/feedToggler/feedToggler.component';
 import { ErrorMessageComponent } from 'src/app/shared/components/errorMessage/errorMessage.component';
+import { FooterComponent } from 'src/app/shared/components/footer/footer.component';
 
 @Component({
   selector: 'mc-global-feed',
@@ -15,6 +16,7 @@ import { ErrorMessageComponent } from 'src/app/shared/components/errorMessage/er
     BannerComponent,
     PopularTagsComponent,
     FeedTogglerComponent,
+    FooterComponent,
   ],
 })
 export class GlobalFeedComponent {

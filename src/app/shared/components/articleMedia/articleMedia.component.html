@@ -5,7 +5,7 @@
     <div class="relative overflow-hidden rounded md:rounded-md">
       <video
         #videoEl
-        class="block w-full h-48 md:h-76 object-cover bg-black"
+        class="block w-full h-52 md:h-56 min-h-[20rem] md:min-h-[25rem] object-cover bg-black"
         [attr.src]="v.url"
         [muted]="isMuted"
         playsinline
@@ -61,8 +61,8 @@
   <ng-template #nonVideo>
     <ng-container *ngIf="image as img; else maybeAudio">
       <img
-        class="block w-full h-48 md:h-56 object-cover rounded md:rounded-md"
-        [src]="image.url || defaultPoster"
+        class="block w-full h-52 md:h-56 min-h-[20rem] md:min-h-[25rem] object-cover rounded md:rounded-md"
+        [src]="img.url || defaultPoster"
         alt="article cover"
         (error)="onImageError($event)"
       />
@@ -83,7 +83,7 @@
 
       <ng-template #placeholder>
         <div
-          class="w-full h-48 md:h-56 rounded md:rounded-md bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-700 grid place-items-center"
+          class="w-full h-52 md:h-56 min-h-[20rem] md:min-h-[25rem] rounded md:rounded-md bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-700 grid place-items-center"
         >
           <i class="pi pi-image text-3xl opacity-60"></i>
         </div>

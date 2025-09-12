@@ -61,77 +61,99 @@
       </ng-template>
     </p-card>
 
-    <div class="space-y-4">
-      <p-card *ngFor="let article of data.feed.articles" class="shadow-sm">
-        <!-- header: avatar, author, date, favorite -->
-        <div class="flex items-center gap-3">
-          <a
-            [routerLink]="['/profiles', article.author.username]"
-            class="shrink-0"
-          >
-            <img
-              class="w-10 h-10 rounded-full object-cover"
-              [src]="article.author.image || defaultAvatar"
-              [alt]="article.author.username + ' avatar'"
-              (error)="setFallback($event)"
-            />
-          </a>
+    <!-- Articles list with explicit teal separators -->
+    <div>
+      <ng-container *ngFor="let article of data.feed.articles; let last = last">
+        <p-card class="shadow-sm py-4 md:py-6">
+          <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
+            <!-- LEFT: media -->
+            <div class="md:col-span-2">
+              <mc-article-media [assets]="article.assets"></mc-article-media>
+            </div>
 
-          <div class="min-w-0">
-            <a
-              [routerLink]="['/profiles', article.author.username]"
-              class="block font-medium truncate"
-            >
-              {{ article.author.username }}
-            </a>
-            <span class="text-sm text-gray-500">
-              {{ article.createdAt | date : "mediumDate" }}
-            </span>
-          </div>
+            <!-- RIGHT: content -->
+            <div class="md:col-span-3 flex flex-col h-full md:pl-2">
+              <!-- header -->
+              <div class="flex items-center gap-3">
+                <a
+                  [routerLink]="['/profiles', article.author.username]"
+                  class="shrink-0"
+                >
+                  <img
+                    class="w-10 h-10 rounded-full object-cover"
+                    [src]="article.author.image || defaultAvatar"
+                    [alt]="article.author.username + ' avatar'"
+                    (error)="setFallback($event)"
+                  />
+                </a>
+                <div class="min-w-0">
+                  <a
+                    [routerLink]="['/profiles', article.author.username]"
+                    class="block font-semibold text-base md:text-lg truncate"
+                  >
+                    {{ article.author.username }}
+                  </a>
+                  <span class="text-sm text-gray-500">
+                    {{ article.createdAt | date : "mediumDate" }}
+                  </span>
+                </div>
+                <div class="ml-auto">
+                  <mc-add-to-favorites
+                    [isFavorited]="article.favorited"
+                    [articleSlug]="article.slug"
+                    [favoritesCount]="article.favoritesCount"
+                  ></mc-add-to-favorites>
+                </div>
+              </div>
 
-          <div class="ml-auto">
-            <mc-add-to-favorites
-              [isFavorited]="article.favorited"
-              [articleSlug]="article.slug"
-              [favoritesCount]="article.favoritesCount"
-            >
-            </mc-add-to-favorites>
-          </div>
-        </div>
-
-        <!-- 1-col on mobile, 2-cols on md+ -->
-        <div class="mt-3 grid grid-cols-1 md:grid-cols-5 gap-3 md:gap-4">
-          <!-- LEFT: media (video / image / audio / placeholder) -->
-          <div class="md:col-span-2">
-            <mc-article-media [assets]="article.assets"></mc-article-media>
-          </div>
-
-          <!-- RIGHT: text content -->
-          <div class="md:col-span-3">
-            <a [routerLink]="['/articles', article.slug]" class="block">
-              <h2 class="text-lg md:text-xl font-semibold leading-snug">
-                {{ article.title }}
-              </h2>
-              <p class="text-gray-600 mt-1 line-clamp-3">
-                {{ article.description }}
-              </p>
-            </a>
-
-            <!-- footer: tags + read more -->
-            <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <mc-tag-list [tags]="article.tagList"></mc-tag-list>
-
-              <a
-                [routerLink]="['/articles', article.slug]"
-                pButton
-                label="Read more"
-                class="p-button-text p-button-sm"
-              >
+              <!-- title + description -->
+              <a [routerLink]="['/articles', article.slug]" class="block mt-3">
+                <h2 class="text-lg md:text-xl font-semibold leading-snug">
+                  {{ article.title }}
+                </h2>
+                <p class="text-gray-600 mt-1 line-clamp-3">
+                  {{ article.description }}
+                </p>
               </a>
+
+              <!-- footer (mobile) -->
+              <div
+                class="mt-3 flex flex-wrap items-center justify-between gap-3 md:hidden"
+              >
+                <a
+                  [routerLink]="['/articles', article.slug]"
+                  pButton
+                  label="Read more"
+                  class="p-button-text p-button-sm"
+                ></a>
+                <mc-tag-list [tags]="article.tagList"></mc-tag-list>
+              </div>
+
+              <!-- footer (desktop) -->
+              <div class="hidden md:flex flex-col mt-3 md:mt-auto">
+                <div>
+                  <a
+                    [routerLink]="['/articles', article.slug]"
+                    pButton
+                    label="Read more"
+                    class="p-button-text p-button-sm"
+                  ></a>
+                </div>
+                <mc-tag-list
+                  [tags]="article.tagList"
+                  class="mt-2"
+                ></mc-tag-list>
+              </div>
             </div>
           </div>
-        </div>
-      </p-card>
+        </p-card>
+
+        <!-- Teal separator (skip after the last card) -->
+        <div
+          *ngIf="!last"
+          class="h-0.5 bg-[#c67dfe] opacity-80 my-6 rounded"
+        ></div>
+      </ng-container>
     </div>
 
     <!-- pagination -->

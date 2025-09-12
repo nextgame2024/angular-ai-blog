@@ -32,7 +32,6 @@ export class ThemeService {
 
   private initMode(): Mode {
     const saved = localStorage.getItem(this.storageKey) as Mode | null;
-    // Default to light; only use saved preference if present
     return saved === 'dark' || saved === 'light' ? saved : 'light';
   }
 

@@ -9,7 +9,7 @@ import { selectCurrentUser } from '../../store/reducers';
 import { MenubarModule } from 'primeng/menubar';
 import { AvatarModule } from 'primeng/avatar';
 import { ButtonModule } from 'primeng/button';
-
+import { environment } from 'src/environments/environment';
 // Theme
 import { ThemeService } from 'src/app/shared/services/theme.service';
 
@@ -34,6 +34,8 @@ export class TopBarComponent {
   defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
 
+  logo = environment.apiUrl;
+
   isDark$ = this.theme.mode$.pipe(map((m) => m !== 'dark'));
 
   constructor(private store: Store, private theme: ThemeService) {}
@@ -44,5 +46,10 @@ export class TopBarComponent {
 
   toggleTheme() {
     this.theme.toggle();
+  }
+
+  onLogoError(ev: Event) {
+    const img = ev.target as HTMLImageElement;
+    img.src = 'assets/sophiaAi-logo.svg';
   }
 }

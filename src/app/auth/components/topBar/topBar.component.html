@@ -19,7 +19,20 @@
       >
         <!-- Brand -->
         <ng-template pTemplate="start">
-          <a class="logo-font text-xl md:text-2xl" routerLink="/">sophia</a>
+          <a
+            routerLink="/"
+            class="flex items-center gap-1 md:gap-2"
+            aria-label="sophiaAi home"
+          >
+            <img
+              [src]="logo"
+              alt="sophiaAi"
+              class="h-[3.25rem] w-auto select-none"
+              draggable="false"
+              (error)="onLogoError($event)"
+            />
+            <span class="sr-only">sophiaAi</span>
+          </a>
         </ng-template>
 
         <!-- Right -->

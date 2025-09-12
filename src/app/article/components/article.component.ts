@@ -20,6 +20,8 @@ import { AvatarModule } from 'primeng/avatar';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
+import { FooterComponent } from 'src/app/shared/components/footer/footer.component';
+import { ArticleMediaComponent } from 'src/app/shared/components/articleMedia/articleMedia.component';
 
 @Component({
   selector: 'mc-article',
@@ -34,17 +36,17 @@ import { ConfirmationService } from 'primeng/api';
     AvatarModule,
     ButtonModule,
     ConfirmDialogModule,
+    FooterComponent,
+    ArticleMediaComponent,
   ],
   providers: [ConfirmationService],
 })
 export class ArticleComponent implements OnInit {
   slug = this.route.snapshot.paramMap.get('slug') ?? '';
 
-  // ✅ Default avatar as requested
   defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
 
-  // ✅ Helper so template always gets a plain string
   getAuthorImage(
     article: { author?: { image?: string | null } } | null | undefined
   ): string {
@@ -100,5 +102,39 @@ export class ArticleComponent implements OnInit {
       rejectButtonStyleClass: 'p-button-text',
       accept: () => this.deleteArticle(),
     });
+  }
+
+  selectedFile: File | null = null;
+  selectedFileName = '';
+  uploadError = '';
+
+  onFileSelected(evt: Event): void {
+    this.uploadError = '';
+    this.selectedFile = null;
+    this.selectedFileName = '';
+
+    const input = evt.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    const isImage = /^image\//.test(file.type);
+    const under10MB = file.size <= 10 * 1024 * 1024;
+
+    if (!isImage) {
+      this.uploadError = 'Please select an image file (JPG, PNG, HEIC).';
+      return;
+    }
+    if (!under10MB) {
+      this.uploadError = 'File is too large. Max size is 10 MB.';
+      return;
+    }
+
+    this.selectedFile = file;
+    this.selectedFileName = file.name;
+  }
+
+  onGenerateRequested(): void {
+    if (!this.selectedFile || this.uploadError) return;
+    console.log('Ready to upload:', this.selectedFile);
   }
 }
