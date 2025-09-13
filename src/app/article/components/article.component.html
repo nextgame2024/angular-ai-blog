@@ -77,7 +77,9 @@
             class="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/60 backdrop-blur p-4 md:p-5"
           >
             <h2 class="text-lg md:text-xl font-semibold mb-2">
-              Want this effect with <span class="text-violet-500">you</span>?
+              Want this effect with you?<span class="text-violet-500"
+                >A$3.99</span
+              >
             </h2>
             <p class="text-sm text-neutral-700 dark:text-neutral-300 mb-4">
               Upload a clear photo where your face is fully visible and
@@ -127,9 +129,13 @@
               type="button"
               pButton
               icon="pi pi-magic"
-              label="Generate my video"
+              [label]="
+                creatingCheckout
+                  ? 'Preparing checkout…'
+                  : 'Generate my video — A$3.99'
+              "
               class="w-full mt-4 p-button-sm"
-              [disabled]="!selectedFile || !!uploadError"
+              [disabled]="!selectedFile || !!uploadError || creatingCheckout"
               (click)="onGenerateRequested()"
             ></button>
 

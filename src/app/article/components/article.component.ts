@@ -14,6 +14,8 @@ import { CommonModule } from '@angular/common';
 import { LoadingComponent } from 'src/app/shared/components/loading/loading.component';
 import { ErrorMessageComponent } from 'src/app/shared/components/errorMessage/errorMessage.component';
 import { TagListComponent } from 'src/app/shared/components/tagList/tagList.component';
+import { RenderService } from 'src/app/shared/services/render.service';
+import { firstValueFrom } from 'rxjs';
 
 /* PrimeNG */
 import { AvatarModule } from 'primeng/avatar';
@@ -80,7 +82,8 @@ export class ArticleComponent implements OnInit {
   constructor(
     private store: Store,
     private route: ActivatedRoute,
-    private confirmation: ConfirmationService
+    private confirmation: ConfirmationService,
+    private render: RenderService
   ) {}
 
   ngOnInit(): void {
@@ -107,6 +110,7 @@ export class ArticleComponent implements OnInit {
   selectedFile: File | null = null;
   selectedFileName = '';
   uploadError = '';
+  creatingCheckout = false;
 
   onFileSelected(evt: Event): void {
     this.uploadError = '';
@@ -121,11 +125,11 @@ export class ArticleComponent implements OnInit {
     const under10MB = file.size <= 10 * 1024 * 1024;
 
     if (!isImage) {
-      this.uploadError = 'Please select an image file (JPG, PNG, HEIC).';
+      this.uploadError = 'Please select an image (JPG, PNG, HEIC).';
       return;
     }
     if (!under10MB) {
-      this.uploadError = 'File is too large. Max size is 10 MB.';
+      this.uploadError = 'File too large (max 10 MB).';
       return;
     }
 
@@ -133,8 +137,29 @@ export class ArticleComponent implements OnInit {
     this.selectedFileName = file.name;
   }
 
-  onGenerateRequested(): void {
+  async onGenerateRequested(): Promise<void> {
     if (!this.selectedFile || this.uploadError) return;
-    console.log('Ready to upload:', this.selectedFile);
+
+    this.creatingCheckout = true;
+    try {
+      const resp = await firstValueFrom(
+        this.render.createSession(
+          this.selectedFile.name,
+          this.selectedFile.type
+        )
+      );
+
+      if (!resp?.uploadUrl || !resp?.sessionUrl) {
+        throw new Error('Invalid response from server');
+      }
+
+      await this.render.uploadToS3(resp.uploadUrl, this.selectedFile);
+      window.location.href = resp.sessionUrl;
+    } catch (e) {
+      console.error(e);
+      this.uploadError = 'Could not start checkout. Please try again.';
+    } finally {
+      this.creatingCheckout = false;
+    }
   }
 }

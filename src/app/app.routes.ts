@@ -58,4 +58,18 @@ export const appRoutes: Route[] = [
     loadChildren: () =>
       import('src/app/userProfile/userProfile.routes').then((m) => m.routes),
   },
+  {
+    path: 'checkout/success',
+    loadComponent: () =>
+      import('./checkout/checkout-success.component').then(
+        (m) => m.CheckoutSuccessComponent
+      ),
+  },
+  {
+    path: 'checkout/cancel',
+    loadComponent: () =>
+      import('./checkout/checkout-cancel.component').then(
+        (m) => m.CheckoutCancelComponent
+      ),
+  },
 ];
