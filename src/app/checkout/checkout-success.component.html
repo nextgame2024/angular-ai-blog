@@ -1,0 +1,74 @@
+<div class="container mx-auto px-4 py-10 max-w-3xl">
+  <h1 class="text-2xl md:text-3xl font-semibold text-center">
+    Thanks! Your payment was received.
+  </h1>
+
+  <div
+    class="mt-6 rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 md:p-6 bg-white/60 dark:bg-neutral-900/60"
+  >
+    <ng-container [ngSwitch]="status">
+      <ng-container *ngSwitchCase="'done'">
+        <p
+          class="text-sm text-neutral-600 dark:text-neutral-300 mb-4 text-center"
+        >
+          Your video is ready 🎉 — it will remain available for 24 hours.
+        </p>
+        <video
+          *ngIf="signedUrl"
+          class="w-full rounded-md bg-black"
+          [src]="signedUrl"
+          controls
+          playsinline
+          preload="metadata"
+        ></video>
+        <div class="mt-4 flex justify-center gap-3">
+          <a [href]="signedUrl" download class="p-button p-button-sm"
+            >Download</a
+          >
+          <a
+            [routerLink]="['/articles', articleSlug]"
+            class="p-button p-button-text p-button-sm"
+            >Back to effect</a
+          >
+        </div>
+        <p class="mt-2 text-xs text-neutral-500 text-center" *ngIf="expiresAt">
+          Expires: {{ expiresAt | date : "medium" }}
+        </p>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'failed'">
+        <p class="text-red-600 text-center">
+          Sorry, rendering failed. Please contact support or try again.
+        </p>
+        <div class="mt-4 text-center">
+          <a
+            [routerLink]="['/articles', articleSlug]"
+            class="p-button p-button-text p-button-sm"
+            >Back to effect</a
+          >
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchDefault>
+        <!-- loading / processing UI -->
+        <div class="animate-pulse">
+          <div class="h-48 bg-neutral-200 dark:bg-neutral-800 rounded-md"></div>
+        </div>
+        <p
+          class="mt-4 text-sm text-neutral-600 dark:text-neutral-300 text-center"
+        >
+          We’re rendering your video now. This typically takes under a minute.
+          You can keep this page open — we’ll refresh automatically. If you
+          close it, we’ve also sent you an email with a link.
+        </p>
+        <div class="mt-4 text-center">
+          <a
+            [routerLink]="['/articles', articleSlug]"
+            class="p-button p-button-text p-button-sm"
+            >Back to effect</a
+          >
+        </div>
+      </ng-container>
+    </ng-container>
+  </div>
+</div>

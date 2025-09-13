@@ -45,6 +45,7 @@ import { ArticleMediaComponent } from 'src/app/shared/components/articleMedia/ar
 })
 export class ArticleComponent implements OnInit {
   slug = this.route.snapshot.paramMap.get('slug') ?? '';
+  guestEmail = '';
 
   defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
@@ -140,19 +141,26 @@ export class ArticleComponent implements OnInit {
   async onGenerateRequested(): Promise<void> {
     if (!this.selectedFile || this.uploadError) return;
 
+    // if not logged in, require email
+    const isLoggedIn = !!(await firstValueFrom(this.data$)).article?.author
+      ?.username; // or use your auth selector directly
+    if (!isLoggedIn && !this.guestEmail) {
+      this.uploadError = 'Please enter an email address to receive your video.';
+      return;
+    }
+
     this.creatingCheckout = true;
     try {
       const resp = await firstValueFrom(
         this.render.createSession(
           this.selectedFile.name,
-          this.selectedFile.type
+          this.selectedFile.type,
+          this.slug, // current article slug (already in your component)
+          isLoggedIn ? undefined : this.guestEmail
         )
       );
-
-      if (!resp?.uploadUrl || !resp?.sessionUrl) {
-        throw new Error('Invalid response from server');
-      }
-
+      if (!resp?.uploadUrl || !resp?.sessionUrl)
+        throw new Error('Invalid server response');
       await this.render.uploadToS3(resp.uploadUrl, this.selectedFile);
       window.location.href = resp.sessionUrl;
     } catch (e) {

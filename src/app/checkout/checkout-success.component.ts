@@ -1,25 +1,55 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { interval, Subscription, switchMap, startWith } from 'rxjs';
+import {
+  RenderService,
+  type RenderStatusResponse,
+  type RenderJobStatus,
+} from '../shared/services/render.service';
 
 @Component({
   standalone: true,
   selector: 'mc-checkout-success',
+  templateUrl: './checkout-success.component.html',
   imports: [CommonModule, RouterLink],
-  template: `
-    <div class="container mx-auto px-4 py-12 max-w-2xl text-center">
-      <h1 class="text-2xl md:text-3xl font-semibold">
-        Thanks! Payment received.
-      </h1>
-      <p class="mt-3 text-neutral-600 dark:text-neutral-300">
-        We’re now rendering your video. It will appear on this article shortly.
-      </p>
-      <p class="mt-2 text-xs text-neutral-500">Job ID: {{ jobId || '—' }}</p>
-      <a routerLink="/" class="p-button p-button-text mt-6">Back to Home</a>
-    </div>
-  `,
 })
-export class CheckoutSuccessComponent {
-  jobId = this.route.snapshot.queryParamMap.get('jobId');
-  constructor(private route: ActivatedRoute) {}
+export class CheckoutSuccessComponent implements OnDestroy {
+  jobId = this.route.snapshot.queryParamMap.get('jobId') || '';
+  articleSlug = this.route.snapshot.queryParamMap.get('article') || ''; // optional if you add it later
+
+  // ✅ strong typing for status
+  status: RenderJobStatus = 'paid';
+  signedUrl: string | null = null;
+  expiresAt: string | null = null;
+
+  sub?: Subscription;
+
+  constructor(private route: ActivatedRoute, private render: RenderService) {
+    // poll every 5s
+    this.sub = interval(5000)
+      .pipe(
+        startWith(0),
+        switchMap(() => this.render.getStatus(this.jobId))
+      )
+      .subscribe({
+        next: (r: RenderStatusResponse) => {
+          this.status = r.status;
+          this.expiresAt = r.expiresAt || null;
+          this.signedUrl = r.signedUrl || null;
+
+          // stop polling once terminal
+          if (this.status === 'done' || this.status === 'failed') {
+            this.sub?.unsubscribe();
+          }
+        },
+        error: () => {
+          // optional: show a transient error/toast; keep polling or stop as desired
+        },
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.sub?.unsubscribe();
+  }
 }

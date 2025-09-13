@@ -9,17 +9,43 @@ export interface CreateSessionResponse {
   sessionUrl: string;
 }
 
+export type RenderJobStatus =
+  | 'pending-upload'
+  | 'awaiting_payment'
+  | 'paid'
+  | 'processing'
+  | 'done'
+  | 'failed';
+
+export interface RenderStatusResponse {
+  id: string;
+  status: RenderJobStatus;
+  signedUrl?: string; // present when status === 'done'
+  expiresAt?: string; // ISO date string when available
+  articleId?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class RenderService {
   constructor(private http: HttpClient) {}
 
+  // add explicit return type for clarity
   createSession(
     filename: string,
-    contentType: string
+    contentType: string,
+    articleSlug: string,
+    guestEmail?: string
   ): Observable<CreateSessionResponse> {
     return this.http.post<CreateSessionResponse>(
       `${environment.apiUrl}/renders/create-session`,
-      { filename, contentType }
+      { filename, contentType, articleSlug, guestEmail }
+    );
+  }
+
+  // ✅ NEW: used by the success page poller
+  getStatus(jobId: string): Observable<RenderStatusResponse> {
+    return this.http.get<RenderStatusResponse>(
+      `${environment.apiUrl}/renders/${jobId}`
     );
   }
 
@@ -29,7 +55,8 @@ export class RenderService {
       headers: { 'Content-Type': file.type },
       body: file,
     });
-    if (!resp.ok)
+    if (!resp.ok) {
       throw new Error(`Upload failed: ${resp.status} ${resp.statusText}`);
+    }
   }
 }
