@@ -18,6 +18,7 @@ import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
+import { FooterComponent } from 'src/app/shared/components/footer/footer.component';
 
 @Component({
   selector: 'mc-login',
@@ -29,15 +30,14 @@ import { ButtonModule } from 'primeng/button';
     ReactiveFormsModule,
     RouterLink,
     CommonModule,
-
     // Your error component
     BackendErrorMessages,
-
     // PrimeNG
     CardModule,
     InputTextModule,
     PasswordModule,
     ButtonModule,
+    FooterComponent,
   ],
 })
 export class LoginComponent {

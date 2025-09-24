@@ -16,7 +16,7 @@ import {
 })
 export class CheckoutSuccessComponent implements OnDestroy {
   jobId = this.route.snapshot.queryParamMap.get('jobId') || '';
-  articleSlug = this.route.snapshot.queryParamMap.get('article') || ''; // optional if you add it later
+  articleSlug = this.route.snapshot.queryParamMap.get('article') || '';
 
   // ✅ strong typing for status
   status: RenderJobStatus = 'paid';
@@ -37,6 +37,9 @@ export class CheckoutSuccessComponent implements OnDestroy {
           this.status = r.status;
           this.expiresAt = r.expiresAt || null;
           this.signedUrl = r.signedUrl || null;
+          if (!this.articleSlug && (r as any).articleSlug) {
+            this.articleSlug = (r as any).articleSlug;
+          }
 
           // stop polling once terminal
           if (this.status === 'done' || this.status === 'failed') {

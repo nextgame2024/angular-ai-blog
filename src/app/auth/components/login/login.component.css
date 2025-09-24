@@ -1,3 +1,13 @@
+/* Navbar height used by pages that need exact 100% height layouts */
+html {
+  --topbar-h: 56px;
+} /* mobile */
+@media (min-width: 768px) {
+  html {
+    --topbar-h: 64px;
+  } /* md+ */
+}
+
 /* Make the p-password wrapper and its inner input fill available width */
 :host ::ng-deep .p-inputgroup .p-password,
 :host ::ng-deep .p-inputgroup .p-password .p-inputtext,
@@ -15,4 +25,44 @@
 :host ::ng-deep .p-inputgroup .p-password .p-inputtext {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
+}
+
+/* Remove any default bottom spacing from PrimeNG card if present */
+:host ::ng-deep .p-card {
+  margin: 0;
+}
+
+/* Ensure the card actually fills the wrapper width */
+:host ::ng-deep .p-card.w-full {
+  width: 100%;
+}
+
+/* Reduce padding a bit on small phones to avoid vertical overflow */
+:host ::ng-deep .p-card .p-card-body {
+  padding: 1rem;
+}
+@media (min-width: 640px) {
+  :host ::ng-deep .p-card .p-card-body {
+    padding: 1.25rem;
+  }
+}
+
+/* Make sure PrimeNG card respects width */
+:host ::ng-deep .p-card.w-full {
+  width: 100%;
+}
+
+/* Comfortable padding on small screens; scale up slightly */
+:host ::ng-deep .p-card .p-card-body {
+  padding: 1rem;
+}
+@media (min-width: 640px) {
+  :host ::ng-deep .p-card .p-card-body {
+    padding: 1.25rem;
+  }
+}
+
+/* Remove any unexpected top margin on footer within this page */
+:host ::ng-deep footer {
+  margin-top: 0 !important;
 }
