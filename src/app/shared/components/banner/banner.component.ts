@@ -17,6 +17,7 @@ import { environment } from 'src/environments/environment.development';
 })
 export class BannerComponent implements AfterViewInit, OnDestroy {
   readonly videoSrc = environment.introVideo;
+  logo = environment.apiUrl;
 
   @ViewChild('heroVideo', { static: false })
   videoRef?: ElementRef<HTMLVideoElement>;
@@ -116,6 +117,11 @@ export class BannerComponent implements AfterViewInit, OnDestroy {
         ? this.mql.removeEventListener('change', () => {})
         : this.mql.removeListener(() => {});
     }
+  }
+
+  onLogoError(ev: Event) {
+    const img = ev.target as HTMLImageElement;
+    img.src = 'assets/sophiaAi-logo.svg';
   }
 
   onMetaLoaded(): void {

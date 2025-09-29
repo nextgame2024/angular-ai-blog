@@ -1,14 +1,14 @@
 <section class="relative w-full">
   <div
-    class="relative w-full bg-black overflow-hidden md:pt-0 md:h-[calc(100svh-var(--header-h))]"
+    class="relative w-full bg-black overflow-hidden h-[55svh] md:pt-0 md:h-[calc(100svh-var(--header-h))]"
     [style.--header-h.px]="headerH"
-    [style.aspectRatio]="!isDesktop && supportsAspectRatio ? aspectRatio : null"
-    [style.paddingTop.%]="!isDesktop && !supportsAspectRatio ? ptPercent : null"
+    [style.aspectRatio]="null"
+    [style.paddingTop.%]="null"
   >
     <video
       #heroVideo
       *ngIf="videoSrc"
-      class="absolute inset-0 w-full h-full object-contain md:object-cover md:object-[50%_12%]"
+      class="absolute inset-0 w-full h-full object-cover object-[30%_50%] md:object-cover md:object-[50%_12%]"
       [attr.src]="videoSrc"
       [muted]="isMuted"
       playsinline
@@ -22,17 +22,17 @@
 
     <!-- Headline: bottom-right, a bit higher than controls -->
     <div
-      class="absolute right-4 md:right-6 bottom-16 md:bottom-20 text-right text-white px-4 md:px-6 z-20"
+      class="absolute right-3 md:right-6 bottom-16 md:bottom-24 text-right text-white px-4 md:px-6 z-20"
     >
-      <h1 class="text-2xl md:text-4xl font-bold">sophiaAi</h1>
-      <p class="mt-2 text-sm md:text-base opacity-90">
-        Your story starts here.
+      <h1 class="text-2xl md:text-4xl">sophiaAi</h1>
+      <p class="mt-2 text-xl md:text-4xl opacity-90 font-bold">
+        Your story starts here
       </p>
     </div>
 
     <!-- Controls: stick to bottom-right, below headline -->
     <div
-      class="absolute bottom-4 right-4 md:bottom-4 md:right-4 flex items-center gap-2 bg-black/50 backdrop-blur-sm text-white rounded-full px-2 py-1 z-10"
+      class="absolute bottom-4 right-4 md:bottom-9 md:right-9 flex items-center gap-6 bg-black/70 backdrop-blur-sm text-white rounded-full px-2 py-1 z-10"
     >
       <button
         class="px-2 py-1 rounded-full hover:bg-white/10 disabled:opacity-50"
