@@ -10,7 +10,6 @@
  * - PrimeNG PanelMenu: simple left navigation menu.
  */
 
-import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { PanelMenuModule } from 'primeng/panelmenu';
@@ -21,7 +20,7 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   selector: 'mc-teams-layout',
   templateUrl: './teams-layout.component.html',
-  imports: [CommonModule, RouterOutlet, PanelMenuModule, FooterComponent],
+  imports: [CommonModule, RouterOutlet, PanelMenuModule],
 })
 export class TeamsLayoutComponent {
   items: MenuItem[] = [
