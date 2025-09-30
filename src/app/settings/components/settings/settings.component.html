@@ -1,38 +1,72 @@
 <ng-container *ngIf="data$ | async as data">
   <div *ngIf="currentUser" class="container mx-auto px-4 py-6">
     <div class="max-w-2xl mx-auto">
-      <p-card header="Settings" class="shadow-sm">
-        <div class="flex items-center gap-4 mb-4">
+      <p-card class="shadow-sm">
+        <!-- Header aligned to body padding -->
+        <ng-template pTemplate="header">
+          <div class="flex items-center justify-between px-5 pt-5 pb-2">
+            <h2 class="text-2xl font-bold">Settings</h2>
+            <button
+              pButton
+              label="Log out"
+              class="p-button-outlined p-button-danger"
+              (click)="logout()"
+            ></button>
+          </div>
+        </ng-template>
+
+        <div class="flex items-center gap-4 mb-4 px-5">
           <p-avatar
             [image]="form.value.image || defaultAvatar"
             shape="circle"
             size="xlarge"
-          >
-          </p-avatar>
+          ></p-avatar>
           <div class="text-sm text-gray-500">Profile picture preview</div>
         </div>
 
         <mc-backend-error-messages
           *ngIf="data.backendErrors"
           [backendErrors]="data.backendErrors"
-        >
-        </mc-backend-error-messages>
+          class="px-5"
+        ></mc-backend-error-messages>
 
-        <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4 mt-2">
-          <!-- Image URL -->
-          <div class="p-inputgroup">
-            <span class="p-inputgroup-addon"><i class="pi pi-image"></i></span>
-            <input
-              pInputText
-              type="url"
-              formControlName="image"
-              placeholder="URL of profile picture"
-              class="w-full"
-            />
+        <form
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          class="space-y-4 mt-2 px-5 pb-5"
+        >
+          <!-- Avatar upload -->
+          <div class="px-5">
+            <p-fileUpload
+              name="avatar"
+              mode="basic"
+              [auto]="false"
+              [customUpload]="true"
+              [maxFileSize]="5_000_000"
+              accept="image/*"
+              chooseLabel="Choose photo"
+              uploadLabel="Upload"
+              cancelLabel="Cancel"
+              (onSelect)="onFileSelected($event)"
+              (uploadHandler)="onUpload($event)"
+              (onClear)="onClearSelection()"
+              [disabled]="data.isSubmitting || !!(isUploadingAvatar$ | async)"
+            ></p-fileUpload>
+            <p
+              *ngIf="uploadError$ | async as err"
+              class="mt-2 text-red-400 text-sm"
+            >
+              {{ err }}
+            </p>
+
+            <small class="block mt-2 text-gray-400"
+              >PNG/JPG/WebP, up to 5 MB. We’ll upload and replace your profile
+              picture.</small
+            >
           </div>
 
           <!-- Username -->
-          <div class="p-inputgroup">
+          <div class="p-inputgroup w-full">
             <span class="p-inputgroup-addon"><i class="pi pi-user"></i></span>
             <input
               pInputText
@@ -50,11 +84,10 @@
             rows="4"
             placeholder="Short bio about you"
             class="w-full"
-          >
-          </textarea>
+          ></textarea>
 
           <!-- Email -->
-          <div class="p-inputgroup">
+          <div class="p-inputgroup w-full">
             <span class="p-inputgroup-addon"
               ><i class="pi pi-envelope"></i
             ></span>
@@ -67,35 +100,35 @@
             />
           </div>
 
-          <!-- New Password (FIX: correct control name) -->
-          <p-password
-            formControlName="password"
-            [feedback]="false"
-            [toggleMask]="true"
-            inputStyleClass="p-inputtext w-full"
-            [inputStyle]="{ width: '100%' }"
-            placeholder="New password"
-          >
-          </p-password>
+          <div class="p-inputgroup w-full">
+            <span class="p-inputgroup-addon"><i class="pi pi-lock"></i></span>
+            <div class="flex-1 min-w-0">
+              <p-password
+                formControlName="password"
+                [feedback]="false"
+                [toggleMask]="true"
+                styleClass="block w-full"
+                [style]="{ width: '100%' }"
+                inputStyleClass="w-full"
+                [inputStyle]="{ width: '100%' }"
+                placeholder="New password"
+              ></p-password>
+            </div>
+          </div>
 
           <button
             pButton
             type="submit"
             label="Update settings"
             class="w-full md:w-auto"
-            [disabled]="form.invalid || data.isSubmitting"
+            [disabled]="
+              form.invalid ||
+              data.isSubmitting ||
+              !!(isUploadingAvatar$ | async)
+            "
           ></button>
         </form>
       </p-card>
-
-      <div class="mt-6">
-        <button
-          pButton
-          label="Log out"
-          class="p-button-outlined p-button-danger"
-          (click)="logout()"
-        ></button>
-      </div>
     </div>
   </div>
 </ng-container>

@@ -1,0 +1,24 @@
+/* p-inputgroup is already flex in PrimeNG, but ensure it */
+:host ::ng-deep .p-inputgroup {
+  display: flex;
+}
+
+/* Kill the theme's fixed width on p-password when inside inputgroup */
+:host ::ng-deep .p-inputgroup > .p-password {
+  width: 100% !important; /* override the 12rem default */
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  display: flex !important; /* so the inner input can flex */
+}
+
+/* Make the inner input grow to fill */
+:host ::ng-deep .p-inputgroup > .p-password .p-inputtext {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  box-sizing: border-box;
+}
+
+/* Addon stays its natural size */
+:host ::ng-deep .p-inputgroup > .p-inputgroup-addon {
+  flex: 0 0 auto;
+}

@@ -72,4 +72,9 @@ export const appRoutes: Route[] = [
         (m) => m.CheckoutCancelComponent
       ),
   },
+  {
+    path: 'teams',
+    loadChildren: () =>
+      import('src/app/teams/teams.routes').then((m) => m.routes),
+  },
 ];

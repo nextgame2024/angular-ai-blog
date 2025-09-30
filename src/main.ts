@@ -37,6 +37,11 @@ import { followFeatureKey, followReducer } from './app/follow/store/reducers';
 import * as followEffects from './app/follow/store/effects';
 
 import { authInterceptor } from './app/shared/services/authInterceptor';
+import {
+  uploadFeatureKey,
+  avatarUploadReducer,
+} from './app/settings/components/settings/store';
+import * as uploadEffects from './app/settings/components/settings/store/upload.effects';
 
 // PrimeNG modules (add/remove as you need)
 import { MenubarModule } from 'primeng/menubar';
@@ -49,6 +54,7 @@ import { CardModule } from 'primeng/card';
 import { PaginatorModule } from 'primeng/paginator';
 import { ChipModule } from 'primeng/chip';
 import { TagModule } from 'primeng/tag';
+import { FileUploadModule } from 'primeng/fileupload';
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -65,12 +71,14 @@ bootstrapApplication(AppComponent, {
     provideState(feedFeatureKey, feedReducer),
     provideState(popularTagsFeatureKey, popularTagsReducer),
     provideState(followFeatureKey, followReducer),
+    provideState(uploadFeatureKey, avatarUploadReducer),
     provideEffects(
       authEffects,
       feedEffects,
       popularTagsEffects,
       addToFavoritesEffects,
-      followEffects
+      followEffects,
+      uploadEffects.UploadEffects
     ),
     provideStoreDevtools({
       maxAge: 25,
@@ -95,7 +103,8 @@ bootstrapApplication(AppComponent, {
       CardModule,
       PaginatorModule,
       ChipModule,
-      TagModule
+      TagModule,
+      FileUploadModule
     ),
 
     // Services

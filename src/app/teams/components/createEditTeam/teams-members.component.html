@@ -1,0 +1,117 @@
+<!--
+  Template for the Teams Members editor.
+  Highlights:
+  - Guards page content with a loading template.
+  - Tabs: Details (active) + Schedule (placeholder).
+  - Required Team name with inline message.
+  - PickList with equal height and scroll on both sides.
+  - Save overlay: translucent white with spinner while saving.
+-->
+
+<ng-container *ngIf="!loading; else loadingTpl">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-xl font-semibold">
+      {{ isEditMode ? "Edit team" : "Create team" }}
+    </h2>
+  </div>
+
+  <!-- Relative container so the save overlay can cover the tab content -->
+  <div class="relative">
+    <p-tabView>
+      <!-- TAB 1: Details -->
+      <p-tabPanel header="Details">
+        <!-- Team name -->
+        <div class="mb-4">
+          <label class="block text-sm mb-1">* Team name</label>
+          <input
+            pInputText
+            class="w-full"
+            [(ngModel)]="teamName"
+            name="teamName"
+            required
+          />
+        </div>
+        <p
+          class="text-red-500 text-sm mb-4"
+          *ngIf="submitted && (!teamName || !teamName.trim())"
+        >
+          Team name is required.
+        </p>
+
+        <!-- PickList with equal heights -->
+        <p-pickList
+          [source]="available"
+          [target]="assigned"
+          sourceHeader="Available employees"
+          targetHeader="Assigned to team"
+          optionLabel="name"
+          [dragdrop]="true"
+          [showSourceControls]="false"
+          [showTargetControls]="false"
+          [sourceStyle]="listStyle"
+          [targetStyle]="listStyle"
+          (onMoveToTarget)="onChange()"
+          (onMoveToSource)="onChange()"
+          (onReorder)="onChange()"
+        >
+          <ng-template let-e pTemplate="item">
+            <div class="flex items-center justify-between w-full">
+              <span>{{ e.name }}</span>
+              <small class="opacity-60">{{ e.email }}</small>
+            </div>
+          </ng-template>
+        </p-pickList>
+
+        <!-- Actions -->
+        <div class="text-right mt-4 space-x-2">
+          <button
+            pButton
+            label="Cancel"
+            class="p-button-text"
+            (click)="cancel()"
+          ></button>
+          <button
+            pButton
+            label="Save"
+            (click)="save()"
+            [disabled]="saving || !teamName.trim()"
+          ></button>
+        </div>
+      </p-tabPanel>
+
+      <!-- TAB 2: Schedule (empty for now) -->
+      <p-tabPanel header="Schedule">
+        <div class="opacity-70">No schedule yet.</div>
+      </p-tabPanel>
+    </p-tabView>
+
+    <!-- SAVE OVERLAY (transparent white) -->
+    <div
+      *ngIf="saving"
+      class="absolute inset-0 z-10 flex items-center justify-center bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[2px]"
+      style="pointer-events: all"
+    >
+      <div
+        class="flex items-center gap-3 rounded-xl px-4 py-3 bg-white/80 dark:bg-zinc-800/80 shadow"
+      >
+        <p-progressSpinner styleClass="w-7 h-7"></p-progressSpinner>
+        <span class="text-sm">Saving…</span>
+      </div>
+    </div>
+  </div>
+</ng-container>
+
+<!-- PAGE LOADING TEMPLATE -->
+<ng-template #loadingTpl>
+  <div
+    class="absolute inset-0 z-10 flex items-center justify-center bg-white/60 dark:bg-zinc-900/60 backdrop-blur-[2px]"
+    style="pointer-events: all"
+  >
+    <div
+      class="flex items-center gap-3 rounded-xl px-4 py-3 bg-white/80 dark:bg-zinc-800/80 shadow"
+    >
+      <p-progressSpinner styleClass="w-7 h-7"></p-progressSpinner>
+      <span class="text-sm">Loading…</span>
+    </div>
+  </div>
+</ng-template>

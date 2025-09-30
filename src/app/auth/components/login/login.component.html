@@ -1,6 +1,6 @@
 <ng-container *ngIf="data$ | async as data">
   <!-- EXACT viewport height minus the navbar. Use svh to avoid iOS URL bar jumps. -->
-  <section class="h-[calc(100vh-64px)] flex flex-col">
+  <section class="min-h-[calc(100vh-150px)] flex flex-col">
     <!-- Main area centers content and can scroll a tiny bit if the keyboard opens -->
     <main
       class="flex-1 flex items-center justify-center px-3 sm:px-4 overflow-y-auto"
@@ -65,8 +65,8 @@
     </main>
 
     <!-- Footer pinned to bottom via flex + mt-auto -->
-    <div class="mt-auto">
+    <!-- <div class="mt-auto">
       <mc-footer></mc-footer>
-    </div>
+    </div> -->
   </section>
 </ng-container>

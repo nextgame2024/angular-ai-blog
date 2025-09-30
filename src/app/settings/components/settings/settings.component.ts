@@ -9,6 +9,13 @@ import { CommonModule } from '@angular/common';
 import { BackendErrorMessages } from 'src/app/shared/components/backendErrorMessages.component';
 import { CurrentUserRequestInterface } from 'src/app/shared/types/currentUserRequest.interface';
 import { authActions } from 'src/app/auth/store/actions';
+import { Observable } from 'rxjs';
+import { uploadActions } from './store/upload.actions';
+import {
+  selectIsUploading,
+  selectUploadError,
+  selectUploadedUrl,
+} from './store/index';
 
 /* PrimeNG */
 import { CardModule } from 'primeng/card';
@@ -17,10 +24,12 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
 import { AvatarModule } from 'primeng/avatar';
+import { FileUploadModule } from 'primeng/fileupload';
 
 @Component({
   selector: 'mc-settings',
   templateUrl: './settings.component.html',
+  styleUrls: ['./settings.component.css'],
   standalone: true,
   imports: [
     CommonModule,
@@ -33,6 +42,7 @@ import { AvatarModule } from 'primeng/avatar';
     PasswordModule,
     ButtonModule,
     AvatarModule,
+    FileUploadModule,
   ],
 })
 export class SettingsComponent implements OnInit, OnDestroy {
@@ -43,6 +53,12 @@ export class SettingsComponent implements OnInit, OnDestroy {
     email: '',
     password: '',
   });
+
+  previewUrl: string | null = null;
+  selectedFile?: File;
+  isUploadingAvatar$!: Observable<boolean>;
+  uploadError$!: Observable<string | null>;
+  uploadedUrlSub?: Subscription;
 
   // default avatar preview if image is empty/broken
   defaultAvatar =
@@ -64,10 +80,53 @@ export class SettingsComponent implements OnInit, OnDestroy {
         this.currentUser = currentUser;
         this.initializeForm();
       });
+
+    this.isUploadingAvatar$ = this.store.select(selectIsUploading);
+    this.uploadError$ = this.store.select(selectUploadError);
+
+    this.uploadedUrlSub = this.store
+      .select(selectUploadedUrl)
+      .pipe(filter((u): u is string => !!u))
+      .subscribe((url) => {
+        this.form.patchValue({ image: url });
+        this.revokePreview();
+      });
   }
 
   ngOnDestroy(): void {
     this.currentUserSubscription?.unsubscribe();
+    this.uploadedUrlSub?.unsubscribe();
+    this.revokePreview();
+  }
+
+  private revokePreview() {
+    if (this.previewUrl) {
+      URL.revokeObjectURL(this.previewUrl);
+      this.previewUrl = null;
+    }
+  }
+
+  onFileSelected(ev: any) {
+    // PrimeNG gives ev.files; native <input> would be ev.target.files
+    const file: File | undefined = ev?.files?.[0];
+    if (!file) return;
+    this.selectedFile = file;
+
+    // instant local preview
+    this.revokePreview();
+    this.previewUrl = URL.createObjectURL(file);
+  }
+
+  onUpload(ev: any) {
+    if (!this.selectedFile) return;
+    this.store.dispatch(
+      uploadActions.uploadAvatar({ file: this.selectedFile })
+    );
+  }
+
+  onClearSelection() {
+    this.selectedFile = undefined;
+    this.revokePreview();
   }
 
   initializeForm(): void {

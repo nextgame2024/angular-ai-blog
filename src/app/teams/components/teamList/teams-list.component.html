@@ -1,0 +1,81 @@
+<!--
+  Simple, responsive "table-like" layout using a 12-column CSS grid.
+  We use CDK Drag&Drop for reordering, and PrimeNG for the action buttons + confirm dialog.
+-->
+
+<div class="flex items-center justify-between mb-4">
+  <h2 class="text-xl font-semibold">Teams</h2>
+  <!-- Create: goes to members screen in create mode -->
+  <a
+    pButton
+    label="Create team"
+    icon="pi pi-plus"
+    routerLink="/teams/members"
+  ></a>
+</div>
+
+<!-- Card wrapper -->
+<div
+  class="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden"
+>
+  <!-- Header row -->
+  <div
+    class="grid grid-cols-12 px-4 py-3 text-sm font-medium bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800"
+  >
+    <div class="col-span-1"></div>
+    <div class="col-span-9">Name</div>
+    <div class="col-span-2 text-right">Actions</div>
+  </div>
+
+  <!-- Body (CDK Drag & Drop list) -->
+  <div
+    cdkDropList
+    [cdkDropListData]="teams"
+    (cdkDropListDropped)="drop($event)"
+    class="divide-y divide-zinc-200 dark:divide-zinc-800"
+  >
+    <div
+      *ngFor="let team of teams; let i = index"
+      cdkDrag
+      class="grid grid-cols-12 items-center px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
+    >
+      <!-- Drag handle -->
+      <div
+        cdkDragHandle
+        class="col-span-1 text-zinc-500 flex items-center justify-center select-none"
+        title="Drag to reorder"
+        style="cursor: grab"
+      >
+        <i class="pi pi-bars"></i>
+      </div>
+
+      <!-- Name column -->
+      <div class="col-span-9">
+        <span class="text-sm">{{ team.name }}</span>
+      </div>
+
+      <!-- Actions column -->
+      <div class="col-span-2 text-right space-x-1">
+        <!-- Edit → open Members editor for this team -->
+        <a
+          pButton
+          icon="pi pi-pencil"
+          class="p-button-text"
+          [routerLink]="['/teams', team.id, 'members']"
+          title="Edit team"
+        ></a>
+
+        <!-- Delete with confirm -->
+        <button
+          pButton
+          icon="pi pi-trash"
+          class="p-button-text p-button-danger"
+          (click)="confirmDelete(team)"
+          title="Delete team"
+        ></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p-confirmDialog></p-confirmDialog>
