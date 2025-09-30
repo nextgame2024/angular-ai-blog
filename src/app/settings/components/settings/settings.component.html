@@ -15,14 +15,36 @@
           </div>
         </ng-template>
 
-        <div class="flex items-center gap-4 mb-4 px-5">
-          <p-avatar
-            [image]="form.value.image || defaultAvatar"
-            shape="circle"
-            size="xlarge"
-          ></p-avatar>
-          <div class="text-sm text-gray-500">Profile picture preview</div>
+        <!-- Preview row: bigger avatar on the left, Upload on the right -->
+        <div class="flex items-center justify-between gap-6 mb-4 px-5">
+          <!-- Larger, cropped, keeps aspect ratio -->
+          <img
+            [src]="previewUrl || form.value.image || defaultAvatar"
+            alt="profile picture"
+            class="h-28 w-28 rounded-full object-cover"
+            referrerpolicy="no-referrer"
+          />
+
+          <!-- Upload button to the right -->
+          <p-fileUpload
+            #uploader
+            name="avatar"
+            mode="basic"
+            [auto]="true"
+            [customUpload]="true"
+            [maxFileSize]="5_000_000"
+            accept="image/*"
+            chooseLabel="Upload"
+            (onSelect)="onFileSelected($event)"
+            (uploadHandler)="onUpload($event)"
+            [disabled]="data.isSubmitting || !!(isUploadingAvatar$ | async)"
+          ></p-fileUpload>
         </div>
+
+        <p class="text-xs text-gray-400 px-5 -mt-2 mb-2">
+          PNG/JPG/WebP, up to 5 MB. We’ll upload and replace your profile
+          picture.
+        </p>
 
         <mc-backend-error-messages
           *ngIf="data.backendErrors"
@@ -35,36 +57,6 @@
           (ngSubmit)="submit()"
           class="space-y-4 mt-2 px-5 pb-5"
         >
-          <!-- Avatar upload -->
-          <div class="px-5">
-            <p-fileUpload
-              name="avatar"
-              mode="basic"
-              [auto]="false"
-              [customUpload]="true"
-              [maxFileSize]="5_000_000"
-              accept="image/*"
-              chooseLabel="Choose photo"
-              uploadLabel="Upload"
-              cancelLabel="Cancel"
-              (onSelect)="onFileSelected($event)"
-              (uploadHandler)="onUpload($event)"
-              (onClear)="onClearSelection()"
-              [disabled]="data.isSubmitting || !!(isUploadingAvatar$ | async)"
-            ></p-fileUpload>
-            <p
-              *ngIf="uploadError$ | async as err"
-              class="mt-2 text-red-400 text-sm"
-            >
-              {{ err }}
-            </p>
-
-            <small class="block mt-2 text-gray-400"
-              >PNG/JPG/WebP, up to 5 MB. We’ll upload and replace your profile
-              picture.</small
-            >
-          </div>
-
           <!-- Username -->
           <div class="p-inputgroup w-full">
             <span class="p-inputgroup-addon"><i class="pi pi-user"></i></span>
@@ -100,6 +92,7 @@
             />
           </div>
 
+          <!-- Password -->
           <div class="p-inputgroup w-full">
             <span class="p-inputgroup-addon"><i class="pi pi-lock"></i></span>
             <div class="flex-1 min-w-0">
@@ -120,7 +113,7 @@
             pButton
             type="submit"
             label="Update settings"
-            class="w-full md:w-auto"
+            class="w-full md:w-full"
             [disabled]="
               form.invalid ||
               data.isSubmitting ||

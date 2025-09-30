@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { select, Store } from '@ngrx/store';
 import { combineLatest, filter, Subscription } from 'rxjs';
@@ -9,13 +9,6 @@ import { CommonModule } from '@angular/common';
 import { BackendErrorMessages } from 'src/app/shared/components/backendErrorMessages.component';
 import { CurrentUserRequestInterface } from 'src/app/shared/types/currentUserRequest.interface';
 import { authActions } from 'src/app/auth/store/actions';
-import { Observable } from 'rxjs';
-import { uploadActions } from './store/upload.actions';
-import {
-  selectIsUploading,
-  selectUploadError,
-  selectUploadedUrl,
-} from './store/index';
 
 /* PrimeNG */
 import { CardModule } from 'primeng/card';
@@ -24,7 +17,16 @@ import { InputTextareaModule } from 'primeng/inputtextarea';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
 import { AvatarModule } from 'primeng/avatar';
-import { FileUploadModule } from 'primeng/fileupload';
+import { FileUpload, FileUploadModule } from 'primeng/fileupload';
+
+/* NgRx (avatar upload) */
+import { Observable } from 'rxjs';
+import { uploadActions } from './store/upload.actions';
+import {
+  selectIsUploading,
+  selectUploadError,
+  selectUploadedUrl,
+} from './store';
 
 @Component({
   selector: 'mc-settings',
@@ -46,6 +48,8 @@ import { FileUploadModule } from 'primeng/fileupload';
   ],
 })
 export class SettingsComponent implements OnInit, OnDestroy {
+  @ViewChild('uploader') uploader?: FileUpload;
+
   form = this.fb.nonNullable.group({
     image: '',
     username: '',
@@ -54,22 +58,27 @@ export class SettingsComponent implements OnInit, OnDestroy {
     password: '',
   });
 
-  previewUrl: string | null = null;
-  selectedFile?: File;
-  isUploadingAvatar$!: Observable<boolean>;
-  uploadError$!: Observable<string | null>;
-  uploadedUrlSub?: Subscription;
-
-  // default avatar preview if image is empty/broken
+  // bigger default preview if image is empty/broken
   defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
 
   currentUser?: CurrentUserInterface;
+
   data$ = combineLatest({
     isSubmitting: this.store.select(selectIsSubmitting),
     backendErrors: this.store.select(selectValidationErrors),
   });
+
   currentUserSubscription?: Subscription;
+
+  // avatar upload state
+  isUploadingAvatar$!: Observable<boolean>;
+  uploadError$!: Observable<string | null>;
+  uploadedUrlSub?: Subscription;
+
+  // local preview (Object URL)
+  previewUrl: string | null = null;
+  selectedFile?: File;
 
   constructor(private fb: FormBuilder, private store: Store) {}
 
@@ -84,48 +93,22 @@ export class SettingsComponent implements OnInit, OnDestroy {
     this.isUploadingAvatar$ = this.store.select(selectIsUploading);
     this.uploadError$ = this.store.select(selectUploadError);
 
+    // when effect emits S3 URL → set form.image, clear preview and reset uploader so user can upload again
     this.uploadedUrlSub = this.store
       .select(selectUploadedUrl)
       .pipe(filter((u): u is string => !!u))
       .subscribe((url) => {
         this.form.patchValue({ image: url });
         this.revokePreview();
+        // allow immediate re-upload
+        this.uploader?.clear();
+        this.selectedFile = undefined;
       });
   }
 
   ngOnDestroy(): void {
     this.currentUserSubscription?.unsubscribe();
     this.uploadedUrlSub?.unsubscribe();
-    this.revokePreview();
-  }
-
-  private revokePreview() {
-    if (this.previewUrl) {
-      URL.revokeObjectURL(this.previewUrl);
-      this.previewUrl = null;
-    }
-  }
-
-  onFileSelected(ev: any) {
-    // PrimeNG gives ev.files; native <input> would be ev.target.files
-    const file: File | undefined = ev?.files?.[0];
-    if (!file) return;
-    this.selectedFile = file;
-
-    // instant local preview
-    this.revokePreview();
-    this.previewUrl = URL.createObjectURL(file);
-  }
-
-  onUpload(ev: any) {
-    if (!this.selectedFile) return;
-    this.store.dispatch(
-      uploadActions.uploadAvatar({ file: this.selectedFile })
-    );
-  }
-
-  onClearSelection() {
-    this.selectedFile = undefined;
     this.revokePreview();
   }
 
@@ -143,6 +126,37 @@ export class SettingsComponent implements OnInit, OnDestroy {
   logout(): void {
     this.store.dispatch(authActions.logout());
   }
+
+  // ===== Avatar upload handlers =====
+
+  private revokePreview() {
+    if (this.previewUrl) {
+      URL.revokeObjectURL(this.previewUrl);
+      this.previewUrl = null;
+    }
+  }
+
+  onFileSelected(ev: any) {
+    const file: File | undefined = ev?.files?.[0];
+    if (!file) return;
+    this.selectedFile = file;
+
+    // instant local preview
+    this.revokePreview();
+    this.previewUrl = URL.createObjectURL(file);
+
+    // since [auto]="true", PrimeNG will immediately trigger uploadHandler → onUpload()
+    // nothing else to do here
+  }
+
+  onUpload(_: any) {
+    if (!this.selectedFile) return;
+    this.store.dispatch(
+      uploadActions.uploadAvatar({ file: this.selectedFile })
+    );
+  }
+
+  // ===== Submit settings =====
 
   submit(): void {
     if (!this.currentUser) throw new Error('Current user is not set');

@@ -1,8 +1,6 @@
 import { Injectable } from '@angular/core';
 
-@Injectable({
-  providedIn: 'root',
-})
+@Injectable({ providedIn: 'root' })
 export class PersistanceService {
   set(key: string, data: unknown): void {
     try {
@@ -12,12 +10,12 @@ export class PersistanceService {
     }
   }
 
-  get(key: string): unknown {
+  get<T = unknown>(key: string): T | null {
     try {
-      const localStorageItem = localStorage.getItem(key);
-      return localStorageItem ? JSON.parse(localStorageItem) : null;
+      const raw = localStorage.getItem(key);
+      return raw ? (JSON.parse(raw) as T) : null;
     } catch (error) {
-      console.log('Error getting from localstorage', error);
+      console.log('Error getting from localStorage', error);
       return null;
     }
   }
