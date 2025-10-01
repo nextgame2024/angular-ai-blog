@@ -1,170 +1,245 @@
 <ng-container *ngIf="data$ | async as data">
-  <mc-loading *ngIf="data.isLoading"></mc-loading>
+  <!-- Initial loading: only when nothing is rendered yet -->
+  <mc-loading *ngIf="data.isLoading && flatArticles.length === 0"></mc-loading>
+
+  <!-- Errors -->
   <mc-error-message
     *ngIf="data.error"
     [message]="data.error"
   ></mc-error-message>
 
-  <div *ngIf="data.feed">
-    <p-card *ngIf="data.feed.articlesCount === 0" class="shadow-sm mb-4">
-      <ng-container *ngIf="isYourFeed; else nonPersonal">
-        <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
-          <p class="font-medium">Your feed is empty</p>
+  <!-- TOP sentinel -->
+  <div
+    class="h-1"
+    ioObserve
+    [root]="scrollRoot"
+    rootMargin="400px 0px 0px 0px"
+    (ioIntersect)="maybeLoadPrev()"
+  ></div>
 
-          <div class="flex items-center gap-2 ml-auto">
-            <a routerLink="/" class="p-button p-button-text p-button-sm">
-              Browse Global feed
-            </a>
+  <div>
+    <ng-container
+      *ngFor="
+        let article of flatArticles;
+        let last = last;
+        trackBy: trackBySlug
+      "
+    >
+      <!-- ===================== MOBILE ===================== -->
+      <!-- Full-bleed media above, text-only card below -->
+      <div class="block md:hidden mobile-bleed-vw">
+        <div class="media-wrap">
+          <mc-article-media [assets]="article.assets"></mc-article-media>
+          <div class="media-skeleton"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <p-card class="card-mobile block md:hidden shadow-sm pt-1 pb-3">
+        <div class="flex flex-col h-full mobile-tight">
+          <!-- header -->
+          <div class="flex items-center gap-3">
             <a
-              routerLink="/tag/content-ai"
-              class="p-button p-button-text p-button-sm"
+              [routerLink]="['/profiles', article.author.username]"
+              class="shrink-0"
             >
-              Explore tags
+              <img
+                class="w-10 h-10 rounded-full object-cover"
+                [src]="article.author.image || defaultAvatar"
+                [alt]="article.author.username + ' avatar'"
+                (error)="setFallback($event)"
+              />
             </a>
+            <div class="min-w-0">
+              <a
+                [routerLink]="['/profiles', article.author.username]"
+                class="block font-semibold text-base truncate"
+              >
+                {{ article.author.username }}
+              </a>
+              <span class="text-sm text-gray-500">
+                {{ article.createdAt | date : "mediumDate" }}
+              </span>
+            </div>
+            <div class="ml-auto">
+              <mc-add-to-favorites
+                [isFavorited]="article.favorited"
+                [articleSlug]="article.slug"
+                [favoritesCount]="article.favoritesCount"
+              ></mc-add-to-favorites>
+            </div>
+          </div>
+
+          <!-- title + description -->
+          <a [routerLink]="['/articles', article.slug]" class="block mt-3">
+            <h2 class="text-lg font-semibold leading-snug">
+              {{ article.title }}
+            </h2>
+            <p class="text-gray-600 mt-1 line-clamp-3">
+              {{ article.description }}
+            </p>
+          </a>
+
+          <!-- footer -->
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <a
+              [routerLink]="['/articles', article.slug]"
+              pButton
+              label="Read more"
+              class="p-button-text p-button-sm"
+            ></a>
+            <mc-tag-list [tags]="article.tagList"></mc-tag-list>
           </div>
         </div>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-          Follow some authors to see their latest posts here.
-        </p>
-        <div class="mt-4">
-          <mc-suggested-authors
-            (refreshTrigger)="onSuggestionsRefresh()"
-          ></mc-suggested-authors>
-        </div>
-      </ng-container>
+      </p-card>
 
-      <ng-template #nonPersonal>
-        <ng-container *ngIf="isTagFeed; else globalEmpty">
-          <p class="font-medium mb-1">
-            No articles for <span class="font-semibold">#{{ currentTag }}</span>
-          </p>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-            Try another tag or check the global feed.
-          </p>
-          <a routerLink="/" class="p-button p-button-text p-button-sm">
-            Go to Global feed
-          </a>
-        </ng-container>
-
-        <ng-template #globalEmpty>
-          <p class="font-medium mb-1">No articles yet</p>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-            Try filtering by a tag, or check back later.
-          </p>
-          <a
-            routerLink="/tag/content-ai"
-            class="p-button p-button-text p-button-sm"
-          >
-            Explore tags
-          </a>
-        </ng-template>
-      </ng-template>
-    </p-card>
-
-    <!-- Articles list with explicit teal separators -->
-    <div>
-      <ng-container *ngFor="let article of data.feed.articles; let last = last">
-        <p-card class="shadow-sm py-4 md:py-6">
-          <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
-            <!-- LEFT: media -->
-            <div class="md:col-span-2">
+      <!-- ===================== DESKTOP ===================== -->
+      <p-card class="hidden md:block shadow-sm md:py-6">
+        <div class="grid grid-cols-1 md:grid-cols-5 feed-gap md:gap-6">
+          <!-- LEFT: media -->
+          <div class="md:col-span-2">
+            <div class="media-wrap">
               <mc-article-media [assets]="article.assets"></mc-article-media>
+              <div class="media-skeleton"><div class="spinner"></div></div>
             </div>
+          </div>
 
-            <!-- RIGHT: content -->
-            <div class="md:col-span-3 flex flex-col h-full md:pl-2">
-              <!-- header -->
-              <div class="flex items-center gap-3">
+          <!-- RIGHT: content -->
+          <div class="md:col-span-3 flex flex-col h-full md:pl-2">
+            <div class="flex items-center gap-3">
+              <a
+                [routerLink]="['/profiles', article.author.username]"
+                class="shrink-0"
+              >
+                <img
+                  class="w-10 h-10 rounded-full object-cover"
+                  [src]="article.author.image || defaultAvatar"
+                  [alt]="article.author.username + ' avatar'"
+                  (error)="setFallback($event)"
+                />
+              </a>
+              <div class="min-w-0">
                 <a
                   [routerLink]="['/profiles', article.author.username]"
-                  class="shrink-0"
+                  class="block font-semibold text-lg truncate"
                 >
-                  <img
-                    class="w-10 h-10 rounded-full object-cover"
-                    [src]="article.author.image || defaultAvatar"
-                    [alt]="article.author.username + ' avatar'"
-                    (error)="setFallback($event)"
-                  />
+                  {{ article.author.username }}
                 </a>
-                <div class="min-w-0">
-                  <a
-                    [routerLink]="['/profiles', article.author.username]"
-                    class="block font-semibold text-base md:text-lg truncate"
-                  >
-                    {{ article.author.username }}
-                  </a>
-                  <span class="text-sm text-gray-500">
-                    {{ article.createdAt | date : "mediumDate" }}
-                  </span>
-                </div>
-                <div class="ml-auto">
-                  <mc-add-to-favorites
-                    [isFavorited]="article.favorited"
-                    [articleSlug]="article.slug"
-                    [favoritesCount]="article.favoritesCount"
-                  ></mc-add-to-favorites>
-                </div>
+                <span class="text-sm text-gray-500">
+                  {{ article.createdAt | date : "mediumDate" }}
+                </span>
               </div>
+              <div class="ml-auto">
+                <mc-add-to-favorites
+                  [isFavorited]="article.favorited"
+                  [articleSlug]="article.slug"
+                  [favoritesCount]="article.favoritesCount"
+                ></mc-add-to-favorites>
+              </div>
+            </div>
 
-              <!-- title + description -->
-              <a [routerLink]="['/articles', article.slug]" class="block mt-3">
-                <h2 class="text-lg md:text-xl font-semibold leading-snug">
-                  {{ article.title }}
-                </h2>
-                <p class="text-gray-600 mt-1 line-clamp-3">
-                  {{ article.description }}
-                </p>
-              </a>
+            <a [routerLink]="['/articles', article.slug]" class="block mt-3">
+              <h2 class="text-xl font-semibold leading-snug">
+                {{ article.title }}
+              </h2>
+              <p class="text-gray-600 mt-1 line-clamp-3">
+                {{ article.description }}
+              </p>
+            </a>
 
-              <!-- footer (mobile) -->
-              <div
-                class="mt-3 flex flex-wrap items-center justify-between gap-3 md:hidden"
-              >
+            <div class="hidden md:flex flex-col mt-3 md:mt-auto">
+              <div>
                 <a
                   [routerLink]="['/articles', article.slug]"
                   pButton
                   label="Read more"
                   class="p-button-text p-button-sm"
                 ></a>
-                <mc-tag-list [tags]="article.tagList"></mc-tag-list>
               </div>
-
-              <!-- footer (desktop) -->
-              <div class="hidden md:flex flex-col mt-3 md:mt-auto">
-                <div>
-                  <a
-                    [routerLink]="['/articles', article.slug]"
-                    pButton
-                    label="Read more"
-                    class="p-button-text p-button-sm"
-                  ></a>
-                </div>
-                <mc-tag-list
-                  [tags]="article.tagList"
-                  class="mt-2"
-                ></mc-tag-list>
-              </div>
+              <mc-tag-list [tags]="article.tagList" class="mt-2"></mc-tag-list>
             </div>
           </div>
-        </p-card>
+        </div>
+      </p-card>
 
-        <!-- Teal separator (skip after the last card) -->
-        <div
-          *ngIf="!last"
-          class="h-0.5 bg-[#c67dfe] opacity-80 my-6 rounded"
-        ></div>
+      <!-- Separator -->
+      <div
+        *ngIf="!last"
+        class="h-0.5 bg-[#c67dfe] opacity-80 my-6 rounded"
+      ></div>
+    </ng-container>
+  </div>
+
+  <!-- Empty state -->
+  <p-card
+    *ngIf="!data.isLoading && flatArticles.length === 0"
+    class="shadow-sm mb-4"
+  >
+    <ng-container *ngIf="isYourFeed; else nonPersonal">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+        <p class="font-medium">Your feed is empty</p>
+        <div class="flex items-center gap-2 ml-auto">
+          <a routerLink="/" class="p-button p-button-text p-button-sm"
+            >Browse Global feed</a
+          >
+          <a
+            routerLink="/tag/content-ai"
+            class="p-button p-button-text p-button-sm"
+            >Explore tags</a
+          >
+        </div>
+      </div>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+        Follow some authors to see their latest posts here.
+      </p>
+      <div class="mt-4">
+        <mc-suggested-authors
+          (refreshTrigger)="onSuggestionsRefresh()"
+        ></mc-suggested-authors>
+      </div>
+    </ng-container>
+
+    <ng-template #nonPersonal>
+      <ng-container *ngIf="isTagFeed; else globalEmpty">
+        <p class="font-medium mb-1">
+          No articles for <span class="font-semibold">#{{ currentTag }}</span>
+        </p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Try another tag or check the global feed.
+        </p>
+        <a routerLink="/" class="p-button p-button-text p-button-sm"
+          >Go to Global feed</a
+        >
       </ng-container>
-    </div>
 
-    <!-- pagination -->
-    <div class="mt-6">
-      <mc-pagination
-        [total]="data.feed.articlesCount"
-        [limit]="limit"
-        [url]="baseUrl"
-        [currentPage]="currentPage"
-      >
-      </mc-pagination>
-    </div>
+      <ng-template #globalEmpty>
+        <p class="font-medium mb-1">No articles yet</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Try filtering by a tag, or check back later.
+        </p>
+        <a
+          routerLink="/tag/content-ai"
+          class="p-button p-button-text p-button-sm"
+          >Explore tags</a
+        >
+      </ng-template>
+    </ng-template>
+  </p-card>
+
+  <!-- BOTTOM sentinel -->
+  <div
+    class="h-1"
+    ioObserve
+    [root]="scrollRoot"
+    rootMargin="0px 0px 600px 0px"
+    (ioIntersect)="maybeLoadNext()"
+  ></div>
+
+  <!-- Loading more indicator -->
+  <div
+    *ngIf="data.isLoading && flatArticles.length > 0"
+    class="py-6 text-center text-gray-400 flex items-center justify-center gap-2"
+  >
+    <span class="spinner-sm"></span>
+    <span>Loading more…</span>
   </div>
 </ng-container>
