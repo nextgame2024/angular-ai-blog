@@ -1,14 +1,11 @@
 <ng-container *ngIf="data$ | async as data">
-  <!-- Initial loading: only when nothing is rendered yet -->
   <mc-loading *ngIf="data.isLoading && flatArticles.length === 0"></mc-loading>
-
-  <!-- Errors -->
   <mc-error-message
     *ngIf="data.error"
     [message]="data.error"
   ></mc-error-message>
 
-  <!-- TOP sentinel -->
+  <!-- TOP sentinel for infinite scroll -->
   <div
     class="h-1"
     ioObserve
@@ -17,155 +14,87 @@
     (ioIntersect)="maybeLoadPrev()"
   ></div>
 
-  <div>
-    <ng-container
-      *ngFor="
-        let article of flatArticles;
-        let last = last;
-        trackBy: trackBySlug
-      "
-    >
-      <!-- ===================== MOBILE ===================== -->
-      <!-- Full-bleed media above, text-only card below -->
-      <div class="block md:hidden mobile-bleed-vw">
-        <div class="media-wrap">
-          <mc-article-media [assets]="article.assets"></mc-article-media>
-          <div class="media-skeleton"><div class="spinner"></div></div>
-        </div>
-      </div>
+  <!-- GRID: 1 col on mobile, 3 cols on md+ -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <ng-container *ngFor="let article of flatArticles; trackBy: trackBySlug">
+      <p-card class="shadow-sm no-pad-card">
+        <div class="flex flex-col h-full">
+          <!-- MEDIA: portrait with overlays inside -->
+          <div class="media-wrap media-portrait">
+            <mc-article-media [assets]="article.assets"></mc-article-media>
 
-      <p-card class="card-mobile block md:hidden shadow-sm pt-1 pb-3">
-        <div class="flex flex-col h-full mobile-tight">
-          <!-- header -->
-          <div class="flex items-center gap-3">
-            <a
-              [routerLink]="['/profiles', article.author.username]"
-              class="shrink-0"
-            >
-              <img
-                class="w-10 h-10 rounded-full object-cover"
-                [src]="article.author.image || defaultAvatar"
-                [alt]="article.author.username + ' avatar'"
-                (error)="setFallback($event)"
-              />
-            </a>
-            <div class="min-w-0">
-              <a
-                [routerLink]="['/profiles', article.author.username]"
-                class="block font-semibold text-base truncate"
-              >
-                {{ article.author.username }}
-              </a>
-              <span class="text-sm text-gray-500">
-                {{ article.createdAt | date : "mediumDate" }}
-              </span>
-            </div>
-            <div class="ml-auto">
-              <mc-add-to-favorites
-                [isFavorited]="article.favorited"
-                [articleSlug]="article.slug"
-                [favoritesCount]="article.favoritesCount"
-              ></mc-add-to-favorites>
-            </div>
-          </div>
-
-          <!-- title + description -->
-          <a [routerLink]="['/articles', article.slug]" class="block mt-3">
-            <h2 class="text-lg font-semibold leading-snug">
-              {{ article.title }}
-            </h2>
-            <p class="text-gray-600 mt-1 line-clamp-3">
-              {{ article.description }}
-            </p>
-          </a>
-
-          <!-- footer -->
-          <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-            <a
-              [routerLink]="['/articles', article.slug]"
-              pButton
-              label="Read more"
-              class="p-button-text p-button-sm"
-            ></a>
-            <mc-tag-list [tags]="article.tagList"></mc-tag-list>
-          </div>
-        </div>
-      </p-card>
-
-      <!-- ===================== DESKTOP ===================== -->
-      <p-card class="hidden md:block shadow-sm md:py-6">
-        <div class="grid grid-cols-1 md:grid-cols-5 feed-gap md:gap-6">
-          <!-- LEFT: media -->
-          <div class="md:col-span-2">
-            <div class="media-wrap">
-              <mc-article-media [assets]="article.assets"></mc-article-media>
-              <div class="media-skeleton"><div class="spinner"></div></div>
-            </div>
-          </div>
-
-          <!-- RIGHT: content -->
-          <div class="md:col-span-3 flex flex-col h-full md:pl-2">
-            <div class="flex items-center gap-3">
-              <a
-                [routerLink]="['/profiles', article.author.username]"
-                class="shrink-0"
-              >
-                <img
-                  class="w-10 h-10 rounded-full object-cover"
-                  [src]="article.author.image || defaultAvatar"
-                  [alt]="article.author.username + ' avatar'"
-                  (error)="setFallback($event)"
-                />
-              </a>
-              <div class="min-w-0">
+            <!-- OVERLAY: TOP (author/date/favorites) -->
+            <div class="overlay overlay-top">
+              <div class="flex items-center gap-3 w-full">
                 <a
                   [routerLink]="['/profiles', article.author.username]"
-                  class="block font-semibold text-lg truncate"
+                  class="shrink-0 overlay-click"
                 >
-                  {{ article.author.username }}
+                  <img
+                    class="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover ring-2 ring-white/40"
+                    [src]="article.author.image || defaultAvatar"
+                    [alt]="article.author.username + ' avatar'"
+                    (error)="setFallback($event)"
+                  />
                 </a>
-                <span class="text-sm text-gray-500">
-                  {{ article.createdAt | date : "mediumDate" }}
-                </span>
-              </div>
-              <div class="ml-auto">
-                <mc-add-to-favorites
-                  [isFavorited]="article.favorited"
-                  [articleSlug]="article.slug"
-                  [favoritesCount]="article.favoritesCount"
-                ></mc-add-to-favorites>
+                <div class="min-w-0">
+                  <a
+                    [routerLink]="['/profiles', article.author.username]"
+                    class="block font-semibold text-white drop-shadow truncate overlay-click"
+                  >
+                    {{ article.author.username }}
+                  </a>
+                  <span class="text-xs text-white/90">
+                    {{ article.createdAt | date : "mediumDate" }}
+                  </span>
+                </div>
+                <div class="ml-auto overlay-click">
+                  <mc-add-to-favorites
+                    [isFavorited]="article.favorited"
+                    [articleSlug]="article.slug"
+                    [favoritesCount]="article.favoritesCount"
+                  ></mc-add-to-favorites>
+                </div>
               </div>
             </div>
 
-            <a [routerLink]="['/articles', article.slug]" class="block mt-3">
-              <h2 class="text-xl font-semibold leading-snug">
-                {{ article.title }}
-              </h2>
-              <p class="text-gray-600 mt-1 line-clamp-3">
-                {{ article.description }}
-              </p>
-            </a>
+            <!-- OVERLAY: BOTTOM TEXT (now truly at the very bottom; controls appear above it) -->
+            <div class="overlay overlay-bottom">
+              <a
+                [routerLink]="['/articles', article.slug]"
+                class="block overlay-click"
+              >
+                <h2
+                  class="text-base md:text-lg font-semibold leading-snug text-white drop-shadow"
+                >
+                  {{ article.title }}
+                </h2>
+                <p class="text-white/90 text-sm mt-1 line-clamp-3">
+                  {{ article.description }}
+                </p>
+              </a>
 
-            <div class="hidden md:flex flex-col mt-3 md:mt-auto">
-              <div>
+              <div class="mt-2 flex items-center flex-wrap gap-2">
                 <a
                   [routerLink]="['/articles', article.slug]"
                   pButton
                   label="Read more"
-                  class="p-button-text p-button-sm"
+                  class="p-button-sm p-button-rounded p-button-text text-white overlay-click"
                 ></a>
+
+                <!-- tags -->
+                <mc-tag-list
+                  [tags]="article.tagList"
+                  class="tags-inside overlay-click"
+                ></mc-tag-list>
               </div>
-              <mc-tag-list [tags]="article.tagList" class="mt-2"></mc-tag-list>
             </div>
+
+            <!-- Loader (quick fade) -->
+            <div class="media-skeleton"><div class="spinner"></div></div>
           </div>
         </div>
       </p-card>
-
-      <!-- Separator -->
-      <div
-        *ngIf="!last"
-        class="h-0.5 bg-[#c67dfe] opacity-80 my-6 rounded"
-      ></div>
     </ng-container>
   </div>
 
@@ -225,7 +154,7 @@
     </ng-template>
   </p-card>
 
-  <!-- BOTTOM sentinel -->
+  <!-- BOTTOM sentinel + loading more -->
   <div
     class="h-1"
     ioObserve
@@ -234,7 +163,6 @@
     (ioIntersect)="maybeLoadNext()"
   ></div>
 
-  <!-- Loading more indicator -->
   <div
     *ngIf="data.isLoading && flatArticles.length > 0"
     class="py-6 text-center text-gray-400 flex items-center justify-center gap-2"

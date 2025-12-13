@@ -1,6 +1,6 @@
 <section class="relative w-full">
   <div
-    class="relative w-full bg-black overflow-hidden h-[55svh] md:pt-0 md:h-[calc(100svh-var(--header-h))]"
+    class="relative w-full bg-black overflow-hidden h-[55svh] md:h-[75svh] md:pt-0"
     [style.--header-h.px]="headerH"
     [style.aspectRatio]="null"
     [style.paddingTop.%]="null"
@@ -8,7 +8,7 @@
     <video
       #heroVideo
       *ngIf="videoSrc"
-      class="absolute inset-0 w-full h-full object-cover object-[30%_50%] md:object-cover md:object-[50%_6%]"
+      class="absolute inset-0 w-full h-full object-cover object-[30%_50%] md:object-cover md:object-[30%_30%]"
       [attr.src]="videoSrc"
       [muted]="isMuted"
       playsinline

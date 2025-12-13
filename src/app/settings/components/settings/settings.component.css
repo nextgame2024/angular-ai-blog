@@ -22,3 +22,18 @@
 :host ::ng-deep .p-inputgroup > .p-inputgroup-addon {
   flex: 0 0 auto;
 }
+
+/* ------------------------------------------------------------------
+   MOBILE: Remove PrimeNG's default padding inside the p-card body
+   so the Settings card lines up edge-to-edge with your own px-5 rows.
+   ------------------------------------------------------------------ */
+@media (max-width: 767.98px) {
+  /* Kill the body padding */
+  :host ::ng-deep .p-card > .p-card-body {
+    padding: 0 !important;
+  }
+  /* Also kill inner content padding (some themes add both) */
+  :host ::ng-deep .p-card > .p-card-body > .p-card-content {
+    padding: 0 !important;
+  }
+}

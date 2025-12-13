@@ -50,20 +50,20 @@ export class FeedTogglerComponent implements OnChanges {
   private rebuildItems(): void {
     const items: MenuItem[] = [];
 
-    if (this.hasUser) {
-      items.push({
-        label: 'Your feed',
-        icon: 'pi pi-user',
-        routerLink: ['/feed'],
-        routerLinkActiveOptions: { exact: true }, // ✅ exact match
-      });
-    }
+    // if (this.hasUser) {
+    //   items.push({
+    //     label: 'Your feed',
+    //     icon: 'pi pi-user',
+    //     routerLink: ['/feed'],
+    //     routerLinkActiveOptions: { exact: true },
+    //   });
+    // }
 
     items.push({
-      label: 'Global feed',
+      label: 'Gallery',
       icon: 'pi pi-globe',
       routerLink: ['/'],
-      routerLinkActiveOptions: { exact: true }, // ✅ exact match
+      routerLinkActiveOptions: { exact: true },
     });
 
     if (this.tagName) {

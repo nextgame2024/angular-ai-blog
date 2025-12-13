@@ -1,6 +1,12 @@
 <ng-container *ngIf="data$ | async as data">
   <div>
     <div class="container mx-auto px-4">
+      <!-- { label: 'Teams', routerLink: '/teams' },
+      {
+        label: 'New Post',
+        routerLink: '/articles/new',
+        visible: !!data.currentUser
+      }, -->
       <p-menubar
         [model]="[
           { label: 'Home', routerLink: '/' },

@@ -1,0 +1,606 @@
+<!-- src/app/planner/components/preAssessment.component.html -->
+
+<div class="planner-page">
+  <div class="planner-card">
+    <!-- Header + tabs -->
+    <div class="planner-header">
+      <div class="planner-header-text">
+        <h1 class="planner-title">Pre-Assessment – Brisbane Town Planner</h1>
+        <p class="planner-subtitle">
+          Enter basic site and shed details to generate a planning-oriented
+          pre-assessment, including zoning, overlays and likely assessment
+          level.
+        </p>
+      </div>
+
+      <!-- TABS -->
+      <div class="tabs">
+        <button
+          type="button"
+          class="tab"
+          [class.tab--active]="activeTab === 'inputs'"
+          (click)="setTab('inputs')"
+        >
+          Inputs
+        </button>
+        <button
+          type="button"
+          class="tab"
+          [class.tab--active]="activeTab === 'results'"
+          [disabled]="!(result$ | async)"
+          (click)="setTab('results')"
+        >
+          Results
+        </button>
+      </div>
+    </div>
+
+    <!-- SUMMARY ROW (when we have a result) -->
+    <ng-container *ngIf="result$ | async as summaryResult">
+      <div class="summary-row">
+        <div class="summary-card">
+          <div class="summary-label">Zoning</div>
+          <div class="summary-value">
+            {{ summaryResult.planningData.zoning || "Unknown zoning" }}
+          </div>
+          <div
+            class="summary-chip"
+            *ngIf="summaryResult.planningData.zoningCode"
+          >
+            {{ summaryResult.planningData.zoningCode }}
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-label">Neighbourhood plan</div>
+          <div class="summary-value">
+            {{
+              summaryResult.planningData.neighbourhoodPlan ||
+                "No neighbourhood plan mapped"
+            }}
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-label">Likely development type</div>
+          <div class="summary-value">
+            {{ summaryResult.classification?.devType || "Unknown" }}
+          </div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-label">Likely assessment level</div>
+          <div class="summary-value">
+            {{ summaryResult.classification?.assessmentLevel || "Unknown" }}
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <div [ngSwitch]="activeTab">
+      <!-- INPUTS TAB -->
+      <form
+        *ngSwitchCase="'inputs'"
+        (ngSubmit)="generateSummary()"
+        #formRef="ngForm"
+      >
+        <div class="form-grid">
+          <!-- Site details -->
+          <section>
+            <div class="form-section-title">Site details</div>
+
+            <div class="field">
+              <label>Address *</label>
+              <input
+                type="text"
+                name="address"
+                required
+                [(ngModel)]="site.address"
+                placeholder="25 Mylne Street, Chermside QLD 4032"
+              />
+            </div>
+
+            <div class="field">
+              <label>Lot / Plan</label>
+              <input
+                type="text"
+                name="lotPlan"
+                [(ngModel)]="site.lotPlan"
+                placeholder="Lot 12 on RP45678"
+              />
+            </div>
+          </section>
+
+          <!-- Proposal details -->
+          <section>
+            <div class="form-section-title">Proposed shed / outbuilding</div>
+
+            <div class="field">
+              <label>Purpose</label>
+              <input
+                type="text"
+                name="purpose"
+                [(ngModel)]="proposal.purpose"
+                placeholder="Storage + small workshop"
+              />
+            </div>
+
+            <div class="field field-small-grid">
+              <div>
+                <label>Length (m)</label>
+                <input
+                  type="number"
+                  name="lengthM"
+                  [(ngModel)]="proposal.lengthM"
+                />
+              </div>
+              <div>
+                <label>Width (m)</label>
+                <input
+                  type="number"
+                  name="widthM"
+                  [(ngModel)]="proposal.widthM"
+                />
+              </div>
+            </div>
+
+            <div class="field field-small-grid">
+              <div>
+                <label>Ridge height (m)</label>
+                <input
+                  type="number"
+                  name="heightRidgeM"
+                  [(ngModel)]="proposal.heightRidgeM"
+                />
+              </div>
+              <div>
+                <label>Wall height (m)</label>
+                <input
+                  type="number"
+                  name="heightWallM"
+                  [(ngModel)]="proposal.heightWallM"
+                />
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ADVANCED SITING / SETBACKS -->
+        <section class="advanced-panel">
+          <button
+            class="advanced-header"
+            type="button"
+            (click)="toggleAdvanced()"
+          >
+            <div>
+              <span class="advanced-title">Advanced siting &amp; setbacks</span>
+              <span class="advanced-tag">Optional</span>
+            </div>
+            <span
+              class="advanced-chevron"
+              [class.advanced-chevron--open]="advancedOpen"
+              aria-hidden="true"
+            >
+              ▾
+            </span>
+          </button>
+
+          <div class="advanced-body" *ngIf="advancedOpen">
+            <p class="muted">
+              Enter approximate setbacks from property boundaries. Leave blank
+              if you are unsure – this is guidance only.
+            </p>
+
+            <div class="field field-small-grid">
+              <div>
+                <label>Front setback (m)</label>
+                <input
+                  type="number"
+                  name="setbackFront"
+                  [(ngModel)]="proposal.setbacks!.front"
+                />
+              </div>
+              <div>
+                <label>Rear setback (m)</label>
+                <input
+                  type="number"
+                  name="setbackRear"
+                  [(ngModel)]="proposal.setbacks!.rear"
+                />
+              </div>
+            </div>
+
+            <div class="field field-small-grid">
+              <div>
+                <label>Side 1 setback (m)</label>
+                <input
+                  type="number"
+                  name="setbackSide1"
+                  [(ngModel)]="proposal.setbacks!.side1"
+                />
+              </div>
+              <div>
+                <label>Side 2 setback (m)</label>
+                <input
+                  type="number"
+                  name="setbackSide2"
+                  [(ngModel)]="proposal.setbacks!.side2"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div class="actions-row">
+          <button
+            class="btn btn-primary"
+            [disabled]="(loading$ | async) ?? false"
+          >
+            {{
+              (loading$ | async)
+                ? "Generating pre-assessment…"
+                : "Generate pre-assessment"
+            }}
+          </button>
+        </div>
+
+        <div class="error-message" *ngIf="error$ | async as error">
+          {{ error }}
+        </div>
+      </form>
+
+      <!-- RESULTS TAB -->
+      <section *ngSwitchCase="'results'">
+        <ng-container *ngIf="result$ | async as result; else noResult">
+          <!-- Row 1: Map + planning snapshot -->
+          <div class="result-layout">
+            <!-- Map card -->
+            <section class="card card-map">
+              <h2>Site location &amp; mapped layers</h2>
+
+              <ng-container
+                *ngIf="mapCenter && googleMapsAvailable; else noMap"
+              >
+                <google-map
+                  [height]="'380px'"
+                  [width]="'100%'"
+                  [center]="mapCenter"
+                  [options]="mapOptions"
+                  [zoom]="mapOptions.zoom ?? 18"
+                >
+                  <!-- Property parcel / cadastral boundary -->
+                  <map-polygon
+                    *ngIf="siteParcelPath.length"
+                    [paths]="siteParcelPath"
+                    [options]="siteParcelOptions"
+                  ></map-polygon>
+
+                  <!-- Zoning polygon for the subject site -->
+                  <map-polygon
+                    *ngIf="zoningPolygonPath.length"
+                    [paths]="zoningPolygonPath"
+                    [options]="zoningPolygonOptions"
+                  ></map-polygon>
+
+                  <!-- Overlay polygons (flood, noise, etc.) -->
+                  <map-polygon
+                    *ngFor="let ov of overlayPolygonPaths"
+                    [paths]="ov.path"
+                    [options]="ov.style"
+                  ></map-polygon>
+
+                  <!-- Overlay corridors (LineString / MultiLineString) -->
+                  <map-polyline
+                    *ngFor="let ln of overlayPolylinePaths"
+                    [path]="ln.path"
+                    [options]="ln.style"
+                  ></map-polyline>
+
+                  <!-- Site marker (geocode centre) -->
+                  <map-marker [position]="mapCenter"></map-marker>
+                </google-map>
+
+                <div class="map-legend">
+                  <div class="legend-title">Map legend</div>
+                  <div class="legend-items">
+                    <div class="legend-item">
+                      <span class="legend-swatch legend-swatch--parcel"></span>
+                      <span class="legend-label">Property boundary</span>
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-swatch legend-swatch--zoning"></span>
+                      <span class="legend-label">
+                        Zoning for subject site
+                      </span>
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-swatch legend-swatch--flood"></span>
+                      <span class="legend-label">
+                        Flood / overland flow overlays
+                      </span>
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-swatch legend-swatch--noise"></span>
+                      <span class="legend-label">
+                        Transport noise overlays
+                      </span>
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-swatch legend-swatch--other"></span>
+                      <span class="legend-label">Other mapped overlays</span>
+                    </div>
+                  </div>
+                </div>
+
+                <p class="muted map-caption">
+                  Boundaries and overlays are indicative only. Confirm with
+                  Council mapping, survey plan and title searches before relying
+                  on this information.
+                </p>
+              </ng-container>
+
+              <ng-template #noMap>
+                <p class="muted">
+                  Map preview is unavailable for this pre-assessment. This
+                  usually means no geocode (lat/lng) was returned for the
+                  address.
+                </p>
+              </ng-template>
+            </section>
+
+            <!-- Planning + proposal snapshot -->
+            <section class="card">
+              <h2>Planning snapshot</h2>
+              <p>
+                <strong>Zoning:</strong>
+                {{ result.planningData.zoning || "Unknown zoning" }}
+                <span
+                  *ngIf="result.planningData.zoningCode"
+                  class="chip"
+                  style="margin-left: 0.25rem"
+                >
+                  {{ result.planningData.zoningCode }}
+                </span>
+              </p>
+
+              <p>
+                <strong>Neighbourhood plan:</strong>
+                {{
+                  result.planningData.neighbourhoodPlan ||
+                    "No neighbourhood plan mapped"
+                }}
+              </p>
+
+              <ng-container *ngIf="(result.planningData.overlays || []).length">
+                <p><strong>Overlays:</strong></p>
+                <div class="overlay-chips">
+                  <span
+                    class="chip chip--overlay"
+                    *ngFor="let o of result.planningData.overlays || []"
+                  >
+                    {{ o.name }}
+                    <ng-container *ngIf="o.severity">
+                      ({{ o.severity }})
+                    </ng-container>
+                  </span>
+                </div>
+              </ng-container>
+
+              <hr class="divider" />
+
+              <h3 class="card-subtitle">Proposal snapshot</h3>
+              <div class="proposal-grid">
+                <div>
+                  <div class="snapshot-label">Purpose</div>
+                  <div class="snapshot-value">
+                    {{ result.proposal.purpose || "Not specified" }}
+                  </div>
+                </div>
+
+                <div>
+                  <div class="snapshot-label">Dimensions (approx.)</div>
+                  <div class="snapshot-value">
+                    <ng-container
+                      *ngIf="
+                        result.proposal?.lengthM && result.proposal?.widthM;
+                        else noDims
+                      "
+                    >
+                      {{ result.proposal.lengthM }} m ×
+                      {{ result.proposal.widthM }} m
+                    </ng-container>
+                    <ng-template #noDims>Not specified</ng-template>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="snapshot-label">Heights (approx.)</div>
+                  <div class="snapshot-value">
+                    <ng-container
+                      *ngIf="
+                        result.proposal?.heightRidgeM ||
+                          result.proposal?.heightWallM;
+                        else noHeights
+                      "
+                    >
+                      <span *ngIf="result.proposal?.heightRidgeM">
+                        Ridge {{ result.proposal.heightRidgeM }} m
+                      </span>
+                      <span *ngIf="result.proposal?.heightWallM">
+                        &nbsp;· Wall {{ result.proposal.heightWallM }} m
+                      </span>
+                    </ng-container>
+                    <ng-template #noHeights>Not specified</ng-template>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="snapshot-label">Setbacks (approx.)</div>
+                  <div class="snapshot-value">
+                    <ng-container
+                      *ngIf="result.proposal?.setbacks as sb; else noSetbacks"
+                    >
+                      <span *ngIf="sb.front != null"
+                        >Front {{ sb.front }} m</span
+                      >
+                      <span *ngIf="sb.side1 != null"
+                        >&nbsp;· Side 1 {{ sb.side1 }} m</span
+                      >
+                      <span *ngIf="sb.side2 != null"
+                        >&nbsp;· Side 2 {{ sb.side2 }} m</span
+                      >
+                      <span *ngIf="sb.rear != null"
+                        >&nbsp;· Rear {{ sb.rear }} m</span
+                      >
+                    </ng-container>
+                    <ng-template #noSetbacks>Not specified</ng-template>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Row 2: classification + next steps -->
+          <div class="result-layout result-layout--tight">
+            <section class="card">
+              <h2>Likely development classification</h2>
+              <p>
+                <strong>Type (guidance only):</strong>
+                {{ result.classification?.devType || "Unknown" }}
+              </p>
+              <p>
+                <strong>Assessment level (guidance only):</strong>
+                {{ result.classification?.assessmentLevel || "Unknown" }}
+              </p>
+              <p class="muted" style="margin-top: 0.4rem">
+                {{ result.classification?.reasoning }}
+              </p>
+            </section>
+
+            <section class="card" *ngIf="nextSteps.length">
+              <h2>Suggested next steps</h2>
+              <ol class="nextsteps-list">
+                <li *ngFor="let step of nextSteps">
+                  {{ step }}
+                </li>
+              </ol>
+            </section>
+          </div>
+
+          <!-- Row 3: Overlays & triggers -->
+          <section
+            class="card"
+            *ngIf="(result.planningData.overlays || []).length"
+            style="margin-top: 1rem"
+          >
+            <h2>Overlays &amp; triggers (preliminary)</h2>
+            <p class="muted" style="margin-bottom: 0.5rem">
+              Preliminary overlay review based on Council mapping. This section
+              highlights mapped overlays which may introduce additional
+              assessment benchmarks and/or code triggers.
+            </p>
+
+            <div class="overlay-table-wrapper">
+              <table class="overlay-table">
+                <thead>
+                  <tr>
+                    <th>Overlay</th>
+                    <th>Code</th>
+                    <th>Impact</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let o of result.planningData.overlays || []">
+                    <td>
+                      <div class="overlay-name">
+                        {{ o.name }}
+                      </div>
+                    </td>
+                    <td>
+                      <span
+                        *ngIf="o.code; else noCode"
+                        class="chip chip--overlay"
+                      >
+                        {{ o.code }}
+                      </span>
+                      <ng-template #noCode>
+                        <span class="muted">–</span>
+                      </ng-template>
+                    </td>
+                    <td>
+                      <div class="overlay-impact">
+                        <span *ngIf="o.severity" class="overlay-severity">
+                          {{ o.severity }}
+                        </span>
+                        <span *ngIf="o.description" class="overlay-description">
+                          {{ o.description }}
+                        </span>
+                        <span
+                          *ngIf="!o.severity && !o.description"
+                          class="muted"
+                        >
+                          May introduce additional benchmarks and/or code
+                          triggers – confirm with a full City Plan and state
+                          mapping search.
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- Row 4: assessment summary (Gemini sections) -->
+          <section
+            class="card"
+            *ngIf="result.summary?.sections?.length"
+            style="margin-top: 1rem"
+          >
+            <h2>Assessment summary (draft)</h2>
+            <p class="muted" style="margin-bottom: 0.5rem">
+              Auto-generated summary based on zoning, overlays and proposal. Use
+              as a starting point – it does not replace a full town planning
+              assessment.
+            </p>
+
+            <div class="summary-sections">
+              <details
+                *ngFor="let sec of result.summary.sections"
+                class="summary-section"
+                open
+              >
+                <summary>{{ sec.title }}</summary>
+                <p>{{ sec.body }}</p>
+              </details>
+            </div>
+          </section>
+
+          <!-- Row 5: PDF -->
+          <div
+            class="card card--pdf"
+            *ngIf="result.pdfUrl"
+            style="margin-top: 1rem"
+          >
+            <button class="btn btn-success" (click)="downloadPdf(result)">
+              Download pre-assessment PDF
+            </button>
+            <p class="muted" style="margin-top: 0.4rem">
+              Share this document with your town planner, architect or building
+              certifier to streamline the next stage.
+            </p>
+          </div>
+        </ng-container>
+
+        <ng-template #noResult>
+          <div class="card" style="margin-top: 1rem">
+            <p class="muted">
+              Run a pre-assessment from the Inputs tab to see the planning
+              snapshot, map and suggested next steps.
+            </p>
+          </div>
+        </ng-template>
+      </section>
+    </div>
+  </div>
+</div>

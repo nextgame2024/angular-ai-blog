@@ -30,7 +30,7 @@ import { FormsModule } from '@angular/forms';
 })
 export class PaginationComponent implements OnInit, OnChanges {
   @Input() total = 0; // total records
-  @Input() limit = 10; // rows per page
+  @Input() limit = 9; // rows per page
   @Input() currentPage = 1; // 1-based
   @Input() url = ''; // base route (e.g., '/articles')
 
