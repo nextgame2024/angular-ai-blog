@@ -525,12 +525,15 @@ export class PreAssessmentComponent {
 
     const c = code.toLowerCase();
 
-    if (c.includes('flood')) {
-      return { ...base, strokeColor: '#f97316', fillColor: '#fb923c' };
-    }
-
-    if (c.includes('overland')) {
-      return { ...base, strokeColor: '#f97316', fillColor: '#fed7aa' };
+    if (c.includes('flood') || c.includes('overland')) {
+      // Flood overlays should be visually distinct from zoning/noise.
+      // Use a dark red palette.
+      return {
+        ...base,
+        strokeColor: '#7f1d1d',
+        fillColor: '#dc2626',
+        fillOpacity: 0.22,
+      };
     }
 
     if (c.includes('transport') || c.includes('noise')) {
