@@ -1,92 +1,51 @@
 <!-- src/app/planner/components/preAssessment.component.html -->
 
 <div class="planner-page">
+  <!-- Full-page loading overlay -->
+  <div class="page-overlay" *ngIf="(loading$ | async) ?? false">
+    <div class="overlay-card" role="status" aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <div class="overlay-title">Generating pre-assessment</div>
+      <div class="overlay-subtitle">
+        Fetching zoning, overlays and a preliminary assessment classification…
+      </div>
+    </div>
+  </div>
+
   <div class="planner-card">
-    <!-- Header + tabs -->
+    <!-- Header -->
     <div class="planner-header">
       <div class="planner-header-text">
         <h1 class="planner-title">Pre-Assessment – Brisbane Town Planner</h1>
         <p class="planner-subtitle">
-          Enter basic site and shed details to generate a planning-oriented
-          pre-assessment, including zoning, overlays and likely assessment
-          level.
+          Enter basic site and shed details to generate a planning-oriented pre-assessment,
+          including zoning, overlays and likely assessment level.
         </p>
       </div>
 
-      <!-- TABS -->
-      <div class="tabs">
+      <div class="planner-header-actions">
+        <div class="planner-tabs" aria-label="Pre-assessment sections">
+          <button type="button" class="tab tab--active">Inputs</button>
+          <!-- Kept for future functionality -->
+          <button type="button" class="tab tab--disabled" disabled>Results</button>
+        </div>
+
         <button
           type="button"
-          class="tab"
-          [class.tab--active]="activeTab === 'inputs'"
-          (click)="setTab('inputs')"
+          class="btn btn-primary header-generate"
+          (click)="generateSummary()"
+          [disabled]="(loading$ | async) ?? false"
         >
-          Inputs
-        </button>
-        <button
-          type="button"
-          class="tab"
-          [class.tab--active]="activeTab === 'results'"
-          [disabled]="!(result$ | async)"
-          (click)="setTab('results')"
-        >
-          Results
+          {{ (loading$ | async) ? 'Generating…' : 'Generate pre-assessment' }}
         </button>
       </div>
     </div>
 
-    <!-- SUMMARY ROW (when we have a result) -->
-    <ng-container *ngIf="result$ | async as summaryResult">
-      <div class="summary-row">
-        <div class="summary-card">
-          <div class="summary-label">Zoning</div>
-          <div class="summary-value">
-            {{ summaryResult.planningData.zoning || "Unknown zoning" }}
-          </div>
-          <div
-            class="summary-chip"
-            *ngIf="summaryResult.planningData.zoningCode"
-          >
-            {{ summaryResult.planningData.zoningCode }}
-          </div>
-        </div>
-
-        <div class="summary-card">
-          <div class="summary-label">Neighbourhood plan</div>
-          <div class="summary-value">
-            {{
-              summaryResult.planningData.neighbourhoodPlan ||
-                "No neighbourhood plan mapped"
-            }}
-          </div>
-        </div>
-
-        <div class="summary-card">
-          <div class="summary-label">Likely development type</div>
-          <div class="summary-value">
-            {{ summaryResult.classification?.devType || "Unknown" }}
-          </div>
-        </div>
-
-        <div class="summary-card">
-          <div class="summary-label">Likely assessment level</div>
-          <div class="summary-value">
-            {{ summaryResult.classification?.assessmentLevel || "Unknown" }}
-          </div>
-        </div>
-      </div>
-    </ng-container>
-
-    <div [ngSwitch]="activeTab">
-      <!-- INPUTS TAB -->
-      <form
-        *ngSwitchCase="'inputs'"
-        (ngSubmit)="generateSummary()"
-        #formRef="ngForm"
-      >
-        <div class="form-grid">
-          <!-- Site details -->
-          <section>
+    <!-- INPUTS -->
+    <form class="planner-form" (ngSubmit)="generateSummary()" #formRef="ngForm">
+      <fieldset class="planner-fieldset" [disabled]="(loading$ | async) ?? false">
+        <div class="top-grid">
+          <section class="panel">
             <div class="form-section-title">Site details</div>
 
             <div class="field">
@@ -111,8 +70,7 @@
             </div>
           </section>
 
-          <!-- Proposal details -->
-          <section>
+          <section class="panel">
             <div class="form-section-title">Proposed shed / outbuilding</div>
 
             <div class="field">
@@ -163,30 +121,17 @@
               </div>
             </div>
           </section>
-        </div>
 
-        <!-- ADVANCED SITING / SETBACKS -->
-        <section class="advanced-panel">
-          <button
-            class="advanced-header"
-            type="button"
-            (click)="toggleAdvanced()"
-          >
-            <div>
-              <span class="advanced-title">Advanced siting &amp; setbacks</span>
-              <span class="advanced-tag">Optional</span>
+          <section class="panel advanced-panel">
+            <div class="advanced-header-static">
+              <div>
+                <span class="advanced-title">Advanced siting &amp; setbacks</span>
+                <span class="advanced-tag">Optional</span>
+              </div>
             </div>
-            <span
-              class="advanced-chevron"
-              [class.advanced-chevron--open]="advancedOpen"
-              aria-hidden="true"
-            >
-              ▾
-            </span>
-          </button>
 
-          <div class="advanced-body" *ngIf="advancedOpen">
-            <p class="muted">
+            <div class="advanced-body-static">
+              <p class="muted">
               Enter approximate setbacks from property boundaries. Leave blank
               if you are unsure – this is guidance only.
             </p>
@@ -228,30 +173,20 @@
                 />
               </div>
             </div>
-          </div>
-        </section>
-
-        <div class="actions-row">
-          <button
-            class="btn btn-primary"
-            [disabled]="(loading$ | async) ?? false"
-          >
-            {{
-              (loading$ | async)
-                ? "Generating pre-assessment…"
-                : "Generate pre-assessment"
-            }}
-          </button>
+            </div>
+          </section>
         </div>
+      </fieldset>
 
-        <div class="error-message" *ngIf="error$ | async as error">
+      <div class="error-message" *ngIf="error$ | async as error">
           {{ error }}
         </div>
-      </form>
+    </form>
 
-      <!-- RESULTS TAB -->
-      <section *ngSwitchCase="'results'">
-        <ng-container *ngIf="result$ | async as result; else noResult">
+    <!-- RESULTS (rendered on the same page) -->
+    <div class="results-inline">
+      
+        <ng-container *ngIf="result$ | async as result">
           <!-- Row 1: Map + planning snapshot -->
           <div class="result-layout">
             <!-- Map card -->
@@ -592,15 +527,8 @@
           </div>
         </ng-container>
 
-        <ng-template #noResult>
-          <div class="card" style="margin-top: 1rem">
-            <p class="muted">
-              Run a pre-assessment from the Inputs tab to see the planning
-              snapshot, map and suggested next steps.
-            </p>
-          </div>
-        </ng-template>
-      </section>
+        
+      
     </div>
   </div>
 </div>
