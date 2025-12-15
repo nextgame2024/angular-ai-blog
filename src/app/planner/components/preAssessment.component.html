@@ -27,7 +27,6 @@
       <div class="planner-header-actions">
         <div class="planner-tabs" aria-label="Pre-assessment sections">
           <button type="button" class="tab tab--active">Inputs</button>
-          <!-- Kept for future functionality -->
           <button type="button" class="tab tab--disabled" disabled>
             Results
           </button>
@@ -44,7 +43,7 @@
       </div>
     </div>
 
-    <!-- INPUTS -->
+    <!-- INPUTS (always visible at top) -->
     <form class="planner-form" (ngSubmit)="generateSummary()" #formRef="ngForm">
       <fieldset
         class="planner-fieldset"
@@ -89,7 +88,7 @@
               />
             </div>
 
-            <!-- FIX: ensure each item is a .field so label stays above input -->
+            <!-- FIX: labels always above inputs -->
             <div class="field-small-grid">
               <div class="field field--tight">
                 <label>Length (m)</label>
@@ -99,7 +98,6 @@
                   [(ngModel)]="proposal.lengthM"
                 />
               </div>
-
               <div class="field field--tight">
                 <label>Width (m)</label>
                 <input
@@ -119,7 +117,6 @@
                   [(ngModel)]="proposal.heightRidgeM"
                 />
               </div>
-
               <div class="field field--tight">
                 <label>Wall height (m)</label>
                 <input
@@ -147,7 +144,7 @@
                 if you are unsure – this is guidance only.
               </p>
 
-              <!-- FIX: same pattern here -->
+              <!-- FIX: labels always above inputs -->
               <div class="field-small-grid">
                 <div class="field field--tight">
                   <label>Front setback (m)</label>
@@ -157,7 +154,6 @@
                     [(ngModel)]="proposal.setbacks!.front"
                   />
                 </div>
-
                 <div class="field field--tight">
                   <label>Rear setback (m)</label>
                   <input
@@ -177,7 +173,6 @@
                     [(ngModel)]="proposal.setbacks!.side1"
                   />
                 </div>
-
                 <div class="field field--tight">
                   <label>Side 2 setback (m)</label>
                   <input
@@ -197,321 +192,325 @@
       </div>
     </form>
 
-    <!-- RESULTS (rendered on the same page) -->
+    <!-- RESULTS (2 columns; map+summary left, everything else right) -->
     <div class="results-inline">
       <ng-container *ngIf="result$ | async as result">
-        <!-- (no changes below) -->
+        <div class="results-grid">
+          <!-- LEFT COLUMN -->
+          <div class="results-col results-col--left">
+            <section class="card card-map">
+              <h2>Site location &amp; mapped layers</h2>
 
-        <div class="result-layout">
-          <section class="card card-map">
-            <h2>Site location &amp; mapped layers</h2>
-
-            <ng-container *ngIf="mapCenter && googleMapsAvailable; else noMap">
-              <google-map
-                [height]="'380px'"
-                [width]="'100%'"
-                [center]="mapCenter"
-                [options]="mapOptions"
-                [zoom]="mapOptions.zoom ?? 18"
+              <ng-container
+                *ngIf="mapCenter && googleMapsAvailable; else noMap"
               >
-                <map-polygon
-                  *ngIf="siteParcelPath.length"
-                  [paths]="siteParcelPath"
-                  [options]="siteParcelOptions"
-                ></map-polygon>
-
-                <map-polygon
-                  *ngIf="zoningPolygonPath.length"
-                  [paths]="zoningPolygonPath"
-                  [options]="zoningPolygonOptions"
-                ></map-polygon>
-
-                <map-polygon
-                  *ngFor="let ov of overlayPolygonPaths"
-                  [paths]="ov.path"
-                  [options]="ov.style"
-                ></map-polygon>
-
-                <map-polyline
-                  *ngFor="let ln of overlayPolylinePaths"
-                  [path]="ln.path"
-                  [options]="ln.style"
-                ></map-polyline>
-
-                <map-marker [position]="mapCenter"></map-marker>
-              </google-map>
-
-              <div class="map-legend">
-                <div class="legend-title">Map legend</div>
-                <div class="legend-items">
-                  <div class="legend-item">
-                    <span class="legend-swatch legend-swatch--parcel"></span>
-                    <span class="legend-label">Property boundary</span>
-                  </div>
-                  <div class="legend-item">
-                    <span class="legend-swatch legend-swatch--zoning"></span>
-                    <span class="legend-label">Zoning for subject site</span>
-                  </div>
-                  <div class="legend-item">
-                    <span class="legend-swatch legend-swatch--flood"></span>
-                    <span class="legend-label"
-                      >Flood / overland flow overlays</span
-                    >
-                  </div>
-                  <div class="legend-item">
-                    <span class="legend-swatch legend-swatch--noise"></span>
-                    <span class="legend-label">Transport noise overlays</span>
-                  </div>
-                  <div class="legend-item">
-                    <span class="legend-swatch legend-swatch--other"></span>
-                    <span class="legend-label">Other mapped overlays</span>
-                  </div>
-                </div>
-              </div>
-
-              <p class="muted map-caption">
-                Boundaries and overlays are indicative only. Confirm with
-                Council mapping, survey plan and title searches before relying
-                on this information.
-              </p>
-            </ng-container>
-
-            <ng-template #noMap>
-              <p class="muted">
-                Map preview is unavailable for this pre-assessment. This usually
-                means no geocode (lat/lng) was returned for the address.
-              </p>
-            </ng-template>
-          </section>
-
-          <section class="card">
-            <h2>Planning snapshot</h2>
-
-            <p>
-              <strong>Zoning:</strong>
-              {{ result.planningData.zoning || "Unknown zoning" }}
-              <span
-                *ngIf="result.planningData.zoningCode"
-                class="chip"
-                style="margin-left: 0.25rem"
-              >
-                {{ result.planningData.zoningCode }}
-              </span>
-            </p>
-
-            <p>
-              <strong>Neighbourhood plan:</strong>
-              {{
-                result.planningData.neighbourhoodPlan ||
-                  "No neighbourhood plan mapped"
-              }}
-            </p>
-
-            <ng-container *ngIf="(result.planningData.overlays || []).length">
-              <p><strong>Overlays:</strong></p>
-              <div class="overlay-chips">
-                <span
-                  class="chip chip--overlay"
-                  *ngFor="let o of result.planningData.overlays || []"
+                <google-map
+                  [height]="'560px'"
+                  [width]="'100%'"
+                  [center]="mapCenter"
+                  [options]="mapOptions"
+                  [zoom]="mapOptions.zoom ?? 18"
                 >
-                  {{ o.name }}
-                  <ng-container *ngIf="o.severity">
-                    ({{ o.severity }})
-                  </ng-container>
-                </span>
-              </div>
-            </ng-container>
+                  <map-polygon
+                    *ngIf="siteParcelPath.length"
+                    [paths]="siteParcelPath"
+                    [options]="siteParcelOptions"
+                  ></map-polygon>
 
-            <hr class="divider" />
+                  <map-polygon
+                    *ngIf="zoningPolygonPath.length"
+                    [paths]="zoningPolygonPath"
+                    [options]="zoningPolygonOptions"
+                  ></map-polygon>
 
-            <h3 class="card-subtitle">Proposal snapshot</h3>
-            <div class="proposal-grid">
-              <div>
-                <div class="snapshot-label">Purpose</div>
-                <div class="snapshot-value">
-                  {{ result.proposal.purpose || "Not specified" }}
-                </div>
-              </div>
+                  <map-polygon
+                    *ngFor="let ov of overlayPolygonPaths"
+                    [paths]="ov.path"
+                    [options]="ov.style"
+                  ></map-polygon>
 
-              <div>
-                <div class="snapshot-label">Dimensions (approx.)</div>
-                <div class="snapshot-value">
-                  <ng-container
-                    *ngIf="
-                      result.proposal?.lengthM && result.proposal?.widthM;
-                      else noDims
-                    "
-                  >
-                    {{ result.proposal.lengthM }} m ×
-                    {{ result.proposal.widthM }} m
-                  </ng-container>
-                  <ng-template #noDims>Not specified</ng-template>
-                </div>
-              </div>
+                  <map-polyline
+                    *ngFor="let ln of overlayPolylinePaths"
+                    [path]="ln.path"
+                    [options]="ln.style"
+                  ></map-polyline>
 
-              <div>
-                <div class="snapshot-label">Heights (approx.)</div>
-                <div class="snapshot-value">
-                  <ng-container
-                    *ngIf="
-                      result.proposal?.heightRidgeM ||
-                        result.proposal?.heightWallM;
-                      else noHeights
-                    "
-                  >
-                    <span *ngIf="result.proposal?.heightRidgeM">
-                      Ridge {{ result.proposal.heightRidgeM }} m
-                    </span>
-                    <span *ngIf="result.proposal?.heightWallM">
-                      &nbsp;· Wall {{ result.proposal.heightWallM }} m
-                    </span>
-                  </ng-container>
-                  <ng-template #noHeights>Not specified</ng-template>
-                </div>
-              </div>
+                  <map-marker [position]="mapCenter"></map-marker>
+                </google-map>
 
-              <div>
-                <div class="snapshot-label">Setbacks (approx.)</div>
-                <div class="snapshot-value">
-                  <ng-container
-                    *ngIf="result.proposal?.setbacks as sb; else noSetbacks"
-                  >
-                    <span *ngIf="sb.front != null">Front {{ sb.front }} m</span>
-                    <span *ngIf="sb.side1 != null"
-                      >&nbsp;· Side 1 {{ sb.side1 }} m</span
-                    >
-                    <span *ngIf="sb.side2 != null"
-                      >&nbsp;· Side 2 {{ sb.side2 }} m</span
-                    >
-                    <span *ngIf="sb.rear != null"
-                      >&nbsp;· Rear {{ sb.rear }} m</span
-                    >
-                  </ng-container>
-                  <ng-template #noSetbacks>Not specified</ng-template>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div class="result-layout result-layout--tight">
-          <section class="card">
-            <h2>Likely development classification</h2>
-            <p>
-              <strong>Type (guidance only):</strong>
-              {{ result.classification?.devType || "Unknown" }}
-            </p>
-            <p>
-              <strong>Assessment level (guidance only):</strong>
-              {{ result.classification?.assessmentLevel || "Unknown" }}
-            </p>
-            <p class="muted" style="margin-top: 0.4rem">
-              {{ result.classification?.reasoning }}
-            </p>
-          </section>
-
-          <section class="card" *ngIf="nextSteps.length">
-            <h2>Suggested next steps</h2>
-            <ol class="nextsteps-list">
-              <li *ngFor="let step of nextSteps">{{ step }}</li>
-            </ol>
-          </section>
-        </div>
-
-        <section
-          class="card"
-          *ngIf="(result.planningData.overlays || []).length"
-          style="margin-top: 1rem"
-        >
-          <h2>Overlays &amp; triggers (preliminary)</h2>
-          <p class="muted" style="margin-bottom: 0.5rem">
-            Preliminary overlay review based on Council mapping. This section
-            highlights mapped overlays which may introduce additional assessment
-            benchmarks and/or code triggers.
-          </p>
-
-          <div class="overlay-table-wrapper">
-            <table class="overlay-table">
-              <thead>
-                <tr>
-                  <th>Overlay</th>
-                  <th>Code</th>
-                  <th>Impact</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let o of result.planningData.overlays || []">
-                  <td>
-                    <div class="overlay-name">{{ o.name }}</div>
-                  </td>
-                  <td>
-                    <span
-                      *ngIf="o.code; else noCode"
-                      class="chip chip--overlay"
-                    >
-                      {{ o.code }}
-                    </span>
-                    <ng-template #noCode
-                      ><span class="muted">–</span></ng-template
-                    >
-                  </td>
-                  <td>
-                    <div class="overlay-impact">
-                      <span *ngIf="o.severity" class="overlay-severity">
-                        {{ o.severity }}
-                      </span>
-                      <span *ngIf="o.description" class="overlay-description">
-                        {{ o.description }}
-                      </span>
-                      <span *ngIf="!o.severity && !o.description" class="muted">
-                        May introduce additional benchmarks and/or code triggers
-                        – confirm with a full City Plan and state mapping
-                        search.
-                      </span>
+                <div class="map-legend">
+                  <div class="legend-title">Map legend</div>
+                  <div class="legend-items">
+                    <div class="legend-item">
+                      <span class="legend-swatch legend-swatch--parcel"></span>
+                      <span class="legend-label">Property boundary</span>
                     </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                    <div class="legend-item">
+                      <span class="legend-swatch legend-swatch--zoning"></span>
+                      <span class="legend-label">Zoning for subject site</span>
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-swatch legend-swatch--flood"></span>
+                      <span class="legend-label"
+                        >Flood / overland flow overlays</span
+                      >
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-swatch legend-swatch--noise"></span>
+                      <span class="legend-label">Transport noise overlays</span>
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-swatch legend-swatch--other"></span>
+                      <span class="legend-label">Other mapped overlays</span>
+                    </div>
+                  </div>
+                </div>
+
+                <p class="muted map-caption">
+                  Boundaries and overlays are indicative only. Confirm with
+                  Council mapping, survey plan and title searches before relying
+                  on this information.
+                </p>
+              </ng-container>
+
+              <ng-template #noMap>
+                <p class="muted">
+                  Map preview is unavailable for this pre-assessment. This
+                  usually means no geocode (lat/lng) was returned for the
+                  address.
+                </p>
+              </ng-template>
+            </section>
+
+            <!-- “After the map” content stays in LEFT column -->
+            <section class="card" *ngIf="result.summary?.sections?.length">
+              <h2>Assessment summary (draft)</h2>
+              <p class="muted" style="margin-bottom: 0.5rem">
+                Auto-generated summary based on zoning, overlays and proposal.
+                Use as a starting point – it does not replace a full town
+                planning assessment.
+              </p>
+
+              <div class="summary-sections">
+                <details
+                  *ngFor="let sec of result.summary.sections"
+                  class="summary-section"
+                  open
+                >
+                  <summary>{{ sec.title }}</summary>
+                  <p>{{ sec.body }}</p>
+                </details>
+              </div>
+            </section>
           </div>
-        </section>
 
-        <section
-          class="card"
-          *ngIf="result.summary?.sections?.length"
-          style="margin-top: 1rem"
-        >
-          <h2>Assessment summary (draft)</h2>
-          <p class="muted" style="margin-bottom: 0.5rem">
-            Auto-generated summary based on zoning, overlays and proposal. Use
-            as a starting point – it does not replace a full town planning
-            assessment.
-          </p>
+          <!-- RIGHT COLUMN -->
+          <div class="results-col results-col--right">
+            <section class="card">
+              <h2>Planning snapshot</h2>
 
-          <div class="summary-sections">
-            <details
-              *ngFor="let sec of result.summary.sections"
-              class="summary-section"
-              open
+              <p>
+                <strong>Zoning:</strong>
+                {{ result.planningData.zoning || "Unknown zoning" }}
+                <span
+                  *ngIf="result.planningData.zoningCode"
+                  class="chip"
+                  style="margin-left: 0.25rem"
+                >
+                  {{ result.planningData.zoningCode }}
+                </span>
+              </p>
+
+              <p>
+                <strong>Neighbourhood plan:</strong>
+                {{
+                  result.planningData.neighbourhoodPlan ||
+                    "No neighbourhood plan mapped"
+                }}
+              </p>
+
+              <ng-container *ngIf="(result.planningData.overlays || []).length">
+                <p><strong>Overlays:</strong></p>
+                <div class="overlay-chips">
+                  <span
+                    class="chip chip--overlay"
+                    *ngFor="let o of result.planningData.overlays || []"
+                  >
+                    {{ o.name }}
+                    <ng-container *ngIf="o.severity"
+                      >({{ o.severity }})</ng-container
+                    >
+                  </span>
+                </div>
+              </ng-container>
+
+              <hr class="divider" />
+
+              <h3 class="card-subtitle">Proposal snapshot</h3>
+              <div class="proposal-grid">
+                <div>
+                  <div class="snapshot-label">Purpose</div>
+                  <div class="snapshot-value">
+                    {{ result.proposal.purpose || "Not specified" }}
+                  </div>
+                </div>
+
+                <div>
+                  <div class="snapshot-label">Dimensions (approx.)</div>
+                  <div class="snapshot-value">
+                    <ng-container
+                      *ngIf="
+                        result.proposal?.lengthM && result.proposal?.widthM;
+                        else noDims
+                      "
+                    >
+                      {{ result.proposal.lengthM }} m ×
+                      {{ result.proposal.widthM }} m
+                    </ng-container>
+                    <ng-template #noDims>Not specified</ng-template>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="snapshot-label">Heights (approx.)</div>
+                  <div class="snapshot-value">
+                    <ng-container
+                      *ngIf="
+                        result.proposal?.heightRidgeM ||
+                          result.proposal?.heightWallM;
+                        else noHeights
+                      "
+                    >
+                      <span *ngIf="result.proposal?.heightRidgeM"
+                        >Ridge {{ result.proposal.heightRidgeM }} m</span
+                      >
+                      <span *ngIf="result.proposal?.heightWallM"
+                        >&nbsp;· Wall {{ result.proposal.heightWallM }} m</span
+                      >
+                    </ng-container>
+                    <ng-template #noHeights>Not specified</ng-template>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="snapshot-label">Setbacks (approx.)</div>
+                  <div class="snapshot-value">
+                    <ng-container
+                      *ngIf="result.proposal?.setbacks as sb; else noSetbacks"
+                    >
+                      <span *ngIf="sb.front != null"
+                        >Front {{ sb.front }} m</span
+                      >
+                      <span *ngIf="sb.side1 != null"
+                        >&nbsp;· Side 1 {{ sb.side1 }} m</span
+                      >
+                      <span *ngIf="sb.side2 != null"
+                        >&nbsp;· Side 2 {{ sb.side2 }} m</span
+                      >
+                      <span *ngIf="sb.rear != null"
+                        >&nbsp;· Rear {{ sb.rear }} m</span
+                      >
+                    </ng-container>
+                    <ng-template #noSetbacks>Not specified</ng-template>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card">
+              <h2>Likely development classification</h2>
+              <p>
+                <strong>Type (guidance only):</strong>
+                {{ result.classification?.devType || "Unknown" }}
+              </p>
+              <p>
+                <strong>Assessment level (guidance only):</strong>
+                {{ result.classification?.assessmentLevel || "Unknown" }}
+              </p>
+              <p class="muted" style="margin-top: 0.4rem">
+                {{ result.classification?.reasoning }}
+              </p>
+            </section>
+
+            <section
+              class="card"
+              *ngIf="(result.planningData.overlays || []).length"
             >
-              <summary>{{ sec.title }}</summary>
-              <p>{{ sec.body }}</p>
-            </details>
-          </div>
-        </section>
+              <h2>Overlays &amp; triggers (preliminary)</h2>
+              <p class="muted" style="margin-bottom: 0.5rem">
+                Preliminary overlay review based on Council mapping. This
+                section highlights mapped overlays which may introduce
+                additional assessment benchmarks and/or code triggers.
+              </p>
 
-        <div
-          class="card card--pdf"
-          *ngIf="result.pdfUrl"
-          style="margin-top: 1rem"
-        >
-          <button class="btn btn-success" (click)="downloadPdf(result)">
-            Download pre-assessment PDF
-          </button>
-          <p class="muted" style="margin-top: 0.4rem">
-            Share this document with your town planner, architect or building
-            certifier to streamline the next stage.
-          </p>
+              <div class="overlay-table-wrapper">
+                <table class="overlay-table">
+                  <thead>
+                    <tr>
+                      <th>Overlay</th>
+                      <th>Code</th>
+                      <th>Impact</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let o of result.planningData.overlays || []">
+                      <td>
+                        <div class="overlay-name">{{ o.name }}</div>
+                      </td>
+                      <td>
+                        <span
+                          *ngIf="o.code; else noCode"
+                          class="chip chip--overlay"
+                          >{{ o.code }}</span
+                        >
+                        <ng-template #noCode
+                          ><span class="muted">–</span></ng-template
+                        >
+                      </td>
+                      <td>
+                        <div class="overlay-impact">
+                          <span *ngIf="o.severity" class="overlay-severity">{{
+                            o.severity
+                          }}</span>
+                          <span
+                            *ngIf="o.description"
+                            class="overlay-description"
+                            >{{ o.description }}</span
+                          >
+                          <span
+                            *ngIf="!o.severity && !o.description"
+                            class="muted"
+                          >
+                            May introduce additional benchmarks and/or code
+                            triggers – confirm with a full City Plan and state
+                            mapping search.
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="card" *ngIf="nextSteps.length">
+              <h2>Suggested next steps</h2>
+              <ol class="nextsteps-list">
+                <li *ngFor="let step of nextSteps">{{ step }}</li>
+              </ol>
+            </section>
+
+            <!-- PDF button stays on RIGHT -->
+            <div class="card card--pdf" *ngIf="result.pdfUrl">
+              <button class="btn btn-success" (click)="downloadPdf(result)">
+                Download pre-assessment PDF
+              </button>
+              <p class="muted" style="margin-top: 0.4rem">
+                Share this document with your town planner, architect or
+                building certifier to streamline the next stage.
+              </p>
+            </div>
+          </div>
         </div>
       </ng-container>
     </div>
