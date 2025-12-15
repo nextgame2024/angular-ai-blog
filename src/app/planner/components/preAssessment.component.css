@@ -20,6 +20,14 @@
   margin: 0 auto;
 }
 
+/* Normalize fieldset defaults (prevents random spacing on some browsers) */
+.planner-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-inline-size: 0;
+}
+
 /* HEADER + TABS */
 
 .planner-header {
@@ -115,12 +123,42 @@
   cursor: default;
 }
 
-/* FORM GRID */
+/* -------------------------------------------------------------------------- */
+/* Inputs layout (MOBILE-FIRST)                                                */
+/* -------------------------------------------------------------------------- */
 
-.form-grid {
+/* Mobile first: single column */
+.top-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+/* Tablet-ish: two columns */
+@media (min-width: 720px) {
+  .top-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.1rem;
+  }
+}
+
+/* Desktop: three columns (keep your original proportions) */
+@media (min-width: 1100px) {
+  .top-grid {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+/* Panels align + equal height within the grid row */
+.panel {
+  background: #020617;
+  border: 1px solid #111827;
+  border-radius: 12px;
+  padding: 0.9rem 0.95rem;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 .form-section-title {
@@ -137,14 +175,20 @@
   margin-bottom: 0.7rem;
 }
 
-.field label {
+/* ensure label is always above input (even outside .field in future edits) */
+.panel label {
+  display: block;
   font-size: 0.8rem;
   color: #9ca3af;
   margin-bottom: 0.2rem;
 }
 
 .field input,
-.field textarea {
+.field textarea,
+.panel input,
+.panel textarea {
+  width: 100%;
+  box-sizing: border-box;
   border-radius: 8px;
   border: 1px solid #1f2937;
   background: #020617;
@@ -155,36 +199,37 @@
 }
 
 .field input:focus,
-.field textarea:focus {
+.field textarea:focus,
+.panel input:focus,
+.panel textarea:focus {
   border-color: #3b82f6;
 }
 
+/* Two-up numeric rows (Length/Width, Heights, Setbacks) */
 .field-small-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+/* reduce double-spacing when a grid contains fields */
+.field--tight {
+  margin-bottom: 0;
 }
 
 /* ADVANCED PANEL */
 
 .advanced-panel {
-  margin-top: 1.1rem;
-  border-radius: 12px;
-  border: 1px dashed #374151;
-  background: #020617;
-  padding: 0.75rem 0.85rem;
+  margin-top: 0;
+  border-style: dashed;
 }
 
-.advanced-header {
-  width: 100%;
+.advanced-header-static {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: transparent;
-  border: none;
-  padding: 0;
-  color: #e5e7eb;
-  cursor: pointer;
+  margin-bottom: 0.6rem;
 }
 
 .advanced-title {
@@ -201,17 +246,8 @@
   margin-left: 0.5rem;
 }
 
-.advanced-chevron {
-  font-size: 0.8rem;
-  transition: transform 0.15s ease;
-}
-
-.advanced-chevron--open {
-  transform: rotate(180deg);
-}
-
-.advanced-body {
-  margin-top: 0.7rem;
+.advanced-body-static {
+  margin-top: 0;
 }
 
 /* BUTTONS */
@@ -244,8 +280,9 @@
   width: 100%;
 }
 
+/* Remove any default form submit spacing that used to house the bottom button */
 .actions-row {
-  margin-top: 1.1rem;
+  display: none;
 }
 
 /* ERRORS */
@@ -515,16 +552,16 @@
 }
 
 @media (max-width: 900px) {
-  .form-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .summary-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 640px) {
+  .planner-page {
+    padding: 0;
+  }
+
   .planner-card {
     padding: 1.25rem 0.9rem 1.75rem;
     border-radius: 0;
@@ -540,8 +577,6 @@
     display: none;
   }
 }
-
-
 
 /* -------------------------------------------------------------------------- */
 /* New layout (single page + header actions + full-page loading overlay)       */
@@ -584,46 +619,6 @@
 
 .header-generate {
   white-space: nowrap;
-}
-
-/* Inputs grid */
-.top-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.15fr) minmax(0, 1fr);
-  gap: 1.25rem;
-}
-
-@media (max-width: 1100px) {
-  .top-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.panel {
-  background: #020617;
-  border: 1px solid #111827;
-  border-radius: 12px;
-  padding: 0.9rem 0.95rem;
-}
-
-.advanced-panel {
-  border-style: dashed;
-}
-
-.advanced-header-static {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.6rem;
-}
-
-.advanced-body-static .advanced-grid {
-  margin-top: 0.6rem;
-}
-
-/* Remove any default form submit spacing that used to house the bottom button */
-.actions-row {
-  display: none;
 }
 
 /* Full-page loading overlay */
