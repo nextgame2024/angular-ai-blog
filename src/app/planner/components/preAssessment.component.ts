@@ -14,6 +14,9 @@ import {
   PreAssessmentResult,
 } from '../types/preAssessmentState.interface';
 import * as PlannerActions from '../store/actions';
+import { GoogleMapsLoaderService } from '../../shared/services/google-maps-loader.service';
+import { ChangeDetectorRef, OnDestroy, OnInit } from '@angular/core';
+import { Subject, takeUntil } from 'rxjs';
 
 interface OverlayPolygonPath {
   code: string;
@@ -37,7 +40,9 @@ type LngLatTuple = [number, number];
   styleUrls: ['./preAssessment.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PreAssessmentComponent {
+export class PreAssessmentComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
   // ---- FORM STATE ---------------------------------------------------------
 
   site: SiteDetails = {
@@ -74,7 +79,6 @@ export class PreAssessmentComponent {
   result$: Observable<PreAssessmentResult | null>;
 
   // ---- UI STATE -----------------------------------------------------------
-  // Single-page: inputs and results are rendered together (results appear once available).
 
   mapCenter: google.maps.LatLngLiteral | null = null;
   mapOptions: google.maps.MapOptions = {
@@ -107,29 +111,58 @@ export class PreAssessmentComponent {
 
   nextSteps: string[] = [];
 
-  // Guard to ensure google.maps exists before rendering <google-map>
+  /**
+   * Guard for template: only render <google-map> when the API is actually loaded.
+   * (Your HTML should already be using this getter in an *ngIf.)
+   */
   get googleMapsAvailable(): boolean {
     if (typeof window === 'undefined') return false;
     const w = window as any;
     return !!(w.google && w.google.maps);
   }
 
-  constructor(private store: Store<{ planner: PlannerState }>) {
+  constructor(
+    private store: Store<{ planner: PlannerState }>,
+    private mapsLoader: GoogleMapsLoaderService,
+    private cdr: ChangeDetectorRef
+  ) {
     this.loading$ = this.store.select((s) => s.planner.loading);
     this.error$ = this.store.select((s) => s.planner.error);
     this.result$ = this.store.select((s) => s.planner.result);
+  }
 
-    this.result$.subscribe((result) => {
+  async ngOnInit(): Promise<void> {
+    // Load Google Maps JS API dynamically (instead of hardcoding in index.html)
+    try {
+      await this.mapsLoader.load();
+      // OnPush: ensure template re-checks and <google-map> can render
+      this.cdr.markForCheck();
+    } catch (err) {
+      // Map is optional; UI should gracefully fall back to "map unavailable"
+      console.error('[planner] Failed to load Google Maps:', err);
+      this.cdr.markForCheck();
+    }
+
+    // React to result changes (configure map layers, next steps)
+    this.result$.pipe(takeUntil(this.destroy$)).subscribe((result) => {
       if (result) {
         this.configureMap(result);
         this.buildNextSteps(result.classification);
       } else {
         this.clearMapLayers();
       }
+      // Ensure updates are reflected (safe with OnPush)
+      this.cdr.markForCheck();
     });
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   // ---- UI HANDLERS --------------------------------------------------------
+
   generateSummary(): void {
     if (!this.site.address?.trim()) return;
 
@@ -249,11 +282,6 @@ export class PreAssessmentComponent {
     return null;
   }
 
-  /**
-   * Convert a GeoJSON Polygon or MultiPolygon into a single outer ring path.
-   * For MultiPolygon we choose the polygon that contains the focus point and prefer the smallest.
-   * If the focus point is outside (common when geocode lands on road), choose the nearest centroid.
-   */
   private toSinglePolygonPath(
     geometry: any,
     focusPoint?: google.maps.LatLngLiteral
@@ -292,7 +320,6 @@ export class PreAssessmentComponent {
         if (bestRing) {
           ring = bestRing;
         } else {
-          // Focus point is outside all polygons: pick nearest centroid (then smaller area as tiebreak).
           let nearest: LngLatTuple[] | null = null;
           let nearestDist = Number.POSITIVE_INFINITY;
           let nearestArea = Number.POSITIVE_INFINITY;
@@ -326,10 +353,6 @@ export class PreAssessmentComponent {
     return ring.map(([lng, lat]) => ({ lat, lng }));
   }
 
-  /**
-   * Convert a GeoJSON LineString or MultiLineString into a single path.
-   * For MultiLineString we keep the longest line (by number of vertices).
-   */
   private toSingleLinePath(geometry: any): google.maps.LatLngLiteral[] {
     if (!geometry || !geometry.type || !geometry.coordinates) return [];
 
@@ -350,7 +373,6 @@ export class PreAssessmentComponent {
     return line.map(([lng, lat]) => ({ lat, lng }));
   }
 
-  /** Simple centroid of outer ring in lat/lng space (good enough for centering map) */
   private computeCentroid(geometry: any): google.maps.LatLngLiteral | null {
     const path = this.toSinglePolygonPath(geometry);
     if (!path.length) return null;
@@ -368,7 +390,6 @@ export class PreAssessmentComponent {
 
   // ---- GEOMETRY HELPERS ---------------------------------------------------
 
-  /** Ray-casting point-in-polygon test on a ring of [lng, lat] tuples. */
   private isPointInRing(
     point: google.maps.LatLngLiteral,
     ring: LngLatTuple[]
@@ -391,7 +412,6 @@ export class PreAssessmentComponent {
     return inside;
   }
 
-  /** Approximate polygon area using the shoelace formula (in degrees, for comparison only). */
   private ringArea(ring: LngLatTuple[]): number {
     let sum = 0;
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
