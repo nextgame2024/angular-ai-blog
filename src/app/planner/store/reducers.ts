@@ -38,6 +38,7 @@ export const plannerReducer = createReducer(
       ...state,
       loading: false,
       error,
+      result: null,
     })
   )
 );

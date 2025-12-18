@@ -164,11 +164,13 @@ export class PreAssessmentComponent implements OnInit, OnDestroy {
 
   generateSummary(): void {
     if (!this.site.address?.trim()) return;
+    const siteSnapshot = structuredClone(this.site);
+    const proposalSnapshot = structuredClone(this.proposal);
 
     this.store.dispatch(
       PlannerActions.createPreAssessmentAction({
-        site: this.site,
-        proposal: this.proposal,
+        site: siteSnapshot,
+        proposal: proposalSnapshot,
       })
     );
   }
