@@ -1,11 +1,17 @@
 // src/app/planner/components/preAssessment.component.ts
 
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  OnDestroy,
+  OnInit,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { GoogleMapsModule } from '@angular/google-maps';
 import { Store } from '@ngrx/store';
-import { Observable } from 'rxjs';
+import { Observable, Subject, takeUntil } from 'rxjs';
 
 import {
   PlannerState,
@@ -15,8 +21,6 @@ import {
 } from '../types/preAssessmentState.interface';
 import * as PlannerActions from '../store/actions';
 import { GoogleMapsLoaderService } from '../../shared/services/google-maps-loader.service';
-import { ChangeDetectorRef, OnDestroy, OnInit } from '@angular/core';
-import { Subject, takeUntil } from 'rxjs';
 
 interface OverlayPolygonPath {
   code: string;
@@ -42,6 +46,9 @@ type LngLatTuple = [number, number];
 })
 export class PreAssessmentComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+
+  /** Use this in template: *ngIf="mapsReady" around <google-map> */
+  mapsReady = false;
 
   // ---- FORM STATE ---------------------------------------------------------
 
@@ -111,16 +118,6 @@ export class PreAssessmentComponent implements OnInit, OnDestroy {
 
   nextSteps: string[] = [];
 
-  /**
-   * Guard for template: only render <google-map> when the API is actually loaded.
-   * (Your HTML should already be using this getter in an *ngIf.)
-   */
-  get googleMapsAvailable(): boolean {
-    if (typeof window === 'undefined') return false;
-    const w = window as any;
-    return !!(w.google && w.google.maps);
-  }
-
   constructor(
     private store: Store<{ planner: PlannerState }>,
     private mapsLoader: GoogleMapsLoaderService,
@@ -132,28 +129,30 @@ export class PreAssessmentComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
-    // Load Google Maps JS API dynamically (instead of hardcoding in index.html)
+    // Load Google Maps JS API dynamically (runtime-config.json + injected env var on Amplify)
     try {
       await this.mapsLoader.load();
-      // OnPush: ensure template re-checks and <google-map> can render
-      this.cdr.markForCheck();
+      this.mapsReady = true;
     } catch (err) {
-      // Map is optional; UI should gracefully fall back to "map unavailable"
       console.error('[planner] Failed to load Google Maps:', err);
+      this.mapsReady = false;
+    } finally {
+      // OnPush: ensure template re-checks and <google-map> can render
       this.cdr.markForCheck();
     }
 
     // React to result changes (configure map layers, next steps)
-    this.result$.pipe(takeUntil(this.destroy$)).subscribe((result) => {
-      if (result) {
-        this.configureMap(result);
-        this.buildNextSteps(result.classification);
-      } else {
-        this.clearMapLayers();
-      }
-      // Ensure updates are reflected (safe with OnPush)
-      this.cdr.markForCheck();
-    });
+    this.result$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((result: PreAssessmentResult | null) => {
+        if (result) {
+          this.configureMap(result);
+          this.buildNextSteps(result.classification);
+        } else {
+          this.clearMapLayers();
+        }
+        this.cdr.markForCheck();
+      });
   }
 
   ngOnDestroy(): void {
