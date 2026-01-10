@@ -1,0 +1,251 @@
+/* src/app/townplanner/components/townplanner_v2.page.css */
+
+/* Theme tokens */
+:host {
+  --teal: #10e0c7;
+  --purple: #6e59ff;
+  --panel-w: 360px;
+  --handle: 44px;
+
+  display: block;
+  width: 100%;
+}
+
+/* The key fix: make the shell actually fill the viewport area under the top bar.
+   If your top bar height differs, adjust 72px to match. */
+.tp2-shell {
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 72px);
+  overflow: hidden;
+  background: #fff;
+}
+
+/* Force google-map to truly fill the shell */
+.tp2-map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Centered search overlay */
+.tp2-search {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  width: min(720px, calc(100vw - 24px));
+}
+
+.tp2-searchbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--teal);
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.tp2-search-icon {
+  color: var(--purple);
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tp2-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #0b0b0b;
+  font-size: 0.95rem;
+}
+
+.tp2-search-input::placeholder {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.tp2-search-btn {
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: #0b0b0b;
+  font-weight: 600;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+
+/* Desktop panel (right) */
+.tp2-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: var(--panel-w);
+  transform: translateX(0);
+  transition: transform 220ms ease;
+  z-index: 6;
+}
+
+/* When collapsed: slide out but keep handle visible */
+.tp2-panel.is-collapsed {
+  transform: translateX(calc(100% - var(--handle)));
+}
+
+/* Handle always visible */
+.tp2-panel-handle {
+  position: absolute;
+  left: 0;
+  top: 88px;
+  width: var(--handle);
+  height: var(--handle);
+  border: none;
+  cursor: pointer;
+  background: var(--purple);
+  color: var(--teal);
+  border-radius: 10px 0 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+}
+
+.tp2-rotated {
+  transform: rotate(180deg);
+  transition: transform 220ms ease;
+}
+
+.tp2-panel-inner {
+  margin-left: var(--handle);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--teal);
+}
+
+.tp2-panel-header {
+  background: var(--purple);
+  padding: 14px 14px;
+}
+
+.tp2-panel-title {
+  color: var(--teal);
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.tp2-panel-body {
+  padding: 18px 14px;
+  color: #0b0b0b;
+  overflow: auto;
+}
+
+.tp2-empty {
+  text-align: center;
+  margin-top: 30px;
+  font-size: 0.95rem;
+}
+
+.tp2-social {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.tp2-social-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: transparent;
+  border: 2px solid var(--purple);
+  color: var(--purple);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.tp2-footer {
+  text-align: center;
+  margin-top: 18px;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.tp2-errors {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.55);
+  color: #8b0000;
+}
+
+/* Selected state (basic, phase 1) */
+.tp2-selected-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.tp2-selected-meta {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}
+
+.tp2-photo {
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tp2-photo img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Mobile behavior: panel becomes a bottom sheet */
+@media (max-width: 900px) {
+  .tp2-shell {
+    height: calc(100vh - 72px);
+  }
+
+  .tp2-panel {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: min(46vh, 420px);
+    transform: translateY(0);
+    transition: transform 220ms ease;
+  }
+
+  .tp2-panel.is-collapsed {
+    transform: translateY(calc(100% - var(--handle)));
+  }
+
+  .tp2-panel-handle {
+    left: auto;
+    right: 0;
+    top: 0;
+    border-radius: 0 0 0 10px;
+  }
+
+  .tp2-panel-inner {
+    margin-left: 0;
+    padding-top: var(--handle);
+  }
+
+  .tp2-panel-header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+}

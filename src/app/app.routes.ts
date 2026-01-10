@@ -82,4 +82,11 @@ export const appRoutes: Route[] = [
     loadChildren: () =>
       import('src/app/planner/planner.routes').then((m) => m.routes),
   },
+  {
+    path: 'townplanner',
+    loadChildren: () =>
+      import('src/app/townplanner/townplanner.routes').then(
+        (m) => m.TOWNPLANNER_ROUTES
+      ),
+  },
 ];

@@ -1,0 +1,98 @@
+<!-- src/app/townplanner/components/townplanner_v2.page.html -->
+
+<div class="tp2-shell">
+  <!-- Fullscreen map -->
+  <google-map
+    class="tp2-map"
+    [height]="mapHeight"
+    [width]="mapWidth"
+    [center]="mapCenter"
+    [zoom]="mapZoom"
+    [options]="mapOptions"
+  >
+    <map-polygon
+      *ngIf="polygonPaths.length"
+      [paths]="polygonPaths"
+      [options]="polygonOptions"
+    ></map-polygon>
+  </google-map>
+
+  <!-- Centered search -->
+  <div class="tp2-search">
+    <div class="tp2-searchbox">
+      <span class="tp2-search-icon" aria-hidden="true">
+        <i class="pi pi-search"></i>
+      </span>
+
+      <input
+        class="tp2-search-input"
+        type="text"
+        placeholder="Enter property address"
+        [(ngModel)]="addressQuery"
+        (keydown.enter)="onSearch()"
+        aria-label="Enter property address"
+      />
+
+      <button class="tp2-search-btn" type="button" (click)="onSearch()">
+        Search
+      </button>
+    </div>
+  </div>
+
+  <!-- Panel (desktop right / mobile bottom) -->
+  <aside class="tp2-panel" [class.is-collapsed]="panelCollapsed">
+    <!-- Handle always visible -->
+    <button
+      class="tp2-panel-handle"
+      type="button"
+      (click)="togglePanel()"
+      aria-label="Toggle Property Report panel"
+    >
+      <i class="pi pi-angle-left" [class.tp2-rotated]="panelCollapsed"></i>
+    </button>
+
+    <div class="tp2-panel-inner">
+      <div class="tp2-panel-header">
+        <div class="tp2-panel-title">Property Report</div>
+      </div>
+
+      <div class="tp2-panel-body">
+        <ng-container *ngIf="(selected$ | async) as selected; else emptyState">
+          <div class="tp2-selected">
+            <div class="tp2-selected-title">
+              {{ selected.address || 'Selected property' }}
+            </div>
+
+            <div class="tp2-selected-meta">
+              This is phase 1 UI. Next phase will add "Create report" workflow.
+            </div>
+
+            <div *ngIf="selected.photoUrl" class="tp2-photo">
+              <img [src]="selected.photoUrl" alt="Property photo" />
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-template #emptyState>
+          <div class="tp2-empty">Please enter an address in the search bar</div>
+
+          <div class="tp2-social">
+            <a class="tp2-social-btn" href="#" aria-label="Facebook">
+              <i class="pi pi-facebook"></i>
+            </a>
+            <a class="tp2-social-btn" href="#" aria-label="Instagram">
+              <i class="pi pi-instagram"></i>
+            </a>
+            <a class="tp2-social-btn" href="#" aria-label="LinkedIn">
+              <i class="pi pi-linkedin"></i>
+            </a>
+          </div>
+
+          <div class="tp2-footer">© PropertEASE 2026. All rights reserved</div>
+        </ng-template>
+
+        <div class="tp2-errors" *ngIf="(error$ | async) as err">{{ err }}</div>
+      </div>
+    </div>
+  </aside>
+</div>
