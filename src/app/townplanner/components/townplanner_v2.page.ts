@@ -1,151 +1,187 @@
 // src/app/townplanner/components/townplanner_v2.page.ts
-
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { GoogleMapsModule } from '@angular/google-maps';
 import { Store } from '@ngrx/store';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject } from 'rxjs';
+import {
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  startWith,
+  takeUntil,
+} from 'rxjs/operators';
 
 import { TownPlannerV2Actions } from '../store/townplanner_v2.actions';
 import {
-  selectTownPlannerV2AddressQuery,
-  selectTownPlannerV2Error,
-  selectTownPlannerV2Loading,
-  selectTownPlannerV2Result,
+  selectAddressQuery,
+  selectError,
+  selectSelected,
+  selectStatus,
 } from '../store/townplanner_v2.selectors';
-import { TownPlannerV2PropertyResult } from '../store/townplanner_v2.state';
+import { GoogleMapsLoaderService } from '../services/google-maps-loader.service';
 
 @Component({
   selector: 'app-townplanner-v2-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, GoogleMapsModule],
+  imports: [CommonModule, ReactiveFormsModule, GoogleMapsModule],
   templateUrl: './townplanner_v2.page.html',
   styleUrls: ['./townplanner_v2.page.css'],
 })
 export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
-  // UI state
+  mapsLoaded = false;
+  mapsError: string | null = null;
+
+  isMobile = false;
   panelCollapsed = false;
 
-  // Form state (Angular 15 friendly)
-  addressQuery = '';
+  addressCtrl = new FormControl<string>('', { nonNullable: true });
 
-  // Store state
-  readonly loading$ = this.store.select(selectTownPlannerV2Loading);
-  readonly error$ = this.store.select(selectTownPlannerV2Error);
-  readonly selected$ = this.store.select(selectTownPlannerV2Result);
-  readonly addressQuery$ = this.store.select(selectTownPlannerV2AddressQuery);
+  status$ = this.store.select(selectStatus);
+  loading$ = this.status$.pipe(map((s) => s === 'loading'));
+  error$ = this.store.select(selectError);
+  selected$ = this.store.select(selectSelected);
 
-  // Map config
-  mapWidth = '100%';
-  mapHeight = '100%';
-
-  mapCenter: google.maps.LatLngLiteral = { lat: -27.4705, lng: 153.026 }; // Brisbane
+  // Map bindings
+  mapCenter: google.maps.LatLngLiteral = { lat: -27.4698, lng: 153.0251 }; // Brisbane
   mapZoom = 11;
 
   mapOptions: google.maps.MapOptions = {
-    streetViewControl: false,
-    fullscreenControl: false,
-    mapTypeControl: false,
     clickableIcons: false,
+    disableDefaultUI: false,
+    fullscreenControl: false,
+    streetViewControl: false,
+    mapTypeControl: false,
   };
 
+  markerPosition: google.maps.LatLngLiteral | null = null;
   polygonPaths: google.maps.LatLngLiteral[] = [];
 
-  polygonOptions: google.maps.PolygonOptions = {
-    strokeOpacity: 1,
-    strokeWeight: 2,
-    fillOpacity: 0.2,
-    clickable: false,
-  };
-
-  constructor(private store: Store) {}
+  constructor(
+    private store: Store,
+    private mapsLoader: GoogleMapsLoaderService
+  ) {}
 
   ngOnInit(): void {
-    // keep local field in sync
-    this.addressQuery$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((q) => (this.addressQuery = (q || '').toString()));
+    this.updateIsMobile();
 
-    // update map when a property is selected
-    this.selected$
+    // Load Google Maps JS
+    this.mapsLoader
+      .load()
+      .then(() => (this.mapsLoaded = true))
+      .catch((e) => {
+        this.mapsLoaded = false;
+        this.mapsError = e?.message || 'Google Maps failed to load';
+      });
+
+    // Keep input synced with store query
+    this.store
+      .select(selectAddressQuery)
       .pipe(takeUntil(this.destroy$))
-      .subscribe((selected) => this.applySelectionToMap(selected));
+      .subscribe((q) =>
+        this.addressCtrl.setValue(q || '', { emitEvent: false })
+      );
+
+    // Dispatch query changes
+    this.addressCtrl.valueChanges
+      .pipe(
+        startWith(this.addressCtrl.value),
+        debounceTime(200),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((q) => {
+        this.store.dispatch(
+          TownPlannerV2Actions.setAddressQuery({ query: (q || '').toString() })
+        );
+      });
+
+    // Update map when a result is selected
+    this.selected$.pipe(takeUntil(this.destroy$)).subscribe((selected) => {
+      if (!selected) {
+        this.markerPosition = null;
+        this.polygonPaths = [];
+        return;
+      }
+
+      const lat = selected.lat ?? selected.centroid?.lat;
+      const lng = selected.lng ?? selected.centroid?.lng;
+
+      if (typeof lat === 'number' && typeof lng === 'number') {
+        this.markerPosition = { lat, lng };
+        this.mapCenter = { lat, lng };
+        this.mapZoom = 18;
+      }
+
+      this.polygonPaths = this.geoJsonToPaths(selected.geometry);
+    });
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+  @HostListener('window:resize')
+  onResize(): void {
+    this.updateIsMobile();
+  }
+
+  private updateIsMobile(): void {
+    this.isMobile = window.matchMedia('(max-width: 768px)').matches;
   }
 
   togglePanel(): void {
     this.panelCollapsed = !this.panelCollapsed;
   }
 
-  onSearch(): void {
-    const q = (this.addressQuery || '').trim();
-    if (!q) return;
+  panelArrow(): string {
+    // Desktop keeps < and >
+    if (!this.isMobile) return this.panelCollapsed ? '>' : '<';
 
-    this.store.dispatch(TownPlannerV2Actions.setAddressQuery({ query: q }));
-    this.store.dispatch(TownPlannerV2Actions.lookupProperty({ address: q }));
+    // Mobile requested: close (open -> hidden) uses "v", reopen uses "^"
+    return this.panelCollapsed ? '^' : 'v';
   }
 
-  private applySelectionToMap(
-    selected: TownPlannerV2PropertyResult | null
-  ): void {
-    this.polygonPaths = [];
+  onSearchClick(): void {
+    const address = (this.addressCtrl.value || '').trim();
+    if (!address) return;
 
-    if (!selected) return;
+    this.store.dispatch(TownPlannerV2Actions.lookupProperty({ address }));
 
-    const centroid =
-      selected.centroid ||
-      (typeof selected.lat === 'number' && typeof selected.lng === 'number'
-        ? { lat: selected.lat, lng: selected.lng }
-        : null);
-
-    if (centroid) {
-      this.mapCenter = { lat: centroid.lat, lng: centroid.lng };
-      this.mapZoom = 18;
-    }
-
-    // Try to map GeoJSON Polygon/MultiPolygon to google polygon paths
-    const geom = selected.geometry;
-    const paths = this.geoJsonToPolygonPaths(geom);
-    if (paths.length) {
-      this.polygonPaths = paths;
-    }
+    // Optional: on mobile, collapse the panel to show more map after search
+    // this.panelCollapsed = true;
   }
 
-  private geoJsonToPolygonPaths(geom: any): google.maps.LatLngLiteral[] {
-    if (!geom) return [];
+  clear(): void {
+    this.store.dispatch(TownPlannerV2Actions.clear());
+  }
 
-    // Accept:
-    // - { type: 'Polygon', coordinates: [ [ [lng,lat], ... ] ] }
-    // - { type: 'MultiPolygon', coordinates: [ [ [ [lng,lat], ... ] ] ] }
+  private geoJsonToPaths(geom: any): google.maps.LatLngLiteral[] {
     try {
-      if (geom.type === 'Polygon' && Array.isArray(geom.coordinates?.[0])) {
-        return (geom.coordinates[0] as number[][]).map(([lng, lat]) => ({
-          lat,
-          lng,
-        }));
-      }
+      if (!geom) return [];
 
-      if (
-        geom.type === 'MultiPolygon' &&
-        Array.isArray(geom.coordinates?.[0]?.[0])
-      ) {
-        // take first polygon outer ring for phase 1
-        return (geom.coordinates[0][0] as number[][]).map(([lng, lat]) => ({
-          lat,
-          lng,
-        }));
-      }
+      const type = String(geom.type || '').toLowerCase();
+      const coords = geom.coordinates;
+
+      const ring =
+        type === 'polygon'
+          ? coords?.[0]
+          : type === 'multipolygon'
+          ? coords?.[0]?.[0]
+          : null;
+
+      if (!Array.isArray(ring)) return [];
+
+      return ring
+        .filter((p: any) => Array.isArray(p) && p.length >= 2)
+        .map((p: any) => ({ lng: Number(p[0]), lat: Number(p[1]) }))
+        .filter((p: any) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
     } catch {
-      // ignore invalid geometry
+      return [];
     }
+  }
 
-    return [];
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }

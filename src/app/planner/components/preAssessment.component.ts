@@ -20,7 +20,7 @@ import {
   PreAssessmentResult,
 } from '../types/preAssessmentState.interface';
 import * as PlannerActions from '../store/actions';
-import { GoogleMapsLoaderService } from '../../shared/services/google-maps-loader.service';
+import { GoogleMapsLoaderService } from '../../townplanner/services/google-maps-loader.service';
 
 interface OverlayPolygonPath {
   code: string;

@@ -1,97 +1,98 @@
 <!-- src/app/townplanner/components/townplanner_v2.page.html -->
-
 <div class="tp2-shell">
-  <!-- Fullscreen map -->
-  <google-map
-    class="tp2-map"
-    [height]="mapHeight"
-    [width]="mapWidth"
-    [center]="mapCenter"
-    [zoom]="mapZoom"
-    [options]="mapOptions"
-  >
-    <map-polygon
-      *ngIf="polygonPaths.length"
-      [paths]="polygonPaths"
-      [options]="polygonOptions"
-    ></map-polygon>
-  </google-map>
+  <!-- Map -->
+  <div class="tp2-map">
+    <ng-container *ngIf="mapsLoaded; else mapFallback">
+      <google-map
+        class="tp2-google-map"
+        [center]="mapCenter"
+        [zoom]="mapZoom"
+        [options]="mapOptions"
+        width="100%"
+        height="100%"
+      >
+        <map-marker
+          *ngIf="markerPosition"
+          [position]="markerPosition"
+        ></map-marker>
 
-  <!-- Centered search -->
-  <div class="tp2-search">
-    <div class="tp2-searchbox">
-      <span class="tp2-search-icon" aria-hidden="true">
-        <i class="pi pi-search"></i>
-      </span>
+        <map-polygon
+          *ngIf="polygonPaths.length"
+          [paths]="polygonPaths"
+        ></map-polygon>
+      </google-map>
+    </ng-container>
 
-      <input
-        class="tp2-search-input"
-        type="text"
-        placeholder="Enter property address"
-        [(ngModel)]="addressQuery"
-        (keydown.enter)="onSearch()"
-        aria-label="Enter property address"
-      />
-
-      <button class="tp2-search-btn" type="button" (click)="onSearch()">
-        Search
-      </button>
-    </div>
+    <ng-template #mapFallback>
+      <div class="tp2-map-fallback">
+        <div *ngIf="mapsError; else mapLoading">
+          <div class="tp2-map-fallback-title">Map unavailable</div>
+          <div class="tp2-map-fallback-text">{{ mapsError }}</div>
+        </div>
+        <ng-template #mapLoading>Loading map…</ng-template>
+      </div>
+    </ng-template>
   </div>
 
-  <!-- Panel (desktop right / mobile bottom) -->
-  <aside class="tp2-panel" [class.is-collapsed]="panelCollapsed">
-    <!-- Handle always visible -->
+  <!-- Search Bar -->
+  <form class="tp2-search" (submit)="$event.preventDefault(); onSearchClick()">
+    <i class="pi pi-search tp2-search-icon" aria-hidden="true"></i>
+
+    <input
+      class="tp2-search-input"
+      type="text"
+      [formControl]="addressCtrl"
+      placeholder="Enter property address"
+      aria-label="Enter property address"
+    />
+
+    <button class="tp2-search-btn" type="submit">Search</button>
+  </form>
+
+  <!-- Right / Bottom Panel -->
+  <aside
+    class="tp2-panel"
+    [class.is-collapsed]="panelCollapsed"
+    [class.is-mobile]="isMobile"
+  >
     <button
-      class="tp2-panel-handle"
       type="button"
+      class="tp2-panel-toggle"
       (click)="togglePanel()"
-      aria-label="Toggle Property Report panel"
+      [attr.aria-label]="panelCollapsed ? 'Open panel' : 'Close panel'"
     >
-      <i class="pi pi-angle-left" [class.tp2-rotated]="panelCollapsed"></i>
+      {{ panelArrow() }}
     </button>
 
     <div class="tp2-panel-inner">
-      <div class="tp2-panel-header">
-        <div class="tp2-panel-title">Property Report</div>
-      </div>
+      <div class="tp2-panel-title">Property Report</div>
 
       <div class="tp2-panel-body">
         <ng-container *ngIf="(selected$ | async) as selected; else emptyState">
-          <div class="tp2-selected">
-            <div class="tp2-selected-title">
-              {{ selected.address || 'Selected property' }}
-            </div>
-
-            <div class="tp2-selected-meta">
-              This is phase 1 UI. Next phase will add "Create report" workflow.
-            </div>
-
-            <div *ngIf="selected.photoUrl" class="tp2-photo">
-              <img [src]="selected.photoUrl" alt="Property photo" />
-            </div>
+          <div class="tp2-panel-text">
+            {{ selected.address || 'Selected property' }}
           </div>
         </ng-container>
 
         <ng-template #emptyState>
-          <div class="tp2-empty">Please enter an address in the search bar</div>
+          <div class="tp2-panel-text">
+            Please enter an address in the search bar
+          </div>
 
           <div class="tp2-social">
-            <a class="tp2-social-btn" href="#" aria-label="Facebook">
+            <a class="tp2-social-link" href="#" aria-label="Facebook">
               <i class="pi pi-facebook"></i>
             </a>
-            <a class="tp2-social-btn" href="#" aria-label="Instagram">
+            <a class="tp2-social-link" href="#" aria-label="Instagram">
               <i class="pi pi-instagram"></i>
             </a>
-            <a class="tp2-social-btn" href="#" aria-label="LinkedIn">
+            <a class="tp2-social-link" href="#" aria-label="LinkedIn">
               <i class="pi pi-linkedin"></i>
             </a>
           </div>
 
           <div class="tp2-footer">© PropertEASE 2026. All rights reserved</div>
         </ng-template>
-
-        <div class="tp2-errors" *ngIf="(error$ | async) as err">{{ err }}</div>
       </div>
     </div>
   </aside>
