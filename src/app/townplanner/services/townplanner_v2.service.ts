@@ -1,19 +1,47 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { TownPlannerV2Result } from '../store/townplanner_v2.state';
+import { Observable, map } from 'rxjs';
+import { TownPlannerV2AddressSuggestion } from '../store/townplanner_v2.state';
+import { environment } from 'src/environments/environment';
+
+export interface PlaceDetailsResponse {
+  formattedAddress: string | null;
+  lat: number | null;
+  lng: number | null;
+}
 
 @Injectable({ providedIn: 'root' })
 export class TownPlannerV2Service {
-  // Prefer environment.apiUrl if you have it; keeping simple here.
-  private readonly baseUrl = '/api/townplanner/v2';
+  private readonly apiBase = environment.apiUrl.replace(/\/$/, '');
+  private readonly tpV2Base = `${this.apiBase}/townplanner/v2`;
 
   constructor(private http: HttpClient) {}
 
-  lookupProperty(address: string): Observable<TownPlannerV2Result> {
-    const params = new HttpParams().set('address', address);
-    return this.http.get<TownPlannerV2Result>(`${this.baseUrl}/property`, {
-      params,
-    });
+  suggestAddresses(
+    input: string,
+    sessionToken?: string | null
+  ): Observable<TownPlannerV2AddressSuggestion[]> {
+    let params = new HttpParams().set('input', input);
+    if (sessionToken) params = params.set('sessionToken', sessionToken);
+
+    return this.http
+      .get<{ suggestions: TownPlannerV2AddressSuggestion[] }>(
+        `${this.tpV2Base}/suggest`,
+        { params }
+      )
+      .pipe(map((r) => r.suggestions || []));
+  }
+
+  getPlaceDetails(
+    placeId: string,
+    sessionToken?: string | null
+  ): Observable<PlaceDetailsResponse> {
+    let params = new HttpParams().set('placeId', placeId);
+    if (sessionToken) params = params.set('sessionToken', sessionToken);
+
+    return this.http.get<PlaceDetailsResponse>(
+      `${this.tpV2Base}/place-details`,
+      { params }
+    );
   }
 }

@@ -38,13 +38,33 @@
   <form class="tp2-search" (submit)="$event.preventDefault(); onSearchClick()">
     <i class="pi pi-search tp2-search-icon" aria-hidden="true"></i>
 
-    <input
-      class="tp2-search-input"
-      type="text"
-      [formControl]="addressCtrl"
-      placeholder="Enter property address"
-      aria-label="Enter property address"
-    />
+    <div class="tp2-search-field">
+      <input
+        class="tp2-search-input"
+        type="text"
+        [formControl]="addressCtrl"
+        placeholder="Enter property address"
+        aria-label="Enter property address"
+        (focus)="onInputFocus()"
+        (blur)="onInputBlur()"
+        (keydown)="onInputKeydown($event)"
+      />
+
+      <div
+        class="tp2-suggest"
+        *ngIf="showSuggestions && (suggestions$ | async)?.length"
+      >
+        <button
+          type="button"
+          class="tp2-suggest-item"
+          *ngFor="let s of (suggestions$ | async); let i = index"
+          [class.is-active]="i === activeIndex"
+          (mousedown)="onSuggestionMouseDown(s)"
+        >
+          {{ s.description }}
+        </button>
+      </div>
+    </div>
 
     <button class="tp2-search-btn" type="submit">Search</button>
   </form>
@@ -91,7 +111,7 @@
             </a>
           </div>
 
-          <div class="tp2-footer">© PropertEASE 2026. All rights reserved</div>
+          <div class="tp2-footer">© sophiaAi 2026. All rights reserved</div>
         </ng-template>
       </div>
     </div>

@@ -1,4 +1,3 @@
-// src/app/townplanner/components/townplanner_v2.page.ts
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -19,8 +18,10 @@ import {
   selectError,
   selectSelected,
   selectStatus,
+  selectSuggestions,
 } from '../store/townplanner_v2.selectors';
 import { GoogleMapsLoaderService } from '../services/google-maps-loader.service';
+import { TownPlannerV2AddressSuggestion } from '../store/townplanner_v2.state';
 
 @Component({
   selector: 'app-townplanner-v2-page',
@@ -45,8 +46,15 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   error$ = this.store.select(selectError);
   selected$ = this.store.select(selectSelected);
 
-  // Map bindings
-  mapCenter: google.maps.LatLngLiteral = { lat: -27.4698, lng: 153.0251 }; // Brisbane
+  suggestions$ = this.store.select(selectSuggestions);
+  private suggestionsSnapshot: TownPlannerV2AddressSuggestion[] = [];
+  showSuggestions = false;
+  activeIndex = -1;
+
+  // Per Google Places best practice: one token per autocomplete session
+  private sessionToken: string | null = null;
+
+  mapCenter: google.maps.LatLngLiteral = { lat: -27.4698, lng: 153.0251 };
   mapZoom = 11;
 
   mapOptions: google.maps.MapOptions = {
@@ -68,7 +76,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.updateIsMobile();
 
-    // Load Google Maps JS
     this.mapsLoader
       .load()
       .then(() => (this.mapsLoaded = true))
@@ -85,7 +92,15 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
         this.addressCtrl.setValue(q || '', { emitEvent: false })
       );
 
-    // Dispatch query changes
+    // suggestions snapshot for keyboard selection
+    this.suggestions$.pipe(takeUntil(this.destroy$)).subscribe((sugs) => {
+      this.suggestionsSnapshot = sugs || [];
+      this.activeIndex = this.suggestionsSnapshot.length
+        ? Math.min(this.activeIndex, this.suggestionsSnapshot.length - 1)
+        : -1;
+    });
+
+    // Dispatch query changes (debounced)
     this.addressCtrl.valueChanges
       .pipe(
         startWith(this.addressCtrl.value),
@@ -94,12 +109,16 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe((q) => {
+        const query = (q || '').toString();
         this.store.dispatch(
-          TownPlannerV2Actions.setAddressQuery({ query: (q || '').toString() })
+          TownPlannerV2Actions.setAddressQuery({
+            query,
+            sessionToken: this.sessionToken,
+          })
         );
       });
 
-    // Update map when a result is selected
+    // Update map when selected changes
     this.selected$.pipe(takeUntil(this.destroy$)).subscribe((selected) => {
       if (!selected) {
         this.markerPosition = null;
@@ -134,21 +153,81 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   }
 
   panelArrow(): string {
-    // Desktop keeps < and >
     if (!this.isMobile) return this.panelCollapsed ? '>' : '<';
-
-    // Mobile requested: close (open -> hidden) uses "v", reopen uses "^"
     return this.panelCollapsed ? '^' : 'v';
   }
 
+  onInputFocus(): void {
+    // New autocomplete session
+    if (!this.sessionToken) {
+      this.sessionToken =
+        globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    }
+    this.showSuggestions = true;
+  }
+
+  onInputBlur(): void {
+    // Allow click to register before hiding
+    setTimeout(() => (this.showSuggestions = false), 150);
+  }
+
+  onInputKeydown(ev: KeyboardEvent): void {
+    if (!this.showSuggestions || !this.suggestionsSnapshot.length) return;
+
+    if (ev.key === 'ArrowDown') {
+      ev.preventDefault();
+      this.activeIndex = Math.min(
+        this.activeIndex + 1,
+        this.suggestionsSnapshot.length - 1
+      );
+      return;
+    }
+
+    if (ev.key === 'ArrowUp') {
+      ev.preventDefault();
+      this.activeIndex = Math.max(this.activeIndex - 1, 0);
+      return;
+    }
+
+    if (ev.key === 'Enter') {
+      if (
+        this.activeIndex >= 0 &&
+        this.activeIndex < this.suggestionsSnapshot.length
+      ) {
+        ev.preventDefault();
+        this.selectSuggestion(this.suggestionsSnapshot[this.activeIndex]);
+      }
+    }
+
+    if (ev.key === 'Escape') {
+      this.showSuggestions = false;
+    }
+  }
+
+  onSuggestionMouseDown(s: TownPlannerV2AddressSuggestion): void {
+    // mousedown fires before blur; good for selection
+    this.selectSuggestion(s);
+  }
+
+  private selectSuggestion(s: TownPlannerV2AddressSuggestion): void {
+    this.store.dispatch(
+      TownPlannerV2Actions.selectSuggestion({
+        suggestion: s,
+        sessionToken: this.sessionToken,
+      })
+    );
+
+    // End session after place details is requested (Google best practice)
+    this.sessionToken = null;
+
+    this.showSuggestions = false;
+    this.activeIndex = -1;
+  }
+
   onSearchClick(): void {
-    const address = (this.addressCtrl.value || '').trim();
-    if (!address) return;
-
-    this.store.dispatch(TownPlannerV2Actions.lookupProperty({ address }));
-
-    // Optional: on mobile, collapse the panel to show more map after search
-    // this.panelCollapsed = true;
+    // If user hasn't picked a suggestion, keep showing suggestions.
+    // The recommended flow is: type -> select suggestion -> place details.
+    this.showSuggestions = true;
   }
 
   clear(): void {
