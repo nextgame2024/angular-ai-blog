@@ -16,6 +16,8 @@ declare global {
 @Injectable({ providedIn: 'root' })
 export class GoogleMapsLoaderService {
   private loadPromise: Promise<void> | null = null;
+  private apiKeyPromise: Promise<string> | null = null;
+  private apiKey: string | null = null;
 
   constructor(private http: HttpClient) {}
 
@@ -32,11 +34,28 @@ export class GoogleMapsLoaderService {
     return this.loadPromise;
   }
 
+  /**
+   * Public: retrieve the resolved Google Maps API key (cached).
+   * Useful for building Street View Static preview URLs on the client.
+   */
+  getApiKey(): Promise<string> {
+    if (this.apiKey) return Promise.resolve(this.apiKey);
+
+    if (!this.apiKeyPromise) {
+      this.apiKeyPromise = this.resolveApiKey().then((k) => {
+        this.apiKey = k;
+        return k;
+      });
+    }
+
+    return this.apiKeyPromise;
+  }
+
   private async loadInternal(): Promise<void> {
     // If loaded between calls
     if (window.google?.maps) return;
 
-    const apiKey = await this.resolveApiKey();
+    const apiKey = await this.getApiKey();
 
     await this.injectScript(apiKey);
     await this.waitForGoogleMaps();

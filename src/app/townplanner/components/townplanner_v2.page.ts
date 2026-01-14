@@ -35,6 +35,19 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
 
   mapsLoaded = false;
   mapsError: string | null = null;
+  private mapsApiKey: string | null = null;
+
+  // Small inline placeholder (prevents broken-image icon when photo is unavailable)
+  private readonly photoFallbackSrc =
+    'data:image/svg+xml;charset=utf-8,' +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360">
+        <rect width="100%" height="100%" fill="#e2e8f0"/>
+        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#334155" font-family="Arial" font-size="22">
+          No preview available
+        </text>
+      </svg>`
+    );
 
   isMobile = false;
   panelCollapsed = false;
@@ -68,6 +81,17 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   markerPosition: google.maps.LatLngLiteral | null = null;
   polygonPaths: google.maps.LatLngLiteral[] = [];
 
+  // Default polygon styling (kept minimal; no explicit colors to avoid clashing with map theme)
+  polygonOptions: google.maps.PolygonOptions = {
+    clickable: false,
+    draggable: false,
+    editable: false,
+    geodesic: true,
+    strokeOpacity: 1,
+    strokeWeight: 2,
+    fillOpacity: 0.15,
+  };
+
   constructor(
     private store: Store,
     private mapsLoader: GoogleMapsLoaderService
@@ -75,6 +99,12 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.updateIsMobile();
+
+    // Resolve key once for Street View photo previews
+    this.mapsLoader
+      .getApiKey()
+      .then((k) => (this.mapsApiKey = k))
+      .catch(() => (this.mapsApiKey = null));
 
     this.mapsLoader
       .load()
@@ -224,12 +254,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
     this.activeIndex = -1;
   }
 
-  onSearchClick(): void {
-    // If user hasn't picked a suggestion, keep showing suggestions.
-    // The recommended flow is: type -> select suggestion -> place details.
-    this.showSuggestions = true;
-  }
-
   clear(): void {
     this.store.dispatch(TownPlannerV2Actions.clear());
   }
@@ -257,6 +281,39 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
     } catch {
       return [];
     }
+  }
+
+  streetViewPhotoUrl(selected: any): string {
+    // Prefer a backend-provided URL if present in the future
+    const explicit = (selected as any)?.photoUrl;
+    if (typeof explicit === 'string' && explicit.trim()) return explicit;
+
+    const lat = (selected as any)?.lat ?? (selected as any)?.centroid?.lat;
+    const lng = (selected as any)?.lng ?? (selected as any)?.centroid?.lng;
+
+    if (
+      typeof lat !== 'number' ||
+      typeof lng !== 'number' ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      !this.mapsApiKey
+    ) {
+      return this.photoFallbackSrc;
+    }
+
+    const loc = encodeURIComponent(`${lat},${lng}`);
+    const key = encodeURIComponent(this.mapsApiKey);
+    // Street View Static API preview image
+    return `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${loc}&fov=80&pitch=0&key=${key}`;
+  }
+
+  onPhotoError(ev: Event): void {
+    const img = ev.target as HTMLImageElement | null;
+    if (!img) return;
+
+    // Prevent infinite error loops
+    if (img.src === this.photoFallbackSrc) return;
+    img.src = this.photoFallbackSrc;
   }
 
   ngOnDestroy(): void {

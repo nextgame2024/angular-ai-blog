@@ -17,25 +17,28 @@
         ></map-marker>
 
         <map-polygon
-          *ngIf="polygonPaths.length"
+          *ngIf="polygonPaths?.length"
           [paths]="polygonPaths"
+          [options]="polygonOptions"
         ></map-polygon>
       </google-map>
     </ng-container>
 
     <ng-template #mapFallback>
       <div class="tp2-map-fallback">
-        <div *ngIf="mapsError; else mapLoading">
+        <div class="tp2-map-fallback-inner">
           <div class="tp2-map-fallback-title">Map unavailable</div>
-          <div class="tp2-map-fallback-text">{{ mapsError }}</div>
+          <div class="tp2-map-fallback-text" *ngIf="mapsError; else mapLoading">
+            {{ mapsError }}
+          </div>
         </div>
         <ng-template #mapLoading>Loading map…</ng-template>
       </div>
     </ng-template>
   </div>
 
-  <!-- Search Bar -->
-  <form class="tp2-search" (submit)="$event.preventDefault(); onSearchClick()">
+  <!-- Search Bar (no Search button; selection triggers the flow) -->
+  <div class="tp2-search" role="search">
     <i class="pi pi-search tp2-search-icon" aria-hidden="true"></i>
 
     <div class="tp2-search-field">
@@ -65,9 +68,7 @@
         </button>
       </div>
     </div>
-
-    <button class="tp2-search-btn" type="submit">Search</button>
-  </form>
+  </div>
 
   <!-- Right / Bottom Panel -->
   <aside
@@ -89,28 +90,69 @@
 
       <div class="tp2-panel-body">
         <ng-container *ngIf="(selected$ | async) as selected; else emptyState">
-          <div class="tp2-panel-text">
+          <!-- Property photo -->
+          <img
+            class="tp2-property-photo"
+            [src]="streetViewPhotoUrl(selected)"
+            [alt]="selected.address || 'Selected property'"
+            (error)="onPhotoError($event)"
+          />
+
+          <!-- Address label -->
+          <div class="tp2-panel-text tp2-selected-address">
             {{ selected.address || 'Selected property' }}
           </div>
+
+          <!-- Panel 1: Report button (no action for now) -->
+          <section class="tp2-card">
+            <div class="tp2-card-title">GET YOUR FREE REPORT</div>
+            <button type="button" class="tp2-report-btn" disabled>
+              CREATE REPORT
+            </button>
+          </section>
+
+          <!-- Panel 2: Property Overview (display only, no action for now) -->
+          <section class="tp2-card">
+            <div class="tp2-card-head">
+              <div class="tp2-card-head-title">Property Overview</div>
+              <span class="tp2-card-chevron" aria-hidden="true">˄</span>
+            </div>
+
+            <div class="tp2-overview-grid">
+              <div class="tp2-overview-item">
+                <div class="tp2-overview-icon">
+                  <i class="pi pi-building"></i>
+                </div>
+                <div class="tp2-overview-k">LOCAL COUNCIL:</div>
+                <div class="tp2-overview-v">Brisbane City Council</div>
+              </div>
+
+              <div class="tp2-overview-item">
+                <div class="tp2-overview-icon">
+                  <i class="pi pi-map"></i>
+                </div>
+                <div class="tp2-overview-k">PLANNING SCHEME:</div>
+                <div class="tp2-overview-v">
+                  Brisbane City Plan 2014 (v35.00) – MAPPING ERROR
+                </div>
+              </div>
+
+              <div class="tp2-overview-item">
+                <div class="tp2-overview-icon">
+                  <i class="pi pi-table"></i>
+                </div>
+                <div class="tp2-overview-k">PROPERTY DIMENSIONS:</div>
+                <div class="tp2-overview-v">Total Area: 0 sqm</div>
+                <div class="tp2-overview-v">Total Frontage: 0 m</div>
+              </div>
+            </div>
+          </section>
         </ng-container>
 
         <ng-template #emptyState>
           <div class="tp2-panel-text">
             Please enter an address in the search bar
           </div>
-
-          <div class="tp2-social">
-            <a class="tp2-social-link" href="#" aria-label="Facebook">
-              <i class="pi pi-facebook"></i>
-            </a>
-            <a class="tp2-social-link" href="#" aria-label="Instagram">
-              <i class="pi pi-instagram"></i>
-            </a>
-            <a class="tp2-social-link" href="#" aria-label="LinkedIn">
-              <i class="pi pi-linkedin"></i>
-            </a>
-          </div>
-
           <div class="tp2-footer">© sophiaAi 2026. All rights reserved</div>
         </ng-template>
       </div>

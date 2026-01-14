@@ -60,7 +60,7 @@
   width: min(720px, calc(100% - 24px));
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 
   background: var(--teal);
   border-radius: 12px;
@@ -281,5 +281,122 @@
     height: 46px;
 
     border-radius: 14px;
+  }
+}
+
+/* Property photo + inner panels */
+.tp2-property-photo {
+  width: 100%;
+  height: 170px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 10px;
+}
+
+.tp2-selected-address {
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.tp2-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  margin-top: 12px;
+}
+
+.tp2-card-title {
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+  margin-bottom: 10px;
+  color: #0f172a;
+}
+
+.tp2-report-btn {
+  width: 100%;
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 14px;
+  font-weight: 800;
+  background: #7aa80a; /* matches the reference green button */
+  color: #ffffff;
+  cursor: not-allowed;
+  opacity: 0.9;
+}
+
+.tp2-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tp2-card-head-title {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tp2-card-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(122, 168, 10, 0.12);
+  color: rgba(15, 23, 42, 0.8);
+  font-weight: 900;
+}
+
+.tp2-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.tp2-overview-item {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  padding-top: 12px;
+}
+
+.tp2-overview-item:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.tp2-overview-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(122, 168, 10, 0.12);
+  color: rgba(15, 23, 42, 0.85);
+  margin-bottom: 8px;
+}
+
+.tp2-overview-k {
+  font-weight: 800;
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.75);
+  margin-bottom: 4px;
+}
+
+.tp2-overview-v {
+  font-size: 13px;
+  color: rgba(15, 23, 42, 0.9);
+  line-height: 1.35;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  .tp2-property-photo {
+    height: 150px;
   }
 }
