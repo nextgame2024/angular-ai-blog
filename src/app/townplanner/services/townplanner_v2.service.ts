@@ -1,13 +1,19 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
-import { TownPlannerV2AddressSuggestion } from '../store/townplanner_v2.state';
+import {
+  TownPlannerV2AddressSuggestion,
+  TownPlannerV2PlanningPayload,
+} from '../store/townplanner_v2.state';
 import { environment } from 'src/environments/environment';
 
 export interface PlaceDetailsResponse {
   formattedAddress: string | null;
   lat: number | null;
   lng: number | null;
+
+  // Option A: enriched place-details (optional)
+  planning?: TownPlannerV2PlanningPayload | null;
 }
 
 @Injectable({ providedIn: 'root' })

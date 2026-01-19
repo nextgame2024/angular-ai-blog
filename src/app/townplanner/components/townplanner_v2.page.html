@@ -1,66 +1,32 @@
 <!-- src/app/townplanner/components/townplanner_v2.page.html -->
+
 <div class="tp2-shell">
-  <!-- Map -->
-  <div class="tp2-map">
-    <ng-container *ngIf="mapsLoaded; else mapFallback">
-      <google-map
-        class="tp2-google-map"
-        [center]="mapCenter"
-        [zoom]="mapZoom"
-        [options]="mapOptions"
-        width="100%"
-        height="100%"
-      >
-        <map-marker
-          *ngIf="markerPosition"
-          [position]="markerPosition"
-        ></map-marker>
-
-        <map-polygon
-          *ngIf="polygonPaths?.length"
-          [paths]="polygonPaths"
-          [options]="polygonOptions"
-        ></map-polygon>
-      </google-map>
-    </ng-container>
-
-    <ng-template #mapFallback>
-      <div class="tp2-map-fallback">
-        <div class="tp2-map-fallback-inner">
-          <div class="tp2-map-fallback-title">Map unavailable</div>
-          <div class="tp2-map-fallback-text" *ngIf="mapsError; else mapLoading">
-            {{ mapsError }}
-          </div>
-        </div>
-        <ng-template #mapLoading>Loading map…</ng-template>
-      </div>
-    </ng-template>
-  </div>
-
-  <!-- Search Bar (no Search button; selection triggers the flow) -->
+  <!-- Search (top) -->
   <div class="tp2-search" role="search">
-    <i class="pi pi-search tp2-search-icon" aria-hidden="true"></i>
+    <span class="tp2-search-icon" aria-hidden="true">🔎</span>
 
     <div class="tp2-search-field">
       <input
         class="tp2-search-input"
         type="text"
         [formControl]="addressCtrl"
-        placeholder="Enter property address"
-        aria-label="Enter property address"
+        placeholder="Enter your property address"
         (focus)="onInputFocus()"
         (blur)="onInputBlur()"
         (keydown)="onInputKeydown($event)"
+        autocomplete="off"
+        aria-label="Property address"
       />
 
+      <!-- Autocomplete dropdown -->
       <div
         class="tp2-suggest"
-        *ngIf="showSuggestions && (suggestions$ | async)?.length"
+        *ngIf="showSuggestions && (suggestions$ | async) as sugs"
       >
         <button
           type="button"
           class="tp2-suggest-item"
-          *ngFor="let s of (suggestions$ | async); let i = index"
+          *ngFor="let s of sugs; let i = index"
           [class.is-active]="i === activeIndex"
           (mousedown)="onSuggestionMouseDown(s)"
         >
@@ -70,90 +36,148 @@
     </div>
   </div>
 
-  <!-- Right / Bottom Panel -->
+  <!-- Map -->
+  <div class="tp2-map">
+    <ng-container *ngIf="mapsLoaded; else mapFallback">
+      <google-map
+        class="tp2-google-map"
+        [height]="'100%'"
+        [width]="'100%'"
+        [center]="mapCenter"
+        [zoom]="mapZoom"
+        [options]="mapOptions"
+      >
+        <!-- Site parcel (property boundary) -->
+        <map-polygon
+          *ngIf="siteParcelPath.length"
+          [paths]="siteParcelPath"
+          [options]="siteParcelOptions"
+        ></map-polygon>
+
+        <!-- Zoning polygon -->
+        <map-polygon
+          *ngIf="zoningPolygonPath.length"
+          [paths]="zoningPolygonPath"
+          [options]="zoningPolygonOptions"
+        ></map-polygon>
+
+        <!-- Overlay polygons -->
+        <map-polygon
+          *ngFor="let ov of overlayPolygonPaths"
+          [paths]="ov.path"
+          [options]="ov.style"
+        ></map-polygon>
+
+        <!-- Overlay polylines (e.g. corridor lines) -->
+        <map-polyline
+          *ngFor="let ln of overlayPolylinePaths"
+          [path]="ln.path"
+          [options]="ln.style"
+        ></map-polyline>
+
+        <!-- Property marker -->
+        <map-marker
+          *ngIf="markerPosition"
+          [position]="markerPosition"
+        ></map-marker>
+      </google-map>
+
+      <!-- Legend (V1 conventions) -->
+      <div class="tp2-legend" *ngIf="hasMapLayers()">
+        <div class="tp2-legend-title">Map legend</div>
+        <div class="tp2-legend-items">
+          <div class="tp2-legend-item" *ngIf="siteParcelPath.length">
+            <span class="tp2-legend-swatch tp2-legend-swatch--parcel"></span>
+            <span class="tp2-legend-label">Property boundary</span>
+          </div>
+          <div class="tp2-legend-item" *ngIf="zoningPolygonPath.length">
+            <span class="tp2-legend-swatch tp2-legend-swatch--zoning"></span>
+            <span class="tp2-legend-label">Zoning for subject site</span>
+          </div>
+          <div class="tp2-legend-item">
+            <span class="tp2-legend-swatch tp2-legend-swatch--flood"></span>
+            <span class="tp2-legend-label">Flood / overland flow</span>
+          </div>
+          <div class="tp2-legend-item">
+            <span class="tp2-legend-swatch tp2-legend-swatch--noise"></span>
+            <span class="tp2-legend-label">Transport noise</span>
+          </div>
+          <div class="tp2-legend-item">
+            <span class="tp2-legend-swatch tp2-legend-swatch--other"></span>
+            <span class="tp2-legend-label">Other overlays</span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <ng-template #mapFallback>
+      <div class="tp2-map-fallback">
+        <div>
+          <div class="tp2-map-fallback-title">Map unavailable</div>
+          <div class="tp2-map-fallback-text">
+            {{ mapsError || 'Google Maps did not load. Check API key / network.'
+            }}
+          </div>
+        </div>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Right panel (desktop) / bottom sheet (mobile) -->
   <aside
     class="tp2-panel"
     [class.is-collapsed]="panelCollapsed"
-    [class.is-mobile]="isMobile"
+    [attr.aria-hidden]="panelCollapsed"
   >
     <button
       type="button"
       class="tp2-panel-toggle"
       (click)="togglePanel()"
-      [attr.aria-label]="panelCollapsed ? 'Open panel' : 'Close panel'"
+      [attr.aria-label]="panelCollapsed ? 'Expand panel' : 'Collapse panel'"
     >
       {{ panelArrow() }}
     </button>
 
     <div class="tp2-panel-inner">
-      <div class="tp2-panel-title">Property Report</div>
+      <div class="tp2-panel-title">Property details</div>
 
       <div class="tp2-panel-body">
-        <ng-container *ngIf="(selected$ | async) as selected; else emptyState">
-          <!-- Property photo -->
+        <ng-container *ngIf="selected$ | async as selected; else emptyState">
+          <!-- House preview image -->
           <img
             class="tp2-property-photo"
             [src]="streetViewPhotoUrl(selected)"
-            [alt]="selected.address || 'Selected property'"
+            alt="Property photo preview"
             (error)="onPhotoError($event)"
+            loading="lazy"
           />
 
-          <!-- Address label -->
-          <div class="tp2-panel-text tp2-selected-address">
-            {{ selected.address || 'Selected property' }}
+          <div class="tp2-panel-text">
+            {{ selected.address || selected.formattedAddress || 'Selected
+            property' }}
           </div>
 
-          <!-- Panel 1: Report button (no action for now) -->
-          <section class="tp2-card">
-            <div class="tp2-card-title">GET YOUR FREE REPORT</div>
-            <button type="button" class="tp2-report-btn" disabled>
-              CREATE REPORT
+          <div class="tp2-card tp2-card--action">
+            <div class="tp2-card-title">Property report</div>
+            <button type="button" class="tp2-btn tp2-btn--primary" disabled>
+              Generate property report
             </button>
-          </section>
+            <div class="tp2-card-hint">(Coming soon)</div>
+          </div>
 
-          <!-- Panel 2: Property Overview (display only, no action for now) -->
-          <section class="tp2-card">
-            <div class="tp2-card-head">
-              <div class="tp2-card-head-title">Property Overview</div>
-              <span class="tp2-card-chevron" aria-hidden="true">˄</span>
-            </div>
+          <div class="tp2-card">
+            <div class="tp2-card-title">Property overview</div>
+            <div class="tp2-card-muted">(Coming soon)</div>
+          </div>
 
-            <div class="tp2-overview-grid">
-              <div class="tp2-overview-item">
-                <div class="tp2-overview-icon">
-                  <i class="pi pi-building"></i>
-                </div>
-                <div class="tp2-overview-k">LOCAL COUNCIL:</div>
-                <div class="tp2-overview-v">Brisbane City Council</div>
-              </div>
-
-              <div class="tp2-overview-item">
-                <div class="tp2-overview-icon">
-                  <i class="pi pi-map"></i>
-                </div>
-                <div class="tp2-overview-k">PLANNING SCHEME:</div>
-                <div class="tp2-overview-v">
-                  Brisbane City Plan 2014 (v35.00) – MAPPING ERROR
-                </div>
-              </div>
-
-              <div class="tp2-overview-item">
-                <div class="tp2-overview-icon">
-                  <i class="pi pi-table"></i>
-                </div>
-                <div class="tp2-overview-k">PROPERTY DIMENSIONS:</div>
-                <div class="tp2-overview-v">Total Area: 0 sqm</div>
-                <div class="tp2-overview-v">Total Frontage: 0 m</div>
-              </div>
-            </div>
-          </section>
+          <div class="tp2-footer">© 2026 sophiaAi</div>
         </ng-container>
 
         <ng-template #emptyState>
           <div class="tp2-panel-text">
-            Please enter an address in the search bar
+            Enter an address to explore property insights.
           </div>
-          <div class="tp2-footer">© sophiaAi 2026. All rights reserved</div>
+          <div class="tp2-footer">© 2026 sophiaAi</div>
         </ng-template>
       </div>
     </div>

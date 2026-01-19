@@ -22,6 +22,24 @@ import {
 } from '../store/townplanner_v2.selectors';
 import { GoogleMapsLoaderService } from '../services/google-maps-loader.service';
 import { TownPlannerV2AddressSuggestion } from '../store/townplanner_v2.state';
+import {
+  GeoJsonGeometry,
+  TownPlannerV2PlanningPayload,
+} from '../store/townplanner_v2.state';
+
+type LngLatTuple = [number, number];
+
+interface OverlayPolygonPath {
+  code: string;
+  path: google.maps.LatLngLiteral[];
+  style: google.maps.PolygonOptions;
+}
+
+interface OverlayPolylinePath {
+  code: string;
+  path: google.maps.LatLngLiteral[];
+  style: google.maps.PolylineOptions;
+}
 
 @Component({
   selector: 'app-townplanner-v2-page',
@@ -79,17 +97,26 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   };
 
   markerPosition: google.maps.LatLngLiteral | null = null;
-  polygonPaths: google.maps.LatLngLiteral[] = [];
 
-  // Default polygon styling (kept minimal; no explicit colors to avoid clashing with map theme)
-  polygonOptions: google.maps.PolygonOptions = {
-    clickable: false,
-    draggable: false,
-    editable: false,
-    geodesic: true,
-    strokeOpacity: 1,
+  // Map layers (V1-style)
+  siteParcelPath: google.maps.LatLngLiteral[] = [];
+  zoningPolygonPath: google.maps.LatLngLiteral[] = [];
+  overlayPolygonPaths: OverlayPolygonPath[] = [];
+  overlayPolylinePaths: OverlayPolylinePath[] = [];
+
+  siteParcelOptions: google.maps.PolygonOptions = {
+    strokeColor: '#22c55e',
     strokeWeight: 2,
-    fillOpacity: 0.15,
+    strokeOpacity: 1,
+    fillOpacity: 0,
+  };
+
+  zoningPolygonOptions: google.maps.PolygonOptions = {
+    strokeColor: '#38bdf8',
+    strokeOpacity: 0.9,
+    strokeWeight: 2,
+    fillColor: '#0ea5e9',
+    fillOpacity: 0.05,
   };
 
   constructor(
@@ -152,20 +179,30 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
     this.selected$.pipe(takeUntil(this.destroy$)).subscribe((selected) => {
       if (!selected) {
         this.markerPosition = null;
-        this.polygonPaths = [];
+        this.clearMapLayers();
         return;
       }
 
-      const lat = selected.lat ?? selected.centroid?.lat;
-      const lng = selected.lng ?? selected.centroid?.lng;
+      const lat = (selected as any).lat;
+      const lng = (selected as any).lng;
 
       if (typeof lat === 'number' && typeof lng === 'number') {
         this.markerPosition = { lat, lng };
         this.mapCenter = { lat, lng };
         this.mapZoom = 18;
+      } else {
+        this.markerPosition = null;
       }
 
-      this.polygonPaths = this.geoJsonToPaths(selected.geometry);
+      const planning: TownPlannerV2PlanningPayload | null =
+        (selected as any).planning ?? null;
+
+      if (planning) {
+        this.configureMapFromPlanning(planning);
+      } else {
+        // If planning not yet enabled on backend, keep marker only.
+        this.clearMapLayers();
+      }
     });
   }
 
@@ -258,38 +295,355 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
     this.store.dispatch(TownPlannerV2Actions.clear());
   }
 
-  private geoJsonToPaths(geom: any): google.maps.LatLngLiteral[] {
-    try {
-      if (!geom) return [];
+  hasMapLayers(): boolean {
+    return (
+      !!this.siteParcelPath.length ||
+      !!this.zoningPolygonPath.length ||
+      !!this.overlayPolygonPaths.length ||
+      !!this.overlayPolylinePaths.length
+    );
+  }
 
-      const type = String(geom.type || '').toLowerCase();
-      const coords = geom.coordinates;
+  private clearMapLayers(): void {
+    this.siteParcelPath = [];
+    this.zoningPolygonPath = [];
+    this.overlayPolygonPaths = [];
+    this.overlayPolylinePaths = [];
+  }
 
-      const ring =
-        type === 'polygon'
-          ? coords?.[0]
-          : type === 'multipolygon'
-          ? coords?.[0]?.[0]
-          : null;
+  private configureMapFromPlanning(
+    planning: TownPlannerV2PlanningPayload
+  ): void {
+    const focus = this.markerPosition ?? undefined;
 
-      if (!Array.isArray(ring)) return [];
+    // 1) Parcel
+    const parcelGeom = this.extractGeometry(planning.siteParcelPolygon);
+    this.siteParcelPath = parcelGeom
+      ? this.toSinglePolygonPath(parcelGeom, focus)
+      : [];
 
-      return ring
-        .filter((p: any) => Array.isArray(p) && p.length >= 2)
-        .map((p: any) => ({ lng: Number(p[0]), lat: Number(p[1]) }))
-        .filter((p: any) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
-    } catch {
-      return [];
+    // 2) Zoning
+    const zoningGeom = this.extractGeometry(planning.zoningPolygon);
+    this.zoningPolygonPath = zoningGeom
+      ? this.toSinglePolygonPath(zoningGeom, focus)
+      : [];
+
+    // 3) Overlays
+    const polyPaths: OverlayPolygonPath[] = [];
+    const linePaths: OverlayPolylinePath[] = [];
+
+    const rawOverlays = Array.isArray(planning.overlayPolygons)
+      ? planning.overlayPolygons
+      : [];
+
+    for (const ov of rawOverlays) {
+      const code = String((ov as any)?.code ?? (ov as any)?.name ?? 'overlay');
+      const geom = this.extractGeometry(
+        (ov as any)?.geometry ?? (ov as any)?.polygon ?? ov
+      );
+      if (!geom?.type || !geom?.coordinates) continue;
+
+      if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
+        const path = this.toSinglePolygonPath(geom, focus);
+        if (!path.length) continue;
+        polyPaths.push({ code, path, style: this.getOverlayStyle(code) });
+        continue;
+      }
+
+      if (geom.type === 'LineString' || geom.type === 'MultiLineString') {
+        const path = this.toSingleLinePath(geom);
+        if (!path.length) continue;
+        linePaths.push({ code, path, style: this.getOverlayLineStyle(code) });
+        continue;
+      }
+    }
+
+    this.overlayPolygonPaths = polyPaths;
+    this.overlayPolylinePaths = linePaths;
+
+    // 4) If we have no marker (fallback), center from parcel
+    if (!this.markerPosition) {
+      const centroid = parcelGeom ? this.computeCentroid(parcelGeom) : null;
+      if (centroid) {
+        this.markerPosition = centroid;
+        this.mapCenter = centroid;
+        this.mapZoom = 18;
+      }
     }
   }
 
+  private extractGeometry(maybe: any): GeoJsonGeometry | null {
+    if (!maybe) return null;
+
+    const candidate = (maybe as any)?.geometry ?? maybe;
+    if (!candidate) return null;
+
+    if (typeof candidate === 'object') return candidate as GeoJsonGeometry;
+    if (typeof candidate === 'string') {
+      try {
+        return JSON.parse(candidate) as GeoJsonGeometry;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  private toSinglePolygonPath(
+    geometry: GeoJsonGeometry,
+    focusPoint?: google.maps.LatLngLiteral
+  ): google.maps.LatLngLiteral[] {
+    if (!geometry || !geometry.type || !geometry.coordinates) return [];
+
+    const type = geometry.type;
+    const coords: any = geometry.coordinates;
+
+    let ring: LngLatTuple[] | null = null;
+
+    if (type === 'Polygon') {
+      ring = (coords[0] || []) as LngLatTuple[];
+    } else if (type === 'MultiPolygon') {
+      const polygons: LngLatTuple[][] = (coords as any[]).map(
+        (poly) => (poly?.[0] || []) as LngLatTuple[]
+      );
+
+      if (!polygons.length) return [];
+
+      if (focusPoint) {
+        let bestRing: LngLatTuple[] | null = null;
+        let bestArea = Number.POSITIVE_INFINITY;
+
+        for (const candidate of polygons) {
+          if (!candidate || candidate.length < 3) continue;
+          if (this.isPointInRing(focusPoint, candidate)) {
+            const area = this.ringArea(candidate);
+            if (area < bestArea) {
+              bestArea = area;
+              bestRing = candidate;
+            }
+          }
+        }
+
+        if (bestRing) {
+          ring = bestRing;
+        } else {
+          let nearest: LngLatTuple[] | null = null;
+          let nearestDist = Number.POSITIVE_INFINITY;
+          let nearestArea = Number.POSITIVE_INFINITY;
+
+          for (const candidate of polygons) {
+            if (!candidate || candidate.length < 3) continue;
+            const c = this.ringCentroid(candidate);
+            const d = this.haversineMeters(focusPoint, c);
+            const a = this.ringArea(candidate);
+
+            if (
+              d < nearestDist - 0.01 ||
+              (Math.abs(d - nearestDist) < 0.01 && a < nearestArea)
+            ) {
+              nearestDist = d;
+              nearestArea = a;
+              nearest = candidate;
+            }
+          }
+
+          ring = nearest || polygons[0] || null;
+        }
+      } else {
+        ring = polygons[0] || null;
+      }
+    } else {
+      return [];
+    }
+
+    if (!ring) return [];
+    return ring
+      .filter((p) => Array.isArray(p) && p.length >= 2)
+      .map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }))
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+  }
+
+  private toSingleLinePath(
+    geometry: GeoJsonGeometry
+  ): google.maps.LatLngLiteral[] {
+    if (!geometry || !geometry.type || !geometry.coordinates) return [];
+
+    let line: LngLatTuple[] | null = null;
+
+    if (geometry.type === 'LineString') {
+      line = geometry.coordinates as LngLatTuple[];
+    } else if (geometry.type === 'MultiLineString') {
+      const lines = geometry.coordinates as LngLatTuple[][];
+      if (!lines?.length) return [];
+      line = lines.reduce(
+        (best, cur) => (cur.length > best.length ? cur : best),
+        lines[0]
+      );
+    }
+
+    if (!line?.length) return [];
+
+    return line
+      .filter((p) => Array.isArray(p) && p.length >= 2)
+      .map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }))
+      .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+  }
+
+  private computeCentroid(
+    geometry: GeoJsonGeometry
+  ): google.maps.LatLngLiteral | null {
+    const path = this.toSinglePolygonPath(geometry);
+    if (!path.length) return null;
+
+    const sum = path.reduce(
+      (acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }),
+      { lat: 0, lng: 0 }
+    );
+
+    return {
+      lat: sum.lat / path.length,
+      lng: sum.lng / path.length,
+    };
+  }
+
+  private isPointInRing(
+    point: google.maps.LatLngLiteral,
+    ring: LngLatTuple[]
+  ): boolean {
+    let inside = false;
+    const x = point.lng;
+    const y = point.lat;
+
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [xi, yi] = ring[i];
+      const [xj, yj] = ring[j];
+
+      const intersect =
+        yi > y !== yj > y &&
+        x < ((xj - xi) * (y - yi)) / (yj - yi || 1e-12) + xi;
+
+      if (intersect) inside = !inside;
+    }
+
+    return inside;
+  }
+
+  private ringArea(ring: LngLatTuple[]): number {
+    let sum = 0;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const [x1, y1] = ring[j];
+      const [x2, y2] = ring[i];
+      sum += x1 * y2 - x2 * y1;
+    }
+    return Math.abs(sum) / 2;
+  }
+
+  private ringCentroid(ring: LngLatTuple[]): google.maps.LatLngLiteral {
+    let latSum = 0;
+    let lngSum = 0;
+    let n = 0;
+    for (const [lng, lat] of ring) {
+      lngSum += lng;
+      latSum += lat;
+      n += 1;
+    }
+    return { lat: n ? latSum / n : 0, lng: n ? lngSum / n : 0 };
+  }
+
+  private haversineMeters(
+    a: google.maps.LatLngLiteral,
+    b: google.maps.LatLngLiteral
+  ): number {
+    const R = 6371000;
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+
+    const sinDLat = Math.sin(dLat / 2);
+    const sinDLng = Math.sin(dLng / 2);
+
+    const h =
+      sinDLat * sinDLat + Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
+
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+
+  private getOverlayStyle(code?: string | null): google.maps.PolygonOptions {
+    const base: google.maps.PolygonOptions = {
+      strokeOpacity: 0.85,
+      strokeWeight: 2,
+      fillOpacity: 0.12,
+    };
+
+    if (!code) return { ...base, strokeColor: '#94a3b8', fillColor: '#94a3b8' };
+
+    const c = code.toLowerCase();
+
+    if (
+      c.includes('flood') ||
+      c.includes('overland') ||
+      c.includes('inundation')
+    ) {
+      return {
+        ...base,
+        strokeColor: '#f97316',
+        fillColor: '#f97316',
+        fillOpacity: 0.16,
+      };
+    }
+
+    if (c.includes('transport') || c.includes('noise')) {
+      return {
+        ...base,
+        strokeColor: '#a855f7',
+        fillColor: '#a855f7',
+        fillOpacity: 0.14,
+      };
+    }
+
+    return {
+      ...base,
+      strokeColor: '#94a3b8',
+      fillColor: '#94a3b8',
+      fillOpacity: 0.1,
+    };
+  }
+
+  private getOverlayLineStyle(
+    code?: string | null
+  ): google.maps.PolylineOptions {
+    const base: google.maps.PolylineOptions = {
+      strokeOpacity: 0.9,
+      strokeWeight: 3,
+    };
+
+    if (!code) return { ...base, strokeColor: '#6b7280' };
+
+    const c = code.toLowerCase();
+    if (c.includes('transport') || c.includes('noise')) {
+      return { ...base, strokeColor: '#a855f7' };
+    }
+
+    if (
+      c.includes('flood') ||
+      c.includes('overland') ||
+      c.includes('inundation')
+    ) {
+      return { ...base, strokeColor: '#f97316' };
+    }
+
+    return { ...base, strokeColor: '#94a3b8' };
+  }
+
   streetViewPhotoUrl(selected: any): string {
-    // Prefer a backend-provided URL if present in the future
     const explicit = (selected as any)?.photoUrl;
     if (typeof explicit === 'string' && explicit.trim()) return explicit;
 
-    const lat = (selected as any)?.lat ?? (selected as any)?.centroid?.lat;
-    const lng = (selected as any)?.lng ?? (selected as any)?.centroid?.lng;
+    const lat = (selected as any)?.lat;
+    const lng = (selected as any)?.lng;
 
     if (
       typeof lat !== 'number' ||
@@ -303,7 +657,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
 
     const loc = encodeURIComponent(`${lat},${lng}`);
     const key = encodeURIComponent(this.mapsApiKey);
-    // Street View Static API preview image
     return `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${loc}&fov=80&pitch=0&key=${key}`;
   }
 
@@ -311,7 +664,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
     const img = ev.target as HTMLImageElement | null;
     if (!img) return;
 
-    // Prevent infinite error loops
     if (img.src === this.photoFallbackSrc) return;
     img.src = this.photoFallbackSrc;
   }

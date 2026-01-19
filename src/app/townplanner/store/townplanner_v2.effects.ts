@@ -76,9 +76,14 @@ export class TownPlannerV2Effects {
             TownPlannerV2Actions.loadPlaceDetailsSuccess({
               result: {
                 placeId,
-                address: d.formattedAddress || addressLabel || undefined,
+                addressLabel: addressLabel || undefined,
+                formattedAddress: d.formattedAddress ?? undefined,
+                address: addressLabel || d.formattedAddress || undefined,
                 lat: d.lat ?? undefined,
                 lng: d.lng ?? undefined,
+
+                // Option A: planning payload is optional; keep null if missing
+                planning: d.planning ?? null,
               },
             })
           ),
