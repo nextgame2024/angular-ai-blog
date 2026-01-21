@@ -1,6 +1,108 @@
 <!-- src/app/townplanner/components/townplanner_v2.page.html -->
 
 <div class="tp2-shell">
+  <!-- Blocking loading overlay (after selecting an address) -->
+  <div
+    class="tp2-loading"
+    *ngIf="loading$ | async"
+    role="status"
+    aria-live="polite"
+    aria-label="Loading property information"
+  >
+    <div class="tp2-loading-card">
+      <div class="tp2-loading-graphic" aria-hidden="true">
+        <!-- Simple animated illustration (house + rotating gear) -->
+        <svg
+          class="tp2-loading-svg"
+          viewBox="0 0 360 120"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <!-- House -->
+          <g class="tp2-loading-house">
+            <path
+              d="M72 58 L120 20 L168 58"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M88 58 V100 H152 V58"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M116 100 V76 H124 V100"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle cx="146" cy="74" r="6" fill="currentColor" opacity="0.85" />
+          </g>
+
+          <!-- Rotating gear (simplified) -->
+          <g class="tp2-loading-gear" transform="translate(250 68)">
+            <circle
+              cx="0"
+              cy="0"
+              r="22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="6"
+              opacity="0.9"
+            />
+            <circle cx="0" cy="0" r="6" fill="currentColor" opacity="0.9" />
+            <path
+              d="M0 -30 V-22 M0 22 V30 M-30 0 H-22 M22 0 H30
+                 M-21 -21 L-16 -16 M16 16 L21 21 M-21 21 L-16 16 M16 -16 L21 -21"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="6"
+              stroke-linecap="round"
+              opacity="0.9"
+            />
+          </g>
+
+          <!-- Decorative “data dots” -->
+          <g class="tp2-loading-dots">
+            <circle cx="200" cy="34" r="4" fill="currentColor" opacity="0.35" />
+            <circle cx="218" cy="26" r="3" fill="currentColor" opacity="0.25" />
+            <circle cx="236" cy="34" r="4" fill="currentColor" opacity="0.30" />
+            <circle cx="212" cy="46" r="3" fill="currentColor" opacity="0.22" />
+            <circle cx="230" cy="48" r="3" fill="currentColor" opacity="0.18" />
+          </g>
+        </svg>
+
+        <!-- Animated progress bars -->
+        <div class="tp2-loading-bars" aria-hidden="true">
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+          <span class="tp2-loading-bar"></span>
+        </div>
+      </div>
+
+      <div class="tp2-loading-title">Loading property information</div>
+      <div class="tp2-loading-text">
+        This process may take a couple of minutes.
+      </div>
+    </div>
+  </div>
+
   <!-- Search (top) -->
   <div class="tp2-search" role="search">
     <span class="tp2-search-icon" aria-hidden="true">🔎</span>
@@ -20,12 +122,12 @@
 
       <!-- Autocomplete dropdown -->
       <div
-        class="tp2-suggest"
+        class="tp2-suggestions"
         *ngIf="showSuggestions && (suggestions$ | async) as sugs"
       >
         <button
           type="button"
-          class="tp2-suggest-item"
+          class="tp2-suggestions-item"
           *ngFor="let s of sugs; let i = index"
           [class.is-active]="i === activeIndex"
           (mousedown)="onSuggestionMouseDown(s)"
@@ -47,42 +149,36 @@
         [zoom]="mapZoom"
         [options]="mapOptions"
       >
-        <!-- Site parcel (property boundary) -->
         <map-polygon
           *ngIf="siteParcelPath.length"
           [paths]="siteParcelPath"
           [options]="siteParcelOptions"
         ></map-polygon>
 
-        <!-- Zoning polygon -->
         <map-polygon
           *ngIf="zoningPolygonPath.length"
           [paths]="zoningPolygonPath"
           [options]="zoningPolygonOptions"
         ></map-polygon>
 
-        <!-- Overlay polygons -->
         <map-polygon
           *ngFor="let ov of overlayPolygonPaths"
           [paths]="ov.path"
           [options]="ov.style"
         ></map-polygon>
 
-        <!-- Overlay polylines (e.g. corridor lines) -->
         <map-polyline
           *ngFor="let ln of overlayPolylinePaths"
           [path]="ln.path"
           [options]="ln.style"
         ></map-polyline>
 
-        <!-- Property marker -->
         <map-marker
           *ngIf="markerPosition"
           [position]="markerPosition"
         ></map-marker>
       </google-map>
 
-      <!-- Legend (V1 conventions) -->
       <div class="tp2-legend" *ngIf="hasMapLayers()">
         <div class="tp2-legend-title">Map legend</div>
         <div class="tp2-legend-items">
@@ -123,7 +219,7 @@
     </ng-template>
   </div>
 
-  <!-- Right panel (desktop) / bottom sheet (mobile) -->
+  <!-- Right panel -->
   <aside
     class="tp2-panel"
     [class.is-collapsed]="panelCollapsed"
@@ -143,7 +239,6 @@
 
       <div class="tp2-panel-body">
         <ng-container *ngIf="selected$ | async as selected; else emptyState">
-          <!-- House preview image -->
           <img
             class="tp2-property-photo"
             [src]="streetViewPhotoUrl(selected)"
