@@ -1,5 +1,3 @@
-<!-- src/app/townplanner/components/townplanner_v2.page.html -->
-
 <div class="tp2-shell">
   <!-- Blocking loading overlay (after selecting an address) -->
   <div
@@ -11,13 +9,11 @@
   >
     <div class="tp2-loading-card">
       <div class="tp2-loading-graphic" aria-hidden="true">
-        <!-- Simple animated illustration (house + rotating gear) -->
         <svg
           class="tp2-loading-svg"
           viewBox="0 0 360 120"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <!-- House -->
           <g class="tp2-loading-house">
             <path
               d="M72 58 L120 20 L168 58"
@@ -46,7 +42,6 @@
             <circle cx="146" cy="74" r="6" fill="currentColor" opacity="0.85" />
           </g>
 
-          <!-- Rotating gear (simplified) -->
           <g class="tp2-loading-gear" transform="translate(250 68)">
             <circle
               cx="0"
@@ -69,7 +64,6 @@
             />
           </g>
 
-          <!-- Decorative “data dots” -->
           <g class="tp2-loading-dots">
             <circle cx="200" cy="34" r="4" fill="currentColor" opacity="0.35" />
             <circle cx="218" cy="26" r="3" fill="currentColor" opacity="0.25" />
@@ -79,7 +73,6 @@
           </g>
         </svg>
 
-        <!-- Animated progress bars -->
         <div class="tp2-loading-bars" aria-hidden="true">
           <span class="tp2-loading-bar"></span>
           <span class="tp2-loading-bar"></span>
@@ -120,7 +113,6 @@
         aria-label="Property address"
       />
 
-      <!-- Autocomplete dropdown -->
       <div
         class="tp2-suggestions"
         *ngIf="showSuggestions && (suggestions$ | async) as sugs"
@@ -179,6 +171,7 @@
         ></map-marker>
       </google-map>
 
+      <!-- Floating legend (desktop/tablet). Hidden on mobile via CSS. -->
       <div class="tp2-legend" *ngIf="hasMapLayers()">
         <div class="tp2-legend-title">Map legend</div>
         <div class="tp2-legend-items">
@@ -263,6 +256,37 @@
           <div class="tp2-card">
             <div class="tp2-card-title">Property overview</div>
             <div class="tp2-card-muted">(Coming soon)</div>
+          </div>
+
+          <!-- Panel legend (mobile). Hidden on desktop via CSS. -->
+          <div class="tp2-panel-legend" *ngIf="hasMapLayers()">
+            <div class="tp2-panel-legend-title">Map legend</div>
+            <div class="tp2-panel-legend-items">
+              <div class="tp2-legend-item" *ngIf="siteParcelPath.length">
+                <span
+                  class="tp2-legend-swatch tp2-legend-swatch--parcel"
+                ></span>
+                <span class="tp2-legend-label">Property boundary</span>
+              </div>
+              <div class="tp2-legend-item" *ngIf="zoningPolygonPath.length">
+                <span
+                  class="tp2-legend-swatch tp2-legend-swatch--zoning"
+                ></span>
+                <span class="tp2-legend-label">Zoning for subject site</span>
+              </div>
+              <div class="tp2-legend-item">
+                <span class="tp2-legend-swatch tp2-legend-swatch--flood"></span>
+                <span class="tp2-legend-label">Flood / overland flow</span>
+              </div>
+              <div class="tp2-legend-item">
+                <span class="tp2-legend-swatch tp2-legend-swatch--noise"></span>
+                <span class="tp2-legend-label">Transport noise</span>
+              </div>
+              <div class="tp2-legend-item">
+                <span class="tp2-legend-swatch tp2-legend-swatch--other"></span>
+                <span class="tp2-legend-label">Other overlays</span>
+              </div>
+            </div>
           </div>
 
           <div class="tp2-footer">© 2026 sophiaAi</div>
