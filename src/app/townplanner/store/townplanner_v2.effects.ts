@@ -1,16 +1,24 @@
 import { Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
+import { Store } from '@ngrx/store';
 import {
   catchError,
+  concat,
   debounceTime,
   distinctUntilChanged,
+  exhaustMap,
   filter,
   map,
   of,
   switchMap,
+  tap,
+  timer,
+  withLatestFrom,
+  take,
 } from 'rxjs';
 import { TownPlannerV2Actions } from './townplanner_v2.actions';
 import { TownPlannerV2Service } from '../services/townplanner_v2.service';
+import { selectSelected } from './townplanner_v2.selectors';
 
 @Injectable()
 export class TownPlannerV2Effects {
@@ -102,5 +110,143 @@ export class TownPlannerV2Effects {
     )
   );
 
-  constructor(private actions$: Actions, private api: TownPlannerV2Service) {}
+  /**
+   * Generate report:
+   * - POST /report-generate returns { token, status }
+   * - if status=ready returns pdfUrl immediately
+   * - otherwise poll GET /report/:token until ready/failed
+   *
+   * Uses exhaustMap to prevent double-click spamming (while overlay blocks UI anyway).
+   */
+  generateReport$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(TownPlannerV2Actions.generateReport),
+      withLatestFrom(this.store.select(selectSelected)),
+      filter(([_, selected]) => {
+        const lat = (selected as any)?.lat;
+        const lng = (selected as any)?.lng;
+        const addressLabel =
+          (selected as any)?.addressLabel ||
+          (selected as any)?.address ||
+          (selected as any)?.formattedAddress;
+
+        return (
+          !!selected &&
+          typeof lat === 'number' &&
+          typeof lng === 'number' &&
+          Number.isFinite(lat) &&
+          Number.isFinite(lng) &&
+          typeof addressLabel === 'string' &&
+          !!addressLabel.trim()
+        );
+      }),
+      exhaustMap(([_, selected]) => {
+        const lat = (selected as any).lat as number;
+        const lng = (selected as any).lng as number;
+        const placeId = ((selected as any).placeId as string) || null;
+        const addressLabel =
+          ((selected as any).addressLabel as string) ||
+          ((selected as any).address as string) ||
+          ((selected as any).formattedAddress as string) ||
+          '';
+
+        return this.api
+          .generateReport({
+            addressLabel: addressLabel.trim(),
+            placeId,
+            lat,
+            lng,
+          })
+          .pipe(
+            switchMap((resp) => {
+              const token = resp.token;
+
+              // Ready immediately (cached or fast)
+              if (resp.status === 'ready' && resp.pdfUrl) {
+                return of(
+                  TownPlannerV2Actions.generateReportReady({
+                    token,
+                    pdfUrl: resp.pdfUrl,
+                  })
+                );
+              }
+
+              // Running => dispatch running, then poll
+              const running$ = of(
+                TownPlannerV2Actions.generateReportRunning({ token })
+              );
+
+              const poll$ = timer(1000, 2000).pipe(
+                switchMap(() => this.api.getReportByToken(token)),
+                map((r) => r.report),
+                filter(
+                  (report) =>
+                    report.status === 'ready' || report.status === 'failed'
+                ),
+                take(1),
+                switchMap((report) => {
+                  if (report.status === 'ready' && report.pdfUrl) {
+                    return of(
+                      TownPlannerV2Actions.generateReportReady({
+                        token,
+                        pdfUrl: report.pdfUrl,
+                      })
+                    );
+                  }
+
+                  return of(
+                    TownPlannerV2Actions.generateReportFailure({
+                      error:
+                        report.errorMessage ||
+                        'Report generation failed. Please try again.',
+                    })
+                  );
+                }),
+                catchError((err) =>
+                  of(
+                    TownPlannerV2Actions.generateReportFailure({
+                      error:
+                        err?.error?.error ||
+                        err?.message ||
+                        'Failed while checking report status',
+                    })
+                  )
+                )
+              );
+
+              return concat(running$, poll$);
+            }),
+            catchError((err) =>
+              of(
+                TownPlannerV2Actions.generateReportFailure({
+                  error:
+                    err?.error?.error ||
+                    err?.message ||
+                    'Failed to generate property report',
+                })
+              )
+            )
+          );
+      })
+    )
+  );
+
+  // Open PDF automatically when ready (no UI changes needed)
+  openPdfOnReady$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(TownPlannerV2Actions.generateReportReady),
+        tap(({ pdfUrl }) => {
+          // best effort: open in a new tab
+          window.open(pdfUrl, '_blank', 'noopener');
+        })
+      ),
+    { dispatch: false }
+  );
+
+  constructor(
+    private actions$: Actions,
+    private api: TownPlannerV2Service,
+    private store: Store
+  ) {}
 }

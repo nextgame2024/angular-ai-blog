@@ -56,6 +56,12 @@ export const townPlannerV2Reducer = createReducer<TownPlannerV2State>(
       suggestionsStatus: 'idle',
       status: 'loading',
       error: null,
+
+      // reset report state when selecting a new property
+      reportStatus: 'idle',
+      reportToken: null,
+      reportPdfUrl: null,
+      reportError: null,
     })
   ),
 
@@ -76,6 +82,44 @@ export const townPlannerV2Reducer = createReducer<TownPlannerV2State>(
     ...state,
     status: 'error',
     error,
+  })),
+
+  // Report generation reducers
+  on(TownPlannerV2Actions.generateReport, (state) => ({
+    ...state,
+    reportStatus: 'running',
+    reportError: null,
+    reportPdfUrl: null,
+  })),
+
+  on(TownPlannerV2Actions.generateReportRunning, (state, { token }) => ({
+    ...state,
+    reportStatus: 'running',
+    reportToken: token,
+    reportError: null,
+    reportPdfUrl: null,
+  })),
+
+  on(TownPlannerV2Actions.generateReportReady, (state, { token, pdfUrl }) => ({
+    ...state,
+    reportStatus: 'ready',
+    reportToken: token,
+    reportPdfUrl: pdfUrl,
+    reportError: null,
+  })),
+
+  on(TownPlannerV2Actions.generateReportFailure, (state, { error }) => ({
+    ...state,
+    reportStatus: 'failed',
+    reportError: error,
+  })),
+
+  on(TownPlannerV2Actions.clearReport, (state) => ({
+    ...state,
+    reportStatus: 'idle',
+    reportToken: null,
+    reportPdfUrl: null,
+    reportError: null,
   })),
 
   on(TownPlannerV2Actions.clear, () => ({

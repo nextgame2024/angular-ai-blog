@@ -35,6 +35,13 @@ export const TownPlannerV2Actions = createActionGroup({
     'Load Place Details Success': props<{ result: TownPlannerV2Result }>(),
     'Load Place Details Failure': props<{ error: string }>(),
 
+    // Report generation
+    'Generate Report': emptyProps(),
+    'Generate Report Running': props<{ token: string }>(),
+    'Generate Report Ready': props<{ token: string; pdfUrl: string }>(),
+    'Generate Report Failure': props<{ error: string }>(),
+    'Clear Report': emptyProps(),
+
     Clear: emptyProps(),
   },
 });

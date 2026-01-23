@@ -247,10 +247,23 @@
 
           <div class="tp2-card tp2-card--action">
             <div class="tp2-card-title">Property report</div>
-            <button type="button" class="tp2-btn tp2-btn--primary" disabled>
+
+            <button
+              type="button"
+              class="tp2-btn tp2-btn--primary"
+              (click)="onGenerateReport()"
+              [disabled]="(loading$ | async) || (reportGenerating$ | async) || !canGenerateReport(selected)"
+            >
               Generate property report
             </button>
-            <div class="tp2-card-hint">(Coming soon)</div>
+
+            <div class="tp2-card-hint" *ngIf="reportGenerating$ | async">
+              Generating report. This process may take a couple of minutes.
+            </div>
+
+            <div class="tp2-card-hint" *ngIf="(reportError$ | async) as err">
+              {{ err }}
+            </div>
           </div>
 
           <div class="tp2-card">

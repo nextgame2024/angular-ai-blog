@@ -1,4 +1,5 @@
 export type TownPlannerV2Status = 'idle' | 'loading' | 'success' | 'error';
+export type TownPlannerV2ReportStatus = 'idle' | 'running' | 'ready' | 'failed';
 
 export type GeoJsonGeometry = {
   type: string;
@@ -75,6 +76,12 @@ export interface TownPlannerV2State {
   status: TownPlannerV2Status;
   error: string | null;
   selected: TownPlannerV2PropertyResult | null;
+
+  // Report generation
+  reportStatus: TownPlannerV2ReportStatus;
+  reportToken: string | null;
+  reportPdfUrl: string | null;
+  reportError: string | null;
 }
 
 export const initialTownPlannerV2State: TownPlannerV2State = {
@@ -87,4 +94,9 @@ export const initialTownPlannerV2State: TownPlannerV2State = {
   status: 'idle',
   error: null,
   selected: null,
+
+  reportStatus: 'idle',
+  reportToken: null,
+  reportPdfUrl: null,
+  reportError: null,
 };

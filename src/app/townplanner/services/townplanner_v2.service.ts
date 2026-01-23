@@ -16,6 +16,27 @@ export interface PlaceDetailsResponse {
   planning?: TownPlannerV2PlanningPayload | null;
 }
 
+export interface ReportGenerateResponse {
+  ok: boolean;
+  token: string;
+  status: 'running' | 'ready';
+  pdfUrl?: string;
+  cached?: boolean;
+}
+
+export interface ReportByTokenResponse {
+  ok: boolean;
+  report: {
+    token: string;
+    status: 'queued' | 'running' | 'ready' | 'failed' | string;
+    pdfUrl: string | null;
+    errorMessage: string | null;
+
+    // additional fields may exist; keep flexible
+    [k: string]: any;
+  };
+}
+
 @Injectable({ providedIn: 'root' })
 export class TownPlannerV2Service {
   private readonly apiBase = environment.apiUrl.replace(/\/$/, '');
@@ -48,6 +69,25 @@ export class TownPlannerV2Service {
     return this.http.get<PlaceDetailsResponse>(
       `${this.tpV2Base}/place-details`,
       { params }
+    );
+  }
+
+  generateReport(payload: {
+    addressLabel: string;
+    placeId?: string | null;
+    lat: number;
+    lng: number;
+    force?: boolean;
+  }): Observable<ReportGenerateResponse> {
+    return this.http.post<ReportGenerateResponse>(
+      `${this.tpV2Base}/report-generate`,
+      payload
+    );
+  }
+
+  getReportByToken(token: string): Observable<ReportByTokenResponse> {
+    return this.http.get<ReportByTokenResponse>(
+      `${this.tpV2Base}/report/${token}`
     );
   }
 }

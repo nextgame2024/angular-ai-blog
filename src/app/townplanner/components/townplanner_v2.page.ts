@@ -19,6 +19,9 @@ import {
   selectSelected,
   selectStatus,
   selectSuggestions,
+  selectTownPlannerV2Loading,
+  selectReportGenerating,
+  selectReportError,
 } from '../store/townplanner_v2.selectors';
 import { GoogleMapsLoaderService } from '../services/google-maps-loader.service';
 import { TownPlannerV2AddressSuggestion } from '../store/townplanner_v2.state';
@@ -55,7 +58,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   mapsError: string | null = null;
   private mapsApiKey: string | null = null;
 
-  // Small inline placeholder (prevents broken-image icon when photo is unavailable)
   private readonly photoFallbackSrc =
     'data:image/svg+xml;charset=utf-8,' +
     encodeURIComponent(
@@ -73,16 +75,23 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   addressCtrl = new FormControl<string>('', { nonNullable: true });
 
   status$ = this.store.select(selectStatus);
-  loading$ = this.status$.pipe(map((s) => s === 'loading'));
+
+  // IMPORTANT: use unified loading selector so overlay appears for both:
+  // - place details loading
+  // - report generation
+  loading$ = this.store.select(selectTownPlannerV2Loading);
+
   error$ = this.store.select(selectError);
   selected$ = this.store.select(selectSelected);
+
+  reportGenerating$ = this.store.select(selectReportGenerating);
+  reportError$ = this.store.select(selectReportError);
 
   suggestions$ = this.store.select(selectSuggestions);
   private suggestionsSnapshot: TownPlannerV2AddressSuggestion[] = [];
   showSuggestions = false;
   activeIndex = -1;
 
-  // Per Google Places best practice: one token per autocomplete session
   private sessionToken: string | null = null;
 
   mapCenter: google.maps.LatLngLiteral = { lat: -27.4698, lng: 153.0251 };
@@ -98,7 +107,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
 
   markerPosition: google.maps.LatLngLiteral | null = null;
 
-  // Map layers (V1-style)
   siteParcelPath: google.maps.LatLngLiteral[] = [];
   zoningPolygonPath: google.maps.LatLngLiteral[] = [];
   overlayPolygonPaths: OverlayPolygonPath[] = [];
@@ -127,7 +135,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.updateIsMobile();
 
-    // Resolve key once for Street View photo previews
     this.mapsLoader
       .getApiKey()
       .then((k) => (this.mapsApiKey = k))
@@ -141,7 +148,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
         this.mapsError = e?.message || 'Google Maps failed to load';
       });
 
-    // Keep input synced with store query
     this.store
       .select(selectAddressQuery)
       .pipe(takeUntil(this.destroy$))
@@ -149,7 +155,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
         this.addressCtrl.setValue(q || '', { emitEvent: false })
       );
 
-    // suggestions snapshot for keyboard selection
     this.suggestions$.pipe(takeUntil(this.destroy$)).subscribe((sugs) => {
       this.suggestionsSnapshot = sugs || [];
       this.activeIndex = this.suggestionsSnapshot.length
@@ -157,7 +162,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
         : -1;
     });
 
-    // Dispatch query changes (debounced)
     this.addressCtrl.valueChanges
       .pipe(
         startWith(this.addressCtrl.value),
@@ -175,7 +179,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
         );
       });
 
-    // Update map when selected changes
     this.selected$.pipe(takeUntil(this.destroy$)).subscribe((selected) => {
       if (!selected) {
         this.markerPosition = null;
@@ -200,7 +203,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
       if (planning) {
         this.configureMapFromPlanning(planning);
       } else {
-        // If planning not yet enabled on backend, keep marker only.
         this.clearMapLayers();
       }
     });
@@ -225,7 +227,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   }
 
   onInputFocus(): void {
-    // New autocomplete session
     if (!this.sessionToken) {
       this.sessionToken =
         globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
@@ -234,7 +235,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   }
 
   onInputBlur(): void {
-    // Allow click to register before hiding
     setTimeout(() => (this.showSuggestions = false), 150);
   }
 
@@ -272,7 +272,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   }
 
   onSuggestionMouseDown(s: TownPlannerV2AddressSuggestion): void {
-    // mousedown fires before blur; good for selection
     this.selectSuggestion(s);
   }
 
@@ -284,7 +283,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
       })
     );
 
-    // End session after place details is requested (Google best practice)
     this.sessionToken = null;
 
     this.showSuggestions = false;
@@ -293,6 +291,28 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
 
   clear(): void {
     this.store.dispatch(TownPlannerV2Actions.clear());
+  }
+
+  onGenerateReport(): void {
+    this.store.dispatch(TownPlannerV2Actions.generateReport());
+  }
+
+  canGenerateReport(selected: any): boolean {
+    const lat = (selected as any)?.lat;
+    const lng = (selected as any)?.lng;
+    const label =
+      (selected as any)?.addressLabel ||
+      (selected as any)?.address ||
+      (selected as any)?.formattedAddress;
+
+    return (
+      typeof lat === 'number' &&
+      typeof lng === 'number' &&
+      Number.isFinite(lat) &&
+      Number.isFinite(lng) &&
+      typeof label === 'string' &&
+      !!label.trim()
+    );
   }
 
   hasMapLayers(): boolean {
@@ -316,19 +336,16 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   ): void {
     const focus = this.markerPosition ?? undefined;
 
-    // 1) Parcel
     const parcelGeom = this.extractGeometry(planning.siteParcelPolygon);
     this.siteParcelPath = parcelGeom
       ? this.toSinglePolygonPath(parcelGeom, focus)
       : [];
 
-    // 2) Zoning
     const zoningGeom = this.extractGeometry(planning.zoningPolygon);
     this.zoningPolygonPath = zoningGeom
       ? this.toSinglePolygonPath(zoningGeom, focus)
       : [];
 
-    // 3) Overlays
     const polyPaths: OverlayPolygonPath[] = [];
     const linePaths: OverlayPolylinePath[] = [];
 
@@ -361,7 +378,6 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
     this.overlayPolygonPaths = polyPaths;
     this.overlayPolylinePaths = linePaths;
 
-    // 4) If we have no marker (fallback), center from parcel
     if (!this.markerPosition) {
       const centroid = parcelGeom ? this.computeCentroid(parcelGeom) : null;
       if (centroid) {
