@@ -54,6 +54,14 @@
         </button>
       </label>
     </div>
+
+    <div class="table-head" aria-hidden="true">
+      <div>Name</div>
+      <div>Email</div>
+      <div>Mobile</div>
+      <div>Status</div>
+      <div class="actions-col">Actions</div>
+    </div>
   </div>
 
   <div class="error" *ngIf="(error$ | async) as err">{{ err }}</div>
