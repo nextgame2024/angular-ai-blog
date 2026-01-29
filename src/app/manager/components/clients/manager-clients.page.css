@@ -449,6 +449,18 @@
   border-radius: 16px;
 }
 
+.loading-float {
+  position: sticky;
+  top: 45%;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  pointer-events: none;
+  margin: 1rem 0;
+}
+
 .spinner {
   width: 36px;
   height: 36px;

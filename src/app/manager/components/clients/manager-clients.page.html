@@ -547,17 +547,27 @@
   <!-- LIST MODE -->
   <ng-container *ngIf="(viewMode$ | async) === 'list'">
     <section class="list" #clientsList>
-      <div
-        class="loading-overlay"
-        *ngIf="(loading$ | async)"
-        aria-live="polite"
-        aria-busy="true"
-      >
-        <div class="spinner"></div>
-        <div class="loading-text">Loading clients…</div>
-      </div>
-
       <ng-container *ngIf="clientsRaw$ | async as clients">
+        <div
+          class="loading-overlay"
+          *ngIf="(loading$ | async) && !clients.length"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div class="spinner"></div>
+          <div class="loading-text">Loading clients…</div>
+        </div>
+
+        <div
+          class="loading-float"
+          *ngIf="(loading$ | async) && clients.length"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div class="spinner"></div>
+          <div class="loading-text">Loading clients…</div>
+        </div>
+
         <!-- Desktop table -->
         <div class="table" *ngIf="clients.length">
           <div class="thead">
