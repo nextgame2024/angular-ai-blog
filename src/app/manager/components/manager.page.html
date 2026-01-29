@@ -1,0 +1,101 @@
+<div class="manager-shell">
+  <!-- Map layer -->
+  <div class="map-container">
+    <ng-container *ngIf="mapsLoaded; else mapsFallback">
+      <google-map
+        height="100%"
+        width="100%"
+        [center]="mapCenter"
+        [zoom]="mapZoom"
+        [options]="mapOptions"
+      ></google-map>
+    </ng-container>
+
+    <ng-template #mapsFallback>
+      <div class="maps-fallback">
+        <p class="title">Map unavailable</p>
+        <p class="msg">{{ mapsError || 'Google Maps is still loading...' }}</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <!-- Search bar -->
+  <div class="search-bar">
+    <div class="search-inner">
+      <span class="icon">🔎</span>
+      <input
+        type="text"
+        [formControl]="searchCtrl"
+        placeholder="Search (address / client / project) – coming next"
+        aria-label="Search"
+      />
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <aside
+    class="right-panel"
+    [class.mobile]="isMobile"
+    [class.mobile-open]="panelOpenMobile"
+    [class.collapsed]="panelCollapsed && !isMobile"
+    [class.fullscreen]="panelFullscreen"
+  >
+    <div class="panel-header">
+      <div class="panel-title">
+        <!-- Back appears in fullscreen mode -->
+        <button
+          *ngIf="panelFullscreen"
+          class="panel-toggle"
+          type="button"
+          (click)="goBackToMenu()"
+          aria-label="Back to menu"
+        >
+          ←
+        </button>
+
+        <!-- Default toggle only when NOT fullscreen -->
+        <button
+          *ngIf="!panelFullscreen"
+          class="panel-toggle"
+          type="button"
+          (click)="isMobile ? togglePanelMobile() : togglePanelCollapsed()"
+          aria-label="Toggle menu panel"
+        >
+          <span *ngIf="!isMobile">‹</span>
+          <span *ngIf="isMobile">{{ panelOpenMobile ? 'Close' : 'Menu' }}</span>
+        </button>
+
+        <h2>{{ panelTitle }}</h2>
+      </div>
+    </div>
+
+    <div class="panel-body" [class.no-menu]="panelFullscreen">
+      <!-- Hide the menu when fullscreen -->
+      <nav class="menu" *ngIf="!panelFullscreen">
+        <a
+          *ngFor="let item of menu"
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          class="menu-item"
+        >
+          {{ item.label }}
+        </a>
+      </nav>
+
+      <div class="content">
+        <router-outlet></router-outlet>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Mobile floating menu button (when closed) -->
+  <button
+    *ngIf="isMobile && !panelOpenMobile && !panelFullscreen"
+    class="mobile-fab"
+    type="button"
+    (click)="togglePanelMobile()"
+    aria-label="Open menu"
+  >
+    Menu
+  </button>
+</div>

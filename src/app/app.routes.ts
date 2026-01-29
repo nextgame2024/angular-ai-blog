@@ -89,4 +89,9 @@ export const appRoutes: Route[] = [
         (m) => m.TOWNPLANNER_ROUTES
       ),
   },
+  {
+    path: 'manager',
+    loadChildren: () =>
+      import('src/app/manager/manager.routes').then((m) => m.MANAGER_ROUTES),
+  },
 ];

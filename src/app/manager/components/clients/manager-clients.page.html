@@ -1,0 +1,462 @@
+<div class="clients-shell">
+  <!-- LIST HEADER -->
+  <div class="clients-toolbar" *ngIf="(viewMode$ | async) === 'list'">
+    <div class="title">
+      <h3>Clients</h3>
+      <p class="sub">Manage your customers. Mobile-first layout.</p>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn primary" (click)="openCreate()">
+        + New
+      </button>
+    </div>
+  </div>
+
+  <div class="error" *ngIf="(error$ | async) as err">{{ err }}</div>
+
+  <!-- FORM MODE -->
+  <ng-container *ngIf="(viewMode$ | async) === 'form'">
+    <ng-container
+      *ngIf="editingClient$ | async as client; else createClientBlock"
+    >
+      <div class="form-topbar">
+        <button class="btn" type="button" (click)="closeForm()">Done</button>
+        <div class="spacer"></div>
+        <button class="btn primary" type="button" (click)="saveClient()">
+          Save
+        </button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button
+          type="button"
+          class="tab"
+          [class.active]="(tab$ | async) === 'details'"
+          (click)="setTab('details', client)"
+        >
+          Details
+        </button>
+
+        <button
+          type="button"
+          class="tab"
+          [class.active]="(tab$ | async) === 'contacts'"
+          (click)="setTab('contacts', client)"
+        >
+          Contacts
+        </button>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="tab-content">
+        <!-- DETAILS -->
+        <section *ngIf="(tab$ | async) === 'details'" class="card">
+          <div class="card-header">
+            <strong>Client details</strong>
+          </div>
+
+          <form class="form" [formGroup]="clientForm">
+            <label>
+              <span>Name *</span>
+              <input formControlName="client_name" placeholder="Client name" />
+              <small
+                class="hint error-text"
+                *ngIf="clientForm.controls.client_name.touched && clientForm.controls.client_name.invalid"
+              >
+                Name is required.
+              </small>
+            </label>
+
+            <label>
+              <span>Address</span>
+              <input formControlName="address" placeholder="Address" />
+            </label>
+
+            <div class="grid-2">
+              <label>
+                <span>Email</span>
+                <input
+                  formControlName="email"
+                  placeholder="email@example.com"
+                />
+              </label>
+
+              <label>
+                <span>Mobile</span>
+                <input formControlName="cel" placeholder="0412..." />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Phone</span>
+                <input formControlName="tel" placeholder="07..." />
+              </label>
+
+              <label>
+                <span>Status</span>
+                <select formControlName="status">
+                  <option value="active">active</option>
+                  <option value="archived">archived</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              <span>Notes</span>
+              <textarea
+                formControlName="notes"
+                rows="3"
+                placeholder="Notes..."
+              ></textarea>
+            </label>
+          </form>
+        </section>
+
+        <!-- CONTACTS -->
+        <section *ngIf="(tab$ | async) === 'contacts'">
+          <div class="contacts-header">
+            <div>
+              <h4>Contacts</h4>
+              <p class="subtle">People you can contact for this client.</p>
+            </div>
+
+            <button
+              class="btn primary"
+              type="button"
+              (click)="openContactCreate()"
+            >
+              + Add
+            </button>
+          </div>
+
+          <div class="error" *ngIf="(contactsError$ | async) as cerr">
+            {{ cerr }}
+          </div>
+
+          <!-- Contact form -->
+          <ng-container *ngIf="(contactsViewMode$ | async) === 'form'">
+            <div class="card">
+              <div class="card-header">
+                <strong>Contact details</strong>
+              </div>
+
+              <form class="form" [formGroup]="contactForm">
+                <label>
+                  <span>Name *</span>
+                  <input formControlName="name" placeholder="Contact name" />
+                  <small
+                    class="hint error-text"
+                    *ngIf="contactForm.controls.name.touched && contactForm.controls.name.invalid"
+                  >
+                    Name is required.
+                  </small>
+                </label>
+
+                <div class="grid-2">
+                  <label>
+                    <span>Role title</span>
+                    <input
+                      formControlName="role_title"
+                      placeholder="Manager, Owner..."
+                    />
+                  </label>
+
+                  <label>
+                    <span>Email</span>
+                    <input
+                      formControlName="email"
+                      placeholder="email@example.com"
+                    />
+                  </label>
+                </div>
+
+                <div class="grid-2">
+                  <label>
+                    <span>Mobile</span>
+                    <input formControlName="cel" placeholder="0412..." />
+                  </label>
+
+                  <label>
+                    <span>Phone</span>
+                    <input formControlName="tel" placeholder="07..." />
+                  </label>
+                </div>
+
+                <div class="form-actions">
+                  <button
+                    type="button"
+                    class="btn"
+                    (click)="cancelContactForm()"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    class="btn primary"
+                    (click)="saveContact(client)"
+                  >
+                    Save
+                  </button>
+                </div>
+              </form>
+            </div>
+          </ng-container>
+
+          <!-- Contacts list -->
+          <ng-container *ngIf="(contactsViewMode$ | async) === 'list'">
+            <div class="loading" *ngIf="(contactsLoading$ | async)">
+              Loading…
+            </div>
+
+            <ng-container *ngIf="(contacts$ | async) as contacts">
+              <!-- Desktop table -->
+              <div class="table contacts-table" *ngIf="contacts.length">
+                <div class="thead">
+                  <div>Name</div>
+                  <div>Role</div>
+                  <div>Email</div>
+                  <div>Mobile</div>
+                  <div class="actions-col">Actions</div>
+                </div>
+
+                <div
+                  class="trow"
+                  *ngFor="let ct of contacts; trackBy: trackByContact"
+                >
+                  <div class="cell strong">{{ ct.name }}</div>
+                  <div class="cell muted">{{ ct.roleTitle || '—' }}</div>
+                  <div class="cell muted">{{ ct.email || '—' }}</div>
+                  <div class="cell muted">{{ ct.cel || '—' }}</div>
+                  <div class="cell actions-col">
+                    <button
+                      class="btn small"
+                      type="button"
+                      (click)="openContactEdit(ct)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      class="btn small danger"
+                      type="button"
+                      (click)="deleteContact(client, ct)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mobile cards -->
+              <div class="cards" *ngIf="contacts.length">
+                <article
+                  class="client-card"
+                  *ngFor="let ct of contacts; trackBy: trackByContact"
+                >
+                  <div class="row">
+                    <div class="name">{{ ct.name }}</div>
+                    <div class="muted">{{ ct.roleTitle || '—' }}</div>
+                  </div>
+                  <div class="meta">
+                    <div><span>Email:</span> {{ ct.email || '—' }}</div>
+                    <div><span>Mobile:</span> {{ ct.cel || '—' }}</div>
+                    <div><span>Phone:</span> {{ ct.tel || '—' }}</div>
+                  </div>
+                  <div class="card-actions">
+                    <button
+                      class="btn small"
+                      type="button"
+                      (click)="openContactEdit(ct)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      class="btn small danger"
+                      type="button"
+                      (click)="deleteContact(client, ct)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </article>
+              </div>
+
+              <div
+                class="empty"
+                *ngIf="!contacts.length && !(contactsLoading$ | async)"
+              >
+                No contacts yet. Click “Add” to create one.
+              </div>
+            </ng-container>
+          </ng-container>
+        </section>
+      </div>
+    </ng-container>
+
+    <!-- Create mode block: no client yet -->
+    <ng-template #createClientBlock>
+      <div class="form-topbar">
+        <button class="btn" type="button" (click)="closeForm()">Back</button>
+        <div class="spacer"></div>
+        <button class="btn primary" type="button" (click)="saveClient()">
+          Save
+        </button>
+      </div>
+
+      <div class="tabs">
+        <button type="button" class="tab active">Details</button>
+        <button type="button" class="tab disabled" disabled>Contacts</button>
+      </div>
+
+      <div class="tab-content">
+        <div class="card">
+          <div class="card-header">
+            <strong>Client details</strong>
+          </div>
+
+          <form class="form" [formGroup]="clientForm">
+            <label>
+              <span>Name *</span>
+              <input formControlName="client_name" placeholder="Client name" />
+              <small
+                class="hint error-text"
+                *ngIf="clientForm.controls.client_name.touched && clientForm.controls.client_name.invalid"
+              >
+                Name is required.
+              </small>
+            </label>
+
+            <label>
+              <span>Address</span>
+              <input formControlName="address" placeholder="Address" />
+            </label>
+
+            <div class="grid-2">
+              <label>
+                <span>Email</span>
+                <input
+                  formControlName="email"
+                  placeholder="email@example.com"
+                />
+              </label>
+
+              <label>
+                <span>Mobile</span>
+                <input formControlName="cel" placeholder="0412..." />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Phone</span>
+                <input formControlName="tel" placeholder="07..." />
+              </label>
+
+              <label>
+                <span>Status</span>
+                <select formControlName="status">
+                  <option value="active">active</option>
+                  <option value="archived">archived</option>
+                </select>
+              </label>
+            </div>
+
+            <label>
+              <span>Notes</span>
+              <textarea
+                formControlName="notes"
+                rows="3"
+                placeholder="Notes..."
+              ></textarea>
+            </label>
+
+            <div class="soft-hint">
+              Save the client first to enable the Contacts tab.
+            </div>
+          </form>
+        </div>
+      </div>
+    </ng-template>
+  </ng-container>
+
+  <!-- LIST MODE -->
+  <ng-container *ngIf="(viewMode$ | async) === 'list'">
+    <section class="list">
+      <div class="loading" *ngIf="(loading$ | async)">Loading…</div>
+
+      <ng-container *ngIf="clients$ | async as clients">
+        <!-- Desktop table -->
+        <div class="table" *ngIf="clients.length">
+          <div class="thead">
+            <div>Name</div>
+            <div>Email</div>
+            <div>Mobile</div>
+            <div>Status</div>
+            <div class="actions-col">Actions</div>
+          </div>
+
+          <div class="trow" *ngFor="let c of clients; trackBy: trackByClient">
+            <div class="cell strong">{{ c.clientName }}</div>
+            <div class="cell muted">{{ c.email || '—' }}</div>
+            <div class="cell muted">{{ c.cel || '—' }}</div>
+            <div class="cell">
+              <span class="badge" [class.archived]="c.status === 'archived'">
+                {{ c.status || 'active' }}
+              </span>
+            </div>
+            <div class="cell actions-col">
+              <button class="btn small" type="button" (click)="openEdit(c)">
+                Edit
+              </button>
+              <button
+                class="btn small danger"
+                type="button"
+                (click)="archiveClient(c)"
+              >
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="cards" *ngIf="clients.length">
+          <article
+            class="client-card"
+            *ngFor="let c of clients; trackBy: trackByClient"
+          >
+            <div class="row">
+              <div class="name">{{ c.clientName }}</div>
+              <span class="badge" [class.archived]="c.status === 'archived'">
+                {{ c.status || 'active' }}
+              </span>
+            </div>
+            <div class="meta">
+              <div><span>Email:</span> {{ c.email || '—' }}</div>
+              <div><span>Mobile:</span> {{ c.cel || '—' }}</div>
+              <div><span>Phone:</span> {{ c.tel || '—' }}</div>
+            </div>
+            <div class="card-actions">
+              <button class="btn small" type="button" (click)="openEdit(c)">
+                Edit
+              </button>
+              <button
+                class="btn small danger"
+                type="button"
+                (click)="archiveClient(c)"
+              >
+                Archive
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <div class="empty" *ngIf="!clients.length && !(loading$ | async)">
+          No clients found.
+        </div>
+      </ng-container>
+    </section>
+  </ng-container>
+</div>

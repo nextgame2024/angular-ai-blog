@@ -1,0 +1,286 @@
+.clients-shell {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.clients-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.title h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+.title .sub {
+  margin: 0.25rem 0 0 0;
+  opacity: 0.75;
+  font-size: 0.9rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.form-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.form-topbar .spacer {
+  flex: 1;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 0.4rem;
+  padding: 0.15rem;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 14px;
+}
+.tab {
+  flex: 1;
+  padding: 0.55rem 0.6rem;
+  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 700;
+}
+.tab.active {
+  background: rgba(99, 102, 241, 0.14);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+}
+.tab.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tab-content {
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* Cards / forms */
+.card {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 0.75rem 0.75rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.form {
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+.form input,
+.form textarea,
+.form select {
+  padding: 0.65rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: white;
+  outline: none;
+}
+
+.grid-2 {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.hint {
+  opacity: 0.7;
+}
+.error-text {
+  color: rgba(239, 68, 68, 0.95);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.btn {
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: rgba(15, 23, 42, 0.04);
+  color: rgba(15, 23, 42, 0.9);
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.btn.primary {
+  background: rgba(99, 102, 241, 0.14);
+  border-color: rgba(99, 102, 241, 0.28);
+}
+.btn.danger {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.22);
+}
+.btn.small {
+  padding: 0.4rem 0.55rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+}
+
+.error {
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+.list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+}
+.badge.archived {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.18);
+}
+
+.table {
+  display: none; /* mobile-first */
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.thead,
+.trow {
+  display: grid;
+  grid-template-columns: 1.4fr 1.2fr 1fr 0.8fr 1.1fr;
+  gap: 0.5rem;
+  align-items: center;
+}
+.contacts-table .thead,
+.contacts-table .trow {
+  grid-template-columns: 1.2fr 1fr 1.3fr 1fr 1.1fr;
+}
+
+.thead {
+  padding: 0.7rem 0.75rem;
+  font-weight: 800;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 0.85rem;
+}
+.trow {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+.trow:last-child {
+  border-bottom: 0;
+}
+
+.cell.strong {
+  font-weight: 700;
+}
+.cell.muted {
+  opacity: 0.8;
+}
+.actions-col {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.cards {
+  display: grid;
+  gap: 0.6rem;
+}
+.client-card {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 16px;
+  padding: 0.75rem;
+}
+.client-card .row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.client-card .name {
+  font-weight: 800;
+}
+.client-card .meta {
+  margin-top: 0.5rem;
+  display: grid;
+  gap: 0.25rem;
+  opacity: 0.85;
+  font-size: 0.9rem;
+}
+.client-card .meta span {
+  opacity: 0.7;
+}
+.card-actions {
+  margin-top: 0.65rem;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.contacts-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.contacts-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+}
+.subtle {
+  margin: 0.25rem 0 0 0;
+  opacity: 0.75;
+  font-size: 0.9rem;
+}
+
+.soft-hint {
+  margin-top: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+  opacity: 0.85;
+}
+
+/* Desktop: use tables + 2 columns for grid fields */
+@media (min-width: 900px) {
+  .table {
+    display: block;
+  }
+  .cards {
+    display: none;
+  }
+  .grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
