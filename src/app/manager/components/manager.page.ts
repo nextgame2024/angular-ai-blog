@@ -16,7 +16,7 @@ import { GoogleMapsLoaderService } from '../../townplanner/services/google-maps-
 import { ManagerActions } from '../store/manager.actions';
 import { selectManagerSearchQuery } from '../store/manager.selectors';
 
-type MenuItem = { label: string; route: string };
+type MenuItem = { label: string; route: string; icon: string };
 
 @Component({
   selector: 'app-manager-page',
@@ -43,15 +43,15 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   searchCtrl = new FormControl<string>('', { nonNullable: true });
 
   menu: MenuItem[] = [
-    { label: 'Clients', route: '/manager/clients' },
-    { label: 'Projects', route: '/manager/projects' },
-    { label: 'Users', route: '/manager/users' },
-    { label: 'Suppliers', route: '/manager/suppliers' },
-    { label: 'Materials', route: '/manager/materials' },
-    { label: 'Labor costs', route: '/manager/labor' },
-    { label: 'Pricing', route: '/manager/pricing' },
-    { label: 'Quotes', route: '/manager/quotes' },
-    { label: 'Invoices', route: '/manager/invoices' },
+    { label: 'Clients', route: '/manager/clients', icon: 'clients' },
+    { label: 'Projects', route: '/manager/projects', icon: 'projects' },
+    { label: 'Users', route: '/manager/users', icon: 'users' },
+    { label: 'Suppliers', route: '/manager/suppliers', icon: 'suppliers' },
+    { label: 'Materials', route: '/manager/materials', icon: 'materials' },
+    { label: 'Labor costs', route: '/manager/labor', icon: 'labor' },
+    { label: 'Pricing', route: '/manager/pricing', icon: 'pricing' },
+    { label: 'Quotes', route: '/manager/quotes', icon: 'quotes' },
+    { label: 'Invoices', route: '/manager/invoices', icon: 'invoices' },
   ];
 
   mapCenter: google.maps.LatLngLiteral = { lat: -27.4698, lng: 153.0251 };

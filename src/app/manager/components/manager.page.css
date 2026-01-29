@@ -87,7 +87,33 @@
 }
 
 .right-panel.collapsed {
-  width: 72px;
+  width: 56px;
+}
+
+.right-panel.collapsed .menu {
+  padding: 0.75rem 0.5rem;
+}
+
+.right-panel.collapsed .menu-item {
+  justify-content: center;
+  gap: 0;
+  padding: 0.65rem 0.5rem;
+}
+
+.right-panel.collapsed .menu-item-label {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+}
+
+.right-panel.collapsed .panel-title {
+  justify-content: center;
+}
+
+.right-panel.collapsed .panel-header h2 {
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
 }
 
 .panel-header {
@@ -128,12 +154,37 @@
 }
 
 .menu-item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
   padding: 0.65rem 0.75rem;
   border-radius: 12px;
   text-decoration: none;
   color: rgba(15, 23, 42, 0.9);
   background: rgba(15, 23, 42, 0.04);
+}
+
+.menu-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: #6e59ff;
+}
+
+.menu-icon svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.menu-item-label {
+  white-space: nowrap;
 }
 
 .menu-item.active {

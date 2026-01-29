@@ -1,11 +1,7 @@
-<div class="section">
+<div class="section" *ngIf="title !== 'Business manager'">
   <h3>{{ title }}</h3>
 
-  <p class="hint" *ngIf="title === 'Business manager'">
-    Select an option from the menu to manage your business.
-  </p>
-
-  <p class="hint" *ngIf="title !== 'Business manager'">
+  <p class="hint">
     Placeholder for {{ title }}. In the next iteration we will add forms,
     tables, and API integration.
   </p>

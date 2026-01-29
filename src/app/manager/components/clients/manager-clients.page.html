@@ -3,12 +3,20 @@
   <div class="clients-toolbar" *ngIf="(viewMode$ | async) === 'list'">
     <div class="title">
       <h3>Clients</h3>
-      <p class="sub">Manage your customers. Mobile-first layout.</p>
+      <p class="sub">
+        Create, edit, archive, and manage client contacts from one place.
+      </p>
     </div>
 
     <div class="actions">
       <button type="button" class="btn primary" (click)="openCreate()">
-        + New
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 5v14"></path>
+            <path d="M5 12h14"></path>
+          </svg>
+        </span>
+        New
       </button>
     </div>
   </div>
@@ -21,9 +29,22 @@
       *ngIf="editingClient$ | async as client; else createClientBlock"
     >
       <div class="form-topbar">
-        <button class="btn" type="button" (click)="closeForm()">Done</button>
+        <button class="btn" type="button" (click)="closeForm()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M20 6 9 17l-5-5"></path>
+            </svg>
+          </span>
+          Done
+        </button>
         <div class="spacer"></div>
         <button class="btn primary" type="button" (click)="saveClient()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 5h11l3 3v11H5z"></path>
+              <path d="M9 5v6h6V5"></path>
+            </svg>
+          </span>
           Save
         </button>
       </div>
@@ -36,6 +57,13 @@
           [class.active]="(tab$ | async) === 'details'"
           (click)="setTab('details', client)"
         >
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 10v6"></path>
+              <path d="M12 7h.01"></path>
+            </svg>
+          </span>
           Details
         </button>
 
@@ -45,6 +73,14 @@
           [class.active]="(tab$ | async) === 'contacts'"
           (click)="setTab('contacts', client)"
         >
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="8" r="3"></circle>
+              <circle cx="17" cy="9" r="2.5"></circle>
+              <path d="M3.5 19c0-3 2.7-5.5 6-5.5S15.5 16 15.5 19"></path>
+              <path d="M14 19c0-2.1 1.8-3.8 4-3.8"></path>
+            </svg>
+          </span>
           Contacts
         </button>
       </div>
@@ -128,7 +164,13 @@
               type="button"
               (click)="openContactCreate()"
             >
-              + Add
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 5v14"></path>
+                  <path d="M5 12h14"></path>
+                </svg>
+              </span>
+              Add
             </button>
           </div>
 
@@ -191,6 +233,12 @@
                     class="btn"
                     (click)="cancelContactForm()"
                   >
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M6 6l12 12"></path>
+                        <path d="M18 6l-12 12"></path>
+                      </svg>
+                    </span>
                     Cancel
                   </button>
                   <button
@@ -198,6 +246,12 @@
                     class="btn primary"
                     (click)="saveContact(client)"
                   >
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M5 5h11l3 3v11H5z"></path>
+                        <path d="M9 5v6h6V5"></path>
+                      </svg>
+                    </span>
                     Save
                   </button>
                 </div>
@@ -207,13 +261,20 @@
 
           <!-- Contacts list -->
           <ng-container *ngIf="(contactsViewMode$ | async) === 'list'">
-            <div class="loading" *ngIf="(contactsLoading$ | async)">
-              Loading…
-            </div>
+            <div class="contacts-list">
+              <div
+                class="loading-overlay"
+                *ngIf="(contactsLoading$ | async)"
+                aria-live="polite"
+                aria-busy="true"
+              >
+                <div class="spinner"></div>
+                <div class="loading-text">Loading contacts…</div>
+              </div>
 
-            <ng-container *ngIf="(contacts$ | async) as contacts">
-              <!-- Desktop table -->
-              <div class="table contacts-table" *ngIf="contacts.length">
+              <ng-container *ngIf="(contacts$ | async) as contacts">
+                <!-- Desktop table -->
+                <div class="table contacts-table" *ngIf="contacts.length">
                 <div class="thead">
                   <div>Name</div>
                   <div>Role</div>
@@ -232,10 +293,16 @@
                   <div class="cell muted">{{ ct.cel || '—' }}</div>
                   <div class="cell actions-col">
                     <button
-                      class="btn small"
+                      class="btn small secondary"
                       type="button"
                       (click)="openContactEdit(ct)"
                     >
+                      <span class="btn-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                          <path d="M13 6l4 4"></path>
+                        </svg>
+                      </span>
                       Edit
                     </button>
                     <button
@@ -243,53 +310,74 @@
                       type="button"
                       (click)="deleteContact(client, ct)"
                     >
+                      <span class="btn-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d="M4 7h16"></path>
+                          <path d="M9 7V5h6v2"></path>
+                          <path d="M7 7l1 12h8l1-12"></path>
+                        </svg>
+                      </span>
                       Delete
                     </button>
                   </div>
                 </div>
-              </div>
+                </div>
 
-              <!-- Mobile cards -->
-              <div class="cards" *ngIf="contacts.length">
-                <article
-                  class="client-card"
-                  *ngFor="let ct of contacts; trackBy: trackByContact"
+                <!-- Mobile cards -->
+                <div class="cards" *ngIf="contacts.length">
+                  <article
+                    class="client-card"
+                    *ngFor="let ct of contacts; trackBy: trackByContact"
+                  >
+                    <div class="row">
+                      <div class="name">{{ ct.name }}</div>
+                      <div class="muted">{{ ct.roleTitle || '—' }}</div>
+                    </div>
+                    <div class="meta">
+                      <div><span>Email:</span> {{ ct.email || '—' }}</div>
+                      <div><span>Mobile:</span> {{ ct.cel || '—' }}</div>
+                      <div><span>Phone:</span> {{ ct.tel || '—' }}</div>
+                    </div>
+                    <div class="card-actions">
+                      <button
+                        class="btn small secondary"
+                        type="button"
+                        (click)="openContactEdit(ct)"
+                      >
+                        <span class="btn-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24">
+                            <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                            <path d="M13 6l4 4"></path>
+                          </svg>
+                        </span>
+                        Edit
+                      </button>
+                      <button
+                        class="btn small danger"
+                        type="button"
+                        (click)="deleteContact(client, ct)"
+                      >
+                        <span class="btn-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24">
+                            <path d="M4 7h16"></path>
+                            <path d="M9 7V5h6v2"></path>
+                            <path d="M7 7l1 12h8l1-12"></path>
+                          </svg>
+                        </span>
+                        Delete
+                      </button>
+                    </div>
+                  </article>
+                </div>
+
+                <div
+                  class="empty"
+                  *ngIf="!contacts.length && !(contactsLoading$ | async)"
                 >
-                  <div class="row">
-                    <div class="name">{{ ct.name }}</div>
-                    <div class="muted">{{ ct.roleTitle || '—' }}</div>
-                  </div>
-                  <div class="meta">
-                    <div><span>Email:</span> {{ ct.email || '—' }}</div>
-                    <div><span>Mobile:</span> {{ ct.cel || '—' }}</div>
-                    <div><span>Phone:</span> {{ ct.tel || '—' }}</div>
-                  </div>
-                  <div class="card-actions">
-                    <button
-                      class="btn small"
-                      type="button"
-                      (click)="openContactEdit(ct)"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      class="btn small danger"
-                      type="button"
-                      (click)="deleteContact(client, ct)"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </article>
-              </div>
-
-              <div
-                class="empty"
-                *ngIf="!contacts.length && !(contactsLoading$ | async)"
-              >
-                No contacts yet. Click “Add” to create one.
-              </div>
-            </ng-container>
+                  No contacts yet. Click “Add” to create one.
+                </div>
+              </ng-container>
+            </div>
           </ng-container>
         </section>
       </div>
@@ -298,16 +386,48 @@
     <!-- Create mode block: no client yet -->
     <ng-template #createClientBlock>
       <div class="form-topbar">
-        <button class="btn" type="button" (click)="closeForm()">Back</button>
+        <button class="btn" type="button" (click)="closeForm()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M15 6l-6 6 6 6"></path>
+            </svg>
+          </span>
+          Back
+        </button>
         <div class="spacer"></div>
         <button class="btn primary" type="button" (click)="saveClient()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 5h11l3 3v11H5z"></path>
+              <path d="M9 5v6h6V5"></path>
+            </svg>
+          </span>
           Save
         </button>
       </div>
 
       <div class="tabs">
-        <button type="button" class="tab active">Details</button>
-        <button type="button" class="tab disabled" disabled>Contacts</button>
+        <button type="button" class="tab active">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 10v6"></path>
+              <path d="M12 7h.01"></path>
+            </svg>
+          </span>
+          Details
+        </button>
+        <button type="button" class="tab disabled" disabled>
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="9" cy="8" r="3"></circle>
+              <circle cx="17" cy="9" r="2.5"></circle>
+              <path d="M3.5 19c0-3 2.7-5.5 6-5.5S15.5 16 15.5 19"></path>
+              <path d="M14 19c0-2.1 1.8-3.8 4-3.8"></path>
+            </svg>
+          </span>
+          Contacts
+        </button>
       </div>
 
       <div class="tab-content">
@@ -384,7 +504,15 @@
   <!-- LIST MODE -->
   <ng-container *ngIf="(viewMode$ | async) === 'list'">
     <section class="list">
-      <div class="loading" *ngIf="(loading$ | async)">Loading…</div>
+      <div
+        class="loading-overlay"
+        *ngIf="(loading$ | async)"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div class="spinner"></div>
+        <div class="loading-text">Loading clients…</div>
+      </div>
 
       <ng-container *ngIf="clients$ | async as clients">
         <!-- Desktop table -->
@@ -402,12 +530,31 @@
             <div class="cell muted">{{ c.email || '—' }}</div>
             <div class="cell muted">{{ c.cel || '—' }}</div>
             <div class="cell">
-              <span class="badge" [class.archived]="c.status === 'archived'">
+              <span
+                class="badge"
+                [class.archived]="c.status === 'archived'"
+              >
+                <span class="badge-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M8.5 12.5 11 15l4.5-5"></path>
+                  </svg>
+                </span>
                 {{ c.status || 'active' }}
               </span>
             </div>
             <div class="cell actions-col">
-              <button class="btn small" type="button" (click)="openEdit(c)">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(c)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                    <path d="M13 6l4 4"></path>
+                  </svg>
+                </span>
                 Edit
               </button>
               <button
@@ -415,6 +562,14 @@
                 type="button"
                 (click)="archiveClient(c)"
               >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 8h16"></path>
+                    <path d="M6 8v10h12V8"></path>
+                    <path d="M10 12h4"></path>
+                    <path d="M9 4h6l1 2H8l1-2Z"></path>
+                  </svg>
+                </span>
                 Archive
               </button>
             </div>
@@ -430,6 +585,12 @@
             <div class="row">
               <div class="name">{{ c.clientName }}</div>
               <span class="badge" [class.archived]="c.status === 'archived'">
+                <span class="badge-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9"></circle>
+                    <path d="M8.5 12.5 11 15l4.5-5"></path>
+                  </svg>
+                </span>
                 {{ c.status || 'active' }}
               </span>
             </div>
@@ -439,7 +600,17 @@
               <div><span>Phone:</span> {{ c.tel || '—' }}</div>
             </div>
             <div class="card-actions">
-              <button class="btn small" type="button" (click)="openEdit(c)">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(c)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                    <path d="M13 6l4 4"></path>
+                  </svg>
+                </span>
                 Edit
               </button>
               <button
@@ -447,6 +618,14 @@
                 type="button"
                 (click)="archiveClient(c)"
               >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 8h16"></path>
+                    <path d="M6 8v10h12V8"></path>
+                    <path d="M10 12h4"></path>
+                    <path d="M9 4h6l1 2H8l1-2Z"></path>
+                  </svg>
+                </span>
                 Archive
               </button>
             </div>

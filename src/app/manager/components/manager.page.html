@@ -77,8 +77,58 @@
           [routerLink]="item.route"
           routerLinkActive="active"
           class="menu-item"
+          [attr.aria-label]="item.label"
         >
-          {{ item.label }}
+          <span class="menu-icon" aria-hidden="true">
+            <ng-container [ngSwitch]="item.icon">
+              <svg *ngSwitchCase="'clients'" viewBox="0 0 24 24">
+                <circle cx="12" cy="7.75" r="3.25"></circle>
+                <path d="M5 19.5c0-3.04 3.13-5.5 7-5.5s7 2.46 7 5.5"></path>
+              </svg>
+              <svg *ngSwitchCase="'projects'" viewBox="0 0 24 24">
+                <rect x="4" y="7" width="16" height="12" rx="2"></rect>
+                <path d="M9 7V5.75A1.75 1.75 0 0 1 10.75 4h2.5A1.75 1.75 0 0 1 15 5.75V7"></path>
+                <path d="M4 11h16"></path>
+              </svg>
+              <svg *ngSwitchCase="'users'" viewBox="0 0 24 24">
+                <circle cx="9" cy="8" r="2.75"></circle>
+                <circle cx="16" cy="9" r="2.25"></circle>
+                <path d="M3.5 19.5c0-2.8 2.57-5 5.75-5s5.75 2.2 5.75 5"></path>
+                <path d="M13 19.5c0-2.2 1.8-4 4-4 1.05 0 2.02.33 2.75.9"></path>
+              </svg>
+              <svg *ngSwitchCase="'suppliers'" viewBox="0 0 24 24">
+                <rect x="3" y="7" width="11" height="8" rx="1.5"></rect>
+                <path d="M14 10h3.5l2.5 2.5V15H14"></path>
+                <circle cx="7" cy="17" r="1.5"></circle>
+                <circle cx="17" cy="17" r="1.5"></circle>
+              </svg>
+              <svg *ngSwitchCase="'materials'" viewBox="0 0 24 24">
+                <path d="M12 3.5 5.5 7v10l6.5 3.5 6.5-3.5V7L12 3.5Z"></path>
+                <path d="M5.5 7 12 10.5 18.5 7"></path>
+                <path d="M12 10.5V21"></path>
+              </svg>
+              <svg *ngSwitchCase="'labor'" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="8"></circle>
+                <path d="M12 7v5l3.5 2"></path>
+              </svg>
+              <svg *ngSwitchCase="'pricing'" viewBox="0 0 24 24">
+                <path d="M3.5 12 12 3.5h7.5v7.5L11 19.5 3.5 12Z"></path>
+                <circle cx="16.5" cy="7.5" r="1.2"></circle>
+              </svg>
+              <svg *ngSwitchCase="'quotes'" viewBox="0 0 24 24">
+                <path d="M5 6.5h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z"></path>
+                <path d="M9 11h2"></path>
+                <path d="M13 11h2"></path>
+              </svg>
+              <svg *ngSwitchCase="'invoices'" viewBox="0 0 24 24">
+                <path d="M6 3.5h12v16l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5v-16Z"></path>
+                <path d="M8.5 8h7"></path>
+                <path d="M8.5 11.5h7"></path>
+                <path d="M8.5 15h4.5"></path>
+              </svg>
+            </ng-container>
+          </span>
+          <span class="menu-item-label">{{ item.label }}</span>
         </a>
       </nav>
 
