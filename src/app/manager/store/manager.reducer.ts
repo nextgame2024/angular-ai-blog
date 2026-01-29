@@ -26,7 +26,15 @@ export const managerReducer = createReducer(
     (state, { clients, page, limit, total }) => ({
       ...state,
       clientsLoading: false,
-      clients: clients ?? [],
+      clients:
+        page > 1
+          ? [
+              ...state.clients,
+              ...(clients ?? []).filter(
+                (c) => !state.clients.some((p) => p.clientId === c.clientId)
+              ),
+            ]
+          : clients ?? [],
       clientsPage: page,
       clientsLimit: limit,
       clientsTotal: total,

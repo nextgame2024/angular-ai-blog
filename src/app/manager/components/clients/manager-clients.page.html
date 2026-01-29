@@ -1,23 +1,58 @@
 <div class="clients-shell">
   <!-- LIST HEADER -->
-  <div class="clients-toolbar" *ngIf="(viewMode$ | async) === 'list'">
-    <div class="title">
-      <h3>Clients</h3>
-      <p class="sub">
-        Create, edit, archive, and manage client contacts from one place.
-      </p>
+  <div
+    class="list-header"
+    *ngIf="(viewMode$ | async) === 'list'"
+    #listHeader
+  >
+    <div class="clients-toolbar">
+      <div class="title">
+        <h3>Clients</h3>
+        <p class="sub">
+          Create, edit, archive, and manage client contacts from one place.
+        </p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn primary" (click)="openCreate()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 5v14"></path>
+              <path d="M5 12h14"></path>
+            </svg>
+          </span>
+          New
+        </button>
+      </div>
     </div>
 
-    <div class="actions">
-      <button type="button" class="btn primary" (click)="openCreate()">
-        <span class="btn-icon" aria-hidden="true">
+    <div class="toolbar-row">
+      <label class="search-field">
+        <span class="search-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24">
-            <path d="M12 5v14"></path>
-            <path d="M5 12h14"></path>
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
           </svg>
         </span>
-        New
-      </button>
+        <input
+          type="search"
+          [formControl]="searchCtrl"
+          placeholder="Search by name, email, mobile, status"
+          aria-label="Search clients"
+        />
+        <button
+          *ngIf="searchCtrl.value"
+          class="icon-btn"
+          type="button"
+          (click)="clearSearch()"
+          aria-label="Clear search"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </button>
+      </label>
     </div>
   </div>
 
@@ -503,7 +538,7 @@
 
   <!-- LIST MODE -->
   <ng-container *ngIf="(viewMode$ | async) === 'list'">
-    <section class="list">
+    <section class="list" #clientsList>
       <div
         class="loading-overlay"
         *ngIf="(loading$ | async)"
@@ -514,7 +549,7 @@
         <div class="loading-text">Loading clients…</div>
       </div>
 
-      <ng-container *ngIf="clients$ | async as clients">
+      <ng-container *ngIf="clientsRaw$ | async as clients">
         <!-- Desktop table -->
         <div class="table" *ngIf="clients.length">
           <div class="thead">
@@ -636,6 +671,7 @@
           No clients found.
         </div>
       </ng-container>
+      <div class="infinite-sentinel" #infiniteSentinel></div>
     </section>
   </ng-container>
 </div>

@@ -248,3 +248,9 @@
   height: auto;
   transform: none;
 }
+
+@media (max-width: 768px) {
+  .right-panel.mobile .content {
+    padding-top: 0;
+  }
+}

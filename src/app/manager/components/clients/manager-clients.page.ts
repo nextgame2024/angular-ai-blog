@@ -1,9 +1,27 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
+import {
+  FormBuilder,
+  FormControl,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { Store } from '@ngrx/store';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { combineLatest, Observable, Subject } from 'rxjs';
+import {
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  takeUntil,
+} from 'rxjs/operators';
 
 import { ManagerActions } from '../../store/manager.actions';
 import {
@@ -33,18 +51,23 @@ import { ClientFormTab } from '../../store/manager.state';
   templateUrl: './manager-clients.page.html',
   styleUrls: ['./manager-clients.page.css'],
 })
-export class ManagerClientsPageComponent implements OnInit, OnDestroy {
+export class ManagerClientsPageComponent
+  implements OnInit, OnDestroy, AfterViewInit
+{
   private destroy$ = new Subject<void>();
+  private infiniteObserver?: IntersectionObserver;
+  private isLoadingMore = false;
 
   loading$ = this.store.select(selectManagerClientsLoading);
   error$ = this.store.select(selectManagerClientsError);
-  clients$ = this.store.select(selectManagerClients);
+  clientsRaw$ = this.store.select(selectManagerClients);
   total$ = this.store.select(selectManagerClientsTotal);
   viewMode$ = this.store.select(selectManagerClientsViewMode);
   editingClient$ = this.store.select(selectManagerEditingClient);
 
   page$ = this.store.select(selectManagerClientsPage);
   limit$ = this.store.select(selectManagerClientsLimit);
+  searchQuery$ = this.store.select(selectManagerSearchQuery);
 
   // Tabs + Contacts
   tab$ = this.store.select(selectManagerClientFormTab);
@@ -56,6 +79,17 @@ export class ManagerClientsPageComponent implements OnInit, OnDestroy {
   editingContact$ = this.store.select(selectManagerEditingContact);
 
   private lastContactsClientId: string | null = null;
+
+  searchCtrl: FormControl<string>;
+  canLoadMore$!: Observable<boolean>;
+
+  @ViewChild('listHeader') listHeaderRef?: ElementRef<HTMLElement>;
+  @ViewChild('clientsList') clientsListRef?: ElementRef<HTMLElement>;
+  @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
+
+  private currentPage = 1;
+  private canLoadMore = false;
+  private isLoading = false;
 
   clientForm = this.fb.group({
     client_name: ['', [Validators.required, Validators.maxLength(120)]],
@@ -75,19 +109,61 @@ export class ManagerClientsPageComponent implements OnInit, OnDestroy {
     tel: [''],
   });
 
-  constructor(private store: Store, private fb: FormBuilder) {}
+  constructor(private store: Store, private fb: FormBuilder) {
+    this.searchCtrl = this.fb.control('', { nonNullable: true });
+
+    this.canLoadMore$ = combineLatest([
+      this.total$,
+      this.clientsRaw$,
+      this.loading$,
+    ]).pipe(
+      map(
+        ([total, clients, loading]) => !loading && clients.length < total
+      )
+    );
+    this.page$.pipe(takeUntil(this.destroy$)).subscribe((page) => {
+      this.currentPage = page || 1;
+    });
+    this.canLoadMore$.pipe(takeUntil(this.destroy$)).subscribe((canLoad) => {
+      this.canLoadMore = canLoad;
+    });
+    this.loading$.pipe(takeUntil(this.destroy$)).subscribe((loading) => {
+      this.isLoading = loading;
+      if (!loading) this.isLoadingMore = false;
+    });
+  }
 
   ngOnInit(): void {
     // Initial clients list load
     this.store.dispatch(ManagerActions.loadClients({ page: 1 }));
 
     // Reload when search query changes (simple v1 behavior)
-    this.store
-      .select(selectManagerSearchQuery)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() =>
-        this.store.dispatch(ManagerActions.loadClients({ page: 1 }))
+    this.searchQuery$.pipe(takeUntil(this.destroy$)).subscribe((query) => {
+      if (this.searchCtrl.value !== (query || '')) {
+        this.searchCtrl.setValue(query || '', { emitEvent: false });
+      }
+      this.store.dispatch(ManagerActions.loadClients({ page: 1 }));
+    });
+
+    this.searchCtrl.valueChanges
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((query) =>
+        this.store.dispatch(
+          ManagerActions.setSearchQuery({ query: query || '' })
+        )
       );
+
+    this.viewMode$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((mode) => {
+        if (mode !== 'list') return;
+        setTimeout(() => this.updateHeaderOffset(), 0);
+        setTimeout(() => this.setupInfiniteScroll(), 0);
+      });
 
     // Patch client form when switching to edit
     this.editingClient$
@@ -148,9 +224,21 @@ export class ManagerClientsPageComponent implements OnInit, OnDestroy {
       });
   }
 
+  ngAfterViewInit(): void {
+    this.updateHeaderOffset();
+    this.setupInfiniteScroll();
+  }
+
   ngOnDestroy(): void {
+    this.infiniteObserver?.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.updateHeaderOffset();
+    this.setupInfiniteScroll();
   }
 
   trackByClient = (_: number, c: BmClient) => c.clientId;
@@ -211,6 +299,57 @@ export class ManagerClientsPageComponent implements OnInit, OnDestroy {
   prevPage(currentPage: number): void {
     this.store.dispatch(
       ManagerActions.loadClients({ page: Math.max(1, currentPage - 1) })
+    );
+  }
+
+  loadMore(currentPage: number | null | undefined): void {
+    if (!currentPage) return;
+    this.store.dispatch(ManagerActions.loadClients({ page: currentPage + 1 }));
+  }
+
+  clearSearch(): void {
+    this.searchCtrl.setValue('');
+  }
+
+  private updateHeaderOffset(): void {
+    const header = this.listHeaderRef?.nativeElement;
+    const list = this.clientsListRef?.nativeElement;
+    if (!header || !list) return;
+
+    const height = Math.ceil(header.getBoundingClientRect().height);
+    list.style.setProperty('--list-header-height', `${height}px`);
+  }
+
+  private setupInfiniteScroll(): void {
+    const sentinel = this.infiniteSentinelRef?.nativeElement;
+    const list = this.clientsListRef?.nativeElement;
+    if (!sentinel || !list) return;
+
+    this.infiniteObserver?.disconnect();
+
+    const scrollRoot = list.closest('.content') as HTMLElement | null;
+
+    this.infiniteObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+        this.tryLoadMore();
+      },
+      {
+        root: scrollRoot,
+        rootMargin: '200px 0px',
+        threshold: 0.1,
+      }
+    );
+
+    this.infiniteObserver.observe(sentinel);
+  }
+
+  private tryLoadMore(): void {
+    if (!this.canLoadMore || this.isLoading || this.isLoadingMore) return;
+    this.isLoadingMore = true;
+    this.store.dispatch(
+      ManagerActions.loadClients({ page: this.currentPage + 1 })
     );
   }
 
