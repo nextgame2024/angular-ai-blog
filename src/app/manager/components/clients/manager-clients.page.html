@@ -1,6 +1,11 @@
 <div class="clients-shell">
   <!-- LIST HEADER -->
   <div class="list-header" *ngIf="(viewMode$ | async) === 'list'" #listHeader>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <span>Clients</span>
+    </nav>
     <div class="clients-toolbar">
       <div class="title">
         <h3>Clients</h3>
@@ -82,31 +87,63 @@
     >
       <div class="form-header">
         <div class="form-header-top">
-          <div class="header-main">
-            <h3>Customer Details</h3>
-            <p class="sub">
-              Review and update customer details, including contact info and
-              status.
-            </p>
-          </div>
-          <div class="header-actions">
-            <button class="btn" type="button" (click)="closeForm()">
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M15 6l-6 6 6 6"></path>
-                </svg>
-              </span>
-              Back
-            </button>
-            <button class="btn primary" type="button" (click)="saveClient()">
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M5 5h11l3 3v11H5z"></path>
-                  <path d="M9 5v6h6V5"></path>
-                </svg>
-              </span>
-              Save
-            </button>
+          <ng-container *ngIf="(tab$ | async) as tab">
+            <nav class="breadcrumb" aria-label="Breadcrumb">
+              <a routerLink="/manager/menu">Menu</a>
+              <span class="sep">/</span>
+              <a href="#" (click)="$event.preventDefault(); closeForm()">
+                Clients
+              </a>
+              <ng-container *ngIf="tab === 'details'">
+                <span class="sep">/</span>
+                <span>Details</span>
+              </ng-container>
+              <ng-container *ngIf="tab === 'contacts'">
+                <span class="sep">/</span>
+                <a href="#" (click)="$event.preventDefault(); cancelContactForm()">
+                  Contacts
+                </a>
+                <ng-container
+                  *ngIf="(contactsViewMode$ | async) === 'form'"
+                >
+                  <span class="sep">/</span>
+                  <span
+                    *ngIf="(editingContact$ | async); else contactCreateLabel"
+                  >
+                    Edit
+                  </span>
+                  <ng-template #contactCreateLabel>Create</ng-template>
+                </ng-container>
+              </ng-container>
+            </nav>
+          </ng-container>
+          <div class="form-header-mainrow">
+            <div class="header-main">
+              <h3>Customer Details</h3>
+              <p class="sub">
+                Review and update customer details, including contact info and
+                status.
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn" type="button" (click)="closeForm()">
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M15 6l-6 6 6 6"></path>
+                  </svg>
+                </span>
+                Back
+              </button>
+              <button class="btn primary" type="button" (click)="saveClient()">
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 5h11l3 3v11H5z"></path>
+                    <path d="M9 5v6h6V5"></path>
+                  </svg>
+                </span>
+                Save
+              </button>
+            </div>
           </div>
         </div>
 
@@ -142,6 +179,25 @@
               </svg>
             </span>
             Contacts
+          </button>
+        </div>
+
+        <div
+          class="form-header-actions-row"
+          *ngIf="(tab$ | async) === 'contacts' && (contactsViewMode$ | async) === 'list'"
+        >
+          <button
+            class="btn primary"
+            type="button"
+            (click)="openContactCreate()"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+              </svg>
+            </span>
+            Add
           </button>
         </div>
       </div>
@@ -210,23 +266,6 @@
 
         <!-- CONTACTS -->
         <section *ngIf="(tab$ | async) === 'contacts'">
-          <div class="contacts-header">
-            <div></div>
-            <button
-              class="btn primary"
-              type="button"
-              (click)="openContactCreate()"
-            >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 5v14"></path>
-                  <path d="M5 12h14"></path>
-                </svg>
-              </span>
-              Add
-            </button>
-          </div>
-
           <div class="error" *ngIf="(contactsError$ | async) as cerr">
             {{ cerr }}
           </div>
@@ -430,31 +469,42 @@
     <ng-template #createClientBlock>
       <div class="form-header">
         <div class="form-header-top">
-          <div class="header-main">
-            <h3>Customer Details</h3>
-            <p class="sub">
-              Review and update customer details, including contact info and
-              status.
-            </p>
-          </div>
-          <div class="header-actions">
-            <button class="btn" type="button" (click)="closeForm()">
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M15 6l-6 6 6 6"></path>
-                </svg>
-              </span>
-              Back
-            </button>
-            <button class="btn primary" type="button" (click)="saveClient()">
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M5 5h11l3 3v11H5z"></path>
-                  <path d="M9 5v6h6V5"></path>
-                </svg>
-              </span>
-              Save
-            </button>
+          <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a routerLink="/manager/menu">Menu</a>
+            <span class="sep">/</span>
+              <a href="#" (click)="$event.preventDefault(); closeForm()">
+                Clients
+              </a>
+            <span class="sep">/</span>
+            <span>Details</span>
+          </nav>
+          <div class="form-header-mainrow">
+            <div class="header-main">
+              <h3>Customer Details</h3>
+              <p class="sub">
+                Review and update customer details, including contact info and
+                status.
+              </p>
+            </div>
+            <div class="header-actions">
+              <button class="btn" type="button" (click)="closeForm()">
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M15 6l-6 6 6 6"></path>
+                  </svg>
+                </span>
+                Back
+              </button>
+              <button class="btn primary" type="button" (click)="saveClient()">
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 5h11l3 3v11H5z"></path>
+                    <path d="M9 5v6h6V5"></path>
+                  </svg>
+                </span>
+                Save
+              </button>
+            </div>
           </div>
         </div>
 

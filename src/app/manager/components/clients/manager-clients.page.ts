@@ -14,6 +14,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { combineLatest, Observable, Subject } from 'rxjs';
 import {
@@ -47,7 +48,7 @@ import { ClientFormTab } from '../../store/manager.state';
 @Component({
   selector: 'app-manager-clients-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule],
   templateUrl: './manager-clients.page.html',
   styleUrls: ['./manager-clients.page.css'],
 })
