@@ -21,7 +21,7 @@
               <path d="M5 12h14"></path>
             </svg>
           </span>
-          New
+          Create
         </button>
       </div>
     </div>
@@ -120,43 +120,99 @@
       </div>
 
       <section class="card">
-        <form class="form" [formGroup]="userForm">
+        <form class="form" [formGroup]="userForm" autocomplete="off">
           <div class="grid-2">
             <label>
-              <span>Username *</span>
-              <input formControlName="username" placeholder="username" />
-              <small
-                class="hint error-text"
-                *ngIf="userForm.controls.username.touched && userForm.controls.username.invalid"
-              >
-                Username is required.
-              </small>
+              <span>Name *</span>
+              <input
+                formControlName="name"
+                placeholder="Full name"
+                autocomplete="off"
+              />
             </label>
 
             <label>
-              <span>Name *</span>
-              <input formControlName="name" placeholder="Full name" />
-              <small
-                class="hint error-text"
-                *ngIf="userForm.controls.name.touched && userForm.controls.name.invalid"
-              >
-                Name is required.
-              </small>
+              <span>Email *</span>
+              <input
+                formControlName="email"
+                placeholder="email@example.com"
+                autocomplete="off"
+              />
             </label>
           </div>
 
           <div class="grid-2">
             <label>
-              <span>Email *</span>
-              <input formControlName="email" placeholder="email@example.com" />
-              <small
-                class="hint error-text"
-                *ngIf="userForm.controls.email.touched && userForm.controls.email.invalid"
-              >
-                Valid email is required.
-              </small>
+              <span>Mobile</span>
+              <input
+                formControlName="cel"
+                placeholder="0412..."
+                autocomplete="off"
+              />
             </label>
 
+            <label>
+              <span>Phone</span>
+              <input
+                formControlName="tel"
+                placeholder="07..."
+                autocomplete="off"
+              />
+            </label>
+          </div>
+
+          <label class="address-label">
+            <span>Address</span>
+            <div class="address-field">
+              <input
+                formControlName="address"
+                placeholder="Address"
+                (focus)="onAddressFocus()"
+                (blur)="onAddressBlur()"
+                (keydown)="onAddressKeydown($event)"
+                autocomplete="off"
+              />
+              <div
+                class="address-suggestions"
+                *ngIf="showAddressSuggestions && addressSuggestions.length"
+              >
+                <button
+                  type="button"
+                  class="address-suggestion"
+                  *ngFor="let s of addressSuggestions; let i = index"
+                  [class.is-active]="i === addressActiveIndex"
+                  (mousedown)="onAddressSelect(s)"
+                >
+                  {{ s.description }}
+                </button>
+              </div>
+            </div>
+          </label>
+
+          <div class="grid-2">
+            <label>
+              <span>Username *</span>
+              <input
+                formControlName="username"
+                placeholder="username"
+                name="new-username"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Password (optional - Min 8 chars if provided)</span>
+              <input
+                type="password"
+                formControlName="password"
+                placeholder="Leave blank to keep current"
+                name="new-password"
+                autocomplete="new-password"
+              />
+            </label>
+          </div>
+
+          <div class="grid-2">
             <label>
               <span>Type *</span>
               <select formControlName="type">
@@ -165,26 +221,7 @@
                 <option value="client">client</option>
               </select>
             </label>
-          </div>
 
-          <div class="grid-2">
-            <label>
-              <span>Mobile</span>
-              <input formControlName="cel" placeholder="0412..." />
-            </label>
-
-            <label>
-              <span>Phone</span>
-              <input formControlName="tel" placeholder="07..." />
-            </label>
-          </div>
-
-          <label>
-            <span>Address</span>
-            <input formControlName="address" placeholder="Address" />
-          </label>
-
-          <div class="grid-2">
             <label>
               <span>Status</span>
               <select formControlName="status">
@@ -192,21 +229,15 @@
                 <option value="archived">archived</option>
               </select>
             </label>
-
-            <label>
-              <span>Password (optional)</span>
-              <input
-                type="password"
-                formControlName="password"
-                placeholder="Leave blank to keep current"
-              />
-              <small class="hint">Min 8 chars if provided.</small>
-            </label>
           </div>
 
           <label>
             <span>Image URL</span>
-            <input formControlName="image" placeholder="https://..." />
+            <input
+              formControlName="image"
+              placeholder="https://..."
+              autocomplete="off"
+            />
           </label>
 
           <label>
@@ -259,25 +290,99 @@
       </div>
 
       <section class="card">
-        <form class="form" [formGroup]="userForm">
+        <form class="form" [formGroup]="userForm" autocomplete="off">
           <div class="grid-2">
             <label>
-              <span>Username *</span>
-              <input formControlName="username" placeholder="username" />
+              <span>Name *</span>
+              <input
+                formControlName="name"
+                placeholder="Full name"
+                autocomplete="off"
+              />
             </label>
 
             <label>
-              <span>Name *</span>
-              <input formControlName="name" placeholder="Full name" />
+              <span>Email *</span>
+              <input
+                formControlName="email"
+                placeholder="email@example.com"
+                autocomplete="off"
+              />
             </label>
           </div>
 
           <div class="grid-2">
             <label>
-              <span>Email *</span>
-              <input formControlName="email" placeholder="email@example.com" />
+              <span>Mobile</span>
+              <input
+                formControlName="cel"
+                placeholder="0412..."
+                autocomplete="off"
+              />
             </label>
 
+            <label>
+              <span>Phone</span>
+              <input
+                formControlName="tel"
+                placeholder="07..."
+                autocomplete="off"
+              />
+            </label>
+          </div>
+
+          <label class="address-label">
+            <span>Address</span>
+            <div class="address-field">
+              <input
+                formControlName="address"
+                placeholder="Address"
+                (focus)="onAddressFocus()"
+                (blur)="onAddressBlur()"
+                (keydown)="onAddressKeydown($event)"
+                autocomplete="off"
+              />
+              <div
+                class="address-suggestions"
+                *ngIf="showAddressSuggestions && addressSuggestions.length"
+              >
+                <button
+                  type="button"
+                  class="address-suggestion"
+                  *ngFor="let s of addressSuggestions; let i = index"
+                  [class.is-active]="i === addressActiveIndex"
+                  (mousedown)="onAddressSelect(s)"
+                >
+                  {{ s.description }}
+                </button>
+              </div>
+            </div>
+          </label>
+
+          <div class="grid-2">
+            <label>
+              <span>Username *</span>
+              <input
+                formControlName="username"
+                placeholder="username"
+                name="new-username"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Password * (Min 8 chars)</span>
+              <input
+                type="password"
+                formControlName="password"
+                placeholder="Min 8 chars"
+                name="new-password"
+                autocomplete="new-password"
+              />
+            </label>
+          </div>
+
+          <div class="grid-2">
             <label>
               <span>Type *</span>
               <select formControlName="type">
@@ -286,41 +391,7 @@
                 <option value="client">client</option>
               </select>
             </label>
-          </div>
 
-          <label>
-            <span>Password *</span>
-            <input
-              type="password"
-              formControlName="password"
-              placeholder="Min 8 chars"
-            />
-            <small
-              class="hint error-text"
-              *ngIf="userForm.controls.password.touched && userForm.controls.password.invalid"
-            >
-              Password is required (min 8 chars).
-            </small>
-          </label>
-
-          <div class="grid-2">
-            <label>
-              <span>Mobile</span>
-              <input formControlName="cel" placeholder="0412..." />
-            </label>
-
-            <label>
-              <span>Phone</span>
-              <input formControlName="tel" placeholder="07..." />
-            </label>
-          </div>
-
-          <label>
-            <span>Address</span>
-            <input formControlName="address" placeholder="Address" />
-          </label>
-
-          <div class="grid-2">
             <label>
               <span>Status</span>
               <select formControlName="status">
@@ -328,12 +399,16 @@
                 <option value="archived">archived</option>
               </select>
             </label>
-
-            <label>
-              <span>Image URL</span>
-              <input formControlName="image" placeholder="https://..." />
-            </label>
           </div>
+
+          <label>
+            <span>Image URL</span>
+            <input
+              formControlName="image"
+              placeholder="https://..."
+              autocomplete="off"
+            />
+          </label>
 
           <label>
             <span>Bio</span>

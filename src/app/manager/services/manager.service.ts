@@ -216,7 +216,8 @@ export class ManagerService {
     const safe = { ...payload };
     delete safe.company_id;
     delete safe.companyId;
-    return this.http.put<{ user: BmUser }>(this.userBase, { user: safe }).pipe(
+    const target = userId ? `${this.usersBase}/${userId}` : this.userBase;
+    return this.http.put<{ user: BmUser }>(target, { user: safe }).pipe(
       map((res) => res.user),
     );
   }

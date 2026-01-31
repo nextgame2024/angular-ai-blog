@@ -8,12 +8,14 @@ import {
 } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { combineLatest, Observable, Subject } from 'rxjs';
+import { combineLatest, Observable, Subject, of } from 'rxjs';
 import {
   debounceTime,
   distinctUntilChanged,
   map,
   startWith,
+  switchMap,
+  take,
   takeUntil,
 } from 'rxjs/operators';
 
@@ -27,6 +29,9 @@ import {
   selectManagerUsersViewMode,
   selectManagerEditingUser,
 } from '../../store/manager.selectors';
+
+import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
+import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
 
 import type { BmUser } from '../../services/manager.service';
 
@@ -51,6 +56,12 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   searchCtrl: FormControl<string>;
   filteredUsers$!: Observable<BmUser[]>;
 
+  addressSuggestions: TownPlannerV2AddressSuggestion[] = [];
+  showAddressSuggestions = false;
+  addressActiveIndex = -1;
+  private addressSessionToken: string | null = null;
+  private addressHasFocus = false;
+
   userForm = this.fb.group({
     username: ['', [Validators.required, Validators.maxLength(80)]],
     email: [
@@ -71,6 +82,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   constructor(
     private store: Store,
     private fb: FormBuilder,
+    private townPlanner: TownPlannerV2Service,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
@@ -139,6 +151,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         emitEvent: false,
       });
     });
+
+    this.setupAddressAutocomplete();
   }
 
   ngOnDestroy(): void {
@@ -207,5 +221,110 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     if (!ok) return;
 
     this.store.dispatch(ManagerActions.archiveUser({ userId: u.id }));
+  }
+
+  onAddressFocus(): void {
+    this.addressHasFocus = true;
+    const current = (this.userForm.controls.address.value || '').trim();
+    if (current.length >= 3 && this.addressSuggestions.length) {
+      this.showAddressSuggestions = true;
+    }
+  }
+
+  onAddressBlur(): void {
+    this.addressHasFocus = false;
+    window.setTimeout(() => {
+      this.showAddressSuggestions = false;
+      this.addressActiveIndex = -1;
+    }, 120);
+  }
+
+  onAddressKeydown(event: KeyboardEvent): void {
+    if (!this.addressSuggestions.length) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.addressActiveIndex = Math.min(
+        this.addressActiveIndex + 1,
+        this.addressSuggestions.length - 1,
+      );
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.addressActiveIndex = Math.max(this.addressActiveIndex - 1, 0);
+    } else if (event.key === 'Enter') {
+      if (this.addressActiveIndex >= 0) {
+        event.preventDefault();
+        this.onAddressSelect(this.addressSuggestions[this.addressActiveIndex]);
+      }
+    } else if (event.key === 'Escape') {
+      this.showAddressSuggestions = false;
+      this.addressActiveIndex = -1;
+    }
+  }
+
+  onAddressSelect(suggestion: TownPlannerV2AddressSuggestion): void {
+    this.userForm.controls.address.setValue(suggestion.description, {
+      emitEvent: false,
+    });
+    this.addressSuggestions = [];
+    this.showAddressSuggestions = false;
+    this.addressActiveIndex = -1;
+
+    const token = this.addressSessionToken;
+    this.addressSessionToken = null;
+
+    this.townPlanner
+      .getPlaceDetails(suggestion.placeId, token)
+      .pipe(take(1))
+      .subscribe((details) => {
+        const next =
+          details?.formattedAddress || suggestion.description || '';
+        if (next) {
+          this.userForm.controls.address.setValue(next, { emitEvent: false });
+        }
+      });
+  }
+
+  private setupAddressAutocomplete(): void {
+    this.userForm.controls.address.valueChanges
+      .pipe(
+        debounceTime(200),
+        distinctUntilChanged(),
+        switchMap((query) => {
+          const q = (query || '').toString().trim();
+          if (!this.addressHasFocus) {
+            this.addressSuggestions = [];
+            this.showAddressSuggestions = false;
+            this.addressActiveIndex = -1;
+            return of([]);
+          }
+          if (q.length < 3) {
+            this.addressSuggestions = [];
+            this.showAddressSuggestions = false;
+            this.addressActiveIndex = -1;
+            return of([]);
+          }
+
+          if (!this.addressSessionToken) {
+            this.addressSessionToken = this.createSessionToken();
+          }
+
+          return this.townPlanner.suggestAddresses(q, this.addressSessionToken);
+        }),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((sugs) => {
+        this.addressSuggestions = sugs || [];
+        const shouldShow =
+          this.addressHasFocus && this.addressSuggestions.length > 0;
+        this.showAddressSuggestions = shouldShow;
+        this.addressActiveIndex = shouldShow ? 0 : -1;
+      });
+  }
+
+  private createSessionToken(): string {
+    const cryptoObj = globalThis.crypto as Crypto | undefined;
+    if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
+    return Math.random().toString(36).slice(2);
   }
 }

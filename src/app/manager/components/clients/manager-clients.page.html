@@ -22,7 +22,7 @@
               <path d="M5 12h14"></path>
             </svg>
           </span>
-          New
+          Create
         </button>
       </div>
     </div>
@@ -100,12 +100,13 @@
               </ng-container>
               <ng-container *ngIf="tab === 'contacts'">
                 <span class="sep">/</span>
-                <a href="#" (click)="$event.preventDefault(); cancelContactForm()">
+                <a
+                  href="#"
+                  (click)="$event.preventDefault(); cancelContactForm()"
+                >
                   Contacts
                 </a>
-                <ng-container
-                  *ngIf="(contactsViewMode$ | async) === 'form'"
-                >
+                <ng-container *ngIf="(contactsViewMode$ | async) === 'form'">
                   <span class="sep">/</span>
                   <span
                     *ngIf="(editingContact$ | async); else contactCreateLabel"
@@ -210,17 +211,34 @@
             <label>
               <span>Name *</span>
               <input formControlName="client_name" placeholder="Client name" />
-              <small
-                class="hint error-text"
-                *ngIf="clientForm.controls.client_name.touched && clientForm.controls.client_name.invalid"
-              >
-                Name is required.
-              </small>
             </label>
 
-            <label>
+            <label class="address-label">
               <span>Address</span>
-              <input formControlName="address" placeholder="Address" />
+              <div class="address-field">
+                <input
+                  formControlName="address"
+                  placeholder="Address"
+                  (focus)="onAddressFocus()"
+                  (blur)="onAddressBlur()"
+                  (keydown)="onAddressKeydown($event)"
+                  autocomplete="off"
+                />
+                <div
+                  class="address-suggestions"
+                  *ngIf="showAddressSuggestions && addressSuggestions.length"
+                >
+                  <button
+                    type="button"
+                    class="address-suggestion"
+                    *ngFor="let s of addressSuggestions; let i = index"
+                    [class.is-active]="i === addressActiveIndex"
+                    (mousedown)="onAddressSelect(s)"
+                  >
+                    {{ s.description }}
+                  </button>
+                </div>
+              </div>
             </label>
 
             <div class="grid-2">
@@ -281,12 +299,6 @@
                 <label>
                   <span>Name *</span>
                   <input formControlName="name" placeholder="Contact name" />
-                  <small
-                    class="hint error-text"
-                    *ngIf="contactForm.controls.name.touched && contactForm.controls.name.invalid"
-                  >
-                    Name is required.
-                  </small>
                 </label>
 
                 <div class="grid-2">
@@ -472,9 +484,9 @@
           <nav class="breadcrumb" aria-label="Breadcrumb">
             <a routerLink="/manager/menu">Menu</a>
             <span class="sep">/</span>
-              <a href="#" (click)="$event.preventDefault(); closeForm()">
-                Clients
-              </a>
+            <a href="#" (click)="$event.preventDefault(); closeForm()">
+              Clients
+            </a>
             <span class="sep">/</span>
             <span>Details</span>
           </nav>
@@ -553,17 +565,34 @@
             <label>
               <span>Name *</span>
               <input formControlName="client_name" placeholder="Client name" />
-              <small
-                class="hint error-text"
-                *ngIf="clientForm.controls.client_name.touched && clientForm.controls.client_name.invalid"
-              >
-                Name is required.
-              </small>
             </label>
 
-            <label>
+            <label class="address-label">
               <span>Address</span>
-              <input formControlName="address" placeholder="Address" />
+              <div class="address-field">
+                <input
+                  formControlName="address"
+                  placeholder="Address"
+                  (focus)="onAddressFocus()"
+                  (blur)="onAddressBlur()"
+                  (keydown)="onAddressKeydown($event)"
+                  autocomplete="off"
+                />
+                <div
+                  class="address-suggestions"
+                  *ngIf="showAddressSuggestions && addressSuggestions.length"
+                >
+                  <button
+                    type="button"
+                    class="address-suggestion"
+                    *ngFor="let s of addressSuggestions; let i = index"
+                    [class.is-active]="i === addressActiveIndex"
+                    (mousedown)="onAddressSelect(s)"
+                  >
+                    {{ s.description }}
+                  </button>
+                </div>
+              </div>
             </label>
 
             <div class="grid-2">
