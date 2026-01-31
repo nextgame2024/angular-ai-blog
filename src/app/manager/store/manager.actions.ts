@@ -1,5 +1,10 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
-import { BmClient, BmClientContact } from '../services/manager.service';
+import {
+  BmClient,
+  BmClientContact,
+  BmUser,
+  PagedResult,
+} from '../services/manager.service';
 import { ClientFormTab } from './manager.state';
 
 export const ManagerActions = createActionGroup({
@@ -47,5 +52,24 @@ export const ManagerActions = createActionGroup({
     'Delete Contact': props<{ clientId: string; contactId: string }>(),
     'Delete Contact Success': props<{ contactId: string }>(),
     'Delete Contact Failure': props<{ error: string }>(),
+
+    /* =========================
+       Users
+    ========================= */
+    'Load Users': props<{ page: number }>(),
+    'Load Users Success': props<{ result: PagedResult<BmUser> }>(),
+    'Load Users Failure': props<{ error: string }>(),
+
+    'Open User Create': emptyProps(),
+    'Open User Edit': props<{ userId: string }>(),
+    'Close User Form': emptyProps(),
+
+    'Save User': props<{ payload: any }>(),
+    'Save User Success': props<{ user: BmUser }>(),
+    'Save User Failure': props<{ error: string }>(),
+
+    'Archive User': props<{ userId: string }>(),
+    'Archive User Success': props<{ userId: string }>(),
+    'Archive User Failure': props<{ error: string }>(),
   },
 });

@@ -5,6 +5,7 @@ import { provideState } from '@ngrx/store';
 import { ManagerPageComponent } from './components/manager.page';
 import { ManagerSectionPageComponent } from './components/manager-section.page';
 import { ManagerClientsPageComponent } from './components/clients/manager-clients.page';
+import { ManagerUsersPageComponent } from './components/users/manager-users.page';
 import { ManagerService } from './services/manager.service';
 import { ManagerEffects } from './store/manager.effects';
 import { MANAGER_FEATURE_KEY, managerReducer } from './store/manager.reducer';
@@ -28,14 +29,13 @@ export const MANAGER_ROUTES: Route[] = [
         data: { title: 'Business manager' },
       },
 
-      // Clients becomes a real screen (fullscreen panel)
       {
         path: 'clients',
         component: ManagerClientsPageComponent,
         data: { title: 'Clients', fullscreen: true },
       },
 
-      // Keep placeholders for now
+      // keep placeholders for now
       {
         path: 'projects',
         component: ManagerSectionPageComponent,
@@ -43,8 +43,8 @@ export const MANAGER_ROUTES: Route[] = [
       },
       {
         path: 'users',
-        component: ManagerSectionPageComponent,
-        data: { title: 'Users' },
+        component: ManagerUsersPageComponent,
+        data: { title: 'Users', fullscreen: true },
       },
       {
         path: 'suppliers',

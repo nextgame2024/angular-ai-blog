@@ -10,6 +10,7 @@ import {
   selectManagerSearchQuery,
   selectManagerEditingClient,
   selectManagerEditingContact,
+  selectManagerEditingUser,
 } from './manager.selectors';
 
 @Injectable()
@@ -17,7 +18,7 @@ export class ManagerEffects {
   constructor(
     private actions$: Actions,
     private api: ManagerService,
-    private store: Store
+    private store: Store,
   ) {}
 
   // -------- Clients --------
@@ -34,19 +35,19 @@ export class ManagerEffects {
               page: res.page,
               limit: res.limit,
               total: res.total,
-            })
+            }),
           ),
           catchError((err) =>
             of(
               ManagerActions.loadClientsFailure({
                 error:
                   err?.error?.error || err?.message || 'Failed to load clients',
-              })
-            )
-          )
-        )
-      )
-    )
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   saveClient$ = createEffect(() =>
@@ -60,19 +61,19 @@ export class ManagerEffects {
 
         return request$.pipe(
           map((res) =>
-            ManagerActions.saveClientSuccess({ client: res.client })
+            ManagerActions.saveClientSuccess({ client: res.client }),
           ),
           catchError((err) =>
             of(
               ManagerActions.saveClientFailure({
                 error:
                   err?.error?.error || err?.message || 'Failed to save client',
-              })
-            )
-          )
+              }),
+            ),
+          ),
         );
-      })
-    )
+      }),
+    ),
   );
 
   archiveClient$ = createEffect(() =>
@@ -88,20 +89,20 @@ export class ManagerEffects {
                   err?.error?.error ||
                   err?.message ||
                   'Failed to archive client',
-              })
-            )
-          )
-        )
-      )
-    )
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   // When opening edit, load contacts automatically
   loadContactsOnOpenEdit$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerActions.openClientEdit),
-      map(({ clientId }) => ManagerActions.loadClientContacts({ clientId }))
-    )
+      map(({ clientId }) => ManagerActions.loadClientContacts({ clientId })),
+    ),
   );
 
   // -------- Contacts --------
@@ -112,7 +113,7 @@ export class ManagerEffects {
       switchMap(({ clientId }) =>
         this.api.listClientContacts(clientId).pipe(
           map((res: any) => {
-            const contacts = Array.isArray(res) ? res : res?.contacts ?? [];
+            const contacts = Array.isArray(res) ? res : (res?.contacts ?? []);
             return ManagerActions.loadClientContactsSuccess({ contacts });
           }),
           catchError((err) =>
@@ -122,12 +123,12 @@ export class ManagerEffects {
                   err?.error?.error ||
                   err?.message ||
                   'Failed to load contacts',
-              })
-            )
-          )
-        )
-      )
-    )
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 
   saveContact$ = createEffect(() =>
@@ -149,12 +150,12 @@ export class ManagerEffects {
               ManagerActions.saveContactFailure({
                 error:
                   err?.error?.error || err?.message || 'Failed to save contact',
-              })
-            )
-          )
+              }),
+            ),
+          ),
         );
-      })
-    )
+      }),
+    ),
   );
 
   deleteContact$ = createEffect(() =>
@@ -170,11 +171,77 @@ export class ManagerEffects {
                   err?.error?.error ||
                   err?.message ||
                   'Failed to delete contact',
-              })
-            )
-          )
-        )
-      )
-    )
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  /* =========================
+     Users
+  ========================= */
+  loadUsers$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(ManagerActions.loadUsers),
+      withLatestFrom(this.store.select(selectManagerSearchQuery)),
+      switchMap(([{ page }, q]) =>
+        this.api.listUsers({ page, limit: 20, q: q || undefined }).pipe(
+          map((result) => ManagerActions.loadUsersSuccess({ result })),
+          catchError((err) =>
+            of(
+              ManagerActions.loadUsersFailure({
+                error:
+                  err?.error?.error || err?.message || 'Failed to load users',
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  saveUser$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(ManagerActions.saveUser),
+      withLatestFrom(this.store.select(selectManagerEditingUser)),
+      switchMap(([{ payload }, editing]) => {
+        const req$ = editing
+          ? this.api.updateUser(editing.id, payload)
+          : this.api.createUser(payload);
+
+        return req$.pipe(
+          map((user) => ManagerActions.saveUserSuccess({ user })),
+          catchError((err) =>
+            of(
+              ManagerActions.saveUserFailure({
+                error:
+                  err?.error?.error || err?.message || 'Failed to save user',
+              }),
+            ),
+          ),
+        );
+      }),
+    ),
+  );
+
+  archiveUser$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(ManagerActions.archiveUser),
+      switchMap(({ userId }) =>
+        this.api.archiveUser(userId).pipe(
+          map(() => ManagerActions.archiveUserSuccess({ userId })),
+          catchError((err) =>
+            of(
+              ManagerActions.archiveUserFailure({
+                error:
+                  err?.error?.error || err?.message || 'Failed to archive user',
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }

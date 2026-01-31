@@ -1,0 +1,468 @@
+<div class="users-shell">
+  <!-- LIST HEADER -->
+  <div class="list-header" *ngIf="(viewMode$ | async) === 'list'">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <span>Users</span>
+    </nav>
+
+    <div class="users-toolbar">
+      <div class="title">
+        <h3>Users</h3>
+        <p class="sub">Manage staff users in your company.</p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn primary" (click)="openCreate()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 5v14"></path>
+              <path d="M5 12h14"></path>
+            </svg>
+          </span>
+          New
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar-row">
+      <label class="search-field">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </span>
+        <input
+          type="search"
+          [formControl]="searchCtrl"
+          placeholder="Search by username, name, email, type, status"
+          aria-label="Search users"
+        />
+        <button
+          *ngIf="searchCtrl.value"
+          class="icon-btn"
+          type="button"
+          (click)="searchCtrl.setValue('')"
+          aria-label="Clear search"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </button>
+      </label>
+    </div>
+
+    <div class="table-head" aria-hidden="true">
+      <div>Username</div>
+      <div>Name</div>
+      <div>Email</div>
+      <div>Type</div>
+      <div>Status</div>
+      <div class="actions-col">Actions</div>
+    </div>
+  </div>
+
+  <div class="error" *ngIf="(error$ | async) as err">{{ err }}</div>
+
+  <div
+    class="screen-loader"
+    *ngIf="(loading$ | async)"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <div class="loader-card">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <div class="loader-bar" aria-hidden="true"></div>
+      <div class="loader-text">Loading…</div>
+    </div>
+  </div>
+
+  <!-- FORM MODE -->
+  <ng-container *ngIf="(viewMode$ | async) === 'form'">
+    <ng-container *ngIf="editingUser$ | async as user; else createUserBlock">
+      <div class="form-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/manager/menu">Menu</a>
+          <span class="sep">/</span>
+          <a href="#" (click)="$event.preventDefault(); closeForm()">Users</a>
+          <span class="sep">/</span>
+          <span>Edit</span>
+        </nav>
+
+        <div class="form-header-mainrow">
+          <div class="header-main">
+            <h3>User Details</h3>
+            <p class="sub">Update user profile and access metadata.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M15 6l-6 6 6 6"></path>
+                </svg>
+              </span>
+              Back
+            </button>
+            <button class="btn primary" type="button" (click)="saveUser()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section class="card">
+        <form class="form" [formGroup]="userForm">
+          <div class="grid-2">
+            <label>
+              <span>Username *</span>
+              <input formControlName="username" placeholder="username" />
+              <small
+                class="hint error-text"
+                *ngIf="userForm.controls.username.touched && userForm.controls.username.invalid"
+              >
+                Username is required.
+              </small>
+            </label>
+
+            <label>
+              <span>Name *</span>
+              <input formControlName="name" placeholder="Full name" />
+              <small
+                class="hint error-text"
+                *ngIf="userForm.controls.name.touched && userForm.controls.name.invalid"
+              >
+                Name is required.
+              </small>
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Email *</span>
+              <input formControlName="email" placeholder="email@example.com" />
+              <small
+                class="hint error-text"
+                *ngIf="userForm.controls.email.touched && userForm.controls.email.invalid"
+              >
+                Valid email is required.
+              </small>
+            </label>
+
+            <label>
+              <span>Type *</span>
+              <select formControlName="type">
+                <option value="employee">employee</option>
+                <option value="supplier">supplier</option>
+                <option value="client">client</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Mobile</span>
+              <input formControlName="cel" placeholder="0412..." />
+            </label>
+
+            <label>
+              <span>Phone</span>
+              <input formControlName="tel" placeholder="07..." />
+            </label>
+          </div>
+
+          <label>
+            <span>Address</span>
+            <input formControlName="address" placeholder="Address" />
+          </label>
+
+          <div class="grid-2">
+            <label>
+              <span>Status</span>
+              <select formControlName="status">
+                <option value="active">active</option>
+                <option value="archived">archived</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Password (optional)</span>
+              <input
+                type="password"
+                formControlName="password"
+                placeholder="Leave blank to keep current"
+              />
+              <small class="hint">Min 8 chars if provided.</small>
+            </label>
+          </div>
+
+          <label>
+            <span>Image URL</span>
+            <input formControlName="image" placeholder="https://..." />
+          </label>
+
+          <label>
+            <span>Bio</span>
+            <textarea
+              formControlName="bio"
+              rows="3"
+              placeholder="Bio..."
+            ></textarea>
+          </label>
+        </form>
+      </section>
+    </ng-container>
+
+    <ng-template #createUserBlock>
+      <div class="form-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/manager/menu">Menu</a>
+          <span class="sep">/</span>
+          <a href="#" (click)="$event.preventDefault(); closeForm()">Users</a>
+          <span class="sep">/</span>
+          <span>Create</span>
+        </nav>
+
+        <div class="form-header-mainrow">
+          <div class="header-main">
+            <h3>Create User</h3>
+            <p class="sub">Create a new user under your company.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M15 6l-6 6 6 6"></path>
+                </svg>
+              </span>
+              Back
+            </button>
+            <button class="btn primary" type="button" (click)="saveUser()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section class="card">
+        <form class="form" [formGroup]="userForm">
+          <div class="grid-2">
+            <label>
+              <span>Username *</span>
+              <input formControlName="username" placeholder="username" />
+            </label>
+
+            <label>
+              <span>Name *</span>
+              <input formControlName="name" placeholder="Full name" />
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Email *</span>
+              <input formControlName="email" placeholder="email@example.com" />
+            </label>
+
+            <label>
+              <span>Type *</span>
+              <select formControlName="type">
+                <option value="employee">employee</option>
+                <option value="supplier">supplier</option>
+                <option value="client">client</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            <span>Password *</span>
+            <input
+              type="password"
+              formControlName="password"
+              placeholder="Min 8 chars"
+            />
+            <small
+              class="hint error-text"
+              *ngIf="userForm.controls.password.touched && userForm.controls.password.invalid"
+            >
+              Password is required (min 8 chars).
+            </small>
+          </label>
+
+          <div class="grid-2">
+            <label>
+              <span>Mobile</span>
+              <input formControlName="cel" placeholder="0412..." />
+            </label>
+
+            <label>
+              <span>Phone</span>
+              <input formControlName="tel" placeholder="07..." />
+            </label>
+          </div>
+
+          <label>
+            <span>Address</span>
+            <input formControlName="address" placeholder="Address" />
+          </label>
+
+          <div class="grid-2">
+            <label>
+              <span>Status</span>
+              <select formControlName="status">
+                <option value="active">active</option>
+                <option value="archived">archived</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Image URL</span>
+              <input formControlName="image" placeholder="https://..." />
+            </label>
+          </div>
+
+          <label>
+            <span>Bio</span>
+            <textarea
+              formControlName="bio"
+              rows="3"
+              placeholder="Bio..."
+            ></textarea>
+          </label>
+        </form>
+      </section>
+    </ng-template>
+  </ng-container>
+
+  <!-- LIST MODE -->
+  <ng-container *ngIf="(viewMode$ | async) === 'list'">
+    <section class="list">
+      <ng-container *ngIf="filteredUsers$ | async as users">
+        <!-- Desktop table -->
+        <div class="table" *ngIf="users.length">
+          <div class="thead">
+            <div>Username</div>
+            <div>Name</div>
+            <div>Email</div>
+            <div>Type</div>
+            <div>Status</div>
+            <div class="actions-col">Actions</div>
+          </div>
+
+          <div class="trow" *ngFor="let u of users; trackBy: trackByUser">
+            <div class="cell strong">{{ u.username }}</div>
+            <div class="cell muted">{{ u.name || '—' }}</div>
+            <div class="cell muted">{{ u.email || '—' }}</div>
+            <div class="cell muted">{{ u.type || '—' }}</div>
+            <div class="cell">
+              <span class="badge" [class.archived]="u.status === 'archived'">
+                {{ u.status || 'active' }}
+              </span>
+            </div>
+            <div class="cell actions-col">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(u)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                    <path d="M13 6l4 4"></path>
+                  </svg>
+                </span>
+                Edit
+              </button>
+              <button
+                class="btn small danger"
+                type="button"
+                disabled
+                title="Archive is not available yet."
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 8h16"></path>
+                    <path d="M6 8v10h12V8"></path>
+                    <path d="M10 12h4"></path>
+                    <path d="M9 4h6l1 2H8l1-2Z"></path>
+                  </svg>
+                </span>
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile cards -->
+        <div class="cards" *ngIf="users.length">
+          <article
+            class="user-card"
+            *ngFor="let u of users; trackBy: trackByUser"
+          >
+            <div class="row">
+              <div class="name">{{ u.username }}</div>
+              <span class="badge" [class.archived]="u.status === 'archived'">
+                {{ u.status || 'active' }}
+              </span>
+            </div>
+            <div class="meta">
+              <div><span>Name:</span> {{ u.name || '—' }}</div>
+              <div><span>Email:</span> {{ u.email || '—' }}</div>
+              <div><span>Type:</span> {{ u.type || '—' }}</div>
+              <div><span>Mobile:</span> {{ u.cel || '—' }}</div>
+            </div>
+            <div class="card-actions">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(u)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                    <path d="M13 6l4 4"></path>
+                  </svg>
+                </span>
+                Edit
+              </button>
+              <button
+                class="btn small danger"
+                type="button"
+                disabled
+                title="Archive is not available yet."
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 8h16"></path>
+                    <path d="M6 8v10h12V8"></path>
+                    <path d="M10 12h4"></path>
+                    <path d="M9 4h6l1 2H8l1-2Z"></path>
+                  </svg>
+                </span>
+                Archive
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <div class="empty" *ngIf="!users.length && !(loading$ | async)">
+          No users found.
+        </div>
+      </ng-container>
+    </section>
+  </ng-container>
+</div>

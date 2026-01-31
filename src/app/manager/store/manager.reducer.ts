@@ -1,6 +1,7 @@
 import { createReducer, on } from '@ngrx/store';
 import { ManagerActions } from './manager.actions';
 import { initialManagerState } from './manager.state';
+import type { BmUser } from '../services/manager.service';
 
 export const MANAGER_FEATURE_KEY = 'manager';
 
@@ -31,14 +32,14 @@ export const managerReducer = createReducer(
           ? [
               ...state.clients,
               ...(clients ?? []).filter(
-                (c) => !state.clients.some((p) => p.clientId === c.clientId)
+                (c) => !state.clients.some((p) => p.clientId === c.clientId),
               ),
             ]
-          : clients ?? [],
+          : (clients ?? []),
       clientsPage: page,
       clientsLimit: limit,
       clientsTotal: total,
-    })
+    }),
   ),
 
   on(ManagerActions.loadClientsFailure, (state, { error }) => ({
@@ -197,7 +198,7 @@ export const managerReducer = createReducer(
 
   on(ManagerActions.saveContactSuccess, (state, { contact }) => {
     const idx = state.contacts.findIndex(
-      (c) => c.contactId === contact.contactId
+      (c) => c.contactId === contact.contactId,
     );
     const next = [...state.contacts];
 
@@ -236,5 +237,93 @@ export const managerReducer = createReducer(
     ...state,
     contactsLoading: false,
     contactsError: error,
-  }))
+  })),
+
+  /* =========================
+     Users - load
+  ========================= */
+  on(ManagerActions.loadUsers, (state, { page }) => ({
+    ...state,
+    usersLoading: true,
+    usersError: null,
+    usersPage: page,
+  })),
+
+  on(ManagerActions.loadUsersSuccess, (state, { result }) => ({
+    ...state,
+    usersLoading: false,
+    users: result.items ?? [],
+    usersPage: result.page,
+    usersLimit: result.limit,
+    usersTotal: result.total,
+  })),
+
+  on(ManagerActions.loadUsersFailure, (state, { error }) => ({
+    ...state,
+    usersLoading: false,
+    usersError: error,
+  })),
+
+  // Users - form
+  on(ManagerActions.openUserCreate, (state) => ({
+    ...state,
+    usersViewMode: 'form' as const,
+    editingUserId: null,
+    usersError: null,
+  })),
+
+  on(ManagerActions.openUserEdit, (state, { userId }) => ({
+    ...state,
+    usersViewMode: 'form' as const,
+    editingUserId: userId,
+    usersError: null,
+  })),
+
+  on(ManagerActions.closeUserForm, (state) => ({
+    ...state,
+    usersViewMode: 'list' as const,
+    editingUserId: null,
+  })),
+
+  // Users - save
+  on(ManagerActions.saveUser, (state) => ({
+    ...state,
+    usersLoading: true,
+    usersError: null,
+  })),
+
+  on(ManagerActions.saveUserSuccess, (state, { user }) => {
+    const idx = state.users.findIndex((u: BmUser) => u.id === user.id);
+    const next = [...state.users];
+
+    if (idx >= 0) next[idx] = user;
+    else next.unshift(user);
+
+    return {
+      ...state,
+      usersLoading: false,
+      users: next,
+      usersViewMode: 'list' as const,
+      editingUserId: null,
+    };
+  }),
+
+  on(ManagerActions.saveUserFailure, (state, { error }) => ({
+    ...state,
+    usersLoading: false,
+    usersError: error,
+  })),
+
+  // Users - archive
+  on(ManagerActions.archiveUserSuccess, (state, { userId }) => ({
+    ...state,
+    users: state.users.map((u: BmUser) =>
+      u.id === userId ? { ...u, status: 'archived' } : u,
+    ),
+  })),
+
+  on(ManagerActions.archiveUserFailure, (state, { error }) => ({
+    ...state,
+    usersError: error,
+  })),
 );

@@ -1,8 +1,9 @@
-import { BmClient, BmClientContact } from '../services/manager.service';
+import { BmClient, BmClientContact, BmUser } from '../services/manager.service';
 
 export type ClientsViewMode = 'list' | 'form';
 export type ClientFormTab = 'details' | 'contacts';
 export type ContactsViewMode = 'list' | 'form';
+export type UsersViewMode = 'list' | 'form';
 
 export interface ManagerState {
   searchQuery: string;
@@ -28,6 +29,16 @@ export interface ManagerState {
 
   contactsViewMode: ContactsViewMode;
   editingContactId: string | null;
+
+  // Users
+  users: BmUser[];
+  usersLoading: boolean;
+  usersError: string | null;
+  usersPage: number;
+  usersLimit: number;
+  usersTotal: number;
+  usersViewMode: UsersViewMode;
+  editingUserId: string | null;
 }
 
 export const initialManagerState: ManagerState = {
@@ -50,4 +61,13 @@ export const initialManagerState: ManagerState = {
   contactsError: null,
   contactsViewMode: 'list',
   editingContactId: null,
+
+  users: [],
+  usersLoading: false,
+  usersError: null,
+  usersPage: 1,
+  usersLimit: 20,
+  usersTotal: 0,
+  usersViewMode: 'list',
+  editingUserId: null,
 };

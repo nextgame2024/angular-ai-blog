@@ -391,7 +391,7 @@
   display: grid;
   gap: 0.75rem;
   position: relative;
-  min-height: 160px;
+  /* min-height: 160px; */
   padding-bottom: 3rem;
 }
 
