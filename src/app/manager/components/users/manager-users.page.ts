@@ -19,7 +19,7 @@ import {
 
 import { ManagerActions } from '../../store/manager.actions';
 import {
-  selectManagerSearchQuery,
+  selectManagerUsersSearchQuery,
   selectManagerUsers,
   selectManagerUsersError,
   selectManagerUsersLoading,
@@ -47,7 +47,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   viewMode$ = this.store.select(selectManagerUsersViewMode);
   editingUser$ = this.store.select(selectManagerEditingUser);
 
-  searchQuery$ = this.store.select(selectManagerSearchQuery);
+  searchQuery$ = this.store.select(selectManagerUsersSearchQuery);
   searchCtrl: FormControl<string>;
   filteredUsers$!: Observable<BmUser[]>;
 
@@ -112,7 +112,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       )
       .subscribe((query) =>
         this.store.dispatch(
-          ManagerActions.setSearchQuery({ query: query || '' }),
+          ManagerActions.setUsersSearchQuery({ query: query || '' }),
         ),
       );
 

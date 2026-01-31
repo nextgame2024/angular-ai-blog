@@ -7,7 +7,8 @@ import { catchError, map, switchMap, withLatestFrom } from 'rxjs/operators';
 import { ManagerActions } from './manager.actions';
 import { ManagerService } from '../services/manager.service';
 import {
-  selectManagerSearchQuery,
+  selectManagerClientsSearchQuery,
+  selectManagerUsersSearchQuery,
   selectManagerEditingClient,
   selectManagerEditingContact,
   selectManagerEditingUser,
@@ -26,7 +27,7 @@ export class ManagerEffects {
   loadClients$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerActions.loadClients),
-      withLatestFrom(this.store.select(selectManagerSearchQuery)),
+      withLatestFrom(this.store.select(selectManagerClientsSearchQuery)),
       switchMap(([{ page }, q]) =>
         this.api.listClients({ page, limit: 20, q: q || undefined }).pipe(
           map((res) =>
@@ -185,7 +186,7 @@ export class ManagerEffects {
   loadUsers$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerActions.loadUsers),
-      withLatestFrom(this.store.select(selectManagerSearchQuery)),
+      withLatestFrom(this.store.select(selectManagerUsersSearchQuery)),
       switchMap(([{ page }, q]) =>
         this.api.listUsers({ page, limit: 20, q: q || undefined }).pipe(
           map((result) => ManagerActions.loadUsersSuccess({ result })),

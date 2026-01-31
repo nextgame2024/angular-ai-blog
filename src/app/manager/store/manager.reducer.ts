@@ -13,6 +13,14 @@ export const managerReducer = createReducer(
     ...state,
     searchQuery: query,
   })),
+  on(ManagerActions.setClientsSearchQuery, (state, { query }) => ({
+    ...state,
+    clientsSearchQuery: query,
+  })),
+  on(ManagerActions.setUsersSearchQuery, (state, { query }) => ({
+    ...state,
+    usersSearchQuery: query,
+  })),
 
   // Clients - load
   on(ManagerActions.loadClients, (state, { page }) => ({

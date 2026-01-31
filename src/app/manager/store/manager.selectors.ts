@@ -10,6 +10,14 @@ export const selectManagerSearchQuery = createSelector(
   selectManagerState,
   (s) => s.searchQuery,
 );
+export const selectManagerClientsSearchQuery = createSelector(
+  selectManagerState,
+  (s) => s.clientsSearchQuery,
+);
+export const selectManagerUsersSearchQuery = createSelector(
+  selectManagerState,
+  (s) => s.usersSearchQuery,
+);
 
 // Clients
 export const selectManagerClients = createSelector(

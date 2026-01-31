@@ -7,6 +7,8 @@ export type UsersViewMode = 'list' | 'form';
 
 export interface ManagerState {
   searchQuery: string;
+  clientsSearchQuery: string;
+  usersSearchQuery: string;
 
   // Clients
   clients: BmClient[];
@@ -43,6 +45,8 @@ export interface ManagerState {
 
 export const initialManagerState: ManagerState = {
   searchQuery: '',
+  clientsSearchQuery: '',
+  usersSearchQuery: '',
 
   clients: [],
   clientsLoading: false,

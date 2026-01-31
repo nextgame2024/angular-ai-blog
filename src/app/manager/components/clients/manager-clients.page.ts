@@ -30,7 +30,7 @@ import {
   selectManagerClientsError,
   selectManagerClientsLoading,
   selectManagerClientsTotal,
-  selectManagerSearchQuery,
+  selectManagerClientsSearchQuery,
   selectManagerClientsViewMode,
   selectManagerEditingClient,
   selectManagerClientsPage,
@@ -68,7 +68,7 @@ export class ManagerClientsPageComponent
 
   page$ = this.store.select(selectManagerClientsPage);
   limit$ = this.store.select(selectManagerClientsLimit);
-  searchQuery$ = this.store.select(selectManagerSearchQuery);
+  searchQuery$ = this.store.select(selectManagerClientsSearchQuery);
 
   // Tabs + Contacts
   tab$ = this.store.select(selectManagerClientFormTab);
@@ -154,7 +154,7 @@ export class ManagerClientsPageComponent
       )
       .subscribe((query) =>
         this.store.dispatch(
-          ManagerActions.setSearchQuery({ query: query || '' })
+          ManagerActions.setClientsSearchQuery({ query: query || '' })
         )
       );
 
