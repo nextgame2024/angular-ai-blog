@@ -101,10 +101,11 @@
             <button class="btn" type="button" (click)="closeForm()">
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
-                  <path d="M15 6l-6 6 6 6"></path>
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
                 </svg>
               </span>
-              Back
+              Cancel
             </button>
             <button class="btn primary" type="button" (click)="saveUser()">
               <span class="btn-icon" aria-hidden="true">
@@ -121,44 +122,96 @@
 
       <section class="card">
         <form class="form" [formGroup]="userForm" autocomplete="off">
-          <div class="grid-2">
-            <label>
-              <span>Name *</span>
-              <input
-                formControlName="name"
-                placeholder="Full name"
-                autocomplete="off"
+          <div class="avatar-grid">
+            <div class="avatar-stack">
+              <img
+                class="avatar-image"
+                [src]="avatarSrc"
+                alt="Profile picture"
+                referrerpolicy="no-referrer"
               />
-            </label>
+              <div class="avatar-actions">
+                <label class="upload-button">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    (change)="onAvatarSelected($event)"
+                    [disabled]="isUploadingAvatar"
+                  />
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 5v10"></path>
+                      <path d="M8 9l4-4 4 4"></path>
+                      <path d="M5 19h14"></path>
+                    </svg>
+                  </span>
+                  Upload
+                </label>
+                <span class="upload-hint">PNG/JPG/WebP, up to 5 MB.</span>
+                <span class="upload-error" *ngIf="uploadError">
+                  {{ uploadError }}
+                </span>
+              </div>
+            </div>
 
-            <label>
-              <span>Email *</span>
-              <input
-                formControlName="email"
-                placeholder="email@example.com"
-                autocomplete="off"
-              />
-            </label>
-          </div>
+            <div class="avatar-fields">
+              <label>
+                <span>Name *</span>
+                <input
+                  formControlName="name"
+                  placeholder="Full name"
+                  autocomplete="off"
+                />
+              </label>
 
-          <div class="grid-2">
-            <label>
-              <span>Mobile</span>
-              <input
-                formControlName="cel"
-                placeholder="0412..."
-                autocomplete="off"
-              />
-            </label>
+              <label>
+                <span>Email *</span>
+                <input
+                  formControlName="email"
+                  placeholder="email@example.com"
+                  autocomplete="off"
+                />
+              </label>
 
-            <label>
-              <span>Phone</span>
-              <input
-                formControlName="tel"
-                placeholder="07..."
-                autocomplete="off"
-              />
-            </label>
+              <label>
+                <span>Mobile</span>
+                <input
+                  formControlName="cel"
+                  placeholder="0412..."
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Phone</span>
+                <input
+                  formControlName="tel"
+                  placeholder="07..."
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Username *</span>
+                <input
+                  formControlName="username"
+                  placeholder="username"
+                  name="new-username"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Password (optional - Min 8 chars if provided)</span>
+                <input
+                  type="password"
+                  formControlName="password"
+                  placeholder="Leave blank to keep current"
+                  name="new-password"
+                  autocomplete="new-password"
+                />
+              </label>
+            </div>
           </div>
 
           <label class="address-label">
@@ -191,29 +244,6 @@
 
           <div class="grid-2">
             <label>
-              <span>Username *</span>
-              <input
-                formControlName="username"
-                placeholder="username"
-                name="new-username"
-                autocomplete="off"
-              />
-            </label>
-
-            <label>
-              <span>Password (optional - Min 8 chars if provided)</span>
-              <input
-                type="password"
-                formControlName="password"
-                placeholder="Leave blank to keep current"
-                name="new-password"
-                autocomplete="new-password"
-              />
-            </label>
-          </div>
-
-          <div class="grid-2">
-            <label>
               <span>Type *</span>
               <select formControlName="type">
                 <option value="employee">employee</option>
@@ -232,20 +262,11 @@
           </div>
 
           <label>
-            <span>Image URL</span>
-            <input
-              formControlName="image"
-              placeholder="https://..."
-              autocomplete="off"
-            />
-          </label>
-
-          <label>
-            <span>Bio</span>
+            <span>Notes</span>
             <textarea
               formControlName="bio"
               rows="3"
-              placeholder="Bio..."
+              placeholder="Notes..."
             ></textarea>
           </label>
         </form>
@@ -271,10 +292,11 @@
             <button class="btn" type="button" (click)="closeForm()">
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
-                  <path d="M15 6l-6 6 6 6"></path>
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
                 </svg>
               </span>
-              Back
+              Cancel
             </button>
             <button class="btn primary" type="button" (click)="saveUser()">
               <span class="btn-icon" aria-hidden="true">
@@ -291,44 +313,96 @@
 
       <section class="card">
         <form class="form" [formGroup]="userForm" autocomplete="off">
-          <div class="grid-2">
-            <label>
-              <span>Name *</span>
-              <input
-                formControlName="name"
-                placeholder="Full name"
-                autocomplete="off"
+          <div class="avatar-grid">
+            <div class="avatar-stack">
+              <img
+                class="avatar-image"
+                [src]="avatarSrc"
+                alt="Profile picture"
+                referrerpolicy="no-referrer"
               />
-            </label>
+              <div class="avatar-actions">
+                <label class="upload-button">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    (change)="onAvatarSelected($event)"
+                    [disabled]="isUploadingAvatar"
+                  />
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 5v10"></path>
+                      <path d="M8 9l4-4 4 4"></path>
+                      <path d="M5 19h14"></path>
+                    </svg>
+                  </span>
+                  Upload
+                </label>
+                <span class="upload-hint">PNG/JPG/WebP, up to 5 MB.</span>
+                <span class="upload-error" *ngIf="uploadError">
+                  {{ uploadError }}
+                </span>
+              </div>
+            </div>
 
-            <label>
-              <span>Email *</span>
-              <input
-                formControlName="email"
-                placeholder="email@example.com"
-                autocomplete="off"
-              />
-            </label>
-          </div>
+            <div class="avatar-fields">
+              <label>
+                <span>Name *</span>
+                <input
+                  formControlName="name"
+                  placeholder="Full name"
+                  autocomplete="off"
+                />
+              </label>
 
-          <div class="grid-2">
-            <label>
-              <span>Mobile</span>
-              <input
-                formControlName="cel"
-                placeholder="0412..."
-                autocomplete="off"
-              />
-            </label>
+              <label>
+                <span>Email *</span>
+                <input
+                  formControlName="email"
+                  placeholder="email@example.com"
+                  autocomplete="off"
+                />
+              </label>
 
-            <label>
-              <span>Phone</span>
-              <input
-                formControlName="tel"
-                placeholder="07..."
-                autocomplete="off"
-              />
-            </label>
+              <label>
+                <span>Mobile</span>
+                <input
+                  formControlName="cel"
+                  placeholder="0412..."
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Phone</span>
+                <input
+                  formControlName="tel"
+                  placeholder="07..."
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Username *</span>
+                <input
+                  formControlName="username"
+                  placeholder="username"
+                  name="new-username"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Password * (Min 8 chars)</span>
+                <input
+                  type="password"
+                  formControlName="password"
+                  placeholder="Min 8 chars"
+                  name="new-password"
+                  autocomplete="new-password"
+                />
+              </label>
+            </div>
           </div>
 
           <label class="address-label">
@@ -361,29 +435,6 @@
 
           <div class="grid-2">
             <label>
-              <span>Username *</span>
-              <input
-                formControlName="username"
-                placeholder="username"
-                name="new-username"
-                autocomplete="off"
-              />
-            </label>
-
-            <label>
-              <span>Password * (Min 8 chars)</span>
-              <input
-                type="password"
-                formControlName="password"
-                placeholder="Min 8 chars"
-                name="new-password"
-                autocomplete="new-password"
-              />
-            </label>
-          </div>
-
-          <div class="grid-2">
-            <label>
               <span>Type *</span>
               <select formControlName="type">
                 <option value="employee">employee</option>
@@ -400,15 +451,6 @@
               </select>
             </label>
           </div>
-
-          <label>
-            <span>Image URL</span>
-            <input
-              formControlName="image"
-              placeholder="https://..."
-              autocomplete="off"
-            />
-          </label>
 
           <label>
             <span>Bio</span>

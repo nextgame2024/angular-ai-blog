@@ -32,6 +32,7 @@ import {
 
 import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
 import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
+import { AvatarUploadService } from '../../../settings/components/settings/services/avatar-upload.service';
 
 import type { BmUser } from '../../services/manager.service';
 
@@ -62,6 +63,13 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   private addressSessionToken: string | null = null;
   private addressHasFocus = false;
 
+  defaultAvatar =
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
+  previewUrl: string | null = null;
+  selectedFile?: File;
+  isUploadingAvatar = false;
+  uploadError: string | null = null;
+
   userForm = this.fb.group({
     username: ['', [Validators.required, Validators.maxLength(80)]],
     email: [
@@ -83,6 +91,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     private store: Store,
     private fb: FormBuilder,
     private townPlanner: TownPlannerV2Service,
+    private avatarUpload: AvatarUploadService,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
@@ -131,6 +140,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     this.editingUser$.pipe(takeUntil(this.destroy$)).subscribe((u) => {
       if (!u) return;
 
+      this.resetAvatarState();
       this.userForm.patchValue({
         username: u.username ?? '',
         email: u.email ?? '',
@@ -158,11 +168,13 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.revokePreview();
   }
 
   trackByUser = (_: number, u: BmUser) => u.id;
 
   openCreate(): void {
+    this.resetAvatarState();
     this.userForm.reset({
       username: '',
       email: '',
@@ -221,6 +233,68 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     if (!ok) return;
 
     this.store.dispatch(ManagerActions.archiveUser({ userId: u.id }));
+  }
+
+  get avatarSrc(): string {
+    return this.previewUrl || this.userForm.controls.image.value || this.defaultAvatar;
+  }
+
+  onAvatarSelected(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5_000_000) {
+      this.uploadError = 'Image is too large. Max size is 5 MB.';
+      input.value = '';
+      return;
+    }
+
+    this.selectedFile = file;
+    this.revokePreview();
+    this.previewUrl = URL.createObjectURL(file);
+    this.uploadError = null;
+
+    this.uploadAvatar();
+  }
+
+  uploadAvatar(): void {
+    if (!this.selectedFile || this.isUploadingAvatar) return;
+    this.isUploadingAvatar = true;
+    this.avatarUpload.uploadViaPresigned(this.selectedFile).subscribe({
+      next: ({ url }) => {
+        this.userForm.controls.image.setValue(url);
+        this.revokePreview();
+        this.selectedFile = undefined;
+        this.isUploadingAvatar = false;
+      },
+      error: (err) => {
+        this.isUploadingAvatar = false;
+        const raw =
+          err?.error?.error ||
+          err?.error ||
+          err?.message ||
+          'Failed to upload image';
+        this.uploadError =
+          typeof raw === 'string' && raw.includes('EntityTooLarge')
+            ? 'Image is too large. Max size is 5 MB.'
+            : raw;
+      },
+    });
+  }
+
+  private revokePreview(): void {
+    if (this.previewUrl) {
+      URL.revokeObjectURL(this.previewUrl);
+      this.previewUrl = null;
+    }
+  }
+
+  private resetAvatarState(): void {
+    this.revokePreview();
+    this.selectedFile = undefined;
+    this.uploadError = null;
+    this.isUploadingAvatar = false;
   }
 
   onAddressFocus(): void {
