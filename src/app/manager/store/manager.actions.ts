@@ -39,8 +39,13 @@ export const ManagerActions = createActionGroup({
     'Archive Client Failure': props<{ error: string }>(),
 
     // Contacts (nested)
-    'Load Client Contacts': props<{ clientId: string }>(),
-    'Load Client Contacts Success': props<{ contacts: BmClientContact[] }>(),
+    'Load Client Contacts': props<{ clientId: string; page: number }>(),
+    'Load Client Contacts Success': props<{
+      contacts: BmClientContact[];
+      page: number;
+      limit: number;
+      total: number;
+    }>(),
     'Load Client Contacts Failure': props<{ error: string }>(),
 
     'Open Contact Create': emptyProps(),

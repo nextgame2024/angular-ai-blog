@@ -5,8 +5,15 @@ import { provideState } from '@ngrx/store';
 import { ManagerPageComponent } from './components/manager.page';
 import { ManagerSectionPageComponent } from './components/manager-section.page';
 import { ManagerClientsPageComponent } from './components/clients/manager-clients.page';
+import { ManagerMaterialsPageComponent } from './components/materials/manager-materials.page';
 import { ManagerUsersPageComponent } from './components/users/manager-users.page';
+import { ManagerMaterialsService } from './services/manager.materials.service';
 import { ManagerService } from './services/manager.service';
+import { ManagerMaterialsEffects } from './store/materials/manager.effects';
+import {
+  MANAGER_MATERIALS_FEATURE_KEY,
+  managerMaterialsReducer,
+} from './store/materials/manager.reducer';
 import { ManagerEffects } from './store/manager.effects';
 import { MANAGER_FEATURE_KEY, managerReducer } from './store/manager.reducer';
 
@@ -53,8 +60,13 @@ export const MANAGER_ROUTES: Route[] = [
       },
       {
         path: 'materials',
-        component: ManagerSectionPageComponent,
-        data: { title: 'Materials' },
+        component: ManagerMaterialsPageComponent,
+        providers: [
+          ManagerMaterialsService,
+          provideEffects(ManagerMaterialsEffects),
+          provideState(MANAGER_MATERIALS_FEATURE_KEY, managerMaterialsReducer),
+        ],
+        data: { title: 'Materials', fullscreen: true },
       },
       {
         path: 'labor',

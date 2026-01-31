@@ -120,9 +120,9 @@
           </ng-container>
           <div class="form-header-mainrow">
             <div class="header-main">
-              <h3>Customer Details</h3>
+              <h3>Client Details</h3>
               <p class="sub">
-                Review and update customer details, including contact info and
+                Review and update client details, including contact info and
                 status.
               </p>
             </div>
@@ -366,7 +366,7 @@
 
           <!-- Contacts list -->
           <ng-container *ngIf="(contactsViewMode$ | async) === 'list'">
-            <div class="contacts-list">
+            <div class="contacts-list" #contactsList>
               <ng-container *ngIf="(contacts$ | async) as contacts">
                 <!-- Desktop table -->
                 <div class="table contacts-table" *ngIf="contacts.length">
@@ -471,6 +471,8 @@
                 >
                   No contacts yet. Click “Add” to create one.
                 </div>
+
+                <div class="infinite-sentinel" #contactsInfiniteSentinel></div>
               </ng-container>
             </div>
           </ng-container>
@@ -493,9 +495,9 @@
           </nav>
           <div class="form-header-mainrow">
             <div class="header-main">
-              <h3>Customer Details</h3>
+              <h3>Client Details</h3>
               <p class="sub">
-                Review and update customer details, including contact info and
+                Review and update client details, including contact info and
                 status.
               </p>
             </div>

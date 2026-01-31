@@ -137,9 +137,21 @@ export class ManagerService {
 
   listClientContacts(
     clientId: string,
-  ): Observable<{ contacts: BmClientContact[] } | BmClientContact[]> {
+    params?: { page?: number; limit?: number },
+  ): Observable<{
+    contacts: BmClientContact[];
+    page: number;
+    limit: number;
+    total: number;
+  }> {
+    let httpParams = new HttpParams();
+    if (params?.page) httpParams = httpParams.set('page', String(params.page));
+    if (params?.limit)
+      httpParams = httpParams.set('limit', String(params.limit));
+
     return this.http.get<any>(
       `${this.apiBase}/bm/clients/${clientId}/contacts`,
+      { params: httpParams },
     );
   }
 

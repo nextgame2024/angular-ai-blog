@@ -28,6 +28,9 @@ export interface ManagerState {
   contacts: BmClientContact[];
   contactsLoading: boolean;
   contactsError: string | null;
+  contactsPage: number;
+  contactsLimit: number;
+  contactsTotal: number;
 
   contactsViewMode: ContactsViewMode;
   editingContactId: string | null;
@@ -63,6 +66,9 @@ export const initialManagerState: ManagerState = {
   contacts: [],
   contactsLoading: false,
   contactsError: null,
+  contactsPage: 1,
+  contactsLimit: 20,
+  contactsTotal: 0,
   contactsViewMode: 'list',
   editingContactId: null,
 

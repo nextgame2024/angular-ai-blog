@@ -42,6 +42,9 @@ import {
   selectManagerContactsLoading,
   selectManagerContactsError,
   selectManagerContactsViewMode,
+  selectManagerContactsPage,
+  selectManagerContactsLimit,
+  selectManagerContactsTotal,
   selectManagerEditingContact,
 } from '../../store/manager.selectors';
 import { BmClient, BmClientContact } from '../../services/manager.service';
@@ -61,7 +64,9 @@ export class ManagerClientsPageComponent
 {
   private destroy$ = new Subject<void>();
   private infiniteObserver?: IntersectionObserver;
+  private contactsInfiniteObserver?: IntersectionObserver;
   private isLoadingMore = false;
+  private isLoadingMoreContacts = false;
 
   loading$ = this.store.select(selectManagerClientsLoading);
   error$ = this.store.select(selectManagerClientsError);
@@ -82,11 +87,15 @@ export class ManagerClientsPageComponent
   contactsError$ = this.store.select(selectManagerContactsError);
   contactsViewMode$ = this.store.select(selectManagerContactsViewMode);
   editingContact$ = this.store.select(selectManagerEditingContact);
+  contactsPage$ = this.store.select(selectManagerContactsPage);
+  contactsLimit$ = this.store.select(selectManagerContactsLimit);
+  contactsTotal$ = this.store.select(selectManagerContactsTotal);
 
   private lastContactsClientId: string | null = null;
 
   searchCtrl: FormControl<string>;
   canLoadMore$!: Observable<boolean>;
+  contactsCanLoadMore$!: Observable<boolean>;
 
   addressSuggestions: TownPlannerV2AddressSuggestion[] = [];
   showAddressSuggestions = false;
@@ -97,10 +106,16 @@ export class ManagerClientsPageComponent
   @ViewChild('listHeader') listHeaderRef?: ElementRef<HTMLElement>;
   @ViewChild('clientsList') clientsListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
+  @ViewChild('contactsList') contactsListRef?: ElementRef<HTMLElement>;
+  @ViewChild('contactsInfiniteSentinel')
+  contactsInfiniteSentinelRef?: ElementRef<HTMLElement>;
 
   private currentPage = 1;
   private canLoadMore = false;
   private isLoading = false;
+  private currentContactsPage = 1;
+  private canLoadMoreContacts = false;
+  private isLoadingContacts = false;
 
   clientForm = this.fb.group({
     client_name: ['', [Validators.required, Validators.maxLength(120)]],
@@ -136,6 +151,16 @@ export class ManagerClientsPageComponent
         ([total, clients, loading]) => !loading && clients.length < total
       )
     );
+    this.contactsCanLoadMore$ = combineLatest([
+      this.contactsTotal$,
+      this.contacts$,
+      this.contactsLoading$,
+    ]).pipe(
+      map(
+        ([total, contacts, loading]) =>
+          !loading && contacts.length < total
+      )
+    );
     this.page$.pipe(takeUntil(this.destroy$)).subscribe((page) => {
       this.currentPage = page || 1;
     });
@@ -146,6 +171,22 @@ export class ManagerClientsPageComponent
       this.isLoading = loading;
       if (!loading) this.isLoadingMore = false;
     });
+    this.contactsPage$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((page) => {
+        this.currentContactsPage = page || 1;
+      });
+    this.contactsCanLoadMore$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((canLoad) => {
+        this.canLoadMoreContacts = canLoad;
+      });
+    this.contactsLoading$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((loading) => {
+        this.isLoadingContacts = loading;
+        if (!loading) this.isLoadingMoreContacts = false;
+      });
   }
 
   ngOnInit(): void {
@@ -178,6 +219,18 @@ export class ManagerClientsPageComponent
         if (mode !== 'list') return;
         setTimeout(() => this.updateHeaderOffset(), 0);
         setTimeout(() => this.setupInfiniteScroll(), 0);
+      });
+
+    this.tab$.pipe(takeUntil(this.destroy$)).subscribe((tab) => {
+      if (tab !== 'contacts') return;
+      setTimeout(() => this.setupContactsInfiniteScroll(), 0);
+    });
+
+    this.contactsViewMode$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((mode) => {
+        if (mode !== 'list') return;
+        setTimeout(() => this.setupContactsInfiniteScroll(), 0);
       });
 
     // Patch client form when switching to edit
@@ -248,6 +301,7 @@ export class ManagerClientsPageComponent
 
   ngOnDestroy(): void {
     this.infiniteObserver?.disconnect();
+    this.contactsInfiniteObserver?.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -477,6 +531,53 @@ export class ManagerClientsPageComponent
     );
   }
 
+  private setupContactsInfiniteScroll(): void {
+    const sentinel = this.contactsInfiniteSentinelRef?.nativeElement;
+    const list = this.contactsListRef?.nativeElement;
+    if (!sentinel || !list) return;
+
+    this.contactsInfiniteObserver?.disconnect();
+
+    const scrollRoot = list.closest('.content') as HTMLElement | null;
+
+    this.contactsInfiniteObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+        this.tryLoadMoreContacts();
+      },
+      {
+        root: scrollRoot,
+        rootMargin: '200px 0px',
+        threshold: 0.1,
+      }
+    );
+
+    this.contactsInfiniteObserver.observe(sentinel);
+  }
+
+  private tryLoadMoreContacts(): void {
+    if (
+      !this.canLoadMoreContacts ||
+      this.isLoadingContacts ||
+      this.isLoadingMoreContacts
+    )
+      return;
+    this.isLoadingMoreContacts = true;
+    this.store
+      .select(selectManagerEditingClient)
+      .pipe(take(1))
+      .subscribe((client) => {
+        if (!client?.clientId) return;
+        this.store.dispatch(
+          ManagerActions.loadClientContacts({
+            clientId: client.clientId,
+            page: this.currentContactsPage + 1,
+          })
+        );
+      });
+  }
+
   // -------- Tabs --------
 
   setTab(tab: ClientFormTab, client: BmClient | null): void {
@@ -490,7 +591,7 @@ export class ManagerClientsPageComponent
         this.lastContactsClientId = client.clientId;
       }
       this.store.dispatch(
-        ManagerActions.loadClientContacts({ clientId: client.clientId })
+        ManagerActions.loadClientContacts({ clientId: client.clientId, page: 1 })
       );
     }
   }

@@ -467,7 +467,7 @@
 
   <!-- LIST MODE -->
   <ng-container *ngIf="(viewMode$ | async) === 'list'">
-    <section class="list">
+    <section class="list" #usersList>
       <ng-container *ngIf="filteredUsers$ | async as users">
         <!-- Desktop table -->
         <div class="table" *ngIf="users.length">
@@ -579,6 +579,7 @@
         <div class="empty" *ngIf="!users.length && !(loading$ | async)">
           No users found.
         </div>
+        <div class="infinite-sentinel" #infiniteSentinel></div>
       </ng-container>
     </section>
   </ng-container>

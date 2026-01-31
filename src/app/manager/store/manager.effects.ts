@@ -102,7 +102,9 @@ export class ManagerEffects {
   loadContactsOnOpenEdit$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerActions.openClientEdit),
-      map(({ clientId }) => ManagerActions.loadClientContacts({ clientId })),
+      map(({ clientId }) =>
+        ManagerActions.loadClientContacts({ clientId, page: 1 }),
+      ),
     ),
   );
 
@@ -111,11 +113,18 @@ export class ManagerEffects {
   loadClientContacts$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerActions.loadClientContacts),
-      switchMap(({ clientId }) =>
-        this.api.listClientContacts(clientId).pipe(
+      switchMap(({ clientId, page }) =>
+        this.api.listClientContacts(clientId, { page, limit: 20 }).pipe(
           map((res: any) => {
-            const contacts = Array.isArray(res) ? res : (res?.contacts ?? []);
-            return ManagerActions.loadClientContactsSuccess({ contacts });
+            const contacts = Array.isArray(res)
+              ? res
+              : (res?.contacts ?? []);
+            return ManagerActions.loadClientContactsSuccess({
+              contacts,
+              page: res?.page ?? page ?? 1,
+              limit: res?.limit ?? 20,
+              total: res?.total ?? contacts.length ?? 0,
+            });
           }),
           catchError((err) =>
             of(

@@ -68,6 +68,9 @@ export const managerReducer = createReducer(
     contacts: [],
     contactsLoading: false,
     contactsError: null,
+    contactsPage: 1,
+    contactsLimit: 20,
+    contactsTotal: 0,
     contactsViewMode: 'list' as const,
     editingContactId: null,
   })),
@@ -82,6 +85,9 @@ export const managerReducer = createReducer(
     contacts: [],
     contactsLoading: false,
     contactsError: null,
+    contactsPage: 1,
+    contactsLimit: 20,
+    contactsTotal: 0,
     contactsViewMode: 'list' as const,
     editingContactId: null,
   })),
@@ -95,6 +101,9 @@ export const managerReducer = createReducer(
     contacts: [],
     contactsLoading: false,
     contactsError: null,
+    contactsPage: 1,
+    contactsLimit: 20,
+    contactsTotal: 0,
     contactsViewMode: 'list' as const,
     editingContactId: null,
   })),
@@ -157,17 +166,35 @@ export const managerReducer = createReducer(
   })),
 
   // Contacts - load
-  on(ManagerActions.loadClientContacts, (state) => ({
+  on(ManagerActions.loadClientContacts, (state, { page }) => ({
     ...state,
     contactsLoading: true,
     contactsError: null,
+    contactsPage: page,
   })),
 
-  on(ManagerActions.loadClientContactsSuccess, (state, { contacts }) => ({
-    ...state,
-    contactsLoading: false,
-    contacts: contacts ?? [],
-  })),
+  on(
+    ManagerActions.loadClientContactsSuccess,
+    (state, { contacts, page, limit, total }) => ({
+      ...state,
+      contactsLoading: false,
+      contacts:
+        page > 1
+          ? [
+              ...state.contacts,
+              ...(contacts ?? []).filter(
+                (c) =>
+                  !state.contacts.some(
+                    (existing) => existing.contactId === c.contactId,
+                  ),
+              ),
+            ]
+          : (contacts ?? []),
+      contactsPage: page,
+      contactsLimit: limit,
+      contactsTotal: total,
+    }),
+  ),
 
   on(ManagerActions.loadClientContactsFailure, (state, { error }) => ({
     ...state,
@@ -260,7 +287,15 @@ export const managerReducer = createReducer(
   on(ManagerActions.loadUsersSuccess, (state, { result }) => ({
     ...state,
     usersLoading: false,
-    users: result.items ?? [],
+    users:
+      result.page > 1
+        ? [
+            ...state.users,
+            ...(result.items ?? []).filter(
+              (u: BmUser) => !state.users.some((p) => p.id === u.id),
+            ),
+          ]
+        : (result.items ?? []),
     usersPage: result.page,
     usersLimit: result.limit,
     usersTotal: result.total,

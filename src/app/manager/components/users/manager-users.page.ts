@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import {
   FormBuilder,
   FormControl,
@@ -26,6 +26,7 @@ import {
   selectManagerUsersError,
   selectManagerUsersLoading,
   selectManagerUsersTotal,
+  selectManagerUsersPage,
   selectManagerUsersViewMode,
   selectManagerEditingUser,
 } from '../../store/manager.selectors';
@@ -52,10 +53,21 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   total$ = this.store.select(selectManagerUsersTotal);
   viewMode$ = this.store.select(selectManagerUsersViewMode);
   editingUser$ = this.store.select(selectManagerEditingUser);
+  page$ = this.store.select(selectManagerUsersPage);
 
   searchQuery$ = this.store.select(selectManagerUsersSearchQuery);
   searchCtrl: FormControl<string>;
   filteredUsers$!: Observable<BmUser[]>;
+  canLoadMore$!: Observable<boolean>;
+
+  private infiniteObserver?: IntersectionObserver;
+  private isLoadingMore = false;
+  private currentPage = 1;
+  private canLoadMore = false;
+  private isLoading = false;
+
+  @ViewChild('usersList') usersListRef?: ElementRef<HTMLElement>;
+  @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
 
   addressSuggestions: TownPlannerV2AddressSuggestion[] = [];
   showAddressSuggestions = false;
@@ -113,6 +125,24 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         });
       }),
     );
+
+    this.canLoadMore$ = combineLatest([
+      this.total$,
+      this.usersRaw$,
+      this.loading$,
+    ]).pipe(
+      map(([total, users, loading]) => !loading && users.length < total),
+    );
+    this.page$.pipe(takeUntil(this.destroy$)).subscribe((page) => {
+      this.currentPage = page || 1;
+    });
+    this.canLoadMore$.pipe(takeUntil(this.destroy$)).subscribe((canLoad) => {
+      this.canLoadMore = canLoad;
+    });
+    this.loading$.pipe(takeUntil(this.destroy$)).subscribe((loading) => {
+      this.isLoading = loading;
+      if (!loading) this.isLoadingMore = false;
+    });
   }
 
   ngOnInit(): void {
@@ -136,6 +166,13 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
           ManagerActions.setUsersSearchQuery({ query: query || '' }),
         ),
       );
+
+    this.viewMode$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((mode) => {
+        if (mode !== 'list') return;
+        setTimeout(() => this.setupInfiniteScroll(), 0);
+      });
 
     this.editingUser$.pipe(takeUntil(this.destroy$)).subscribe((u) => {
       if (!u) return;
@@ -166,6 +203,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.infiniteObserver?.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
     this.revokePreview();
@@ -237,6 +275,37 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
 
   get avatarSrc(): string {
     return this.previewUrl || this.userForm.controls.image.value || this.defaultAvatar;
+  }
+
+  private setupInfiniteScroll(): void {
+    const sentinel = this.infiniteSentinelRef?.nativeElement;
+    const list = this.usersListRef?.nativeElement;
+    if (!sentinel || !list) return;
+
+    this.infiniteObserver?.disconnect();
+
+    const scrollRoot = list.closest('.content') as HTMLElement | null;
+
+    this.infiniteObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry?.isIntersecting) return;
+        this.tryLoadMore();
+      },
+      {
+        root: scrollRoot,
+        rootMargin: '200px 0px',
+        threshold: 0.1,
+      },
+    );
+
+    this.infiniteObserver.observe(sentinel);
+  }
+
+  private tryLoadMore(): void {
+    if (!this.canLoadMore || this.isLoading || this.isLoadingMore) return;
+    this.isLoadingMore = true;
+    this.store.dispatch(ManagerActions.loadUsers({ page: this.currentPage + 1 }));
   }
 
   onAvatarSelected(event: Event): void {

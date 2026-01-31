@@ -76,6 +76,18 @@ export const selectManagerContactsError = createSelector(
   selectManagerState,
   (s) => s.contactsError,
 );
+export const selectManagerContactsTotal = createSelector(
+  selectManagerState,
+  (s) => s.contactsTotal,
+);
+export const selectManagerContactsPage = createSelector(
+  selectManagerState,
+  (s) => s.contactsPage,
+);
+export const selectManagerContactsLimit = createSelector(
+  selectManagerState,
+  (s) => s.contactsLimit,
+);
 export const selectManagerContactsViewMode = createSelector(
   selectManagerState,
   (s) => s.contactsViewMode,
