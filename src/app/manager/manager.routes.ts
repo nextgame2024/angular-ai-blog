@@ -10,9 +10,11 @@ import { ManagerLaborPageComponent } from './components/labor/manager-labor.page
 import { ManagerPricingPageComponent } from './components/pricing/manager-pricing.page';
 import { ManagerSuppliersPageComponent } from './components/suppliers/manager-suppliers.page';
 import { ManagerUsersPageComponent } from './components/users/manager-users.page';
+import { ManagerProjectsPageComponent } from './components/projects/manager-projects.page';
 import { ManagerMaterialsService } from './services/manager.materials.service';
 import { ManagerLaborService } from './services/manager.labor.service';
 import { ManagerPricingService } from './services/manager.pricing.service';
+import { ManagerProjectsService } from './services/manager.projects.service';
 import { ManagerSuppliersService } from './services/manager.suppliers.service';
 import { ManagerService } from './services/manager.service';
 import { ManagerMaterialsEffects } from './store/materials/manager.effects';
@@ -35,6 +37,11 @@ import {
   MANAGER_SUPPLIERS_FEATURE_KEY,
   managerSuppliersReducer,
 } from './store/suppliers/manager.reducer';
+import { ManagerProjectsEffects } from './store/projects/manager.effects';
+import {
+  MANAGER_PROJECTS_FEATURE_KEY,
+  managerProjectsReducer,
+} from './store/projects/manager.reducer';
 import { ManagerEffects } from './store/manager.effects';
 import { MANAGER_FEATURE_KEY, managerReducer } from './store/manager.reducer';
 
@@ -66,8 +73,16 @@ export const MANAGER_ROUTES: Route[] = [
       // keep placeholders for now
       {
         path: 'projects',
-        component: ManagerSectionPageComponent,
-        data: { title: 'Projects' },
+        component: ManagerProjectsPageComponent,
+        providers: [
+          ManagerProjectsService,
+          ManagerMaterialsService,
+          ManagerLaborService,
+          ManagerPricingService,
+          provideEffects(ManagerProjectsEffects),
+          provideState(MANAGER_PROJECTS_FEATURE_KEY, managerProjectsReducer),
+        ],
+        data: { title: 'Projects', fullscreen: true },
       },
       {
         path: 'users',

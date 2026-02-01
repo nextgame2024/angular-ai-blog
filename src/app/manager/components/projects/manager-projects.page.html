@@ -1,0 +1,888 @@
+<div class="projects-shell">
+  <!-- LIST HEADER -->
+  <div class="list-header" *ngIf="(viewMode$ | async) === 'list'">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <span>Projects</span>
+    </nav>
+
+    <div class="projects-toolbar">
+      <div class="title">
+        <h3>Projects</h3>
+        <p class="sub">Manage projects, materials, and labor.</p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn primary" (click)="openCreate()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 5v14"></path>
+              <path d="M5 12h14"></path>
+            </svg>
+          </span>
+          Create
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar-row">
+      <label class="search-field">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </span>
+        <input
+          type="search"
+          [formControl]="searchCtrl"
+          placeholder="Search by project or client"
+          aria-label="Search projects"
+        />
+        <button
+          *ngIf="searchCtrl.value"
+          class="icon-btn"
+          type="button"
+          (click)="searchCtrl.setValue('')"
+          aria-label="Clear search"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </button>
+      </label>
+    </div>
+
+    <div class="table-head" aria-hidden="true">
+      <div>Name</div>
+      <div>Client</div>
+      <div>Status</div>
+      <div>Pricing</div>
+      <div class="actions-col">Actions</div>
+    </div>
+  </div>
+
+  <div class="error" *ngIf="(error$ | async) as err">{{ err }}</div>
+
+  <div
+    class="screen-loader"
+    *ngIf="(loading$ | async)"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <div class="loader-card">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <div class="loader-bar" aria-hidden="true"></div>
+      <div class="loader-text">Loading…</div>
+    </div>
+  </div>
+
+  <!-- FORM MODE -->
+  <ng-container *ngIf="(viewMode$ | async) === 'form'">
+    <ng-container *ngIf="editingProject$ | async as project; else createProjectBlock">
+      <div class="form-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/manager/menu">Menu</a>
+          <span class="sep">/</span>
+          <a href="#" (click)="$event.preventDefault(); closeForm()">Projects</a>
+          <span class="sep">/</span>
+          <span>Edit</span>
+        </nav>
+
+        <div class="form-header-mainrow">
+          <div class="header-main">
+            <h3>Project Details</h3>
+            <p class="sub">Update project information and assignments.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+            <button class="btn primary" type="button" (click)="saveProject()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save
+            </button>
+          </div>
+        </div>
+
+        <div class="form-tabs">
+          <button
+            type="button"
+            class="tab"
+            [class.active]="(tab$ | async) === 'details'"
+            (click)="setTab('details', project)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 10v6"></path>
+                <path d="M12 7h.01"></path>
+              </svg>
+            </span>
+            Details
+          </button>
+
+          <button
+            type="button"
+            class="tab"
+            [class.active]="(tab$ | async) === 'materials'"
+            (click)="setTab('materials', project)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 6h16"></path>
+                <path d="M4 10h16"></path>
+                <path d="M4 14h16"></path>
+                <path d="M4 18h16"></path>
+              </svg>
+            </span>
+            Materials
+          </button>
+
+          <button
+            type="button"
+            class="tab"
+            [class.active]="(tab$ | async) === 'labor'"
+            (click)="setTab('labor', project)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="8"></circle>
+                <path d="M12 7v5l3.5 2"></path>
+              </svg>
+            </span>
+            Labor
+          </button>
+        </div>
+
+        <div
+          class="form-header-actions-row"
+          *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
+        >
+          <button class="btn primary" type="button" (click)="openMaterialCreate()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+              </svg>
+            </span>
+            Add Material
+          </button>
+        </div>
+
+        <div
+          class="form-header-actions-row"
+          *ngIf="(tab$ | async) === 'labor' && (laborViewMode$ | async) === 'list'"
+        >
+          <button class="btn primary" type="button" (click)="openLaborCreate()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 5v14"></path>
+                <path d="M5 12h14"></path>
+              </svg>
+            </span>
+            Add Labor
+          </button>
+        </div>
+      </div>
+
+      <ng-container *ngIf="(tab$ | async) === 'details'">
+        <section class="card">
+          <form class="form" [formGroup]="projectForm" autocomplete="off">
+            <div class="grid-2">
+              <label>
+                <span>Project Name *</span>
+                <input
+                  formControlName="project_name"
+                  placeholder="Project name"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label class="client-label">
+                <span>Client *</span>
+                <div class="client-field">
+                  <input
+                    [formControl]="clientSearchCtrl"
+                    placeholder="Select client"
+                    (focus)="onClientQueryFocus()"
+                    (blur)="onClientQueryBlur()"
+                    (keydown)="onClientQueryKeydown($event)"
+                    (input)="onClientQueryInput(clientSearchCtrl.value)"
+                    autocomplete="off"
+                  />
+                  <div
+                    class="client-suggestions"
+                    *ngIf="showClientSuggestions && clientSuggestions.length"
+                  >
+                    <button
+                      type="button"
+                      class="client-suggestion"
+                      *ngFor="let c of clientSuggestions; let i = index"
+                      [class.is-active]="i === clientActiveIndex"
+                      (click)="onClientSelect(c)"
+                    >
+                      {{ c.clientName }}
+                    </button>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Status</span>
+                <app-manager-select
+                  formControlName="status"
+                  [options]="statusOptions"
+                  placeholder="Select status"
+                ></app-manager-select>
+              </label>
+
+              <label class="toggle-field">
+                <span>Use default pricing</span>
+                <div class="toggle">
+                  <button
+                    type="button"
+                    [class.active]="isDefaultPricing"
+                    (click)="setDefaultPricing(true)"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    [class.active]="!isDefaultPricing"
+                    (click)="setDefaultPricing(false)"
+                  >
+                    No
+                  </button>
+                </div>
+              </label>
+            </div>
+
+            <label>
+              <span>Description</span>
+              <textarea
+                formControlName="description"
+                rows="3"
+                placeholder="Project description"
+              ></textarea>
+            </label>
+
+            <label>
+              <span>Pricing Profile</span>
+              <app-manager-select
+                formControlName="pricing_profile_id"
+                [options]="pricingOptions"
+                [disabled]="isPricingProfileDisabled"
+                placeholder="Select pricing profile"
+              ></app-manager-select>
+            </label>
+          </form>
+        </section>
+      </ng-container>
+
+      <ng-container *ngIf="(tab$ | async) === 'materials'">
+        <div class="warning-banner" *ngIf="!project">
+          <span class="warning-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3 2.75 19.5h18.5L12 3Z"></path>
+              <path d="M12 8v6"></path>
+              <path d="M12 17h.01"></path>
+            </svg>
+          </span>
+          Save the project first to enable the Materials tab.
+        </div>
+
+        <ng-container *ngIf="project">
+          <div class="error" *ngIf="(materialsError$ | async) as err">{{ err }}</div>
+
+          <div
+            class="screen-loader"
+            *ngIf="(materialsLoading$ | async)"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <div class="loader-card">
+              <div class="loader-ring" aria-hidden="true"></div>
+              <div class="loader-bar" aria-hidden="true"></div>
+              <div class="loader-text">Loading…</div>
+            </div>
+          </div>
+
+          <ng-container *ngIf="(materialsViewMode$ | async) === 'form'">
+            <section class="card">
+              <form class="form" [formGroup]="projectMaterialForm">
+                <label>
+                  <span>Material *</span>
+                  <app-manager-select
+                    formControlName="material_id"
+                    [options]="materialOptions"
+                    placeholder="Select material"
+                  ></app-manager-select>
+                </label>
+
+                <div class="grid-2">
+                  <label>
+                    <span>Quantity</span>
+                    <input type="number" formControlName="quantity" />
+                  </label>
+                  <label>
+                    <span>Unit Cost Override</span>
+                    <input type="number" formControlName="unit_cost_override" />
+                  </label>
+                </div>
+
+                <div class="grid-2">
+                  <label>
+                    <span>Sell Cost Override</span>
+                    <input type="number" formControlName="sell_cost_override" />
+                  </label>
+                  <label>
+                    <span>Notes</span>
+                    <input formControlName="notes" placeholder="Notes" />
+                  </label>
+                </div>
+              </form>
+
+              <div class="card-actions">
+                <button class="btn" type="button" (click)="closeMaterialForm()">Cancel</button>
+                <button
+                  class="btn primary"
+                  type="button"
+                  (click)="saveProjectMaterial(project, editingMaterial)"
+                >
+                  Save
+                </button>
+              </div>
+            </section>
+          </ng-container>
+
+          <ng-container *ngIf="(materialsViewMode$ | async) === 'list'">
+            <div class="table" *ngIf="(materials$ | async) as materials">
+              <div class="thead">
+                <div>Material</div>
+                <div>Quantity</div>
+                <div>Unit Cost</div>
+                <div>Sell Cost</div>
+                <div class="actions-col">Actions</div>
+              </div>
+
+              <div class="trow" *ngFor="let m of materials; trackBy: trackByMaterial">
+                <div class="cell strong">{{ m.materialName }}</div>
+                <div class="cell muted">{{ m.quantity ?? '—' }}</div>
+                <div class="cell muted">{{ m.unitCostOverride ?? '—' }}</div>
+                <div class="cell muted">{{ m.sellCostOverride ?? '—' }}</div>
+                <div class="cell actions-col">
+                  <button class="btn small secondary" type="button" (click)="openMaterialEdit(m)">
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                        <path d="M13 6l4 4"></path>
+                      </svg>
+                    </span>
+                    Edit
+                  </button>
+                  <button class="btn small danger" type="button" (click)="removeProjectMaterial(project, m)">
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 8h16"></path>
+                        <path d="M6 8v10h12V8"></path>
+                        <path d="M10 12h4"></path>
+                        <path d="M9 4h6l1 2H8l1-2Z"></path>
+                      </svg>
+                    </span>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="cards" *ngIf="(materials$ | async) as materials">
+              <article class="project-card" *ngFor="let m of materials; trackBy: trackByMaterial">
+                <div class="row">
+                  <div class="name">{{ m.materialName }}</div>
+                  <div class="muted">{{ m.quantity ?? '—' }}</div>
+                </div>
+                <div class="meta">
+                  <div><span>Unit Cost:</span> {{ m.unitCostOverride ?? '—' }}</div>
+                  <div><span>Sell Cost:</span> {{ m.sellCostOverride ?? '—' }}</div>
+                </div>
+                <div class="card-actions">
+                  <button class="btn small secondary" type="button" (click)="openMaterialEdit(m)">
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                        <path d="M13 6l4 4"></path>
+                      </svg>
+                    </span>
+                    Edit
+                  </button>
+                  <button class="btn small danger" type="button" (click)="removeProjectMaterial(project, m)">
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 8h16"></path>
+                        <path d="M6 8v10h12V8"></path>
+                        <path d="M10 12h4"></path>
+                        <path d="M9 4h6l1 2H8l1-2Z"></path>
+                      </svg>
+                    </span>
+                    Remove
+                  </button>
+                </div>
+              </article>
+            </div>
+
+            <div class="empty" *ngIf="!(materials$ | async)?.length">No materials yet. Click "Add Material" to create one.</div>
+          </ng-container>
+        </ng-container>
+      </ng-container>
+
+      <ng-container *ngIf="(tab$ | async) === 'labor'">
+        <div class="warning-banner" *ngIf="!project">
+          <span class="warning-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3 2.75 19.5h18.5L12 3Z"></path>
+              <path d="M12 8v6"></path>
+              <path d="M12 17h.01"></path>
+            </svg>
+          </span>
+          Save the project first to enable the Labor tab.
+        </div>
+
+        <ng-container *ngIf="project">
+          <div class="error" *ngIf="(laborError$ | async) as err">{{ err }}</div>
+
+          <div
+            class="screen-loader"
+            *ngIf="(laborLoading$ | async)"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <div class="loader-card">
+              <div class="loader-ring" aria-hidden="true"></div>
+              <div class="loader-bar" aria-hidden="true"></div>
+              <div class="loader-text">Loading…</div>
+            </div>
+          </div>
+
+          <ng-container *ngIf="(laborViewMode$ | async) === 'form'">
+            <section class="card">
+              <form class="form" [formGroup]="projectLaborForm">
+                <label>
+                  <span>Labor *</span>
+                  <app-manager-select
+                    formControlName="labor_id"
+                    [options]="laborOptions"
+                    placeholder="Select labor"
+                  ></app-manager-select>
+                </label>
+
+                <div class="grid-2">
+                  <label>
+                    <span>Quantity</span>
+                    <input type="number" formControlName="quantity" />
+                  </label>
+                  <label>
+                    <span>Unit Cost Override</span>
+                    <input type="number" formControlName="unit_cost_override" />
+                  </label>
+                </div>
+
+                <div class="grid-2">
+                  <label>
+                    <span>Sell Cost Override</span>
+                    <input type="number" formControlName="sell_cost_override" />
+                  </label>
+                  <label>
+                    <span>Notes</span>
+                    <input formControlName="notes" placeholder="Notes" />
+                  </label>
+                </div>
+              </form>
+
+              <div class="card-actions">
+                <button class="btn" type="button" (click)="closeLaborForm()">Cancel</button>
+                <button
+                  class="btn primary"
+                  type="button"
+                  (click)="saveProjectLabor(project, editingLabor)"
+                >
+                  Save
+                </button>
+              </div>
+            </section>
+          </ng-container>
+
+          <ng-container *ngIf="(laborViewMode$ | async) === 'list'">
+            <div class="table" *ngIf="(labor$ | async) as labor">
+              <div class="thead">
+                <div>Labor</div>
+                <div>Quantity</div>
+                <div>Unit Cost</div>
+                <div>Sell Cost</div>
+                <div class="actions-col">Actions</div>
+              </div>
+
+              <div class="trow" *ngFor="let l of labor; trackBy: trackByLabor">
+                <div class="cell strong">{{ l.laborName }}</div>
+                <div class="cell muted">{{ l.quantity ?? '—' }}</div>
+                <div class="cell muted">{{ l.unitCostOverride ?? '—' }}</div>
+                <div class="cell muted">{{ l.sellCostOverride ?? '—' }}</div>
+                <div class="cell actions-col">
+                  <button class="btn small secondary" type="button" (click)="openLaborEdit(l)">
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                        <path d="M13 6l4 4"></path>
+                      </svg>
+                    </span>
+                    Edit
+                  </button>
+                  <button class="btn small danger" type="button" (click)="removeProjectLabor(project, l)">
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 8h16"></path>
+                        <path d="M6 8v10h12V8"></path>
+                        <path d="M10 12h4"></path>
+                        <path d="M9 4h6l1 2H8l1-2Z"></path>
+                      </svg>
+                    </span>
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="cards" *ngIf="(labor$ | async) as labor">
+              <article class="project-card" *ngFor="let l of labor; trackBy: trackByLabor">
+                <div class="row">
+                  <div class="name">{{ l.laborName }}</div>
+                  <div class="muted">{{ l.quantity ?? '—' }}</div>
+                </div>
+                <div class="meta">
+                  <div><span>Unit Cost:</span> {{ l.unitCostOverride ?? '—' }}</div>
+                  <div><span>Sell Cost:</span> {{ l.sellCostOverride ?? '—' }}</div>
+                </div>
+                <div class="card-actions">
+                  <button class="btn small secondary" type="button" (click)="openLaborEdit(l)">
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                        <path d="M13 6l4 4"></path>
+                      </svg>
+                    </span>
+                    Edit
+                  </button>
+                  <button class="btn small danger" type="button" (click)="removeProjectLabor(project, l)">
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 8h16"></path>
+                        <path d="M6 8v10h12V8"></path>
+                        <path d="M10 12h4"></path>
+                        <path d="M9 4h6l1 2H8l1-2Z"></path>
+                      </svg>
+                    </span>
+                    Remove
+                  </button>
+                </div>
+              </article>
+            </div>
+
+            <div class="empty" *ngIf="!(labor$ | async)?.length">No labor yet. Click "Add Labor" to create one.</div>
+          </ng-container>
+        </ng-container>
+      </ng-container>
+    </ng-container>
+
+    <ng-template #createProjectBlock>
+      <div class="form-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/manager/menu">Menu</a>
+          <span class="sep">/</span>
+          <a href="#" (click)="$event.preventDefault(); closeForm()">Projects</a>
+          <span class="sep">/</span>
+          <span>Create</span>
+        </nav>
+
+        <div class="form-header-mainrow">
+          <div class="header-main">
+            <h3>Create Project</h3>
+            <p class="sub">Create a new project entry.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+            <button class="btn primary" type="button" (click)="saveProject()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save
+            </button>
+          </div>
+        </div>
+
+        <div class="form-tabs">
+          <button
+            type="button"
+            class="tab"
+            [class.active]="true"
+            (click)="setTab('details', null)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 10v6"></path>
+                <path d="M12 7h.01"></path>
+              </svg>
+            </span>
+            Details
+          </button>
+
+          <button type="button" class="tab disabled">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 6h16"></path>
+                <path d="M4 10h16"></path>
+                <path d="M4 14h16"></path>
+                <path d="M4 18h16"></path>
+              </svg>
+            </span>
+            Materials
+          </button>
+
+          <button type="button" class="tab disabled">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="8"></circle>
+                <path d="M12 7v5l3.5 2"></path>
+              </svg>
+            </span>
+            Labor
+          </button>
+        </div>
+
+        <div class="warning-banner">
+          <span class="warning-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3 2.75 19.5h18.5L12 3Z"></path>
+              <path d="M12 8v6"></path>
+              <path d="M12 17h.01"></path>
+            </svg>
+          </span>
+          Save the project first to enable the Materials and Labor tabs.
+        </div>
+      </div>
+
+      <section class="card">
+        <form class="form" [formGroup]="projectForm" autocomplete="off">
+        <div class="grid-2">
+          <label>
+            <span>Project Name *</span>
+            <input
+              formControlName="project_name"
+              placeholder="Project name"
+              autocomplete="off"
+            />
+          </label>
+
+          <label class="client-label">
+            <span>Client *</span>
+            <div class="client-field">
+              <input
+                [formControl]="clientSearchCtrl"
+                placeholder="Select client"
+                (focus)="onClientQueryFocus()"
+                (blur)="onClientQueryBlur()"
+                (keydown)="onClientQueryKeydown($event)"
+                (input)="onClientQueryInput(clientSearchCtrl.value)"
+                autocomplete="off"
+              />
+              <div
+                class="client-suggestions"
+                *ngIf="showClientSuggestions && clientSuggestions.length"
+              >
+                <button
+                  type="button"
+                  class="client-suggestion"
+                  *ngFor="let c of clientSuggestions; let i = index"
+                  [class.is-active]="i === clientActiveIndex"
+                  (click)="onClientSelect(c)"
+                >
+                  {{ c.clientName }}
+                </button>
+              </div>
+            </div>
+          </label>
+        </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Status</span>
+              <app-manager-select
+                formControlName="status"
+                [options]="statusOptions"
+                placeholder="Select status"
+              ></app-manager-select>
+            </label>
+
+            <label class="toggle-field">
+              <span>Use default pricing</span>
+              <div class="toggle">
+                <button
+                  type="button"
+                  [class.active]="isDefaultPricing"
+                  (click)="setDefaultPricing(true)"
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  [class.active]="!isDefaultPricing"
+                  (click)="setDefaultPricing(false)"
+                >
+                  No
+                </button>
+              </div>
+            </label>
+          </div>
+
+          <label>
+            <span>Description</span>
+            <textarea
+              formControlName="description"
+              rows="3"
+              placeholder="Project description"
+            ></textarea>
+          </label>
+
+          <label>
+            <span>Pricing Profile</span>
+            <app-manager-select
+              formControlName="pricing_profile_id"
+              [options]="pricingOptions"
+              [disabled]="isPricingProfileDisabled"
+              placeholder="Select pricing profile"
+            ></app-manager-select>
+          </label>
+        </form>
+      </section>
+    </ng-template>
+  </ng-container>
+
+  <!-- LIST MODE -->
+  <ng-container *ngIf="(viewMode$ | async) === 'list'">
+    <div class="list" #projectsList>
+      <div class="table" *ngIf="(projectsRaw$ | async) as projects">
+        <div class="thead">
+          <div>Name</div>
+          <div>Client</div>
+          <div>Status</div>
+          <div>Pricing</div>
+          <div class="actions-col">Actions</div>
+        </div>
+
+        <div class="trow" *ngFor="let p of projects; trackBy: trackByProject">
+          <div class="cell strong">{{ p.projectName }}</div>
+          <div class="cell muted">{{ p.clientName || '—' }}</div>
+          <div class="cell">
+            <span class="badge" [class.archived]="p.status === 'cancelled'">
+              {{ formatStatus(p.status) }}
+            </span>
+          </div>
+          <div class="cell muted">
+            {{ p.defaultPricing ? 'Default' : (p.pricingProfileId ? 'Custom' : '—') }}
+          </div>
+          <div class="cell actions-col">
+            <button class="btn small secondary" type="button" (click)="openEdit(p)">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                  <path d="M13 6l4 4"></path>
+                </svg>
+              </span>
+              Edit
+            </button>
+            <button class="btn small danger" type="button" (click)="archiveProject(p)">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 8h16"></path>
+                  <path d="M6 8v10h12V8"></path>
+                  <path d="M10 12h4"></path>
+                  <path d="M9 4h6l1 2H8l1-2Z"></path>
+                </svg>
+              </span>
+              Archive
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cards" *ngIf="(projectsRaw$ | async) as projects">
+        <article class="project-card" *ngFor="let p of projects; trackBy: trackByProject">
+          <div class="row">
+            <div class="name">{{ p.projectName }}</div>
+            <span class="badge" [class.archived]="p.status === 'cancelled'">
+              {{ formatStatus(p.status) }}
+            </span>
+          </div>
+          <div class="meta">
+            <div><span>Client:</span> {{ p.clientName || '—' }}</div>
+            <div><span>Pricing:</span> {{ p.defaultPricing ? 'Default' : (p.pricingProfileId ? 'Custom' : '—') }}</div>
+          </div>
+          <div class="card-actions">
+            <button class="btn small secondary" type="button" (click)="openEdit(p)">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                  <path d="M13 6l4 4"></path>
+                </svg>
+              </span>
+              Edit
+            </button>
+            <button class="btn small danger" type="button" (click)="archiveProject(p)">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 8h16"></path>
+                  <path d="M6 8v10h12V8"></path>
+                  <path d="M10 12h4"></path>
+                  <path d="M9 4h6l1 2H8l1-2Z"></path>
+                </svg>
+              </span>
+              Archive
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <div class="empty" *ngIf="!(projectsRaw$ | async)?.length && !(loading$ | async)">
+        No projects found.
+      </div>
+
+      <div #infiniteSentinel class="infinite-sentinel"></div>
+    </div>
+  </ng-container>
+</div>
