@@ -1,0 +1,35 @@
+<div class="select" [class.open]="open">
+  <button
+    type="button"
+    class="select-trigger"
+    [attr.aria-expanded]="open"
+    [disabled]="disabled"
+    (click)="toggle()"
+  >
+    <span class="value" [class.placeholder]="!selectedLabel">
+      {{ selectedLabel || placeholder }}
+    </span>
+    <span class="chevron" aria-hidden="true">
+      <svg viewBox="0 0 20 20">
+        <path d="M6 8l4 4 4-4"></path>
+      </svg>
+    </span>
+  </button>
+
+  <div class="select-menu" *ngIf="open">
+    <button
+      type="button"
+      class="select-option"
+      *ngFor="let opt of options"
+      [class.is-active]="opt.value === value"
+      (click)="selectOption(opt)"
+    >
+      <span>{{ opt.label }}</span>
+      <span class="check" *ngIf="opt.value === value" aria-hidden="true">
+        <svg viewBox="0 0 20 20">
+          <path d="M4 10l4 4 8-8"></path>
+        </svg>
+      </span>
+    </button>
+  </div>
+</div>

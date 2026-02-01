@@ -30,11 +30,12 @@ import {
 } from '../../store/pricing/manager.selectors';
 
 import type { BmPricingProfile } from '../../types/pricing.interface';
+import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 
 @Component({
   selector: 'app-manager-pricing-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
   templateUrl: './manager-pricing.page.html',
   styleUrls: ['./manager-pricing.page.css'],
 })
@@ -59,6 +60,11 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
   private currentPage = 1;
   private canLoadMore = false;
   private isLoading = false;
+
+  statusOptions = [
+    { value: 'active', label: 'active' },
+    { value: 'archived', label: 'archived' },
+  ];
 
   @ViewChild('pricingList') pricingListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;

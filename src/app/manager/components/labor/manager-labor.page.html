@@ -135,13 +135,11 @@
 
             <label>
               <span>Unit Type</span>
-              <select formControlName="unit_type">
-                <option value="hour">hour</option>
-                <option value="day">day</option>
-                <option value="week">week</option>
-                <option value="month">month</option>
-                <option value="project">project</option>
-              </select>
+              <app-manager-select
+                formControlName="unit_type"
+                [options]="unitTypeOptions"
+                placeholder="Select unit type"
+              ></app-manager-select>
             </label>
           </div>
 
@@ -196,10 +194,11 @@
 
           <label>
             <span>Status</span>
-            <select formControlName="status">
-              <option value="active">active</option>
-              <option value="archived">archived</option>
-            </select>
+            <app-manager-select
+              formControlName="status"
+              [options]="statusOptions"
+              placeholder="Select status"
+            ></app-manager-select>
           </label>
         </form>
       </section>
@@ -257,13 +256,11 @@
 
             <label>
               <span>Unit Type</span>
-              <select formControlName="unit_type">
-                <option value="hour">hour</option>
-                <option value="day">day</option>
-                <option value="week">week</option>
-                <option value="month">month</option>
-                <option value="project">project</option>
-              </select>
+              <app-manager-select
+                formControlName="unit_type"
+                [options]="unitTypeOptions"
+                placeholder="Select unit type"
+              ></app-manager-select>
             </label>
           </div>
 
@@ -318,10 +315,11 @@
 
           <label>
             <span>Status</span>
-            <select formControlName="status">
-              <option value="active">active</option>
-              <option value="archived">archived</option>
-            </select>
+            <app-manager-select
+              formControlName="status"
+              [options]="statusOptions"
+              placeholder="Select status"
+            ></app-manager-select>
           </label>
         </form>
       </section>

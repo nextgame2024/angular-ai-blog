@@ -1,0 +1,96 @@
+:host {
+  display: block;
+  position: relative;
+  font: inherit;
+}
+
+.select {
+  position: relative;
+}
+
+.select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.65rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.select-trigger:focus-visible {
+  outline: none;
+  border-color: rgba(16, 224, 199, 0.6);
+  box-shadow: 0 0 0 3px rgba(16, 224, 199, 0.15);
+}
+
+.select-trigger:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.value.placeholder {
+  color: rgba(100, 116, 139, 0.85);
+}
+
+.chevron svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: #64748b;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.select-menu {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+  max-height: 220px;
+  overflow: auto;
+  padding: 0.25rem;
+}
+
+.select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  color: #1f2937;
+  cursor: pointer;
+}
+
+.select-option:hover,
+.select-option.is-active {
+  background: rgba(16, 224, 199, 0.12);
+  color: #0f766e;
+}
+
+.check svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

@@ -34,13 +34,14 @@ import {
 import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
 import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
 import { AvatarUploadService } from '../../../settings/components/settings/services/avatar-upload.service';
+import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 
 import type { BmUser } from '../../services/manager.service';
 
 @Component({
   selector: 'app-manager-users-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
   templateUrl: './manager-users.page.html',
   styleUrls: ['./manager-users.page.css'],
 })
@@ -74,6 +75,17 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   addressActiveIndex = -1;
   private addressSessionToken: string | null = null;
   private addressHasFocus = false;
+
+  statusOptions = [
+    { value: 'active', label: 'active' },
+    { value: 'archived', label: 'archived' },
+  ];
+
+  typeOptions = [
+    { value: 'employee', label: 'employee' },
+    { value: 'supplier', label: 'supplier' },
+    { value: 'client', label: 'client' },
+  ];
 
   defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';

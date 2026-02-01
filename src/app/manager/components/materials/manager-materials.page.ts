@@ -30,11 +30,12 @@ import {
 } from '../../store/materials/manager.selectors';
 
 import type { BmMaterial } from '../../types/materials.interface';
+import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 
 @Component({
   selector: 'app-manager-materials-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
   templateUrl: './manager-materials.page.html',
   styleUrls: ['./manager-materials.page.css'],
 })
@@ -59,6 +60,11 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
   private currentPage = 1;
   private canLoadMore = false;
   private isLoading = false;
+
+  statusOptions = [
+    { value: 'active', label: 'active' },
+    { value: 'archived', label: 'archived' },
+  ];
 
   @ViewChild('materialsList') materialsListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;

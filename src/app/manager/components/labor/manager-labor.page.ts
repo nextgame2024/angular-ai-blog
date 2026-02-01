@@ -30,11 +30,12 @@ import {
 } from '../../store/labor/manager.selectors';
 
 import type { BmLabor } from '../../types/labor.interface';
+import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 
 @Component({
   selector: 'app-manager-labor-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
   templateUrl: './manager-labor.page.html',
   styleUrls: ['./manager-labor.page.css'],
 })
@@ -59,6 +60,19 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
   private currentPage = 1;
   private canLoadMore = false;
   private isLoading = false;
+
+  statusOptions = [
+    { value: 'active', label: 'active' },
+    { value: 'archived', label: 'archived' },
+  ];
+
+  unitTypeOptions = [
+    { value: 'hour', label: 'hour' },
+    { value: 'day', label: 'day' },
+    { value: 'week', label: 'week' },
+    { value: 'month', label: 'month' },
+    { value: 'project', label: 'project' },
+  ];
 
   @ViewChild('laborList') laborListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;

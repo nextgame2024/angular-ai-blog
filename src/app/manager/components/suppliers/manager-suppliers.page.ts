@@ -56,6 +56,7 @@ import {
 import { ManagerMaterialsService } from '../../services/manager.materials.service';
 import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
 import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
+import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 import type { BmMaterial } from '../../types/materials.interface';
 import type {
   BmSupplier,
@@ -67,7 +68,7 @@ import type { SupplierFormTab } from '../../store/suppliers/manager.state';
 @Component({
   selector: 'app-manager-suppliers-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
   templateUrl: './manager-suppliers.page.html',
   styleUrls: ['./manager-suppliers.page.css'],
 })
@@ -148,6 +149,11 @@ export class ManagerSuppliersPageComponent
   addressActiveIndex = -1;
   private addressSessionToken: string | null = null;
   private addressHasFocus = false;
+
+  statusOptions = [
+    { value: 'active', label: 'active' },
+    { value: 'archived', label: 'archived' },
+  ];
 
   supplierForm = this.fb.group({
     supplier_name: ['', [Validators.required, Validators.maxLength(140)]],

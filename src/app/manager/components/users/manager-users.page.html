@@ -245,19 +245,20 @@
           <div class="grid-2">
             <label>
               <span>Type *</span>
-              <select formControlName="type">
-                <option value="employee">employee</option>
-                <option value="supplier">supplier</option>
-                <option value="client">client</option>
-              </select>
+              <app-manager-select
+                formControlName="type"
+                [options]="typeOptions"
+                placeholder="Select type"
+              ></app-manager-select>
             </label>
 
             <label>
               <span>Status</span>
-              <select formControlName="status">
-                <option value="active">active</option>
-                <option value="archived">archived</option>
-              </select>
+              <app-manager-select
+                formControlName="status"
+                [options]="statusOptions"
+                placeholder="Select status"
+              ></app-manager-select>
             </label>
           </div>
 
@@ -436,19 +437,20 @@
           <div class="grid-2">
             <label>
               <span>Type *</span>
-              <select formControlName="type">
-                <option value="employee">employee</option>
-                <option value="supplier">supplier</option>
-                <option value="client">client</option>
-              </select>
+              <app-manager-select
+                formControlName="type"
+                [options]="typeOptions"
+                placeholder="Select type"
+              ></app-manager-select>
             </label>
 
             <label>
               <span>Status</span>
-              <select formControlName="status">
-                <option value="active">active</option>
-                <option value="archived">archived</option>
-              </select>
+              <app-manager-select
+                formControlName="status"
+                [options]="statusOptions"
+                placeholder="Select status"
+              ></app-manager-select>
             </label>
           </div>
 

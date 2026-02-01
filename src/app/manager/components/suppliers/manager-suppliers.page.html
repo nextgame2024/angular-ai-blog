@@ -262,10 +262,11 @@
 
               <label>
                 <span>Status</span>
-                <select formControlName="status">
-                  <option value="active">active</option>
-                  <option value="archived">archived</option>
-                </select>
+                <app-manager-select
+                  formControlName="status"
+                  [options]="statusOptions"
+                  placeholder="Select status"
+                ></app-manager-select>
               </label>
             </div>
 
@@ -760,10 +761,11 @@
 
             <label>
               <span>Status</span>
-              <select formControlName="status">
-                <option value="active">active</option>
-                <option value="archived">archived</option>
-              </select>
+              <app-manager-select
+                formControlName="status"
+                [options]="statusOptions"
+                placeholder="Select status"
+              ></app-manager-select>
             </label>
           </div>
 

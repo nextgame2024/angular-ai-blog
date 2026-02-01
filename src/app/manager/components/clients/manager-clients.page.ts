@@ -51,11 +51,12 @@ import { BmClient, BmClientContact } from '../../services/manager.service';
 import { ClientFormTab } from '../../store/manager.state';
 import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
 import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
+import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 
 @Component({
   selector: 'app-manager-clients-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
   templateUrl: './manager-clients.page.html',
   styleUrls: ['./manager-clients.page.css'],
 })
@@ -102,6 +103,11 @@ export class ManagerClientsPageComponent
   addressActiveIndex = -1;
   private addressSessionToken: string | null = null;
   private addressHasFocus = false;
+
+  statusOptions = [
+    { value: 'active', label: 'active' },
+    { value: 'archived', label: 'archived' },
+  ];
 
   @ViewChild('listHeader') listHeaderRef?: ElementRef<HTMLElement>;
   @ViewChild('clientsList') clientsListRef?: ElementRef<HTMLElement>;
