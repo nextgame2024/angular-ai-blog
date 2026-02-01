@@ -1,0 +1,454 @@
+<div class="labor-shell">
+  <!-- LIST HEADER -->
+  <div class="list-header" *ngIf="(viewMode$ | async) === 'list'">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <span>Labor costs</span>
+    </nav>
+
+    <div class="labor-toolbar">
+      <div class="title">
+        <h3>Labor costs</h3>
+        <p class="sub">Manage labor rates and productivity units.</p>
+      </div>
+
+      <div class="actions">
+        <button type="button" class="btn primary" (click)="openCreate()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 5v14"></path>
+              <path d="M5 12h14"></path>
+            </svg>
+          </span>
+          Create
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar-row">
+      <label class="search-field">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </span>
+        <input
+          type="search"
+          [formControl]="searchCtrl"
+          placeholder="Search by labor name"
+          aria-label="Search labor"
+        />
+        <button
+          *ngIf="searchCtrl.value"
+          class="icon-btn"
+          type="button"
+          (click)="searchCtrl.setValue('')"
+          aria-label="Clear search"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </button>
+      </label>
+    </div>
+
+    <div class="table-head" aria-hidden="true">
+      <div>Name</div>
+      <div>Unit Type</div>
+      <div>Unit Cost</div>
+      <div>Sell Cost</div>
+      <div>Productivity</div>
+      <div>Status</div>
+      <div class="actions-col">Actions</div>
+    </div>
+  </div>
+
+  <div class="error" *ngIf="(error$ | async) as err">{{ err }}</div>
+
+  <div
+    class="screen-loader"
+    *ngIf="(loading$ | async)"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <div class="loader-card">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <div class="loader-bar" aria-hidden="true"></div>
+      <div class="loader-text">Loading…</div>
+    </div>
+  </div>
+
+  <!-- FORM MODE -->
+  <ng-container *ngIf="(viewMode$ | async) === 'form'">
+    <ng-container *ngIf="editingLabor$ | async as labor; else createLaborBlock">
+      <div class="form-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/manager/menu">Menu</a>
+          <span class="sep">/</span>
+          <a href="#" (click)="$event.preventDefault(); closeForm()">Labor</a>
+          <span class="sep">/</span>
+          <span>Edit</span>
+        </nav>
+
+        <div class="form-header-mainrow">
+          <div class="header-main">
+            <h3>Labor Details</h3>
+            <p class="sub">Update labor costs and productivity settings.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+            <button class="btn primary" type="button" (click)="saveLabor()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section class="card">
+        <form class="form" [formGroup]="laborForm" autocomplete="off">
+          <div class="grid-2">
+            <label>
+              <span>Labor Name *</span>
+              <input
+                formControlName="labor_name"
+                placeholder="Labor name"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Unit Type</span>
+              <select formControlName="unit_type">
+                <option value="hour">hour</option>
+                <option value="day">day</option>
+                <option value="week">week</option>
+                <option value="month">month</option>
+                <option value="project">project</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Unit Cost *</span>
+              <input
+                formControlName="unit_cost"
+                type="number"
+                step="1"
+                min="0"
+                placeholder="0.00"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Sell Cost</span>
+              <input
+                formControlName="sell_cost"
+                type="number"
+                step="1"
+                min="0"
+                placeholder="0.00"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Unit Productivity</span>
+              <input
+                formControlName="unit_productivity"
+                type="number"
+                step="1"
+                min="0"
+                placeholder="0.00"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Productivity Unit</span>
+              <input
+                formControlName="productivity_unit"
+                placeholder="m²/hr"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+
+          <label>
+            <span>Status</span>
+            <select formControlName="status">
+              <option value="active">active</option>
+              <option value="archived">archived</option>
+            </select>
+          </label>
+        </form>
+      </section>
+    </ng-container>
+
+    <ng-template #createLaborBlock>
+      <div class="form-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/manager/menu">Menu</a>
+          <span class="sep">/</span>
+          <a href="#" (click)="$event.preventDefault(); closeForm()">Labor</a>
+          <span class="sep">/</span>
+          <span>Create</span>
+        </nav>
+
+        <div class="form-header-mainrow">
+          <div class="header-main">
+            <h3>Create Labor</h3>
+            <p class="sub">Create a new labor entry.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+            <button class="btn primary" type="button" (click)="saveLabor()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section class="card">
+        <form class="form" [formGroup]="laborForm" autocomplete="off">
+          <div class="grid-2">
+            <label>
+              <span>Labor Name *</span>
+              <input
+                formControlName="labor_name"
+                placeholder="Labor name"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Unit Type</span>
+              <select formControlName="unit_type">
+                <option value="hour">hour</option>
+                <option value="day">day</option>
+                <option value="week">week</option>
+                <option value="month">month</option>
+                <option value="project">project</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Unit Cost *</span>
+              <input
+                formControlName="unit_cost"
+                type="number"
+                step="1"
+                min="0"
+                placeholder="0.00"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Sell Cost</span>
+              <input
+                formControlName="sell_cost"
+                type="number"
+                step="1"
+                min="0"
+                placeholder="0.00"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Unit Productivity</span>
+              <input
+                formControlName="unit_productivity"
+                type="number"
+                step="1"
+                min="0"
+                placeholder="0.00"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Productivity Unit</span>
+              <input
+                formControlName="productivity_unit"
+                placeholder="m²/hr"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+
+          <label>
+            <span>Status</span>
+            <select formControlName="status">
+              <option value="active">active</option>
+              <option value="archived">archived</option>
+            </select>
+          </label>
+        </form>
+      </section>
+    </ng-template>
+  </ng-container>
+
+  <!-- LIST MODE -->
+  <ng-container *ngIf="(viewMode$ | async) === 'list'">
+    <section class="list" #laborList>
+      <ng-container *ngIf="filteredLabor$ | async as laborList">
+        <div class="table" *ngIf="laborList.length">
+          <div class="thead">
+            <div>Name</div>
+            <div>Unit Type</div>
+            <div>Unit Cost</div>
+            <div>Sell Cost</div>
+            <div>Productivity</div>
+            <div>Status</div>
+            <div class="actions-col">Actions</div>
+          </div>
+
+          <div class="trow" *ngFor="let l of laborList; trackBy: trackByLabor">
+            <div class="cell strong">{{ l.laborName }}</div>
+            <div class="cell muted">{{ l.unitType || '—' }}</div>
+            <div class="cell muted">{{ formatInt(l.unitCost) }}</div>
+            <div class="cell muted">{{ formatInt(l.sellCost) }}</div>
+            <div class="cell muted">
+              {{ formatInt(l.unitProductivity) }}
+              <span *ngIf="l.productivityUnit">{{ l.productivityUnit }}</span>
+            </div>
+            <div class="cell">
+              <span class="badge" [class.archived]="l.status === 'archived'">
+                {{ l.status || 'active' }}
+              </span>
+            </div>
+            <div class="cell actions-col">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(l)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                    <path d="M13 6l4 4"></path>
+                  </svg>
+                </span>
+                Edit
+              </button>
+              <button
+                class="btn small danger"
+                type="button"
+                (click)="archiveLabor(l)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 8h16"></path>
+                    <path d="M6 8v10h12V8"></path>
+                    <path d="M10 12h4"></path>
+                    <path d="M9 4h6l1 2H8l1-2Z"></path>
+                  </svg>
+                </span>
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cards" *ngIf="laborList.length">
+          <article
+            class="labor-card"
+            *ngFor="let l of laborList; trackBy: trackByLabor"
+          >
+            <div class="row">
+              <div class="name">{{ l.laborName }}</div>
+              <span class="badge" [class.archived]="l.status === 'archived'">
+                {{ l.status || 'active' }}
+              </span>
+            </div>
+            <div class="meta">
+              <div><span>Unit Type:</span> {{ l.unitType || '—' }}</div>
+              <div><span>Unit Cost:</span> {{ formatInt(l.unitCost) }}</div>
+              <div><span>Sell Cost:</span> {{ formatInt(l.sellCost) }}</div>
+              <div>
+                <span>Productivity:</span>
+                {{ formatInt(l.unitProductivity) }}
+                <span *ngIf="l.productivityUnit">{{ l.productivityUnit }}</span>
+              </div>
+            </div>
+            <div class="card-actions">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(l)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                    <path d="M13 6l4 4"></path>
+                  </svg>
+                </span>
+                Edit
+              </button>
+              <button
+                class="btn small danger"
+                type="button"
+                (click)="archiveLabor(l)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 8h16"></path>
+                    <path d="M6 8v10h12V8"></path>
+                    <path d="M10 12h4"></path>
+                    <path d="M9 4h6l1 2H8l1-2Z"></path>
+                  </svg>
+                </span>
+                Archive
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <div class="empty" *ngIf="!laborList.length && !(loading$ | async)">
+          No labor entries found.
+        </div>
+        <div class="infinite-sentinel" #infiniteSentinel></div>
+      </ng-container>
+    </section>
+  </ng-container>
+</div>

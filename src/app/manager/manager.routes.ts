@@ -6,14 +6,28 @@ import { ManagerPageComponent } from './components/manager.page';
 import { ManagerSectionPageComponent } from './components/manager-section.page';
 import { ManagerClientsPageComponent } from './components/clients/manager-clients.page';
 import { ManagerMaterialsPageComponent } from './components/materials/manager-materials.page';
+import { ManagerLaborPageComponent } from './components/labor/manager-labor.page';
+import { ManagerPricingPageComponent } from './components/pricing/manager-pricing.page';
 import { ManagerUsersPageComponent } from './components/users/manager-users.page';
 import { ManagerMaterialsService } from './services/manager.materials.service';
+import { ManagerLaborService } from './services/manager.labor.service';
+import { ManagerPricingService } from './services/manager.pricing.service';
 import { ManagerService } from './services/manager.service';
 import { ManagerMaterialsEffects } from './store/materials/manager.effects';
 import {
   MANAGER_MATERIALS_FEATURE_KEY,
   managerMaterialsReducer,
 } from './store/materials/manager.reducer';
+import { ManagerLaborEffects } from './store/labor/manager.effects';
+import {
+  MANAGER_LABOR_FEATURE_KEY,
+  managerLaborReducer,
+} from './store/labor/manager.reducer';
+import { ManagerPricingEffects } from './store/pricing/manager.effects';
+import {
+  MANAGER_PRICING_FEATURE_KEY,
+  managerPricingReducer,
+} from './store/pricing/manager.reducer';
 import { ManagerEffects } from './store/manager.effects';
 import { MANAGER_FEATURE_KEY, managerReducer } from './store/manager.reducer';
 
@@ -70,13 +84,23 @@ export const MANAGER_ROUTES: Route[] = [
       },
       {
         path: 'labor',
-        component: ManagerSectionPageComponent,
-        data: { title: 'Labor costs' },
+        component: ManagerLaborPageComponent,
+        providers: [
+          ManagerLaborService,
+          provideEffects(ManagerLaborEffects),
+          provideState(MANAGER_LABOR_FEATURE_KEY, managerLaborReducer),
+        ],
+        data: { title: 'Labor costs', fullscreen: true },
       },
       {
         path: 'pricing',
-        component: ManagerSectionPageComponent,
-        data: { title: 'Pricing' },
+        component: ManagerPricingPageComponent,
+        providers: [
+          ManagerPricingService,
+          provideEffects(ManagerPricingEffects),
+          provideState(MANAGER_PRICING_FEATURE_KEY, managerPricingReducer),
+        ],
+        data: { title: 'Pricing', fullscreen: true },
       },
       {
         path: 'quotes',

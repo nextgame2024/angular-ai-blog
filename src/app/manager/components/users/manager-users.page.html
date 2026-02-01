@@ -56,8 +56,8 @@
     </div>
 
     <div class="table-head" aria-hidden="true">
-      <div>Username</div>
       <div>Name</div>
+      <div>Username</div>
       <div>Email</div>
       <div>Type</div>
       <div>Status</div>
@@ -472,8 +472,8 @@
         <!-- Desktop table -->
         <div class="table" *ngIf="users.length">
           <div class="thead">
-            <div>Username</div>
             <div>Name</div>
+            <div>Username</div>
             <div>Email</div>
             <div>Type</div>
             <div>Status</div>
@@ -481,8 +481,8 @@
           </div>
 
           <div class="trow" *ngFor="let u of users; trackBy: trackByUser">
-            <div class="cell strong">{{ u.username }}</div>
-            <div class="cell muted">{{ u.name || '—' }}</div>
+            <div class="cell strong">{{ u.name || '—' }}</div>
+            <div class="cell muted">{{ u.username }}</div>
             <div class="cell muted">{{ u.email || '—' }}</div>
             <div class="cell muted">{{ u.type || '—' }}</div>
             <div class="cell">
@@ -531,13 +531,13 @@
             *ngFor="let u of users; trackBy: trackByUser"
           >
             <div class="row">
-              <div class="name">{{ u.username }}</div>
+              <div class="name">{{ u.name || '—' }}</div>
               <span class="badge" [class.archived]="u.status === 'archived'">
                 {{ u.status || 'active' }}
               </span>
             </div>
             <div class="meta">
-              <div><span>Name:</span> {{ u.name || '—' }}</div>
+              <div><span>Username:</span> {{ u.username }}</div>
               <div><span>Email:</span> {{ u.email || '—' }}</div>
               <div><span>Type:</span> {{ u.type || '—' }}</div>
               <div><span>Mobile:</span> {{ u.cel || '—' }}</div>
