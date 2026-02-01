@@ -58,8 +58,6 @@
     <div class="table-head" aria-hidden="true">
       <div>Name</div>
       <div>Type</div>
-      <div>Unit Cost</div>
-      <div>Sell Cost</div>
       <div>Code</div>
       <div>Category</div>
       <div>Status</div>
@@ -168,32 +166,6 @@
             </label>
           </div>
 
-          <div class="grid-2">
-            <label>
-              <span>Unit Cost *</span>
-              <input
-                formControlName="unit_cost"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                autocomplete="off"
-              />
-            </label>
-
-            <label>
-              <span>Sell Cost</span>
-              <input
-                formControlName="sell_cost"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                autocomplete="off"
-              />
-            </label>
-          </div>
-
           <label>
             <span>Status</span>
             <select formControlName="status">
@@ -296,32 +268,6 @@
             </label>
           </div>
 
-          <div class="grid-2">
-            <label>
-              <span>Unit Cost *</span>
-              <input
-                formControlName="unit_cost"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                autocomplete="off"
-              />
-            </label>
-
-            <label>
-              <span>Sell Cost</span>
-              <input
-                formControlName="sell_cost"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                autocomplete="off"
-              />
-            </label>
-          </div>
-
           <label>
             <span>Status</span>
             <select formControlName="status">
@@ -351,8 +297,6 @@
           <div class="thead">
             <div>Name</div>
             <div>Type</div>
-            <div>Unit Cost</div>
-            <div>Sell Cost</div>
             <div>Code</div>
             <div>Category</div>
             <div>Status</div>
@@ -365,8 +309,6 @@
           >
             <div class="cell strong">{{ m.materialName }}</div>
             <div class="cell muted">{{ m.type || '—' }}</div>
-            <div class="cell muted">{{ m.unitCost }}</div>
-            <div class="cell muted">{{ m.sellCost ?? '—' }}</div>
             <div class="cell muted">{{ m.code || '—' }}</div>
             <div class="cell muted">{{ m.category || '—' }}</div>
             <div class="cell">
@@ -420,8 +362,6 @@
             </div>
             <div class="meta">
               <div><span>Type:</span> {{ m.type || '—' }}</div>
-              <div><span>Unit Cost:</span> {{ m.unitCost }}</div>
-              <div><span>Sell Cost:</span> {{ m.sellCost ?? '—' }}</div>
               <div><span>Code:</span> {{ m.code || '—' }}</div>
               <div><span>Category:</span> {{ m.category || '—' }}</div>
             </div>

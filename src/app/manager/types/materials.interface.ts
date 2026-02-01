@@ -7,8 +7,6 @@ export interface BmMaterial {
 
   type?: string | null;
   materialName: string;
-  unitCost: number;
-  sellCost?: number | null;
   code?: string | null;
   category?: string | null;
   notes?: string | null;

@@ -8,10 +8,12 @@ import { ManagerClientsPageComponent } from './components/clients/manager-client
 import { ManagerMaterialsPageComponent } from './components/materials/manager-materials.page';
 import { ManagerLaborPageComponent } from './components/labor/manager-labor.page';
 import { ManagerPricingPageComponent } from './components/pricing/manager-pricing.page';
+import { ManagerSuppliersPageComponent } from './components/suppliers/manager-suppliers.page';
 import { ManagerUsersPageComponent } from './components/users/manager-users.page';
 import { ManagerMaterialsService } from './services/manager.materials.service';
 import { ManagerLaborService } from './services/manager.labor.service';
 import { ManagerPricingService } from './services/manager.pricing.service';
+import { ManagerSuppliersService } from './services/manager.suppliers.service';
 import { ManagerService } from './services/manager.service';
 import { ManagerMaterialsEffects } from './store/materials/manager.effects';
 import {
@@ -28,6 +30,11 @@ import {
   MANAGER_PRICING_FEATURE_KEY,
   managerPricingReducer,
 } from './store/pricing/manager.reducer';
+import { ManagerSuppliersEffects } from './store/suppliers/manager.effects';
+import {
+  MANAGER_SUPPLIERS_FEATURE_KEY,
+  managerSuppliersReducer,
+} from './store/suppliers/manager.reducer';
 import { ManagerEffects } from './store/manager.effects';
 import { MANAGER_FEATURE_KEY, managerReducer } from './store/manager.reducer';
 
@@ -69,8 +76,14 @@ export const MANAGER_ROUTES: Route[] = [
       },
       {
         path: 'suppliers',
-        component: ManagerSectionPageComponent,
-        data: { title: 'Suppliers' },
+        component: ManagerSuppliersPageComponent,
+        providers: [
+          ManagerSuppliersService,
+          ManagerMaterialsService,
+          provideEffects(ManagerSuppliersEffects),
+          provideState(MANAGER_SUPPLIERS_FEATURE_KEY, managerSuppliersReducer),
+        ],
+        data: { title: 'Suppliers', fullscreen: true },
       },
       {
         path: 'materials',

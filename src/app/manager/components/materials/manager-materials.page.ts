@@ -68,8 +68,6 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
     code: [''],
     category: [''],
     type: [''],
-    unit_cost: [null as number | null, [Validators.required, Validators.min(0)]],
-    sell_cost: [null as number | null, [Validators.min(0)]],
     notes: [''],
     status: ['active', [Validators.required]],
   });
@@ -159,8 +157,6 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
         code: m.code ?? '',
         category: m.category ?? '',
         type: m.type ?? '',
-        unit_cost: m.unitCost ?? 0,
-        sell_cost: m.sellCost ?? null,
         notes: m.notes ?? '',
         status: m.status ?? 'active',
       });
@@ -181,8 +177,6 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
       code: '',
       category: '',
       type: '',
-      unit_cost: null,
-      sell_cost: null,
       notes: '',
       status: 'active',
     });
@@ -207,13 +201,6 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
     }
 
     const payload: any = this.materialForm.getRawValue();
-
-    if (payload.unit_cost !== null && payload.unit_cost !== '') {
-      payload.unit_cost = Number(payload.unit_cost);
-    }
-    if (payload.sell_cost !== null && payload.sell_cost !== '') {
-      payload.sell_cost = Number(payload.sell_cost);
-    }
 
     delete payload.company_id;
     delete payload.companyId;

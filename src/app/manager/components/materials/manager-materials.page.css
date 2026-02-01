@@ -122,7 +122,7 @@
   display: none;
   margin-top: 0.75rem;
   padding: 0.7rem 0.75rem;
-  border-radius: 12px;
+  border-radius: 8px;
   font-weight: 800;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: rgba(255, 255, 255, 0.98);
@@ -466,7 +466,6 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-
 .avatar-image {
   width: 140px;
   height: 140px;
@@ -559,7 +558,7 @@
 .thead,
 .trow {
   display: grid;
-  grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr 0.7fr 1.1fr;
+  grid-template-columns: 1.5fr 0.9fr 0.9fr 0.9fr 0.7fr 1.1fr;
   gap: 0.5rem;
   align-items: center;
 }
@@ -645,7 +644,7 @@
 @media (min-width: 900px) {
   .table-head {
     display: grid;
-    grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr 0.7fr 1.1fr;
+    grid-template-columns: 1.5fr 0.9fr 0.9fr 0.9fr 0.7fr 1.1fr;
     gap: 0.5rem;
     align-items: center;
   }
