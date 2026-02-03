@@ -122,14 +122,14 @@
               </span>
               Cancel
             </button>
-            <button class="btn primary" type="button" (click)="saveProject()">
+            <button class="btn primary" type="button" (click)="saveProjectAndClose()">
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 5h11l3 3v11H5z"></path>
                   <path d="M9 5v6h6V5"></path>
                 </svg>
               </span>
-              Save
+              Save & Close
             </button>
           </div>
         </div>
@@ -323,7 +323,11 @@
               </span>
               Cancel
             </button>
-            <button class="btn primary" type="button" (click)="saveProject()">
+            <button
+              class="btn primary"
+              type="button"
+              (click)="saveProject()"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 5h11l3 3v11H5z"></path>
@@ -337,7 +341,10 @@
       </ng-container>
 
       <ng-container *ngIf="(tab$ | async) === 'materials'">
-        <div class="warning-banner" *ngIf="!project">
+        <div
+          class="warning-banner"
+          *ngIf="!project && !isWarningDismissed('project-materials-tabs')"
+        >
           <span class="warning-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
               <path d="M12 3 2.75 19.5h18.5L12 3Z"></path>
@@ -346,6 +353,14 @@
             </svg>
           </span>
           Save the project first to enable the Materials tab.
+          <button
+            type="button"
+            class="warning-dismiss"
+            aria-label="Dismiss notice"
+            (click)="dismissWarning('project-materials-tabs')"
+          >
+            x
+          </button>
         </div>
 
         <ng-container *ngIf="project">
@@ -434,7 +449,9 @@
                           (click)="onMaterialSelect(m)"
                         >
                           {{ m.materialName }}
-                          <span class="hint" *ngIf="m.materialCode">({{ m.materialCode }})</span>
+                          <span class="hint" *ngIf="m.materialCode"
+                            >({{ m.materialCode }})</span
+                          >
                         </button>
                       </div>
                     </div>
@@ -442,7 +459,12 @@
 
                   <label>
                     <span>Quantity</span>
-                    <input type="number" step="1" min="0" formControlName="quantity" />
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      formControlName="quantity"
+                    />
                   </label>
                 </div>
 
@@ -518,8 +540,12 @@
               >
                 <div class="cell strong">{{ m.materialName }}</div>
                 <div class="cell muted">{{ formatInt(m.quantity) ?? '—' }}</div>
-                <div class="cell muted">{{ formatInt(m.unitCostOverride) ?? '—' }}</div>
-                <div class="cell muted">{{ formatInt(m.sellCostOverride) ?? '—' }}</div>
+                <div class="cell muted">
+                  {{ formatInt(m.unitCostOverride) ?? '—' }}
+                </div>
+                <div class="cell muted">
+                  {{ formatInt(m.sellCostOverride) ?? '—' }}
+                </div>
                 <div class="cell actions-col">
                   <button
                     class="btn small secondary"
@@ -564,10 +590,12 @@
                 </div>
                 <div class="meta">
                   <div>
-                    <span>Unit Cost:</span> {{ formatInt(m.unitCostOverride) ?? '—' }}
+                    <span>Unit Cost:</span> {{ formatInt(m.unitCostOverride) ??
+                    '—' }}
                   </div>
                   <div>
-                    <span>Sell Cost:</span> {{ formatInt(m.sellCostOverride) ?? '—' }}
+                    <span>Sell Cost:</span> {{ formatInt(m.sellCostOverride) ??
+                    '—' }}
                   </div>
                 </div>
                 <div class="card-actions">
@@ -611,7 +639,10 @@
       </ng-container>
 
       <ng-container *ngIf="(tab$ | async) === 'labor'">
-        <div class="warning-banner" *ngIf="!project">
+        <div
+          class="warning-banner"
+          *ngIf="!project && !isWarningDismissed('project-labor-tabs')"
+        >
           <span class="warning-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
               <path d="M12 3 2.75 19.5h18.5L12 3Z"></path>
@@ -620,6 +651,14 @@
             </svg>
           </span>
           Save the project first to enable the Labor tab.
+          <button
+            type="button"
+            class="warning-dismiss"
+            aria-label="Dismiss notice"
+            (click)="dismissWarning('project-labor-tabs')"
+          >
+            x
+          </button>
         </div>
 
         <ng-container *ngIf="project">
@@ -653,40 +692,84 @@
           <ng-container *ngIf="(laborViewMode$ | async) === 'form'">
             <section class="card">
               <form class="form" [formGroup]="projectLaborForm">
-                <label>
-                  <span>Labor *</span>
-                  <app-manager-select
-                    formControlName="labor_id"
-                    [options]="laborOptions"
-                    placeholder="Select labor"
-                  ></app-manager-select>
-                </label>
-
                 <div class="grid-2">
+                  <label>
+                    <span>Labor *</span>
+                    <div class="address-field">
+                      <input
+                        [formControl]="laborSearchCtrl"
+                        placeholder="Search labor"
+                        (input)="onLaborQueryInput(laborSearchCtrl.value)"
+                        (focus)="onLaborQueryFocus()"
+                        (blur)="onLaborQueryBlur()"
+                        (keydown)="onLaborQueryKeydown($event)"
+                        autocomplete="off"
+                      />
+                      <div
+                        class="address-suggestions"
+                        *ngIf="showLaborSuggestions && laborSuggestions.length"
+                      >
+                        <button
+                          type="button"
+                          class="address-suggestion"
+                          *ngFor="let l of laborSuggestions; let i = index"
+                          [class.is-active]="i === laborActiveIndex"
+                          (click)="onLaborSelect(l)"
+                        >
+                          {{ l.laborName }}
+                        </button>
+                      </div>
+                    </div>
+                  </label>
+
                   <label>
                     <span>Quantity</span>
-                    <input type="number" formControlName="quantity" />
-                  </label>
-                  <label>
-                    <span>Unit Cost Override</span>
-                    <input type="number" formControlName="unit_cost_override" />
+                    <input
+                      type="number"
+                      step="1"
+                      min="0"
+                      formControlName="quantity"
+                    />
                   </label>
                 </div>
 
                 <div class="grid-2">
                   <label>
-                    <span>Sell Cost Override</span>
-                    <input type="number" formControlName="sell_cost_override" />
+                    <span>Unit Cost</span>
+                    <input
+                      type="number"
+                      step="1"
+                      formControlName="unit_cost_override"
+                    />
                   </label>
                   <label>
-                    <span>Notes</span>
-                    <input formControlName="notes" placeholder="Notes" />
+                    <span>Sell Cost</span>
+                    <input
+                      type="number"
+                      step="1"
+                      formControlName="sell_cost_override"
+                    />
                   </label>
                 </div>
+
+                <label>
+                  <span>Notes</span>
+                  <textarea
+                    formControlName="notes"
+                    rows="3"
+                    placeholder="Notes"
+                  ></textarea>
+                </label>
               </form>
 
-              <div class="card-actions">
+              <div class="card-actions right-actions">
                 <button class="btn" type="button" (click)="closeLaborForm()">
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M6 6l12 12"></path>
+                      <path d="M18 6l-12 12"></path>
+                    </svg>
+                  </span>
                   Cancel
                 </button>
                 <button
@@ -694,6 +777,12 @@
                   type="button"
                   (click)="saveProjectLabor(project, editingLabor)"
                 >
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M5 5h11l3 3v11H5z"></path>
+                      <path d="M9 5v6h6V5"></path>
+                    </svg>
+                  </span>
                   Save
                 </button>
               </div>
@@ -712,9 +801,13 @@
 
               <div class="trow" *ngFor="let l of labor; trackBy: trackByLabor">
                 <div class="cell strong">{{ l.laborName }}</div>
-                <div class="cell muted">{{ l.quantity ?? '—' }}</div>
-                <div class="cell muted">{{ l.unitCostOverride ?? '—' }}</div>
-                <div class="cell muted">{{ l.sellCostOverride ?? '—' }}</div>
+                <div class="cell muted">{{ formatInt(l.quantity) ?? '—' }}</div>
+                <div class="cell muted">
+                  {{ formatInt(l.unitCostOverride) ?? '—' }}
+                </div>
+                <div class="cell muted">
+                  {{ formatInt(l.sellCostOverride) ?? '—' }}
+                </div>
                 <div class="cell actions-col">
                   <button
                     class="btn small secondary"
@@ -755,14 +848,16 @@
               >
                 <div class="row">
                   <div class="name">{{ l.laborName }}</div>
-                  <div class="muted">{{ l.quantity ?? '—' }}</div>
+                  <div class="muted">{{ formatInt(l.quantity) ?? '—' }}</div>
                 </div>
                 <div class="meta">
                   <div>
-                    <span>Unit Cost:</span> {{ l.unitCostOverride ?? '—' }}
+                    <span>Unit Cost:</span> {{ formatInt(l.unitCostOverride) ??
+                    '—' }}
                   </div>
                   <div>
-                    <span>Sell Cost:</span> {{ l.sellCostOverride ?? '—' }}
+                    <span>Sell Cost:</span> {{ formatInt(l.sellCostOverride) ??
+                    '—' }}
                   </div>
                 </div>
                 <div class="card-actions">
@@ -833,7 +928,11 @@
               </span>
               Cancel
             </button>
-            <button class="btn primary" type="button" (click)="saveProject()">
+            <button
+              class="btn primary"
+              type="button"
+              (click)="saveProjectAndClose()"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 5h11l3 3v11H5z"></path>
@@ -885,7 +984,10 @@
           </button>
         </div>
 
-        <div class="warning-banner">
+        <div
+          class="warning-banner"
+          *ngIf="!isWarningDismissed('project-create-tabs')"
+        >
           <span class="warning-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
               <path d="M12 3 2.75 19.5h18.5L12 3Z"></path>
@@ -894,6 +996,14 @@
             </svg>
           </span>
           Save the project first to enable the Materials and Labor tabs.
+          <button
+            type="button"
+            class="warning-dismiss"
+            aria-label="Dismiss notice"
+            (click)="dismissWarning('project-create-tabs')"
+          >
+            x
+          </button>
         </div>
       </div>
 

@@ -22,8 +22,8 @@ export const ManagerProjectsActions = createActionGroup({
 
     'Set Project Form Tab': props<{ tab: ProjectFormTab }>(),
 
-    'Save Project': props<{ payload: any }>(),
-    'Save Project Success': props<{ project: BmProject }>(),
+    'Save Project': props<{ payload: any; closeOnSuccess?: boolean }>(),
+    'Save Project Success': props<{ project: BmProject; closeOnSuccess?: boolean }>(),
     'Save Project Failure': props<{ error: string }>(),
 
     'Archive Project': props<{ projectId: string }>(),

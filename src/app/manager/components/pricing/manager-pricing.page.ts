@@ -7,6 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { combineLatest, Observable, Subject } from 'rxjs';
 import {
@@ -57,6 +58,7 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
 
   private infiniteObserver?: IntersectionObserver;
   private isLoadingMore = false;
+  private closeAfterSave = false;
   private currentPage = 1;
   private canLoadMore = false;
   private isLoading = false;
@@ -81,6 +83,7 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
   constructor(
     private store: Store,
     private fb: FormBuilder,
+    private actions$: Actions,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
@@ -114,6 +117,22 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
       this.isLoading = loading;
       if (!loading) this.isLoadingMore = false;
     });
+
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerPricingActions.savePricingProfileSuccess,
+          ManagerPricingActions.savePricingProfileFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterSave) return;
+        this.closeAfterSave = false;
+        if (action.type === ManagerPricingActions.savePricingProfileSuccess.type) {
+          this.closeForm();
+        }
+      });
   }
 
   ngOnInit(): void {
@@ -220,6 +239,15 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
     delete payload.pricingProfileId;
 
     this.store.dispatch(ManagerPricingActions.savePricingProfile({ payload }));
+  }
+
+  savePricingAndClose(): void {
+    if (this.pricingForm.invalid) {
+      this.pricingForm.markAllAsTouched();
+      return;
+    }
+    this.closeAfterSave = true;
+    this.savePricing();
   }
 
   archivePricing(p: BmPricingProfile): void {

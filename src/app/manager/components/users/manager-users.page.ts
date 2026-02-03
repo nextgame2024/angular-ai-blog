@@ -7,6 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { combineLatest, Observable, Subject, of } from 'rxjs';
 import {
@@ -66,6 +67,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   private currentPage = 1;
   private canLoadMore = false;
   private isLoading = false;
+  private closeAfterSave = false;
   dismissedErrors = new Set<string>();
 
   @ViewChild('usersList') usersListRef?: ElementRef<HTMLElement>;
@@ -117,6 +119,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private townPlanner: TownPlannerV2Service,
     private avatarUpload: AvatarUploadService,
+    private actions$: Actions,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
@@ -156,6 +159,19 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       this.isLoading = loading;
       if (!loading) this.isLoadingMore = false;
     });
+
+    this.actions$
+      .pipe(
+        ofType(ManagerActions.saveUserSuccess, ManagerActions.saveUserFailure),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterSave) return;
+        this.closeAfterSave = false;
+        if (action.type === ManagerActions.saveUserSuccess.type) {
+          this.closeForm();
+        }
+      });
   }
 
   ngOnInit(): void {
@@ -283,6 +299,15 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     delete payload.companyId;
 
     this.store.dispatch(ManagerActions.saveUser({ payload }));
+  }
+
+  saveUserAndClose(): void {
+    if (this.userForm.invalid) {
+      this.userForm.markAllAsTouched();
+      return;
+    }
+    this.closeAfterSave = true;
+    this.saveUser();
   }
 
   archiveUser(u: BmUser): void {

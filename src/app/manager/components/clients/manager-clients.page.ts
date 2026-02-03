@@ -15,6 +15,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { combineLatest, Observable, Subject, of } from 'rxjs';
 import {
@@ -68,6 +69,7 @@ export class ManagerClientsPageComponent
   private contactsInfiniteObserver?: IntersectionObserver;
   private isLoadingMore = false;
   private isLoadingMoreContacts = false;
+  private closeAfterSave = false;
 
   loading$ = this.store.select(selectManagerClientsLoading);
   error$ = this.store.select(selectManagerClientsError);
@@ -123,6 +125,7 @@ export class ManagerClientsPageComponent
   private canLoadMoreContacts = false;
   private isLoadingContacts = false;
   dismissedErrors = new Set<string>();
+  dismissedWarnings = new Set<string>();
 
   clientForm = this.fb.group({
     client_name: ['', [Validators.required, Validators.maxLength(120)]],
@@ -146,6 +149,7 @@ export class ManagerClientsPageComponent
     private store: Store,
     private fb: FormBuilder,
     private townPlanner: TownPlannerV2Service,
+    private actions$: Actions,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
@@ -193,6 +197,19 @@ export class ManagerClientsPageComponent
       .subscribe((loading) => {
         this.isLoadingContacts = loading;
         if (!loading) this.isLoadingMoreContacts = false;
+      });
+
+    this.actions$
+      .pipe(
+        ofType(ManagerActions.saveClientSuccess, ManagerActions.saveClientFailure),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterSave) return;
+        this.closeAfterSave = false;
+        if (action.type === ManagerActions.saveClientSuccess.type) {
+          this.closeForm();
+        }
       });
   }
 
@@ -321,6 +338,14 @@ export class ManagerClientsPageComponent
     return message ? this.dismissedErrors.has(message) : false;
   }
 
+  dismissWarning(message: string): void {
+    if (message) this.dismissedWarnings.add(message);
+  }
+
+  isWarningDismissed(message: string | null | undefined): boolean {
+    return message ? this.dismissedWarnings.has(message) : false;
+  }
+
   @HostListener('window:resize')
   onResize(): void {
     this.updateHeaderOffset();
@@ -366,6 +391,15 @@ export class ManagerClientsPageComponent
 
     const payload = this.clientForm.getRawValue();
     this.store.dispatch(ManagerActions.saveClient({ payload }));
+  }
+
+  saveClientAndClose(): void {
+    if (this.clientForm.invalid) {
+      this.clientForm.markAllAsTouched();
+      return;
+    }
+    this.closeAfterSave = true;
+    this.saveClient();
   }
 
   archiveClient(c: BmClient): void {

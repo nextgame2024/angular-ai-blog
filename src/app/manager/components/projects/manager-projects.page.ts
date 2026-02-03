@@ -119,6 +119,11 @@ export class ManagerProjectsPageComponent
   pricingOptions: ManagerSelectOption[] = [];
   materialOptions: ManagerSelectOption[] = [];
   laborOptions: ManagerSelectOption[] = [];
+  laborCatalog: { laborId: string; laborName: string; unitCost?: number | null; sellCost?: number | null }[] = [];
+  laborSearchCtrl: FormControl<string>;
+  laborSuggestions: { laborId: string; laborName: string; unitCost?: number | null; sellCost?: number | null }[] = [];
+  showLaborSuggestions = false;
+  laborActiveIndex = -1;
   clientsCatalog: { clientId: string; clientName: string }[] = [];
   suppliersCatalog: { supplierId: string; supplierName: string }[] = [];
   supplierMaterialsCatalog: {
@@ -199,6 +204,7 @@ export class ManagerProjectsPageComponent
   editingMaterial: BmProjectMaterial | null = null;
   editingLabor: BmProjectLabor | null = null;
   dismissedErrors = new Set<string>();
+  dismissedWarnings = new Set<string>();
 
   @ViewChild('projectsList') projectsListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
@@ -218,6 +224,7 @@ export class ManagerProjectsPageComponent
     this.clientSearchCtrl = new FormControl('', { nonNullable: true });
     this.supplierSearchCtrl = new FormControl('', { nonNullable: true });
     this.materialSearchCtrl = new FormControl('', { nonNullable: true });
+    this.laborSearchCtrl = new FormControl('', { nonNullable: true });
   }
 
   ngOnInit(): void {
@@ -236,6 +243,7 @@ export class ManagerProjectsPageComponent
       this.isLoading = loading;
       if (!loading) this.isLoadingMore = false;
     });
+
 
     this.page$.pipe(takeUntil(this.destroy$)).subscribe((page) => {
       this.currentPage = page;
@@ -335,9 +343,12 @@ export class ManagerProjectsPageComponent
         this.projectLaborForm.reset({
           labor_id: labor.laborId,
           quantity: labor.quantity ?? 1,
-          unit_cost_override: labor.unitCostOverride ?? null,
-          sell_cost_override: labor.sellCostOverride ?? null,
+          unit_cost_override: this.formatInt(labor.unitCostOverride ?? null),
+          sell_cost_override: this.formatInt(labor.sellCostOverride ?? null),
           notes: labor.notes ?? '',
+        });
+        this.laborSearchCtrl.setValue(labor.laborName || '', {
+          emitEvent: false,
         });
       } else {
         this.projectLaborForm.reset({
@@ -347,6 +358,7 @@ export class ManagerProjectsPageComponent
           sell_cost_override: null,
           notes: '',
         });
+        this.laborSearchCtrl.setValue('', { emitEvent: false });
       }
     });
 
@@ -369,6 +381,14 @@ export class ManagerProjectsPageComponent
 
   isErrorDismissed(message: string | null | undefined): boolean {
     return message ? this.dismissedErrors.has(message) : false;
+  }
+
+  dismissWarning(message: string): void {
+    if (message) this.dismissedWarnings.add(message);
+  }
+
+  isWarningDismissed(message: string | null | undefined): boolean {
+    return message ? this.dismissedWarnings.has(message) : false;
   }
 
   openCreate(): void {
@@ -398,7 +418,26 @@ export class ManagerProjectsPageComponent
       payload.pricing_profile_id = null;
     }
 
-    this.store.dispatch(ManagerProjectsActions.saveProject({ payload }));
+    this.store.dispatch(
+      ManagerProjectsActions.saveProject({ payload, closeOnSuccess: false }),
+    );
+  }
+
+  saveProjectAndClose(): void {
+    if (this.projectForm.invalid) {
+      this.projectForm.markAllAsTouched();
+      return;
+    }
+    const payload: any = this.projectForm.getRawValue();
+    const useDefaultPricing = this.useDefaultPricing;
+    payload.default_pricing = useDefaultPricing;
+    if (useDefaultPricing) {
+      payload.pricing_profile_id = null;
+    }
+
+    this.store.dispatch(
+      ManagerProjectsActions.saveProject({ payload, closeOnSuccess: true }),
+    );
   }
 
   get isDefaultPricing(): boolean {
@@ -678,6 +717,91 @@ export class ManagerProjectsPageComponent
     });
   }
 
+  private updateLaborSuggestions(query: string): void {
+    const term = query.trim().toLowerCase();
+    if (!term) {
+      this.laborSuggestions = [];
+      this.showLaborSuggestions = false;
+      this.laborActiveIndex = -1;
+      return;
+    }
+    const results = this.laborCatalog.filter((l) =>
+      (l.laborName || '').toLowerCase().includes(term),
+    );
+    this.laborSuggestions = results.slice(0, 8);
+    this.showLaborSuggestions = this.laborSuggestions.length > 0;
+    this.laborActiveIndex = this.laborSuggestions.length ? 0 : -1;
+  }
+
+  onLaborQueryInput(value: string | null): void {
+    this.updateLaborSuggestions(value || '');
+    this.projectLaborForm.controls.labor_id.setValue('');
+    if (!value) {
+      this.projectLaborForm.controls.unit_cost_override.setValue(null, {
+        emitEvent: false,
+      });
+      this.projectLaborForm.controls.sell_cost_override.setValue(null, {
+        emitEvent: false,
+      });
+    }
+  }
+
+  onLaborQueryFocus(): void {
+    const query = (this.laborSearchCtrl.value || '').trim();
+    if (query.length) {
+      this.updateLaborSuggestions(query);
+    }
+    this.showLaborSuggestions = this.laborSuggestions.length > 0;
+  }
+
+  onLaborQueryBlur(): void {
+    window.setTimeout(() => {
+      this.showLaborSuggestions = false;
+      this.laborActiveIndex = -1;
+    }, 150);
+  }
+
+  onLaborQueryKeydown(event: KeyboardEvent): void {
+    if (!this.showLaborSuggestions || !this.laborSuggestions.length) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.laborActiveIndex = Math.min(
+        this.laborActiveIndex + 1,
+        this.laborSuggestions.length - 1,
+      );
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.laborActiveIndex = Math.max(this.laborActiveIndex - 1, 0);
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      const current = this.laborSuggestions[this.laborActiveIndex];
+      if (current) this.onLaborSelect(current);
+    } else if (event.key === 'Escape') {
+      this.showLaborSuggestions = false;
+      this.laborActiveIndex = -1;
+    }
+  }
+
+  onLaborSelect(labor: {
+    laborId: string;
+    laborName: string;
+    unitCost?: number | null;
+    sellCost?: number | null;
+  }): void {
+    this.projectLaborForm.controls.labor_id.setValue(labor.laborId);
+    this.laborSearchCtrl.setValue(labor.laborName, { emitEvent: false });
+    this.projectLaborForm.controls.unit_cost_override.setValue(
+      this.formatInt(labor.unitCost ?? null),
+      { emitEvent: false },
+    );
+    this.projectLaborForm.controls.sell_cost_override.setValue(
+      this.formatInt(labor.sellCost ?? null),
+      { emitEvent: false },
+    );
+    this.showLaborSuggestions = false;
+    this.laborActiveIndex = -1;
+  }
+
   private loadSupplierMaterials(supplierId: string): void {
     this.suppliersService
       .listSupplierMaterials(supplierId, { page: 1, limit: 200 })
@@ -812,6 +936,13 @@ export class ManagerProjectsPageComponent
     }
 
     const payload: any = this.projectLaborForm.getRawValue();
+    payload.quantity = this.formatInt(payload.quantity ?? 0);
+    if (payload.unit_cost_override !== null) {
+      payload.unit_cost_override = this.formatInt(payload.unit_cost_override);
+    }
+    if (payload.sell_cost_override !== null) {
+      payload.sell_cost_override = this.formatInt(payload.sell_cost_override);
+    }
     const laborId = editing?.laborId || payload.labor_id;
     delete payload.labor_id;
 
@@ -908,10 +1039,27 @@ export class ManagerProjectsPageComponent
       .listLabor({ page: 1, limit: 200 })
       .pipe(takeUntil(this.destroy$))
       .subscribe((res) => {
-        this.laborOptions = (res?.items ?? []).map((l) => ({
+        this.laborCatalog = (res?.items ?? []).map((l) => ({
+          laborId: l.laborId,
+          laborName: l.laborName,
+          unitCost: l.unitCost ?? null,
+          sellCost: l.sellCost ?? null,
+        }));
+        this.laborOptions = this.laborCatalog.map((l) => ({
           value: l.laborId,
           label: l.laborName,
         }));
+        const currentLaborId = this.projectLaborForm.controls.labor_id.value;
+        if (currentLaborId && !this.laborSearchCtrl.value) {
+          const match = this.laborCatalog.find(
+            (l) => l.laborId === currentLaborId,
+          );
+          if (match) {
+            this.laborSearchCtrl.setValue(match.laborName, {
+              emitEvent: false,
+            });
+          }
+        }
       });
   }
 

@@ -7,6 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { combineLatest, Observable, Subject } from 'rxjs';
 import {
@@ -57,6 +58,7 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
 
   private infiniteObserver?: IntersectionObserver;
   private isLoadingMore = false;
+  private closeAfterSave = false;
   private currentPage = 1;
   private canLoadMore = false;
   private isLoading = false;
@@ -82,6 +84,7 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
   constructor(
     private store: Store,
     private fb: FormBuilder,
+    private actions$: Actions,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
@@ -123,6 +126,22 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
       this.isLoading = loading;
       if (!loading) this.isLoadingMore = false;
     });
+
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerMaterialsActions.saveMaterialSuccess,
+          ManagerMaterialsActions.saveMaterialFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterSave) return;
+        this.closeAfterSave = false;
+        if (action.type === ManagerMaterialsActions.saveMaterialSuccess.type) {
+          this.closeForm();
+        }
+      });
   }
 
   ngOnInit(): void {
@@ -223,6 +242,15 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
     delete payload.materialId;
 
     this.store.dispatch(ManagerMaterialsActions.saveMaterial({ payload }));
+  }
+
+  saveMaterialAndClose(): void {
+    if (this.materialForm.invalid) {
+      this.materialForm.markAllAsTouched();
+      return;
+    }
+    this.closeAfterSave = true;
+    this.saveMaterial();
   }
 
   archiveMaterial(m: BmMaterial): void {

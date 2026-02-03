@@ -15,6 +15,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import { combineLatest, Observable, Subject, of } from 'rxjs';
 import {
@@ -82,6 +83,7 @@ export class ManagerSuppliersPageComponent
   private isLoadingMore = false;
   private isLoadingMoreContacts = false;
   private isLoadingMoreMaterials = false;
+  private closeAfterSave = false;
 
   loading$ = this.store.select(selectManagerSuppliersLoading);
   error$ = this.store.select(selectManagerSuppliersError);
@@ -137,6 +139,7 @@ export class ManagerSuppliersPageComponent
   private canLoadMoreMaterials = false;
   private isLoadingMaterials = false;
   dismissedErrors = new Set<string>();
+  dismissedWarnings = new Set<string>();
 
   materialsCatalog: BmMaterial[] = [];
   private materialsMap = new Map<string, string>();
@@ -187,6 +190,7 @@ export class ManagerSuppliersPageComponent
     private fb: FormBuilder,
     private materialsApi: ManagerMaterialsService,
     private townPlanner: TownPlannerV2Service,
+    private actions$: Actions,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
     this.materialSearchCtrl = this.fb.control('', { nonNullable: true });
@@ -260,6 +264,22 @@ export class ManagerSuppliersPageComponent
       .subscribe((loading) => {
         this.isLoadingMaterials = loading;
         if (!loading) this.isLoadingMoreMaterials = false;
+      });
+
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerSuppliersActions.saveSupplierSuccess,
+          ManagerSuppliersActions.saveSupplierFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterSave) return;
+        this.closeAfterSave = false;
+        if (action.type === ManagerSuppliersActions.saveSupplierSuccess.type) {
+          this.store.dispatch(ManagerSuppliersActions.closeSupplierForm());
+        }
       });
   }
 
@@ -372,6 +392,14 @@ export class ManagerSuppliersPageComponent
     return message ? this.dismissedErrors.has(message) : false;
   }
 
+  dismissWarning(message: string): void {
+    if (message) this.dismissedWarnings.add(message);
+  }
+
+  isWarningDismissed(message: string | null | undefined): boolean {
+    return message ? this.dismissedWarnings.has(message) : false;
+  }
+
   @HostListener('window:resize')
   onResize(): void {
     this.updateHeaderOffset();
@@ -416,6 +444,15 @@ export class ManagerSuppliersPageComponent
     delete payload.supplierId;
 
     this.store.dispatch(ManagerSuppliersActions.saveSupplier({ payload }));
+  }
+
+  saveSupplierAndClose(): void {
+    if (this.supplierForm.invalid) {
+      this.supplierForm.markAllAsTouched();
+      return;
+    }
+    this.closeAfterSave = true;
+    this.saveSupplier();
   }
 
   archiveSupplier(s: BmSupplier): void {
@@ -532,6 +569,12 @@ export class ManagerSuppliersPageComponent
 
   saveSupplierMaterial(supplier: BmSupplier): void {
     if (!supplier?.supplierId) return;
+    if (!this.supplierMaterialForm.controls.material_id.value) {
+      const match = this.resolveMaterialSelection();
+      if (match) {
+        this.onMaterialSelect(match);
+      }
+    }
     if (this.supplierMaterialForm.invalid) {
       this.supplierMaterialForm.markAllAsTouched();
       return;
@@ -586,6 +629,12 @@ export class ManagerSuppliersPageComponent
 
   onMaterialQueryBlur(): void {
     window.setTimeout(() => {
+      if (!this.supplierMaterialForm.controls.material_id.value) {
+        const match = this.resolveMaterialSelection();
+        if (match) {
+          this.onMaterialSelect(match);
+        }
+      }
       this.showMaterialSuggestions = false;
       this.materialActiveIndex = -1;
     }, 120);
@@ -725,6 +774,18 @@ export class ManagerSuppliersPageComponent
       )
       .slice(0, 12);
     this.materialActiveIndex = this.materialSuggestions.length ? 0 : -1;
+  }
+
+  private resolveMaterialSelection(): BmMaterial | null {
+    const query = (this.materialSearchCtrl.value || '').trim().toLowerCase();
+    if (!query) return null;
+    return (
+      this.materialsCatalog.find(
+        (m) => m.materialName?.toLowerCase() === query,
+      ) ??
+      this.materialsCatalog.find((m) => m.code?.toLowerCase() === query) ??
+      null
+    );
   }
 
   private setupAddressAutocomplete(): void {

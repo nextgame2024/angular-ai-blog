@@ -93,20 +93,26 @@
 
   <!-- FORM MODE -->
   <ng-container *ngIf="(viewMode$ | async) === 'form'">
-    <ng-container *ngIf="editingSupplier$ | async as supplier; else createSupplierBlock">
+    <ng-container
+      *ngIf="editingSupplier$ | async as supplier; else createSupplierBlock"
+    >
       <div class="form-header">
         <div class="form-header-top">
           <nav class="breadcrumb" aria-label="Breadcrumb">
             <a routerLink="/manager/menu">Menu</a>
             <span class="sep">/</span>
-            <a href="#" (click)="$event.preventDefault(); closeForm()">Suppliers</a>
+            <a href="#" (click)="$event.preventDefault(); closeForm()"
+              >Suppliers</a
+            >
             <span class="sep">/</span>
             <span>Edit</span>
           </nav>
           <div class="form-header-mainrow">
             <div class="header-main">
               <h3>Supplier Details</h3>
-              <p class="sub">Update supplier details, contacts, and materials.</p>
+              <p class="sub">
+                Update supplier details, contacts, and materials.
+              </p>
             </div>
             <div class="header-actions">
               <button class="btn" type="button" (click)="closeForm()">
@@ -118,14 +124,18 @@
                 </span>
                 Cancel
               </button>
-              <button class="btn primary" type="button" (click)="saveSupplier()">
+              <button
+                class="btn primary"
+                type="button"
+                (click)="saveSupplierAndClose()"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M5 5h11l3 3v11H5z"></path>
                     <path d="M9 5v6h6V5"></path>
                   </svg>
                 </span>
-                Save
+                Save & Close
               </button>
             </div>
           </div>
@@ -152,6 +162,7 @@
             type="button"
             class="tab"
             [class.active]="(tab$ | async) === 'contacts'"
+            [disabled]="!supplier?.supplierId"
             (click)="setTab('contacts', supplier)"
           >
             <span class="btn-icon" aria-hidden="true">
@@ -169,6 +180,7 @@
             type="button"
             class="tab"
             [class.active]="(tab$ | async) === 'materials'"
+            [disabled]="!supplier?.supplierId"
             (click)="setTab('materials', supplier)"
           >
             <span class="btn-icon" aria-hidden="true">
@@ -187,7 +199,11 @@
           class="form-header-actions-row"
           *ngIf="(tab$ | async) === 'contacts' && (contactsViewMode$ | async) === 'list'"
         >
-          <button class="btn primary" type="button" (click)="openContactCreate()">
+          <button
+            class="btn primary"
+            type="button"
+            (click)="openContactCreate()"
+          >
             <span class="btn-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="M12 5v14"></path>
@@ -202,7 +218,11 @@
           class="form-header-actions-row"
           *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
         >
-          <button class="btn primary" type="button" (click)="openMaterialCreate()">
+          <button
+            class="btn primary"
+            type="button"
+            (click)="openMaterialCreate()"
+          >
             <span class="btn-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="M12 5v14"></path>
@@ -257,7 +277,10 @@
             <div class="grid-2">
               <label>
                 <span>Email</span>
-                <input formControlName="email" placeholder="email@example.com" />
+                <input
+                  formControlName="email"
+                  placeholder="email@example.com"
+                />
               </label>
 
               <label>
@@ -284,9 +307,34 @@
 
             <label>
               <span>Notes</span>
-              <textarea formControlName="notes" rows="3" placeholder="Notes..."></textarea>
+              <textarea
+                formControlName="notes"
+                rows="3"
+                placeholder="Notes..."
+              ></textarea>
             </label>
           </form>
+
+          <div class="card-actions right-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+            <button class="btn primary" type="button" (click)="saveSupplier()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save
+            </button>
+          </div>
         </section>
       </ng-container>
 
@@ -321,12 +369,18 @@
               <div class="grid-2">
                 <label>
                   <span>Role title</span>
-                  <input formControlName="role_title" placeholder="Manager, Owner..." />
+                  <input
+                    formControlName="role_title"
+                    placeholder="Manager, Owner..."
+                  />
                 </label>
 
                 <label>
                   <span>Email</span>
-                  <input formControlName="email" placeholder="email@example.com" />
+                  <input
+                    formControlName="email"
+                    placeholder="email@example.com"
+                  />
                 </label>
               </div>
 
@@ -352,7 +406,11 @@
                   </span>
                   Cancel
                 </button>
-                <button type="button" class="btn primary" (click)="saveContact(supplier)">
+                <button
+                  type="button"
+                  class="btn primary"
+                  (click)="saveContact(supplier)"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M5 5h11l3 3v11H5z"></path>
@@ -378,13 +436,20 @@
                   <div class="actions-col">Actions</div>
                 </div>
 
-                <div class="trow" *ngFor="let ct of contacts; trackBy: trackByContact">
+                <div
+                  class="trow"
+                  *ngFor="let ct of contacts; trackBy: trackByContact"
+                >
                   <div class="cell strong">{{ ct.name }}</div>
                   <div class="cell muted">{{ ct.roleTitle || '—' }}</div>
                   <div class="cell muted">{{ ct.email || '—' }}</div>
                   <div class="cell muted">{{ ct.cel || '—' }}</div>
                   <div class="cell actions-col">
-                    <button class="btn small secondary" type="button" (click)="openContactEdit(ct)">
+                    <button
+                      class="btn small secondary"
+                      type="button"
+                      (click)="openContactEdit(ct)"
+                    >
                       <span class="btn-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                           <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -393,7 +458,11 @@
                       </span>
                       Edit
                     </button>
-                    <button class="btn small danger" type="button" (click)="deleteContact(supplier, ct)">
+                    <button
+                      class="btn small danger"
+                      type="button"
+                      (click)="deleteContact(supplier, ct)"
+                    >
                       <span class="btn-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                           <path d="M4 7h16"></path>
@@ -408,7 +477,10 @@
               </div>
 
               <div class="cards" *ngIf="contacts.length">
-                <article class="client-card" *ngFor="let ct of contacts; trackBy: trackByContact">
+                <article
+                  class="client-card"
+                  *ngFor="let ct of contacts; trackBy: trackByContact"
+                >
                   <div class="row">
                     <div class="name">{{ ct.name }}</div>
                     <div class="muted">{{ ct.roleTitle || '—' }}</div>
@@ -419,7 +491,11 @@
                     <div><span>Phone:</span> {{ ct.tel || '—' }}</div>
                   </div>
                   <div class="card-actions">
-                    <button class="btn small secondary" type="button" (click)="openContactEdit(ct)">
+                    <button
+                      class="btn small secondary"
+                      type="button"
+                      (click)="openContactEdit(ct)"
+                    >
                       <span class="btn-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                           <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -428,7 +504,11 @@
                       </span>
                       Edit
                     </button>
-                    <button class="btn small danger" type="button" (click)="deleteContact(supplier, ct)">
+                    <button
+                      class="btn small danger"
+                      type="button"
+                      (click)="deleteContact(supplier, ct)"
+                    >
                       <span class="btn-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                           <path d="M4 7h16"></path>
@@ -442,7 +522,10 @@
                 </article>
               </div>
 
-              <div class="empty" *ngIf="!contacts.length && !(contactsLoading$ | async)">
+              <div
+                class="empty"
+                *ngIf="!contacts.length && !(contactsLoading$ | async)"
+              >
                 No contacts yet. Click “Add” to create one.
               </div>
             </ng-container>
@@ -480,6 +563,7 @@
                   <input
                     [formControl]="materialSearchCtrl"
                     placeholder="Search material"
+                    [class.is-invalid]="supplierMaterialForm.controls.material_id.touched && supplierMaterialForm.controls.material_id.invalid"
                     (input)="onMaterialQueryInput(materialSearchCtrl.value)"
                     (focus)="onMaterialQueryFocus()"
                     (blur)="onMaterialQueryBlur()"
@@ -497,9 +581,16 @@
                       [class.is-active]="i === materialActiveIndex"
                       (click)="onMaterialSelect(m)"
                     >
-                      {{ m.materialName }} <span class="hint" *ngIf="m.code">({{ m.code }})</span>
+                      {{ m.materialName }}
+                      <span class="hint" *ngIf="m.code">({{ m.code }})</span>
                     </button>
                   </div>
+                </div>
+                <div
+                  class="error-text"
+                  *ngIf="supplierMaterialForm.controls.material_id.touched && supplierMaterialForm.controls.material_id.invalid"
+                >
+                  Select a material from the list.
                 </div>
               </label>
 
@@ -546,7 +637,11 @@
               </div>
 
               <div class="form-actions">
-                <button type="button" class="btn" (click)="cancelMaterialForm()">
+                <button
+                  type="button"
+                  class="btn"
+                  (click)="cancelMaterialForm()"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M6 6l12 12"></path>
@@ -555,7 +650,11 @@
                   </span>
                   Cancel
                 </button>
-                <button type="button" class="btn primary" (click)="saveSupplierMaterial(supplier)">
+                <button
+                  type="button"
+                  class="btn primary"
+                  (click)="saveSupplierMaterial(supplier)"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M5 5h11l3 3v11H5z"></path>
@@ -582,14 +681,23 @@
                   <div class="actions-col">Actions</div>
                 </div>
 
-                <div class="trow" *ngFor="let sm of materials; trackBy: trackBySupplierMaterial">
-                  <div class="cell strong">{{ getMaterialName(sm.materialId) }}</div>
+                <div
+                  class="trow"
+                  *ngFor="let sm of materials; trackBy: trackBySupplierMaterial"
+                >
+                  <div class="cell strong">
+                    {{ getMaterialName(sm.materialId) }}
+                  </div>
                   <div class="cell muted">{{ sm.supplierSku || '—' }}</div>
                   <div class="cell muted">{{ sm.leadTimeDays ?? '—' }}</div>
                   <div class="cell muted">{{ sm.unitCost ?? '—' }}</div>
                   <div class="cell muted">{{ sm.sellCost ?? '—' }}</div>
                   <div class="cell actions-col">
-                    <button class="btn small secondary" type="button" (click)="openMaterialEdit(sm)">
+                    <button
+                      class="btn small secondary"
+                      type="button"
+                      (click)="openMaterialEdit(sm)"
+                    >
                       <span class="btn-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                           <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -598,7 +706,11 @@
                       </span>
                       Edit
                     </button>
-                    <button class="btn small danger" type="button" (click)="removeSupplierMaterial(supplier, sm)">
+                    <button
+                      class="btn small danger"
+                      type="button"
+                      (click)="removeSupplierMaterial(supplier, sm)"
+                    >
                       <span class="btn-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                           <path d="M4 7h16"></path>
@@ -613,18 +725,27 @@
               </div>
 
               <div class="cards" *ngIf="materials.length">
-                <article class="client-card" *ngFor="let sm of materials; trackBy: trackBySupplierMaterial">
+                <article
+                  class="client-card"
+                  *ngFor="let sm of materials; trackBy: trackBySupplierMaterial"
+                >
                   <div class="row">
                     <div class="name">{{ getMaterialName(sm.materialId) }}</div>
                     <div class="muted">{{ sm.supplierSku || '—' }}</div>
                   </div>
                   <div class="meta">
-                    <div><span>Lead Time:</span> {{ sm.leadTimeDays ?? '—' }}</div>
+                    <div>
+                      <span>Lead Time:</span> {{ sm.leadTimeDays ?? '—' }}
+                    </div>
                     <div><span>Unit Cost:</span> {{ sm.unitCost ?? '—' }}</div>
                     <div><span>Sell Cost:</span> {{ sm.sellCost ?? '—' }}</div>
                   </div>
                   <div class="card-actions">
-                    <button class="btn small secondary" type="button" (click)="openMaterialEdit(sm)">
+                    <button
+                      class="btn small secondary"
+                      type="button"
+                      (click)="openMaterialEdit(sm)"
+                    >
                       <span class="btn-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                           <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -633,7 +754,11 @@
                       </span>
                       Edit
                     </button>
-                    <button class="btn small danger" type="button" (click)="removeSupplierMaterial(supplier, sm)">
+                    <button
+                      class="btn small danger"
+                      type="button"
+                      (click)="removeSupplierMaterial(supplier, sm)"
+                    >
                       <span class="btn-icon" aria-hidden="true">
                         <svg viewBox="0 0 24 24">
                           <path d="M4 7h16"></path>
@@ -647,7 +772,10 @@
                 </article>
               </div>
 
-              <div class="empty" *ngIf="!materials.length && !(materialsLoading$ | async)">
+              <div
+                class="empty"
+                *ngIf="!materials.length && !(materialsLoading$ | async)"
+              >
                 No materials linked to this supplier yet.
               </div>
             </ng-container>
@@ -663,7 +791,9 @@
           <nav class="breadcrumb" aria-label="Breadcrumb">
             <a routerLink="/manager/menu">Menu</a>
             <span class="sep">/</span>
-            <a href="#" (click)="$event.preventDefault(); closeForm()">Suppliers</a>
+            <a href="#" (click)="$event.preventDefault(); closeForm()"
+              >Suppliers</a
+            >
             <span class="sep">/</span>
             <span>Create</span>
           </nav>
@@ -682,7 +812,11 @@
                 </span>
                 Cancel
               </button>
-              <button class="btn primary" type="button" (click)="saveSupplier()">
+              <button
+                class="btn primary"
+                type="button"
+                (click)="saveSupplierAndClose()"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M5 5h11l3 3v11H5z"></path>
@@ -731,22 +865,35 @@
         </div>
       </div>
 
-      <div class="warning-banner">
-        <span class="warning-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 4 3 20h18L12 4Z"></path>
-            <path d="M12 9v5"></path>
-            <path d="M12 17h.01"></path>
-          </svg>
-        </span>
-        Save the supplier first to enable the Contacts and Materials tabs.
-      </div>
+      <ng-container *ngIf="!isWarningDismissed('supplier-create-tabs')">
+        <div class="warning-banner">
+          <span class="warning-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 4 3 20h18L12 4Z"></path>
+              <path d="M12 9v5"></path>
+              <path d="M12 17h.01"></path>
+            </svg>
+          </span>
+          Save the supplier first to enable the Contacts and Materials tabs.
+          <button
+            type="button"
+            class="warning-dismiss"
+            aria-label="Dismiss notice"
+            (click)="dismissWarning('supplier-create-tabs')"
+          >
+            x
+          </button>
+        </div>
+      </ng-container>
 
       <section class="card">
         <form class="form" [formGroup]="supplierForm" autocomplete="off">
           <label>
             <span>Supplier Name *</span>
-            <input formControlName="supplier_name" placeholder="Supplier name" />
+            <input
+              formControlName="supplier_name"
+              placeholder="Supplier name"
+            />
           </label>
 
           <label class="address-label">
@@ -807,9 +954,34 @@
 
           <label>
             <span>Notes</span>
-            <textarea formControlName="notes" rows="3" placeholder="Notes..."></textarea>
+            <textarea
+              formControlName="notes"
+              rows="3"
+              placeholder="Notes..."
+            ></textarea>
           </label>
         </form>
+
+        <div class="card-actions right-actions">
+          <button class="btn" type="button" (click)="closeForm()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 6l12 12"></path>
+                <path d="M18 6l-12 12"></path>
+              </svg>
+            </span>
+            Cancel
+          </button>
+          <button class="btn primary" type="button" (click)="saveSupplier()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 5h11l3 3v11H5z"></path>
+                <path d="M9 5v6h6V5"></path>
+              </svg>
+            </span>
+            Save
+          </button>
+        </div>
       </section>
     </ng-template>
   </ng-container>
@@ -827,7 +999,10 @@
             <div class="actions-col">Actions</div>
           </div>
 
-          <div class="trow" *ngFor="let s of suppliers; trackBy: trackBySupplier">
+          <div
+            class="trow"
+            *ngFor="let s of suppliers; trackBy: trackBySupplier"
+          >
             <div class="cell strong">{{ s.supplierName }}</div>
             <div class="cell muted">{{ s.email || '—' }}</div>
             <div class="cell muted">{{ s.cel || '—' }}</div>
@@ -837,7 +1012,11 @@
               </span>
             </div>
             <div class="cell actions-col">
-              <button class="btn small secondary" type="button" (click)="openEdit(s)">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(s)"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -846,7 +1025,11 @@
                 </span>
                 Edit
               </button>
-              <button class="btn small danger" type="button" (click)="archiveSupplier(s)">
+              <button
+                class="btn small danger"
+                type="button"
+                (click)="archiveSupplier(s)"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M4 8h16"></path>
@@ -862,7 +1045,10 @@
         </div>
 
         <div class="cards" *ngIf="suppliers.length">
-          <article class="supplier-card" *ngFor="let s of suppliers; trackBy: trackBySupplier">
+          <article
+            class="supplier-card"
+            *ngFor="let s of suppliers; trackBy: trackBySupplier"
+          >
             <div class="row">
               <div class="name">{{ s.supplierName }}</div>
               <span class="badge" [class.archived]="s.status === 'archived'">
@@ -875,7 +1061,11 @@
               <div><span>Phone:</span> {{ s.tel || '—' }}</div>
             </div>
             <div class="card-actions">
-              <button class="btn small secondary" type="button" (click)="openEdit(s)">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(s)"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -884,7 +1074,11 @@
                 </span>
                 Edit
               </button>
-              <button class="btn small danger" type="button" (click)="archiveSupplier(s)">
+              <button
+                class="btn small danger"
+                type="button"
+                (click)="archiveSupplier(s)"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M4 8h16"></path>

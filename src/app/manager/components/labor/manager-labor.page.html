@@ -120,14 +120,18 @@
               </span>
               Cancel
             </button>
-            <button class="btn primary" type="button" (click)="saveLabor()">
+            <button
+              class="btn primary"
+              type="button"
+              (click)="saveLaborAndClose()"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 5h11l3 3v11H5z"></path>
                   <path d="M9 5v6h6V5"></path>
                 </svg>
               </span>
-              Save
+              Save & Close
             </button>
           </div>
         </div>
@@ -241,7 +245,11 @@
               </span>
               Cancel
             </button>
-            <button class="btn primary" type="button" (click)="saveLabor()">
+            <button
+              class="btn primary"
+              type="button"
+              (click)="saveLaborAndClose()"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 5h11l3 3v11H5z"></path>

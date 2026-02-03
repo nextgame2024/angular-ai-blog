@@ -133,6 +133,8 @@
   background: rgba(248, 203, 99, 0.32);
   color: rgb(126 88 6);
   font-size: 0.9rem;
+  position: relative;
+  padding-right: 44px;
 }
 
 .warning-icon {
@@ -150,6 +152,25 @@
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.warning-dismiss {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.7);
+  color: rgb(126 88 6);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.warning-dismiss:hover {
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .toolbar-row {
@@ -613,6 +634,16 @@
   margin-top: 0.65rem;
   display: flex;
   gap: 0.4rem;
+}
+
+.card-actions.right-actions {
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.card-actions.right-actions .btn {
+  margin-right: 0.35rem;
 }
 
 .contacts-header {

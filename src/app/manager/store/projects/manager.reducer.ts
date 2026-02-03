@@ -97,7 +97,7 @@ export const managerProjectsReducer = createReducer(
     projectsError: null,
   })),
 
-  on(ManagerProjectsActions.saveProjectSuccess, (state, { project }) => {
+  on(ManagerProjectsActions.saveProjectSuccess, (state, { project, closeOnSuccess }) => {
     const idx = state.projects.findIndex(
       (p: BmProject) => p.projectId === project.projectId,
     );
@@ -105,12 +105,13 @@ export const managerProjectsReducer = createReducer(
     if (idx >= 0) next[idx] = project;
     else next.unshift(project);
 
+    const shouldClose = closeOnSuccess ?? false;
     return {
       ...state,
       projectsLoading: false,
       projects: next,
-      projectsViewMode: 'list' as const,
-      editingProjectId: null,
+      projectsViewMode: shouldClose ? ('list' as const) : ('form' as const),
+      editingProjectId: shouldClose ? null : project.projectId,
       projectFormTab: 'details',
     };
   }),

@@ -101,9 +101,7 @@
         <nav class="breadcrumb" aria-label="Breadcrumb">
           <a routerLink="/manager/menu">Menu</a>
           <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()"
-            >Pricing</a
-          >
+          <a href="#" (click)="$event.preventDefault(); closeForm()">Pricing</a>
           <span class="sep">/</span>
           <span>Edit</span>
         </nav>
@@ -123,14 +121,18 @@
               </span>
               Cancel
             </button>
-            <button class="btn primary" type="button" (click)="savePricing()">
+            <button
+              class="btn primary"
+              type="button"
+              (click)="savePricingAndClose()"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 5h11l3 3v11H5z"></path>
                   <path d="M9 5v6h6V5"></path>
                 </svg>
               </span>
-              Save
+              Save & Close
             </button>
           </div>
         </div>
@@ -186,16 +188,15 @@
               />
             </label>
 
-              <label>
-                <span>Status</span>
-                <app-manager-select
-                  formControlName="status"
-                  [options]="statusOptions"
-                  placeholder="Select status"
-                ></app-manager-select>
-              </label>
+            <label>
+              <span>Status</span>
+              <app-manager-select
+                formControlName="status"
+                [options]="statusOptions"
+                placeholder="Select status"
+              ></app-manager-select>
+            </label>
           </div>
-
         </form>
       </section>
     </ng-container>
@@ -205,9 +206,7 @@
         <nav class="breadcrumb" aria-label="Breadcrumb">
           <a routerLink="/manager/menu">Menu</a>
           <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()"
-            >Pricing</a
-          >
+          <a href="#" (click)="$event.preventDefault(); closeForm()">Pricing</a>
           <span class="sep">/</span>
           <span>Create</span>
         </nav>
@@ -227,7 +226,11 @@
               </span>
               Cancel
             </button>
-            <button class="btn primary" type="button" (click)="savePricing()">
+            <button
+              class="btn primary"
+              type="button"
+              (click)="savePricingAndClose()"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 5h11l3 3v11H5z"></path>
@@ -290,16 +293,15 @@
               />
             </label>
 
-          <label>
-            <span>Status</span>
-            <app-manager-select
-              formControlName="status"
-              [options]="statusOptions"
-              placeholder="Select status"
-            ></app-manager-select>
-          </label>
+            <label>
+              <span>Status</span>
+              <app-manager-select
+                formControlName="status"
+                [options]="statusOptions"
+                placeholder="Select status"
+              ></app-manager-select>
+            </label>
           </div>
-
         </form>
       </section>
     </ng-template>
@@ -377,8 +379,13 @@
               </span>
             </div>
             <div class="meta">
-              <div><span>Material Markup %:</span> {{ formatPercent(p.materialMarkup) }}</div>
-              <div><span>Labor Markup %:</span> {{ formatPercent(p.laborMarkup) }}</div>
+              <div>
+                <span>Material Markup %:</span> {{
+                formatPercent(p.materialMarkup) }}
+              </div>
+              <div>
+                <span>Labor Markup %:</span> {{ formatPercent(p.laborMarkup) }}
+              </div>
               <div><span>GST Rate %:</span> {{ formatPercent(p.gstRate) }}</div>
               <div><span>Status:</span> {{ p.status || 'active' }}</div>
             </div>
@@ -415,7 +422,10 @@
           </article>
         </div>
 
-        <div class="empty" *ngIf="!pricingProfiles.length && !(loading$ | async)">
+        <div
+          class="empty"
+          *ngIf="!pricingProfiles.length && !(loading$ | async)"
+        >
           No pricing profiles found.
         </div>
         <div class="infinite-sentinel" #infiniteSentinel></div>

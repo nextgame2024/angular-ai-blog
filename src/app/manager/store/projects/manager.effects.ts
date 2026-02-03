@@ -47,14 +47,17 @@ export class ManagerProjectsEffects {
     this.actions$.pipe(
       ofType(ManagerProjectsActions.saveProject),
       withLatestFrom(this.store.select(selectManagerEditingProject)),
-      switchMap(([{ payload }, editing]) => {
+      switchMap(([{ payload, closeOnSuccess }, editing]) => {
         const req$ = editing
           ? this.api.updateProject(editing.projectId, payload)
           : this.api.createProject(payload);
 
         return req$.pipe(
           map((res) =>
-            ManagerProjectsActions.saveProjectSuccess({ project: res.project }),
+            ManagerProjectsActions.saveProjectSuccess({
+              project: res.project,
+              closeOnSuccess,
+            }),
           ),
           catchError((err) =>
             of(

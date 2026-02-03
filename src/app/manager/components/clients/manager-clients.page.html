@@ -148,14 +148,14 @@
                 </span>
                 Cancel
               </button>
-              <button class="btn primary" type="button" (click)="saveClient()">
+              <button class="btn primary" type="button" (click)="saveClientAndClose()">
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M5 5h11l3 3v11H5z"></path>
                     <path d="M9 5v6h6V5"></path>
                   </svg>
                 </span>
-                Save
+                Save & Close
               </button>
             </div>
           </div>
@@ -294,6 +294,26 @@
               ></textarea>
             </label>
           </form>
+          <div class="card-actions right-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+            <button class="btn primary" type="button" (click)="saveClient()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save
+            </button>
+          </div>
         </section>
 
         <!-- CONTACTS -->
@@ -534,7 +554,7 @@
                 </span>
                 Cancel
               </button>
-              <button class="btn primary" type="button" (click)="saveClient()">
+              <button class="btn primary" type="button" (click)="saveClientAndClose()">
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M5 5h11l3 3v11H5z"></path>
@@ -572,7 +592,7 @@
         </div>
       </div>
 
-      <div class="warning-banner">
+      <div class="warning-banner" *ngIf="!isWarningDismissed('client-create-tabs')">
         <span class="warning-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24">
             <path d="M12 4 3 20h18L12 4Z"></path>
@@ -581,6 +601,14 @@
           </svg>
         </span>
         Save the customer first to enable the Contacts tab.
+        <button
+          type="button"
+          class="warning-dismiss"
+          aria-label="Dismiss notice"
+          (click)="dismissWarning('client-create-tabs')"
+        >
+          x
+        </button>
       </div>
       <div class="tab-content">
         <div class="card">
@@ -662,6 +690,26 @@
               ></textarea>
             </label>
           </form>
+          <div class="card-actions right-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+            <button class="btn primary" type="button" (click)="saveClient()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save
+            </button>
+          </div>
         </div>
       </div>
     </ng-template>
