@@ -74,9 +74,9 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
 
   pricingForm = this.fb.group({
     profile_name: ['', [Validators.required, Validators.maxLength(120)]],
-    material_markup: [0, [Validators.min(0)]],
-    labor_markup: [0, [Validators.min(0)]],
-    gst_rate: [10, [Validators.min(0)]],
+    material_markup: ['0.00', [Validators.min(0)]],
+    labor_markup: ['0.00', [Validators.min(0)]],
+    gst_rate: ['10.00', [Validators.min(0)]],
     status: ['active', [Validators.required]],
   });
 
@@ -169,9 +169,9 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
 
       this.pricingForm.patchValue({
         profile_name: p.profileName ?? '',
-        material_markup: this.toPercent(p.materialMarkup),
-        labor_markup: this.toPercent(p.laborMarkup),
-        gst_rate: this.toPercent(p.gstRate),
+        material_markup: this.formatPercentInput(p.materialMarkup),
+        labor_markup: this.formatPercentInput(p.laborMarkup),
+        gst_rate: this.formatPercentInput(p.gstRate),
         status: p.status ?? 'active',
       });
     });
@@ -196,9 +196,9 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
   openCreate(): void {
     this.pricingForm.reset({
       profile_name: '',
-      material_markup: 0,
-      labor_markup: 0,
-      gst_rate: 10,
+      material_markup: '0.00',
+      labor_markup: '0.00',
+      gst_rate: '10.00',
       status: 'active',
     });
 
@@ -299,17 +299,32 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
   formatPercent(value?: number | null): string {
     if (value === null || value === undefined) return '—';
     const pct = value * 100;
-    const rounded = Math.round((pct + Number.EPSILON) * 100) / 100;
-    return String(rounded);
+    return pct.toFixed(2);
   }
 
-  private toPercent(value?: number | null): number {
-    if (value === null || value === undefined) return 0;
-    return Math.round(value * 10000) / 100;
+  private formatPercentInput(value?: number | null): string | null {
+    if (value === null || value === undefined) return null;
+    const pct = value * 100;
+    return pct.toFixed(2);
   }
 
-  private fromPercent(value: number): number {
-    if (Number.isNaN(value)) return 0;
-    return value / 100;
+  private fromPercent(value: number | string): number {
+    const num = Number(value);
+    if (Number.isNaN(num)) return 0;
+    return num / 100;
+  }
+
+  formatPercentControl(
+    controlName: 'material_markup' | 'labor_markup' | 'gst_rate',
+  ): void {
+    const control = this.pricingForm.controls[controlName];
+    const value = control.value;
+    if (value === null || value === undefined || value === '') {
+      control.setValue(null, { emitEvent: false });
+      return;
+    }
+    const num = Number(value);
+    if (Number.isNaN(num)) return;
+    control.setValue(num.toFixed(2), { emitEvent: false });
   }
 }

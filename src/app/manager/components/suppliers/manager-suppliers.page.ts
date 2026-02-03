@@ -181,8 +181,8 @@ export class ManagerSuppliersPageComponent
     material_id: ['', [Validators.required]],
     supplier_sku: [''],
     lead_time_days: [null as number | null, [Validators.min(0)]],
-    unit_cost: [null as number | null, [Validators.min(0)]],
-    sell_cost: [null as number | null, [Validators.min(0)]],
+    unit_cost: [null as string | null, [Validators.min(0)]],
+    sell_cost: [null as string | null, [Validators.min(0)]],
   });
 
   constructor(
@@ -358,8 +358,8 @@ export class ManagerSuppliersPageComponent
           material_id: sm.materialId ?? '',
           supplier_sku: sm.supplierSku ?? '',
           lead_time_days: sm.leadTimeDays ?? null,
-          unit_cost: sm.unitCost ?? null,
-          sell_cost: sm.sellCost ?? null,
+          unit_cost: this.formatMoneyInput(sm.unitCost),
+          sell_cost: this.formatMoneyInput(sm.sellCost),
         });
         const name = this.getMaterialName(sm.materialId);
         if (name) {
@@ -586,10 +586,10 @@ export class ManagerSuppliersPageComponent
       payload.lead_time_days = Number(payload.lead_time_days);
     }
     if (payload.unit_cost !== null && payload.unit_cost !== '') {
-      payload.unit_cost = Number(payload.unit_cost);
+      payload.unit_cost = this.formatMoney(payload.unit_cost);
     }
     if (payload.sell_cost !== null && payload.sell_cost !== '') {
-      payload.sell_cost = Number(payload.sell_cost);
+      payload.sell_cost = this.formatMoney(payload.sell_cost);
     }
 
     this.store.dispatch(
@@ -617,6 +617,26 @@ export class ManagerSuppliersPageComponent
   getMaterialName(materialId?: string | null): string {
     if (!materialId) return '—';
     return this.materialsMap.get(materialId) || materialId;
+  }
+
+  private formatMoney(value: number | string | null | undefined): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) return null;
+    return Math.round(num * 100) / 100;
+  }
+
+  private formatMoneyInput(value: number | string | null | undefined): string | null {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) return null;
+    return num.toFixed(2);
+  }
+
+  formatMoneyControl(controlName: 'unit_cost' | 'sell_cost'): void {
+    const control = this.supplierMaterialForm.controls[controlName];
+    const formatted = this.formatMoneyInput(control.value);
+    control.setValue(formatted, { emitEvent: false });
   }
 
   onMaterialQueryFocus(): void {

@@ -165,10 +165,11 @@
               <input
                 formControlName="unit_cost"
                 type="number"
-                step="1"
+                step="0.01"
                 min="0"
                 placeholder="0.00"
                 autocomplete="off"
+                (blur)="formatMoneyControl('unit_cost')"
               />
             </label>
 
@@ -177,10 +178,11 @@
               <input
                 formControlName="sell_cost"
                 type="number"
-                step="1"
+                step="0.01"
                 min="0"
                 placeholder="0.00"
                 autocomplete="off"
+                (blur)="formatMoneyControl('sell_cost')"
               />
             </label>
           </div>
@@ -364,8 +366,20 @@
           <div class="trow" *ngFor="let l of laborList; trackBy: trackByLabor">
             <div class="cell strong">{{ l.laborName }}</div>
             <div class="cell muted">{{ l.unitType || '—' }}</div>
-            <div class="cell muted">{{ formatInt(l.unitCost) }}</div>
-            <div class="cell muted">{{ formatInt(l.sellCost) }}</div>
+            <div class="cell muted">
+              {{
+                l.unitCost === null || l.unitCost === undefined
+                  ? '—'
+                  : (l.unitCost | number : '1.2-2')
+              }}
+            </div>
+            <div class="cell muted">
+              {{
+                l.sellCost === null || l.sellCost === undefined
+                  ? '—'
+                  : (l.sellCost | number : '1.2-2')
+              }}
+            </div>
             <div class="cell muted">
               {{ formatInt(l.unitProductivity) }}
               <span *ngIf="l.productivityUnit">{{ l.productivityUnit }}</span>
@@ -421,8 +435,22 @@
             </div>
             <div class="meta">
               <div><span>Unit Type:</span> {{ l.unitType || '—' }}</div>
-              <div><span>Unit Cost:</span> {{ formatInt(l.unitCost) }}</div>
-              <div><span>Sell Cost:</span> {{ formatInt(l.sellCost) }}</div>
+              <div>
+                <span>Unit Cost:</span>
+                {{
+                  l.unitCost === null || l.unitCost === undefined
+                    ? '—'
+                    : (l.unitCost | number : '1.2-2')
+                }}
+              </div>
+              <div>
+                <span>Sell Cost:</span>
+                {{
+                  l.sellCost === null || l.sellCost === undefined
+                    ? '—'
+                    : (l.sellCost | number : '1.2-2')
+                }}
+              </div>
               <div>
                 <span>Productivity:</span>
                 {{ formatInt(l.unitProductivity) }}

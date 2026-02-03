@@ -204,6 +204,18 @@
         </div>
 
         <div
+          class="table-head"
+          *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
+          aria-hidden="true"
+        >
+          <div>Material</div>
+          <div>Quantity</div>
+          <div>Unit Cost</div>
+          <div>Sell Cost</div>
+          <div class="actions-col">Actions</div>
+        </div>
+
+        <div
           class="form-header-actions-row"
           *ngIf="(tab$ | async) === 'labor' && (laborViewMode$ | async) === 'list'"
         >
@@ -216,6 +228,18 @@
             </span>
             Add Labor
           </button>
+        </div>
+
+        <div
+          class="table-head"
+          *ngIf="(tab$ | async) === 'labor' && (laborViewMode$ | async) === 'list'"
+          aria-hidden="true"
+        >
+          <div>Labor</div>
+          <div>Quantity</div>
+          <div>Unit Cost</div>
+          <div>Sell Cost</div>
+          <div class="actions-col">Actions</div>
         </div>
       </div>
 
@@ -473,7 +497,8 @@
                     <span>Unit Cost</span>
                     <input
                       type="number"
-                      step="1"
+                      step="0.01"
+                      min="0"
                       formControlName="unit_cost_override"
                     />
                   </label>
@@ -481,7 +506,8 @@
                     <span>Sell Cost</span>
                     <input
                       type="number"
-                      step="1"
+                      step="0.01"
+                      min="0"
                       formControlName="sell_cost_override"
                     />
                   </label>
@@ -539,12 +565,20 @@
                 *ngFor="let m of materials; trackBy: trackByMaterial"
               >
                 <div class="cell strong">{{ m.materialName }}</div>
-                <div class="cell muted">{{ formatInt(m.quantity) ?? '—' }}</div>
+                <div class="cell muted">{{ formatQuantity(m.quantity) ?? '—' }}</div>
                 <div class="cell muted">
-                  {{ formatInt(m.unitCostOverride) ?? '—' }}
+                  {{
+                    m.unitCostOverride === null || m.unitCostOverride === undefined
+                      ? '—'
+                      : (m.unitCostOverride | number : '1.2-2')
+                  }}
                 </div>
                 <div class="cell muted">
-                  {{ formatInt(m.sellCostOverride) ?? '—' }}
+                  {{
+                    m.sellCostOverride === null || m.sellCostOverride === undefined
+                      ? '—'
+                      : (m.sellCostOverride | number : '1.2-2')
+                  }}
                 </div>
                 <div class="cell actions-col">
                   <button
@@ -586,16 +620,24 @@
               >
                 <div class="row">
                   <div class="name">{{ m.materialName }}</div>
-                  <div class="muted">{{ formatInt(m.quantity) ?? '—' }}</div>
+                  <div class="muted">{{ formatQuantity(m.quantity) ?? '—' }}</div>
                 </div>
                 <div class="meta">
                   <div>
-                    <span>Unit Cost:</span> {{ formatInt(m.unitCostOverride) ??
-                    '—' }}
+                    <span>Unit Cost:</span>
+                    {{
+                      m.unitCostOverride === null || m.unitCostOverride === undefined
+                        ? '—'
+                        : (m.unitCostOverride | number : '1.2-2')
+                    }}
                   </div>
                   <div>
-                    <span>Sell Cost:</span> {{ formatInt(m.sellCostOverride) ??
-                    '—' }}
+                    <span>Sell Cost:</span>
+                    {{
+                      m.sellCostOverride === null || m.sellCostOverride === undefined
+                        ? '—'
+                        : (m.sellCostOverride | number : '1.2-2')
+                    }}
                   </div>
                 </div>
                 <div class="card-actions">
@@ -738,7 +780,8 @@
                     <span>Unit Cost</span>
                     <input
                       type="number"
-                      step="1"
+                      step="0.01"
+                      min="0"
                       formControlName="unit_cost_override"
                     />
                   </label>
@@ -746,7 +789,8 @@
                     <span>Sell Cost</span>
                     <input
                       type="number"
-                      step="1"
+                      step="0.01"
+                      min="0"
                       formControlName="sell_cost_override"
                     />
                   </label>
@@ -801,12 +845,20 @@
 
               <div class="trow" *ngFor="let l of labor; trackBy: trackByLabor">
                 <div class="cell strong">{{ l.laborName }}</div>
-                <div class="cell muted">{{ formatInt(l.quantity) ?? '—' }}</div>
+                <div class="cell muted">{{ formatQuantity(l.quantity) ?? '—' }}</div>
                 <div class="cell muted">
-                  {{ formatInt(l.unitCostOverride) ?? '—' }}
+                  {{
+                    l.unitCostOverride === null || l.unitCostOverride === undefined
+                      ? '—'
+                      : (l.unitCostOverride | number : '1.2-2')
+                  }}
                 </div>
                 <div class="cell muted">
-                  {{ formatInt(l.sellCostOverride) ?? '—' }}
+                  {{
+                    l.sellCostOverride === null || l.sellCostOverride === undefined
+                      ? '—'
+                      : (l.sellCostOverride | number : '1.2-2')
+                  }}
                 </div>
                 <div class="cell actions-col">
                   <button
@@ -848,16 +900,24 @@
               >
                 <div class="row">
                   <div class="name">{{ l.laborName }}</div>
-                  <div class="muted">{{ formatInt(l.quantity) ?? '—' }}</div>
+                  <div class="muted">{{ formatQuantity(l.quantity) ?? '—' }}</div>
                 </div>
                 <div class="meta">
                   <div>
-                    <span>Unit Cost:</span> {{ formatInt(l.unitCostOverride) ??
-                    '—' }}
+                    <span>Unit Cost:</span>
+                    {{
+                      l.unitCostOverride === null || l.unitCostOverride === undefined
+                        ? '—'
+                        : (l.unitCostOverride | number : '1.2-2')
+                    }}
                   </div>
                   <div>
-                    <span>Sell Cost:</span> {{ formatInt(l.sellCostOverride) ??
-                    '—' }}
+                    <span>Sell Cost:</span>
+                    {{
+                      l.sellCostOverride === null || l.sellCostOverride === undefined
+                        ? '—'
+                        : (l.sellCostOverride | number : '1.2-2')
+                    }}
                   </div>
                 </div>
                 <div class="card-actions">

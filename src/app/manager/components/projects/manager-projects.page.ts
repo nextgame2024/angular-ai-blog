@@ -301,9 +301,9 @@ export class ManagerProjectsPageComponent
         this.projectMaterialForm.reset({
           supplier_id: mat.supplierId ?? '',
           material_id: mat.materialId,
-          quantity: this.formatInt(mat.quantity ?? 1) ?? 1,
-          unit_cost_override: this.formatInt(mat.unitCostOverride ?? null),
-          sell_cost_override: this.formatInt(mat.sellCostOverride ?? null),
+          quantity: this.formatQuantity(mat.quantity ?? 1) ?? 1,
+          unit_cost_override: this.formatMoney(mat.unitCostOverride ?? null),
+          sell_cost_override: this.formatMoney(mat.sellCostOverride ?? null),
           notes: mat.notes ?? '',
         });
         this.selectedSupplierId = mat.supplierId ?? null;
@@ -342,9 +342,9 @@ export class ManagerProjectsPageComponent
       if (labor) {
         this.projectLaborForm.reset({
           labor_id: labor.laborId,
-          quantity: labor.quantity ?? 1,
-          unit_cost_override: this.formatInt(labor.unitCostOverride ?? null),
-          sell_cost_override: this.formatInt(labor.sellCostOverride ?? null),
+          quantity: this.formatQuantity(labor.quantity ?? 1) ?? 1,
+          unit_cost_override: this.formatMoney(labor.unitCostOverride ?? null),
+          sell_cost_override: this.formatMoney(labor.sellCostOverride ?? null),
           notes: labor.notes ?? '',
         });
         this.laborSearchCtrl.setValue(labor.laborName || '', {
@@ -456,24 +456,29 @@ export class ManagerProjectsPageComponent
     }
   }
 
-  formatInt(value?: number | null): number | null {
+  formatQuantity(value?: number | null): number | null {
     if (value === null || value === undefined) return null;
     const num = Number(value);
     if (Number.isNaN(num)) return null;
     return Math.round(num);
   }
 
+  formatMoney(value?: number | null): number | null {
+    if (value === null || value === undefined) return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) return null;
+    return Math.round(num * 100) / 100;
+  }
+
   private updateMaterialSuggestions(query: string): void {
     if (!this.selectedSupplierId) {
       this.materialSuggestions = [];
-      this.showMaterialSuggestions = false;
       this.materialActiveIndex = -1;
       return;
     }
     const term = query.trim().toLowerCase();
     if (!term) {
       this.materialSuggestions = [];
-      this.showMaterialSuggestions = false;
       this.materialActiveIndex = -1;
       return;
     }
@@ -483,12 +488,14 @@ export class ManagerProjectsPageComponent
       return name.includes(term) || code.includes(term);
     });
     this.materialSuggestions = results.slice(0, 8);
-    this.showMaterialSuggestions = this.materialSuggestions.length > 0;
     this.materialActiveIndex = this.materialSuggestions.length ? 0 : -1;
   }
 
   onMaterialQueryInput(value: string | null): void {
-    this.updateMaterialSuggestions(value || '');
+    const query = value || '';
+    this.updateMaterialSuggestions(query);
+    this.showMaterialSuggestions =
+      query.trim().length > 0 && this.materialSuggestions.length > 0;
     this.projectMaterialForm.controls.material_id.setValue('');
     if (!value) {
       this.projectMaterialForm.controls.unit_cost_override.setValue(null, {
@@ -505,7 +512,8 @@ export class ManagerProjectsPageComponent
     if (query.length) {
       this.updateMaterialSuggestions(query);
     }
-    this.showMaterialSuggestions = this.materialSuggestions.length > 0;
+    this.showMaterialSuggestions =
+      query.length > 0 && this.materialSuggestions.length > 0;
   }
 
   onMaterialQueryBlur(): void {
@@ -547,11 +555,11 @@ export class ManagerProjectsPageComponent
       emitEvent: false,
     });
     this.projectMaterialForm.controls.unit_cost_override.setValue(
-      this.formatInt(material.unitCost ?? null),
+      this.formatMoney(material.unitCost ?? null),
       { emitEvent: false },
     );
     this.projectMaterialForm.controls.sell_cost_override.setValue(
-      this.formatInt(material.sellCost ?? null),
+      this.formatMoney(material.sellCost ?? null),
       { emitEvent: false },
     );
     this.showMaterialSuggestions = false;
@@ -791,11 +799,11 @@ export class ManagerProjectsPageComponent
     this.projectLaborForm.controls.labor_id.setValue(labor.laborId);
     this.laborSearchCtrl.setValue(labor.laborName, { emitEvent: false });
     this.projectLaborForm.controls.unit_cost_override.setValue(
-      this.formatInt(labor.unitCost ?? null),
+      this.formatMoney(labor.unitCost ?? null),
       { emitEvent: false },
     );
     this.projectLaborForm.controls.sell_cost_override.setValue(
-      this.formatInt(labor.sellCost ?? null),
+      this.formatMoney(labor.sellCost ?? null),
       { emitEvent: false },
     );
     this.showLaborSuggestions = false;
@@ -880,12 +888,12 @@ export class ManagerProjectsPageComponent
     }
 
     const payload: any = this.projectMaterialForm.getRawValue();
-    payload.quantity = this.formatInt(payload.quantity ?? 0);
+    payload.quantity = this.formatQuantity(payload.quantity ?? 0);
     if (payload.unit_cost_override !== null) {
-      payload.unit_cost_override = this.formatInt(payload.unit_cost_override);
+      payload.unit_cost_override = this.formatMoney(payload.unit_cost_override);
     }
     if (payload.sell_cost_override !== null) {
-      payload.sell_cost_override = this.formatInt(payload.sell_cost_override);
+      payload.sell_cost_override = this.formatMoney(payload.sell_cost_override);
     }
     const materialId = editing?.materialId || payload.material_id;
     delete payload.material_id;
@@ -936,12 +944,12 @@ export class ManagerProjectsPageComponent
     }
 
     const payload: any = this.projectLaborForm.getRawValue();
-    payload.quantity = this.formatInt(payload.quantity ?? 0);
+    payload.quantity = this.formatQuantity(payload.quantity ?? 0);
     if (payload.unit_cost_override !== null) {
-      payload.unit_cost_override = this.formatInt(payload.unit_cost_override);
+      payload.unit_cost_override = this.formatMoney(payload.unit_cost_override);
     }
     if (payload.sell_cost_override !== null) {
-      payload.sell_cost_override = this.formatInt(payload.sell_cost_override);
+      payload.sell_cost_override = this.formatMoney(payload.sell_cost_override);
     }
     const laborId = editing?.laborId || payload.labor_id;
     delete payload.labor_id;

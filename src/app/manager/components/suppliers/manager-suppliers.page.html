@@ -215,6 +215,18 @@
         </div>
 
         <div
+          class="table-head contacts-head"
+          *ngIf="(tab$ | async) === 'contacts' && (contactsViewMode$ | async) === 'list'"
+          aria-hidden="true"
+        >
+          <div>Name</div>
+          <div>Role</div>
+          <div>Email</div>
+          <div>Mobile</div>
+          <div class="actions-col">Actions</div>
+        </div>
+
+        <div
           class="form-header-actions-row"
           *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
         >
@@ -231,6 +243,19 @@
             </span>
             Add Material
           </button>
+        </div>
+
+        <div
+          class="table-head materials-head"
+          *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
+          aria-hidden="true"
+        >
+          <div>Material</div>
+          <div>Supplier SKU</div>
+          <div>Lead Time</div>
+          <div>Unit Cost</div>
+          <div>Sell Cost</div>
+          <div class="actions-col">Actions</div>
         </div>
       </div>
 
@@ -621,6 +646,7 @@
                     step="0.01"
                     min="0"
                     placeholder="0.00"
+                    (blur)="formatMoneyControl('unit_cost')"
                   />
                 </label>
 
@@ -632,6 +658,7 @@
                     step="0.01"
                     min="0"
                     placeholder="0.00"
+                    (blur)="formatMoneyControl('sell_cost')"
                   />
                 </label>
               </div>
@@ -690,8 +717,20 @@
                   </div>
                   <div class="cell muted">{{ sm.supplierSku || '—' }}</div>
                   <div class="cell muted">{{ sm.leadTimeDays ?? '—' }}</div>
-                  <div class="cell muted">{{ sm.unitCost ?? '—' }}</div>
-                  <div class="cell muted">{{ sm.sellCost ?? '—' }}</div>
+                  <div class="cell muted">
+                    {{
+                      sm.unitCost === null || sm.unitCost === undefined
+                        ? '—'
+                        : (sm.unitCost | number : '1.2-2')
+                    }}
+                  </div>
+                  <div class="cell muted">
+                    {{
+                      sm.sellCost === null || sm.sellCost === undefined
+                        ? '—'
+                        : (sm.sellCost | number : '1.2-2')
+                    }}
+                  </div>
                   <div class="cell actions-col">
                     <button
                       class="btn small secondary"
@@ -737,8 +776,22 @@
                     <div>
                       <span>Lead Time:</span> {{ sm.leadTimeDays ?? '—' }}
                     </div>
-                    <div><span>Unit Cost:</span> {{ sm.unitCost ?? '—' }}</div>
-                    <div><span>Sell Cost:</span> {{ sm.sellCost ?? '—' }}</div>
+                    <div>
+                      <span>Unit Cost:</span>
+                      {{
+                        sm.unitCost === null || sm.unitCost === undefined
+                          ? '—'
+                          : (sm.unitCost | number : '1.2-2')
+                      }}
+                    </div>
+                    <div>
+                      <span>Sell Cost:</span>
+                      {{
+                        sm.sellCost === null || sm.sellCost === undefined
+                          ? '—'
+                          : (sm.sellCost | number : '1.2-2')
+                      }}
+                    </div>
                   </div>
                   <div class="card-actions">
                     <button

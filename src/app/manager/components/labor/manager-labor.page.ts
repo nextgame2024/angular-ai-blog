@@ -83,8 +83,8 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
   laborForm = this.fb.group({
     labor_name: ['', [Validators.required, Validators.maxLength(140)]],
     unit_type: ['hour'],
-    unit_cost: [null as number | null, [Validators.required, Validators.min(0)]],
-    sell_cost: [null as number | null, [Validators.min(0)]],
+    unit_cost: [null as string | null, [Validators.required, Validators.min(0)]],
+    sell_cost: [null as string | null, [Validators.min(0)]],
     unit_productivity: [null as number | null, [Validators.min(0)]],
     productivity_unit: ['m²/hr'],
     status: ['active', [Validators.required]],
@@ -177,8 +177,8 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
       this.laborForm.patchValue({
         labor_name: l.laborName ?? '',
         unit_type: l.unitType ?? 'hour',
-        unit_cost: this.toInt(l.unitCost),
-        sell_cost: l.sellCost === null || l.sellCost === undefined ? null : this.toInt(l.sellCost),
+        unit_cost: this.formatMoneyInput(l.unitCost),
+        sell_cost: this.formatMoneyInput(l.sellCost),
         unit_productivity:
           l.unitProductivity === null || l.unitProductivity === undefined
             ? null
@@ -236,10 +236,10 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
     const payload: any = this.laborForm.getRawValue();
 
     if (payload.unit_cost !== null && payload.unit_cost !== '') {
-      payload.unit_cost = Number(payload.unit_cost);
+      payload.unit_cost = this.formatMoney(payload.unit_cost);
     }
     if (payload.sell_cost !== null && payload.sell_cost !== '') {
-      payload.sell_cost = Number(payload.sell_cost);
+      payload.sell_cost = this.formatMoney(payload.sell_cost);
     }
     if (payload.unit_productivity !== null && payload.unit_productivity !== '') {
       payload.unit_productivity = Number(payload.unit_productivity);
@@ -310,5 +310,25 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
   private toInt(value: number): number {
     if (Number.isNaN(value)) return 0;
     return Math.round(value);
+  }
+
+  private formatMoney(value: number | string | null | undefined): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) return null;
+    return Math.round(num * 100) / 100;
+  }
+
+  private formatMoneyInput(value: number | string | null | undefined): string | null {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) return null;
+    return num.toFixed(2);
+  }
+
+  formatMoneyControl(controlName: 'unit_cost' | 'sell_cost'): void {
+    const control = this.laborForm.controls[controlName];
+    const formatted = this.formatMoneyInput(control.value);
+    control.setValue(formatted, { emitEvent: false });
   }
 }

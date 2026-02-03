@@ -214,6 +214,18 @@
             Add
           </button>
         </div>
+
+        <div
+          class="table-head contacts-head"
+          *ngIf="(tab$ | async) === 'contacts' && (contactsViewMode$ | async) === 'list'"
+          aria-hidden="true"
+        >
+          <div>Name</div>
+          <div>Role</div>
+          <div>Email</div>
+          <div>Mobile</div>
+          <div class="actions-col">Actions</div>
+        </div>
       </div>
 
       <!-- Tab Content -->
