@@ -60,6 +60,7 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
   private currentPage = 1;
   private canLoadMore = false;
   private isLoading = false;
+  dismissedErrors = new Set<string>();
 
   statusOptions = [
     { value: 'active', label: 'active' },
@@ -173,6 +174,14 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
     this.infiniteObserver?.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  dismissError(message: string): void {
+    if (message) this.dismissedErrors.add(message);
+  }
+
+  isErrorDismissed(message: string | null | undefined): boolean {
+    return message ? this.dismissedErrors.has(message) : false;
   }
 
   trackByMaterial = (_: number, m: BmMaterial) => m.materialId;

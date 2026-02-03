@@ -122,6 +122,7 @@ export class ManagerClientsPageComponent
   private currentContactsPage = 1;
   private canLoadMoreContacts = false;
   private isLoadingContacts = false;
+  dismissedErrors = new Set<string>();
 
   clientForm = this.fb.group({
     client_name: ['', [Validators.required, Validators.maxLength(120)]],
@@ -310,6 +311,14 @@ export class ManagerClientsPageComponent
     this.contactsInfiniteObserver?.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  dismissError(message: string): void {
+    if (message) this.dismissedErrors.add(message);
+  }
+
+  isErrorDismissed(message: string | null | undefined): boolean {
+    return message ? this.dismissedErrors.has(message) : false;
   }
 
   @HostListener('window:resize')

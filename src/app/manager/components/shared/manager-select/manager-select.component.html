@@ -4,7 +4,7 @@
     class="select-trigger"
     [attr.aria-expanded]="open"
     [disabled]="disabled"
-    (click)="toggle()"
+    (click)="toggle($event)"
   >
     <span class="value" [class.placeholder]="!selectedLabel">
       {{ selectedLabel || placeholder }}
@@ -22,7 +22,7 @@
       class="select-option"
       *ngFor="let opt of options"
       [class.is-active]="opt.value === value"
-      (click)="selectOption(opt)"
+      (click)="selectOption(opt, $event)"
     >
       <span>{{ opt.label }}</span>
       <span class="check" *ngIf="opt.value === value" aria-hidden="true">

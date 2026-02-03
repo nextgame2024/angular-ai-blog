@@ -66,6 +66,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   private currentPage = 1;
   private canLoadMore = false;
   private isLoading = false;
+  dismissedErrors = new Set<string>();
 
   @ViewChild('usersList') usersListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
@@ -219,6 +220,14 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     this.destroy$.next();
     this.destroy$.complete();
     this.revokePreview();
+  }
+
+  dismissError(message: string): void {
+    if (message) this.dismissedErrors.add(message);
+  }
+
+  isErrorDismissed(message: string | null | undefined): boolean {
+    return message ? this.dismissedErrors.has(message) : false;
   }
 
   trackByUser = (_: number, u: BmUser) => u.id;

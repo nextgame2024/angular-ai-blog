@@ -50,13 +50,17 @@ export class ManagerSelectComponent implements ControlValueAccessor {
     return this.options.find((opt) => opt.value === this.value)?.label ?? '';
   }
 
-  toggle(): void {
+  toggle(event?: MouseEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
     if (this.disabled) return;
     this.open = !this.open;
     if (!this.open) this.onTouched();
   }
 
-  selectOption(option: ManagerSelectOption): void {
+  selectOption(option: ManagerSelectOption, event?: MouseEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
     if (this.disabled) return;
     this.value = option.value;
     this.onChange(option.value);

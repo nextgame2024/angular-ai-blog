@@ -22,6 +22,8 @@ export interface BmProject {
 export interface BmProjectMaterial {
   projectId: string;
   materialId: string;
+  supplierId?: string | null;
+  supplierName?: string | null;
   materialName: string;
   quantity?: number | null;
   unitCostOverride?: number | null;

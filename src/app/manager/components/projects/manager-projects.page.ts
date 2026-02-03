@@ -16,7 +16,12 @@ import {
 import { RouterModule } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { combineLatest, Observable, Subject } from 'rxjs';
-import { debounceTime, distinctUntilChanged, map, takeUntil } from 'rxjs/operators';
+import {
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  takeUntil,
+} from 'rxjs/operators';
 
 import { ManagerProjectsActions } from '../../store/projects/manager.actions';
 import {
@@ -49,7 +54,7 @@ import type {
 import { ProjectFormTab } from '../../store/projects/manager.state';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 import { ManagerService } from '../../services/manager.service';
-import { ManagerMaterialsService } from '../../services/manager.materials.service';
+import { ManagerSuppliersService } from '../../services/manager.suppliers.service';
 import { ManagerLaborService } from '../../services/manager.labor.service';
 import { ManagerPricingService } from '../../services/manager.pricing.service';
 import type { ManagerSelectOption } from '../shared/manager-select/manager-select.component';
@@ -57,7 +62,12 @@ import type { ManagerSelectOption } from '../shared/manager-select/manager-selec
 @Component({
   selector: 'app-manager-projects-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterModule,
+    ManagerSelectComponent,
+  ],
   templateUrl: './manager-projects.page.html',
   styleUrls: ['./manager-projects.page.css'],
 })
@@ -100,10 +110,9 @@ export class ManagerProjectsPageComponent
   statusOptions: ManagerSelectOption[] = [
     { value: 'to_do', label: 'To do' },
     { value: 'in_progress', label: 'In progress' },
-    { value: 'suspended', label: 'Suspended' },
-    { value: 'pending_approval', label: 'Pending approval' },
-    { value: 'approved', label: 'Approved' },
-    { value: 'finished', label: 'Finished' },
+    { value: 'done', label: 'Done' },
+    { value: 'on_hold', label: 'On hold' },
+    { value: 'cancelled', label: 'Cancelled' },
   ];
 
   clientOptions: ManagerSelectOption[] = [];
@@ -111,10 +120,34 @@ export class ManagerProjectsPageComponent
   materialOptions: ManagerSelectOption[] = [];
   laborOptions: ManagerSelectOption[] = [];
   clientsCatalog: { clientId: string; clientName: string }[] = [];
+  suppliersCatalog: { supplierId: string; supplierName: string }[] = [];
+  supplierMaterialsCatalog: {
+    materialId: string;
+    materialName: string;
+    materialCode?: string | null;
+    unitCost?: number | null;
+    sellCost?: number | null;
+  }[] = [];
   clientSearchCtrl: FormControl<string>;
+  supplierSearchCtrl: FormControl<string>;
+  materialSearchCtrl: FormControl<string>;
   clientSuggestions: { clientId: string; clientName: string }[] = [];
+  supplierSuggestions: { supplierId: string; supplierName: string }[] = [];
+  materialSuggestions: {
+    materialId: string;
+    materialName: string;
+    materialCode?: string | null;
+    unitCost?: number | null;
+    sellCost?: number | null;
+  }[] = [];
   showClientSuggestions = false;
+  showSupplierSuggestions = false;
+  showMaterialSuggestions = false;
   clientActiveIndex = -1;
+  supplierActiveIndex = -1;
+  materialActiveIndex = -1;
+  selectedSupplierId: string | null = null;
+  useDefaultPricing = true;
 
   projectForm = this.fb.group({
     client_id: new FormControl<string>('', {
@@ -127,11 +160,15 @@ export class ManagerProjectsPageComponent
     }),
     description: new FormControl<string>('', { nonNullable: true }),
     status: new FormControl<string>('to_do', { nonNullable: true }),
-    default_pricing: new FormControl<boolean>(true, { nonNullable: true }),
+    default_pricing: new FormControl<boolean>(false, { nonNullable: true }),
     pricing_profile_id: new FormControl<string | null>(null),
   });
 
   projectMaterialForm = this.fb.group({
+    supplier_id: new FormControl<string>('', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
     material_id: new FormControl<string>('', {
       nonNullable: true,
       validators: [Validators.required],
@@ -161,6 +198,7 @@ export class ManagerProjectsPageComponent
 
   editingMaterial: BmProjectMaterial | null = null;
   editingLabor: BmProjectLabor | null = null;
+  dismissedErrors = new Set<string>();
 
   @ViewChild('projectsList') projectsListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
@@ -172,12 +210,14 @@ export class ManagerProjectsPageComponent
     private store: Store,
     private fb: FormBuilder,
     private managerService: ManagerService,
-    private materialsService: ManagerMaterialsService,
     private laborService: ManagerLaborService,
     private pricingService: ManagerPricingService,
+    private suppliersService: ManagerSuppliersService,
   ) {
     this.searchCtrl = new FormControl('', { nonNullable: true });
     this.clientSearchCtrl = new FormControl('', { nonNullable: true });
+    this.supplierSearchCtrl = new FormControl('', { nonNullable: true });
+    this.materialSearchCtrl = new FormControl('', { nonNullable: true });
   }
 
   ngOnInit(): void {
@@ -211,6 +251,14 @@ export class ManagerProjectsPageComponent
       this.canLoadMore = can;
     });
 
+    this.projectForm.controls.pricing_profile_id.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((value) => {
+        if (value && this.useDefaultPricing) {
+          this.setDefaultPricing(false);
+        }
+      });
+
     this.editingProject$.pipe(takeUntil(this.destroy$)).subscribe((project) => {
       if (project) {
         this.projectForm.reset({
@@ -218,9 +266,10 @@ export class ManagerProjectsPageComponent
           project_name: project.projectName,
           description: project.description ?? '',
           status: project.status ?? 'to_do',
-          default_pricing: project.defaultPricing ?? true,
+          default_pricing: project.defaultPricing ?? false,
           pricing_profile_id: project.pricingProfileId ?? null,
         });
+        this.useDefaultPricing = project.defaultPricing ?? false;
         this.clientSearchCtrl.setValue(project.clientName || '', {
           emitEvent: false,
         });
@@ -230,9 +279,10 @@ export class ManagerProjectsPageComponent
           project_name: '',
           description: '',
           status: 'to_do',
-          default_pricing: true,
+          default_pricing: false,
           pricing_profile_id: null,
         });
+        this.useDefaultPricing = false;
         this.clientSearchCtrl.setValue('', { emitEvent: false });
       }
     });
@@ -241,20 +291,41 @@ export class ManagerProjectsPageComponent
       this.editingMaterial = mat;
       if (mat) {
         this.projectMaterialForm.reset({
+          supplier_id: mat.supplierId ?? '',
           material_id: mat.materialId,
-          quantity: mat.quantity ?? 1,
-          unit_cost_override: mat.unitCostOverride ?? null,
-          sell_cost_override: mat.sellCostOverride ?? null,
+          quantity: this.formatInt(mat.quantity ?? 1) ?? 1,
+          unit_cost_override: this.formatInt(mat.unitCostOverride ?? null),
+          sell_cost_override: this.formatInt(mat.sellCostOverride ?? null),
           notes: mat.notes ?? '',
         });
+        this.selectedSupplierId = mat.supplierId ?? null;
+        const supplierName =
+          mat.supplierName ||
+          this.suppliersCatalog.find(
+            (s) => s.supplierId === mat.supplierId,
+          )?.supplierName ||
+          '';
+        this.supplierSearchCtrl.setValue(supplierName, { emitEvent: false });
+        this.materialSearchCtrl.setValue(mat.materialName || '', {
+          emitEvent: false,
+        });
+        if (mat.supplierId) {
+          this.loadSupplierMaterials(mat.supplierId);
+        } else {
+          this.supplierMaterialsCatalog = [];
+        }
       } else {
         this.projectMaterialForm.reset({
+          supplier_id: '',
           material_id: '',
           quantity: 1,
           unit_cost_override: null,
           sell_cost_override: null,
           notes: '',
         });
+        this.selectedSupplierId = null;
+        this.supplierSearchCtrl.setValue('', { emitEvent: false });
+        this.materialSearchCtrl.setValue('', { emitEvent: false });
       }
     });
 
@@ -292,6 +363,14 @@ export class ManagerProjectsPageComponent
     this.infiniteObserver?.disconnect();
   }
 
+  dismissError(message: string): void {
+    if (message) this.dismissedErrors.add(message);
+  }
+
+  isErrorDismissed(message: string | null | undefined): boolean {
+    return message ? this.dismissedErrors.has(message) : false;
+  }
+
   openCreate(): void {
     this.store.dispatch(ManagerProjectsActions.openProjectCreate());
   }
@@ -313,9 +392,9 @@ export class ManagerProjectsPageComponent
     }
 
     const payload: any = this.projectForm.getRawValue();
-    const useDefaultPricing = !!payload.default_pricing;
-    payload.default_pricing = !useDefaultPricing;
-    if (!useDefaultPricing) {
+    const useDefaultPricing = this.useDefaultPricing;
+    payload.default_pricing = useDefaultPricing;
+    if (useDefaultPricing) {
       payload.pricing_profile_id = null;
     }
 
@@ -323,18 +402,121 @@ export class ManagerProjectsPageComponent
   }
 
   get isDefaultPricing(): boolean {
-    return !!this.projectForm.get('default_pricing')?.value;
+    return this.useDefaultPricing;
   }
 
   get isPricingProfileDisabled(): boolean {
-    return !this.isDefaultPricing;
+    return this.isDefaultPricing;
   }
 
   setDefaultPricing(value: boolean): void {
+    this.useDefaultPricing = value;
     this.projectForm.controls.default_pricing.setValue(value);
-    if (!value) {
+    if (value) {
       this.projectForm.controls.pricing_profile_id.setValue(null);
     }
+  }
+
+  formatInt(value?: number | null): number | null {
+    if (value === null || value === undefined) return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) return null;
+    return Math.round(num);
+  }
+
+  private updateMaterialSuggestions(query: string): void {
+    if (!this.selectedSupplierId) {
+      this.materialSuggestions = [];
+      this.showMaterialSuggestions = false;
+      this.materialActiveIndex = -1;
+      return;
+    }
+    const term = query.trim().toLowerCase();
+    if (!term) {
+      this.materialSuggestions = [];
+      this.showMaterialSuggestions = false;
+      this.materialActiveIndex = -1;
+      return;
+    }
+    const results = this.supplierMaterialsCatalog.filter((m) => {
+      const name = m.materialName?.toLowerCase() || '';
+      const code = (m.materialCode || '').toLowerCase();
+      return name.includes(term) || code.includes(term);
+    });
+    this.materialSuggestions = results.slice(0, 8);
+    this.showMaterialSuggestions = this.materialSuggestions.length > 0;
+    this.materialActiveIndex = this.materialSuggestions.length ? 0 : -1;
+  }
+
+  onMaterialQueryInput(value: string | null): void {
+    this.updateMaterialSuggestions(value || '');
+    this.projectMaterialForm.controls.material_id.setValue('');
+    if (!value) {
+      this.projectMaterialForm.controls.unit_cost_override.setValue(null, {
+        emitEvent: false,
+      });
+      this.projectMaterialForm.controls.sell_cost_override.setValue(null, {
+        emitEvent: false,
+      });
+    }
+  }
+
+  onMaterialQueryFocus(): void {
+    const query = (this.materialSearchCtrl.value || '').trim();
+    if (query.length) {
+      this.updateMaterialSuggestions(query);
+    }
+    this.showMaterialSuggestions = this.materialSuggestions.length > 0;
+  }
+
+  onMaterialQueryBlur(): void {
+    window.setTimeout(() => {
+      this.showMaterialSuggestions = false;
+      this.materialActiveIndex = -1;
+    }, 150);
+  }
+
+  onMaterialQueryKeydown(event: KeyboardEvent): void {
+    if (!this.showMaterialSuggestions || !this.materialSuggestions.length) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.materialActiveIndex = Math.min(
+        this.materialActiveIndex + 1,
+        this.materialSuggestions.length - 1,
+      );
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.materialActiveIndex = Math.max(this.materialActiveIndex - 1, 0);
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      const current = this.materialSuggestions[this.materialActiveIndex];
+      if (current) this.onMaterialSelect(current);
+    } else if (event.key === 'Escape') {
+      this.showMaterialSuggestions = false;
+      this.materialActiveIndex = -1;
+    }
+  }
+
+  onMaterialSelect(material: {
+    materialId: string;
+    materialName: string;
+    unitCost?: number | null;
+    sellCost?: number | null;
+  }): void {
+    this.projectMaterialForm.controls.material_id.setValue(material.materialId);
+    this.materialSearchCtrl.setValue(material.materialName, {
+      emitEvent: false,
+    });
+    this.projectMaterialForm.controls.unit_cost_override.setValue(
+      this.formatInt(material.unitCost ?? null),
+      { emitEvent: false },
+    );
+    this.projectMaterialForm.controls.sell_cost_override.setValue(
+      this.formatInt(material.sellCost ?? null),
+      { emitEvent: false },
+    );
+    this.showMaterialSuggestions = false;
+    this.materialActiveIndex = -1;
   }
 
   formatStatus(status?: string | null): string {
@@ -396,6 +578,125 @@ export class ManagerProjectsPageComponent
     this.clientActiveIndex = -1;
   }
 
+  private updateSupplierSuggestions(query: string): void {
+    const term = query.trim().toLowerCase();
+    if (!term) {
+      this.supplierSuggestions = [];
+      this.showSupplierSuggestions = false;
+      this.supplierActiveIndex = -1;
+      return;
+    }
+    const results = this.suppliersCatalog.filter((s) => {
+      const name = s.supplierName?.toLowerCase() || '';
+      return name.includes(term);
+    });
+    this.supplierSuggestions = results.slice(0, 8);
+    this.showSupplierSuggestions = this.supplierSuggestions.length > 0;
+    this.supplierActiveIndex = this.supplierSuggestions.length ? 0 : -1;
+  }
+
+  onSupplierQueryInput(value: string | null): void {
+    this.updateSupplierSuggestions(value || '');
+    this.selectedSupplierId = null;
+    this.projectMaterialForm.controls.supplier_id.setValue('');
+    this.supplierMaterialsCatalog = [];
+    this.materialSuggestions = [];
+    this.showMaterialSuggestions = false;
+    this.projectMaterialForm.controls.material_id.setValue('');
+    this.projectMaterialForm.controls.unit_cost_override.setValue(null, {
+      emitEvent: false,
+    });
+    this.projectMaterialForm.controls.sell_cost_override.setValue(null, {
+      emitEvent: false,
+    });
+  }
+
+  onSupplierQueryFocus(): void {
+    const query = (this.supplierSearchCtrl.value || '').trim();
+    if (query.length) {
+      this.updateSupplierSuggestions(query);
+    }
+    this.showSupplierSuggestions = this.supplierSuggestions.length > 0;
+  }
+
+  onSupplierQueryBlur(): void {
+    window.setTimeout(() => {
+      if (!this.selectedSupplierId) {
+        const query = (this.supplierSearchCtrl.value || '').trim().toLowerCase();
+        if (query.length) {
+          const exact = this.suppliersCatalog.find(
+            (s) => (s.supplierName || '').toLowerCase() === query,
+          );
+          if (exact) {
+            this.onSupplierSelect(exact);
+          }
+        }
+      }
+      this.showSupplierSuggestions = false;
+      this.supplierActiveIndex = -1;
+    }, 150);
+  }
+
+  onSupplierQueryKeydown(event: KeyboardEvent): void {
+    if (!this.showSupplierSuggestions || !this.supplierSuggestions.length) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.supplierActiveIndex = Math.min(
+        this.supplierActiveIndex + 1,
+        this.supplierSuggestions.length - 1,
+      );
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.supplierActiveIndex = Math.max(this.supplierActiveIndex - 1, 0);
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      const current = this.supplierSuggestions[this.supplierActiveIndex];
+      if (current) this.onSupplierSelect(current);
+    } else if (event.key === 'Escape') {
+      this.showSupplierSuggestions = false;
+      this.supplierActiveIndex = -1;
+    }
+  }
+
+  onSupplierSelect(supplier: { supplierId: string; supplierName: string }): void {
+    this.selectedSupplierId = supplier.supplierId;
+    this.projectMaterialForm.controls.supplier_id.setValue(supplier.supplierId);
+    this.supplierSearchCtrl.setValue(supplier.supplierName, {
+      emitEvent: false,
+    });
+    this.supplierSuggestions = [];
+    this.showSupplierSuggestions = false;
+    this.supplierActiveIndex = -1;
+    this.loadSupplierMaterials(supplier.supplierId);
+    this.materialSearchCtrl.setValue('', { emitEvent: false });
+    this.projectMaterialForm.controls.material_id.setValue('');
+    this.projectMaterialForm.controls.unit_cost_override.setValue(null, {
+      emitEvent: false,
+    });
+    this.projectMaterialForm.controls.sell_cost_override.setValue(null, {
+      emitEvent: false,
+    });
+  }
+
+  private loadSupplierMaterials(supplierId: string): void {
+    this.suppliersService
+      .listSupplierMaterials(supplierId, { page: 1, limit: 200 })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((res) => {
+        this.supplierMaterialsCatalog = (res?.materials ?? []).map((m) => ({
+          materialId: m.materialId,
+          materialName: m.materialName || '',
+          materialCode: m.materialCode ?? null,
+          unitCost: m.unitCost ?? null,
+          sellCost: m.sellCost ?? null,
+        }));
+        const query = (this.materialSearchCtrl.value || '').trim();
+        if (query.length) {
+          this.updateMaterialSuggestions(query);
+        }
+      });
+  }
+
   archiveProject(project: BmProject): void {
     const ok = window.confirm(
       `Archive project "${project.projectName}"?\n\nThis will set status = cancelled.`,
@@ -422,7 +723,9 @@ export class ManagerProjectsPageComponent
 
     if (tab === 'labor' && project) {
       this.store.dispatch(
-        ManagerProjectsActions.loadProjectLabor({ projectId: project.projectId }),
+        ManagerProjectsActions.loadProjectLabor({
+          projectId: project.projectId,
+        }),
       );
     }
   }
@@ -443,13 +746,23 @@ export class ManagerProjectsPageComponent
     this.store.dispatch(ManagerProjectsActions.closeProjectMaterialForm());
   }
 
-  saveProjectMaterial(project: BmProject, editing?: BmProjectMaterial | null): void {
+  saveProjectMaterial(
+    project: BmProject,
+    editing?: BmProjectMaterial | null,
+  ): void {
     if (this.projectMaterialForm.invalid) {
       this.projectMaterialForm.markAllAsTouched();
       return;
     }
 
     const payload: any = this.projectMaterialForm.getRawValue();
+    payload.quantity = this.formatInt(payload.quantity ?? 0);
+    if (payload.unit_cost_override !== null) {
+      payload.unit_cost_override = this.formatInt(payload.unit_cost_override);
+    }
+    if (payload.sell_cost_override !== null) {
+      payload.sell_cost_override = this.formatInt(payload.sell_cost_override);
+    }
     const materialId = editing?.materialId || payload.material_id;
     delete payload.material_id;
 
@@ -514,7 +827,9 @@ export class ManagerProjectsPageComponent
   }
 
   removeProjectLabor(project: BmProject, labor: BmProjectLabor): void {
-    const ok = window.confirm(`Remove labor "${labor.laborName}" from this project?`);
+    const ok = window.confirm(
+      `Remove labor "${labor.laborName}" from this project?`,
+    );
     if (!ok) return;
 
     this.store.dispatch(
@@ -549,7 +864,9 @@ export class ManagerProjectsPageComponent
         }));
         const currentId = this.projectForm.controls.client_id.value;
         if (currentId) {
-          const match = this.clientsCatalog.find((c) => c.clientId === currentId);
+          const match = this.clientsCatalog.find(
+            (c) => c.clientId === currentId,
+          );
           if (match) {
             this.clientSearchCtrl.setValue(match.clientName, {
               emitEvent: false,
@@ -568,14 +885,23 @@ export class ManagerProjectsPageComponent
         }));
       });
 
-    this.materialsService
-      .listMaterials({ page: 1, limit: 200 })
+    this.suppliersService
+      .listSuppliers({ page: 1, limit: 200, status: 'active' })
       .pipe(takeUntil(this.destroy$))
       .subscribe((res) => {
-        this.materialOptions = (res?.items ?? []).map((m) => ({
-          value: m.materialId,
-          label: m.materialName,
-        }));
+        this.suppliersCatalog = res?.items ?? [];
+        const currentSupplierId =
+          this.projectMaterialForm.controls.supplier_id.value;
+        if (currentSupplierId && !this.supplierSearchCtrl.value) {
+          const match = this.suppliersCatalog.find(
+            (s) => s.supplierId === currentSupplierId,
+          );
+          if (match) {
+            this.supplierSearchCtrl.setValue(match.supplierName, {
+              emitEvent: false,
+            });
+          }
+        }
       });
 
     this.laborService

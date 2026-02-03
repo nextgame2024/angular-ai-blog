@@ -64,7 +64,19 @@
     </div>
   </div>
 
-  <div class="error" *ngIf="(error$ | async) as err">{{ err }}</div>
+  <ng-container *ngIf="(error$ | async) as err">
+    <div class="error" *ngIf="!isErrorDismissed(err)">
+      <span>{{ err }}</span>
+      <button
+        type="button"
+        class="error-dismiss"
+        aria-label="Dismiss error"
+        (click)="dismissError(err)"
+      >
+        x
+      </button>
+    </div>
+  </ng-container>
 
   <div
     class="screen-loader"
@@ -81,12 +93,16 @@
 
   <!-- FORM MODE -->
   <ng-container *ngIf="(viewMode$ | async) === 'form'">
-    <ng-container *ngIf="editingProject$ | async as project; else createProjectBlock">
+    <ng-container
+      *ngIf="editingProject$ | async as project; else createProjectBlock"
+    >
       <div class="form-header">
         <nav class="breadcrumb" aria-label="Breadcrumb">
           <a routerLink="/manager/menu">Menu</a>
           <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()">Projects</a>
+          <a href="#" (click)="$event.preventDefault(); closeForm()"
+            >Projects</a
+          >
           <span class="sep">/</span>
           <span>Edit</span>
         </nav>
@@ -172,7 +188,11 @@
           class="form-header-actions-row"
           *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
         >
-          <button class="btn primary" type="button" (click)="openMaterialCreate()">
+          <button
+            class="btn primary"
+            type="button"
+            (click)="openMaterialCreate()"
+          >
             <span class="btn-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="M12 5v14"></path>
@@ -253,7 +273,7 @@
               </label>
 
               <label class="toggle-field">
-                <span>Use default pricing</span>
+                <span>Default pricing</span>
                 <div class="toggle">
                   <button
                     type="button"
@@ -274,15 +294,6 @@
             </div>
 
             <label>
-              <span>Description</span>
-              <textarea
-                formControlName="description"
-                rows="3"
-                placeholder="Project description"
-              ></textarea>
-            </label>
-
-            <label>
               <span>Pricing Profile</span>
               <app-manager-select
                 formControlName="pricing_profile_id"
@@ -291,7 +302,37 @@
                 placeholder="Select pricing profile"
               ></app-manager-select>
             </label>
+
+            <label>
+              <span>Description</span>
+              <textarea
+                formControlName="description"
+                rows="3"
+                placeholder="Project description"
+              ></textarea>
+            </label>
           </form>
+
+          <div class="card-actions right-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+            <button class="btn primary" type="button" (click)="saveProject()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save
+            </button>
+          </div>
         </section>
       </ng-container>
 
@@ -308,7 +349,19 @@
         </div>
 
         <ng-container *ngIf="project">
-          <div class="error" *ngIf="(materialsError$ | async) as err">{{ err }}</div>
+          <ng-container *ngIf="(materialsError$ | async) as err">
+            <div class="error" *ngIf="!isErrorDismissed(err)">
+              <span>{{ err }}</span>
+              <button
+                type="button"
+                class="error-dismiss"
+                aria-label="Dismiss error"
+                (click)="dismissError(err)"
+              >
+                x
+              </button>
+            </div>
+          </ng-container>
 
           <div
             class="screen-loader"
@@ -326,45 +379,123 @@
           <ng-container *ngIf="(materialsViewMode$ | async) === 'form'">
             <section class="card">
               <form class="form" [formGroup]="projectMaterialForm">
-                <label>
-                  <span>Material *</span>
-                  <app-manager-select
-                    formControlName="material_id"
-                    [options]="materialOptions"
-                    placeholder="Select material"
-                  ></app-manager-select>
+                <label class="address-label">
+                  <span>Supplier *</span>
+                  <div class="address-field">
+                    <input
+                      [formControl]="supplierSearchCtrl"
+                      placeholder="Search supplier"
+                      (input)="onSupplierQueryInput(supplierSearchCtrl.value)"
+                      (focus)="onSupplierQueryFocus()"
+                      (blur)="onSupplierQueryBlur()"
+                      (keydown)="onSupplierQueryKeydown($event)"
+                      autocomplete="off"
+                    />
+                    <div
+                      class="address-suggestions"
+                      *ngIf="showSupplierSuggestions && supplierSuggestions.length"
+                    >
+                      <button
+                        type="button"
+                        class="address-suggestion"
+                        *ngFor="let s of supplierSuggestions; let i = index"
+                        [class.is-active]="i === supplierActiveIndex"
+                        (click)="onSupplierSelect(s)"
+                      >
+                        {{ s.supplierName }}
+                      </button>
+                    </div>
+                  </div>
                 </label>
 
                 <div class="grid-2">
                   <label>
-                    <span>Quantity</span>
-                    <input type="number" formControlName="quantity" />
+                    <span>Material *</span>
+                    <div class="address-field">
+                      <input
+                        [formControl]="materialSearchCtrl"
+                        [disabled]="!selectedSupplierId"
+                        [placeholder]="selectedSupplierId ? 'Search material' : 'Select supplier first'"
+                        (input)="onMaterialQueryInput(materialSearchCtrl.value)"
+                        (focus)="onMaterialQueryFocus()"
+                        (blur)="onMaterialQueryBlur()"
+                        (keydown)="onMaterialQueryKeydown($event)"
+                        autocomplete="off"
+                      />
+                      <div
+                        class="address-suggestions"
+                        *ngIf="showMaterialSuggestions && materialSuggestions.length"
+                      >
+                        <button
+                          type="button"
+                          class="address-suggestion"
+                          *ngFor="let m of materialSuggestions; let i = index"
+                          [class.is-active]="i === materialActiveIndex"
+                          (click)="onMaterialSelect(m)"
+                        >
+                          {{ m.materialName }}
+                          <span class="hint" *ngIf="m.materialCode">({{ m.materialCode }})</span>
+                        </button>
+                      </div>
+                    </div>
                   </label>
+
                   <label>
-                    <span>Unit Cost Override</span>
-                    <input type="number" formControlName="unit_cost_override" />
+                    <span>Quantity</span>
+                    <input type="number" step="1" min="0" formControlName="quantity" />
                   </label>
                 </div>
 
                 <div class="grid-2">
                   <label>
-                    <span>Sell Cost Override</span>
-                    <input type="number" formControlName="sell_cost_override" />
+                    <span>Unit Cost</span>
+                    <input
+                      type="number"
+                      step="1"
+                      formControlName="unit_cost_override"
+                    />
                   </label>
                   <label>
-                    <span>Notes</span>
-                    <input formControlName="notes" placeholder="Notes" />
+                    <span>Sell Cost</span>
+                    <input
+                      type="number"
+                      step="1"
+                      formControlName="sell_cost_override"
+                    />
                   </label>
                 </div>
+
+                <label>
+                  <span>Notes</span>
+                  <textarea
+                    formControlName="notes"
+                    rows="3"
+                    placeholder="Notes"
+                  ></textarea>
+                </label>
               </form>
 
-              <div class="card-actions">
-                <button class="btn" type="button" (click)="closeMaterialForm()">Cancel</button>
+              <div class="card-actions right-actions">
+                <button class="btn" type="button" (click)="closeMaterialForm()">
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M6 6l12 12"></path>
+                      <path d="M18 6l-12 12"></path>
+                    </svg>
+                  </span>
+                  Cancel
+                </button>
                 <button
                   class="btn primary"
                   type="button"
                   (click)="saveProjectMaterial(project, editingMaterial)"
                 >
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M5 5h11l3 3v11H5z"></path>
+                      <path d="M9 5v6h6V5"></path>
+                    </svg>
+                  </span>
                   Save
                 </button>
               </div>
@@ -381,13 +512,20 @@
                 <div class="actions-col">Actions</div>
               </div>
 
-              <div class="trow" *ngFor="let m of materials; trackBy: trackByMaterial">
+              <div
+                class="trow"
+                *ngFor="let m of materials; trackBy: trackByMaterial"
+              >
                 <div class="cell strong">{{ m.materialName }}</div>
-                <div class="cell muted">{{ m.quantity ?? '—' }}</div>
-                <div class="cell muted">{{ m.unitCostOverride ?? '—' }}</div>
-                <div class="cell muted">{{ m.sellCostOverride ?? '—' }}</div>
+                <div class="cell muted">{{ formatInt(m.quantity) ?? '—' }}</div>
+                <div class="cell muted">{{ formatInt(m.unitCostOverride) ?? '—' }}</div>
+                <div class="cell muted">{{ formatInt(m.sellCostOverride) ?? '—' }}</div>
                 <div class="cell actions-col">
-                  <button class="btn small secondary" type="button" (click)="openMaterialEdit(m)">
+                  <button
+                    class="btn small secondary"
+                    type="button"
+                    (click)="openMaterialEdit(m)"
+                  >
                     <span class="btn-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24">
                         <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -396,7 +534,11 @@
                     </span>
                     Edit
                   </button>
-                  <button class="btn small danger" type="button" (click)="removeProjectMaterial(project, m)">
+                  <button
+                    class="btn small danger"
+                    type="button"
+                    (click)="removeProjectMaterial(project, m)"
+                  >
                     <span class="btn-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24">
                         <path d="M4 8h16"></path>
@@ -412,17 +554,28 @@
             </div>
 
             <div class="cards" *ngIf="(materials$ | async) as materials">
-              <article class="project-card" *ngFor="let m of materials; trackBy: trackByMaterial">
+              <article
+                class="project-card"
+                *ngFor="let m of materials; trackBy: trackByMaterial"
+              >
                 <div class="row">
                   <div class="name">{{ m.materialName }}</div>
-                  <div class="muted">{{ m.quantity ?? '—' }}</div>
+                  <div class="muted">{{ formatInt(m.quantity) ?? '—' }}</div>
                 </div>
                 <div class="meta">
-                  <div><span>Unit Cost:</span> {{ m.unitCostOverride ?? '—' }}</div>
-                  <div><span>Sell Cost:</span> {{ m.sellCostOverride ?? '—' }}</div>
+                  <div>
+                    <span>Unit Cost:</span> {{ formatInt(m.unitCostOverride) ?? '—' }}
+                  </div>
+                  <div>
+                    <span>Sell Cost:</span> {{ formatInt(m.sellCostOverride) ?? '—' }}
+                  </div>
                 </div>
                 <div class="card-actions">
-                  <button class="btn small secondary" type="button" (click)="openMaterialEdit(m)">
+                  <button
+                    class="btn small secondary"
+                    type="button"
+                    (click)="openMaterialEdit(m)"
+                  >
                     <span class="btn-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24">
                         <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -431,7 +584,11 @@
                     </span>
                     Edit
                   </button>
-                  <button class="btn small danger" type="button" (click)="removeProjectMaterial(project, m)">
+                  <button
+                    class="btn small danger"
+                    type="button"
+                    (click)="removeProjectMaterial(project, m)"
+                  >
                     <span class="btn-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24">
                         <path d="M4 8h16"></path>
@@ -446,7 +603,9 @@
               </article>
             </div>
 
-            <div class="empty" *ngIf="!(materials$ | async)?.length">No materials yet. Click "Add Material" to create one.</div>
+            <div class="empty" *ngIf="!(materials$ | async)?.length">
+              No materials yet. Click "Add Material" to create one.
+            </div>
           </ng-container>
         </ng-container>
       </ng-container>
@@ -464,7 +623,19 @@
         </div>
 
         <ng-container *ngIf="project">
-          <div class="error" *ngIf="(laborError$ | async) as err">{{ err }}</div>
+          <ng-container *ngIf="(laborError$ | async) as err">
+            <div class="error" *ngIf="!isErrorDismissed(err)">
+              <span>{{ err }}</span>
+              <button
+                type="button"
+                class="error-dismiss"
+                aria-label="Dismiss error"
+                (click)="dismissError(err)"
+              >
+                x
+              </button>
+            </div>
+          </ng-container>
 
           <div
             class="screen-loader"
@@ -515,7 +686,9 @@
               </form>
 
               <div class="card-actions">
-                <button class="btn" type="button" (click)="closeLaborForm()">Cancel</button>
+                <button class="btn" type="button" (click)="closeLaborForm()">
+                  Cancel
+                </button>
                 <button
                   class="btn primary"
                   type="button"
@@ -543,7 +716,11 @@
                 <div class="cell muted">{{ l.unitCostOverride ?? '—' }}</div>
                 <div class="cell muted">{{ l.sellCostOverride ?? '—' }}</div>
                 <div class="cell actions-col">
-                  <button class="btn small secondary" type="button" (click)="openLaborEdit(l)">
+                  <button
+                    class="btn small secondary"
+                    type="button"
+                    (click)="openLaborEdit(l)"
+                  >
                     <span class="btn-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24">
                         <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -552,7 +729,11 @@
                     </span>
                     Edit
                   </button>
-                  <button class="btn small danger" type="button" (click)="removeProjectLabor(project, l)">
+                  <button
+                    class="btn small danger"
+                    type="button"
+                    (click)="removeProjectLabor(project, l)"
+                  >
                     <span class="btn-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24">
                         <path d="M4 8h16"></path>
@@ -568,17 +749,28 @@
             </div>
 
             <div class="cards" *ngIf="(labor$ | async) as labor">
-              <article class="project-card" *ngFor="let l of labor; trackBy: trackByLabor">
+              <article
+                class="project-card"
+                *ngFor="let l of labor; trackBy: trackByLabor"
+              >
                 <div class="row">
                   <div class="name">{{ l.laborName }}</div>
                   <div class="muted">{{ l.quantity ?? '—' }}</div>
                 </div>
                 <div class="meta">
-                  <div><span>Unit Cost:</span> {{ l.unitCostOverride ?? '—' }}</div>
-                  <div><span>Sell Cost:</span> {{ l.sellCostOverride ?? '—' }}</div>
+                  <div>
+                    <span>Unit Cost:</span> {{ l.unitCostOverride ?? '—' }}
+                  </div>
+                  <div>
+                    <span>Sell Cost:</span> {{ l.sellCostOverride ?? '—' }}
+                  </div>
                 </div>
                 <div class="card-actions">
-                  <button class="btn small secondary" type="button" (click)="openLaborEdit(l)">
+                  <button
+                    class="btn small secondary"
+                    type="button"
+                    (click)="openLaborEdit(l)"
+                  >
                     <span class="btn-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24">
                         <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -587,7 +779,11 @@
                     </span>
                     Edit
                   </button>
-                  <button class="btn small danger" type="button" (click)="removeProjectLabor(project, l)">
+                  <button
+                    class="btn small danger"
+                    type="button"
+                    (click)="removeProjectLabor(project, l)"
+                  >
                     <span class="btn-icon" aria-hidden="true">
                       <svg viewBox="0 0 24 24">
                         <path d="M4 8h16"></path>
@@ -602,7 +798,9 @@
               </article>
             </div>
 
-            <div class="empty" *ngIf="!(labor$ | async)?.length">No labor yet. Click "Add Labor" to create one.</div>
+            <div class="empty" *ngIf="!(labor$ | async)?.length">
+              No labor yet. Click "Add Labor" to create one.
+            </div>
           </ng-container>
         </ng-container>
       </ng-container>
@@ -613,7 +811,9 @@
         <nav class="breadcrumb" aria-label="Breadcrumb">
           <a routerLink="/manager/menu">Menu</a>
           <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()">Projects</a>
+          <a href="#" (click)="$event.preventDefault(); closeForm()"
+            >Projects</a
+          >
           <span class="sep">/</span>
           <span>Create</span>
         </nav>
@@ -699,45 +899,45 @@
 
       <section class="card">
         <form class="form" [formGroup]="projectForm" autocomplete="off">
-        <div class="grid-2">
-          <label>
-            <span>Project Name *</span>
-            <input
-              formControlName="project_name"
-              placeholder="Project name"
-              autocomplete="off"
-            />
-          </label>
-
-          <label class="client-label">
-            <span>Client *</span>
-            <div class="client-field">
+          <div class="grid-2">
+            <label>
+              <span>Project Name *</span>
               <input
-                [formControl]="clientSearchCtrl"
-                placeholder="Select client"
-                (focus)="onClientQueryFocus()"
-                (blur)="onClientQueryBlur()"
-                (keydown)="onClientQueryKeydown($event)"
-                (input)="onClientQueryInput(clientSearchCtrl.value)"
+                formControlName="project_name"
+                placeholder="Project name"
                 autocomplete="off"
               />
-              <div
-                class="client-suggestions"
-                *ngIf="showClientSuggestions && clientSuggestions.length"
-              >
-                <button
-                  type="button"
-                  class="client-suggestion"
-                  *ngFor="let c of clientSuggestions; let i = index"
-                  [class.is-active]="i === clientActiveIndex"
-                  (click)="onClientSelect(c)"
+            </label>
+
+            <label class="client-label">
+              <span>Client *</span>
+              <div class="client-field">
+                <input
+                  [formControl]="clientSearchCtrl"
+                  placeholder="Select client"
+                  (focus)="onClientQueryFocus()"
+                  (blur)="onClientQueryBlur()"
+                  (keydown)="onClientQueryKeydown($event)"
+                  (input)="onClientQueryInput(clientSearchCtrl.value)"
+                  autocomplete="off"
+                />
+                <div
+                  class="client-suggestions"
+                  *ngIf="showClientSuggestions && clientSuggestions.length"
                 >
-                  {{ c.clientName }}
-                </button>
+                  <button
+                    type="button"
+                    class="client-suggestion"
+                    *ngFor="let c of clientSuggestions; let i = index"
+                    [class.is-active]="i === clientActiveIndex"
+                    (click)="onClientSelect(c)"
+                  >
+                    {{ c.clientName }}
+                  </button>
+                </div>
               </div>
-            </div>
-          </label>
-        </div>
+            </label>
+          </div>
 
           <div class="grid-2">
             <label>
@@ -750,7 +950,7 @@
             </label>
 
             <label class="toggle-field">
-              <span>Use default pricing</span>
+              <span>Default pricing</span>
               <div class="toggle">
                 <button
                   type="button"
@@ -771,15 +971,6 @@
           </div>
 
           <label>
-            <span>Description</span>
-            <textarea
-              formControlName="description"
-              rows="3"
-              placeholder="Project description"
-            ></textarea>
-          </label>
-
-          <label>
             <span>Pricing Profile</span>
             <app-manager-select
               formControlName="pricing_profile_id"
@@ -788,7 +979,37 @@
               placeholder="Select pricing profile"
             ></app-manager-select>
           </label>
+
+          <label>
+            <span>Description</span>
+            <textarea
+              formControlName="description"
+              rows="3"
+              placeholder="Project description"
+            ></textarea>
+          </label>
         </form>
+
+        <div class="card-actions right-actions">
+          <button class="btn" type="button" (click)="closeForm()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 6l12 12"></path>
+                <path d="M18 6l-12 12"></path>
+              </svg>
+            </span>
+            Cancel
+          </button>
+          <button class="btn primary" type="button" (click)="saveProject()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 5h11l3 3v11H5z"></path>
+                <path d="M9 5v6h6V5"></path>
+              </svg>
+            </span>
+            Save
+          </button>
+        </div>
       </section>
     </ng-template>
   </ng-container>
@@ -814,10 +1035,15 @@
             </span>
           </div>
           <div class="cell muted">
-            {{ p.defaultPricing ? 'Default' : (p.pricingProfileId ? 'Custom' : '—') }}
+            {{ p.defaultPricing ? 'Default' : (p.pricingProfileId ? 'Custom' :
+            '—') }}
           </div>
           <div class="cell actions-col">
-            <button class="btn small secondary" type="button" (click)="openEdit(p)">
+            <button
+              class="btn small secondary"
+              type="button"
+              (click)="openEdit(p)"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -826,7 +1052,11 @@
               </span>
               Edit
             </button>
-            <button class="btn small danger" type="button" (click)="archiveProject(p)">
+            <button
+              class="btn small danger"
+              type="button"
+              (click)="archiveProject(p)"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M4 8h16"></path>
@@ -842,7 +1072,10 @@
       </div>
 
       <div class="cards" *ngIf="(projectsRaw$ | async) as projects">
-        <article class="project-card" *ngFor="let p of projects; trackBy: trackByProject">
+        <article
+          class="project-card"
+          *ngFor="let p of projects; trackBy: trackByProject"
+        >
           <div class="row">
             <div class="name">{{ p.projectName }}</div>
             <span class="badge" [class.archived]="p.status === 'cancelled'">
@@ -851,10 +1084,17 @@
           </div>
           <div class="meta">
             <div><span>Client:</span> {{ p.clientName || '—' }}</div>
-            <div><span>Pricing:</span> {{ p.defaultPricing ? 'Default' : (p.pricingProfileId ? 'Custom' : '—') }}</div>
+            <div>
+              <span>Pricing:</span> {{ p.defaultPricing ? 'Default' :
+              (p.pricingProfileId ? 'Custom' : '—') }}
+            </div>
           </div>
           <div class="card-actions">
-            <button class="btn small secondary" type="button" (click)="openEdit(p)">
+            <button
+              class="btn small secondary"
+              type="button"
+              (click)="openEdit(p)"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -863,7 +1103,11 @@
               </span>
               Edit
             </button>
-            <button class="btn small danger" type="button" (click)="archiveProject(p)">
+            <button
+              class="btn small danger"
+              type="button"
+              (click)="archiveProject(p)"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M4 8h16"></path>
@@ -878,7 +1122,10 @@
         </article>
       </div>
 
-      <div class="empty" *ngIf="!(projectsRaw$ | async)?.length && !(loading$ | async)">
+      <div
+        class="empty"
+        *ngIf="!(projectsRaw$ | async)?.length && !(loading$ | async)"
+      >
         No projects found.
       </div>
 

@@ -65,7 +65,19 @@
     </div>
   </div>
 
-  <div class="error" *ngIf="(error$ | async) as err">{{ err }}</div>
+  <ng-container *ngIf="(error$ | async) as err">
+    <div class="error" *ngIf="!isErrorDismissed(err)">
+      <span>{{ err }}</span>
+      <button
+        type="button"
+        class="error-dismiss"
+        aria-label="Dismiss error"
+        (click)="dismissError(err)"
+      >
+        x
+      </button>
+    </div>
+  </ng-container>
 
   <div
     class="screen-loader"
@@ -286,9 +298,19 @@
 
         <!-- CONTACTS -->
         <section *ngIf="(tab$ | async) === 'contacts'">
-          <div class="error" *ngIf="(contactsError$ | async) as cerr">
-            {{ cerr }}
-          </div>
+          <ng-container *ngIf="(contactsError$ | async) as cerr">
+            <div class="error" *ngIf="!isErrorDismissed(cerr)">
+              <span>{{ cerr }}</span>
+              <button
+                type="button"
+                class="error-dismiss"
+                aria-label="Dismiss error"
+                (click)="dismissError(cerr)"
+              >
+                x
+              </button>
+            </div>
+          </ng-container>
 
           <!-- Contact form -->
           <ng-container *ngIf="(contactsViewMode$ | async) === 'form'">

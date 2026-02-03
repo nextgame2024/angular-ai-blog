@@ -136,6 +136,7 @@ export class ManagerSuppliersPageComponent
   private currentMaterialsPage = 1;
   private canLoadMoreMaterials = false;
   private isLoadingMaterials = false;
+  dismissedErrors = new Set<string>();
 
   materialsCatalog: BmMaterial[] = [];
   private materialsMap = new Map<string, string>();
@@ -361,6 +362,14 @@ export class ManagerSuppliersPageComponent
     this.materialsInfiniteObserver?.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  dismissError(message: string): void {
+    if (message) this.dismissedErrors.add(message);
+  }
+
+  isErrorDismissed(message: string | null | undefined): boolean {
+    return message ? this.dismissedErrors.has(message) : false;
   }
 
   @HostListener('window:resize')

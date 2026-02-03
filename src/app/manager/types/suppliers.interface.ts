@@ -31,6 +31,8 @@ export interface BmSupplierContact {
 export interface BmSupplierMaterial {
   supplierId: string;
   materialId: string;
+  materialName?: string | null;
+  materialCode?: string | null;
   supplierSku?: string | null;
   leadTimeDays?: number | null;
   unitCost?: number | null;
