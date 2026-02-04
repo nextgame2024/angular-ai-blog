@@ -14,6 +14,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { Store } from '@ngrx/store';
 import { BehaviorSubject, combineLatest, Observable, Subject } from 'rxjs';
 import {
@@ -60,6 +61,8 @@ import { ManagerSuppliersService } from '../../services/manager.suppliers.servic
 import { ManagerLaborService } from '../../services/manager.labor.service';
 import { ManagerPricingService } from '../../services/manager.pricing.service';
 import type { ManagerSelectOption } from '../shared/manager-select/manager-select.component';
+import { ManagerProjectsService } from '../../services/manager.projects.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-manager-projects-page',
@@ -221,9 +224,11 @@ export class ManagerProjectsPageComponent
     private store: Store,
     private fb: FormBuilder,
     private managerService: ManagerService,
+    private projectsService: ManagerProjectsService,
     private laborService: ManagerLaborService,
     private pricingService: ManagerPricingService,
     private suppliersService: ManagerSuppliersService,
+    private http: HttpClient,
   ) {
     this.searchCtrl = new FormControl('', { nonNullable: true });
     this.clientSearchCtrl = new FormControl('', { nonNullable: true });
@@ -996,16 +1001,27 @@ export class ManagerProjectsPageComponent
 
   quoteProject(project: BmProject | null): void {
     if (!project?.projectId) return;
-    this.store.dispatch(
-      ManagerProjectsActions.loadProjectMaterials({
-        projectId: project.projectId,
-      }),
-    );
-    this.store.dispatch(
-      ManagerProjectsActions.loadProjectLabor({
-        projectId: project.projectId,
-      }),
-    );
+    this.projectsService
+      .createDocumentFromProject(project.projectId, { type: 'quote' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((res) => {
+        const documentId = res?.document?.documentId;
+        if (!documentId) return;
+        this.openQuotePdf(documentId);
+      });
+  }
+
+  private openQuotePdf(documentId: string): void {
+    const url = `${environment.apiUrl}/bm/documents/${documentId}/quote-pdf`;
+    this.http
+      .get(url, { responseType: 'blob' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((blob) => {
+        const file = new Blob([blob], { type: 'application/pdf' });
+        const objUrl = window.URL.createObjectURL(file);
+        window.open(objUrl, '_blank', 'noopener');
+        window.setTimeout(() => window.URL.revokeObjectURL(objUrl), 60_000);
+      });
   }
 
   saveProjectLabor(project: BmProject, editing?: BmProjectLabor | null): void {

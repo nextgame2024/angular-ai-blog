@@ -122,7 +122,11 @@
               </span>
               Cancel
             </button>
-            <button class="btn" type="button" (click)="quoteProject(project)">
+            <button
+              class="btn tertiary"
+              type="button"
+              (click)="quoteProject(project)"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M4 4h16v16H4z"></path>
@@ -133,7 +137,11 @@
               </span>
               Quote
             </button>
-            <button class="btn primary" type="button" (click)="saveProjectAndClose()">
+            <button
+              class="btn primary"
+              type="button"
+              (click)="saveProjectAndClose()"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 5h11l3 3v11H5z"></path>
@@ -259,11 +267,15 @@
           <div class="quote-summary">
             <div class="quote-card">
               <span>Materials cost $</span>
-              <strong>{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong>
+              <strong
+                >{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong
+              >
             </div>
             <div class="quote-card">
               <span>Labor cost $</span>
-              <strong>{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong>
+              <strong
+                >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
+              >
             </div>
           </div>
           <form class="form" [formGroup]="projectForm" autocomplete="off">
@@ -368,11 +380,7 @@
               </span>
               Cancel
             </button>
-            <button
-              class="btn primary"
-              type="button"
-              (click)="saveProject()"
-            >
+            <button class="btn primary" type="button" (click)="saveProject()">
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M5 5h11l3 3v11H5z"></path>
@@ -586,20 +594,16 @@
                 *ngFor="let m of materials; trackBy: trackByMaterial"
               >
                 <div class="cell strong">{{ m.materialName }}</div>
-                <div class="cell muted">{{ formatQuantity(m.quantity) ?? '—' }}</div>
                 <div class="cell muted">
-                  {{
-                    m.unitCostOverride === null || m.unitCostOverride === undefined
-                      ? '—'
-                      : (m.unitCostOverride | number : '1.2-2')
-                  }}
+                  {{ formatQuantity(m.quantity) ?? '—' }}
                 </div>
                 <div class="cell muted">
-                  {{
-                    m.sellCostOverride === null || m.sellCostOverride === undefined
-                      ? '—'
-                      : (m.sellCostOverride | number : '1.2-2')
-                  }}
+                  {{ m.unitCostOverride === null || m.unitCostOverride ===
+                  undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
+                </div>
+                <div class="cell muted">
+                  {{ m.sellCostOverride === null || m.sellCostOverride ===
+                  undefined ? '—' : (m.sellCostOverride | number : '1.2-2') }}
                 </div>
                 <div class="cell actions-col">
                   <button
@@ -641,24 +645,20 @@
               >
                 <div class="row">
                   <div class="name">{{ m.materialName }}</div>
-                  <div class="muted">{{ formatQuantity(m.quantity) ?? '—' }}</div>
+                  <div class="muted">
+                    {{ formatQuantity(m.quantity) ?? '—' }}
+                  </div>
                 </div>
                 <div class="meta">
                   <div>
                     <span>Unit Cost:</span>
-                    {{
-                      m.unitCostOverride === null || m.unitCostOverride === undefined
-                        ? '—'
-                        : (m.unitCostOverride | number : '1.2-2')
-                    }}
+                    {{ m.unitCostOverride === null || m.unitCostOverride ===
+                    undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
                   </div>
                   <div>
                     <span>Sell Cost:</span>
-                    {{
-                      m.sellCostOverride === null || m.sellCostOverride === undefined
-                        ? '—'
-                        : (m.sellCostOverride | number : '1.2-2')
-                    }}
+                    {{ m.sellCostOverride === null || m.sellCostOverride ===
+                    undefined ? '—' : (m.sellCostOverride | number : '1.2-2') }}
                   </div>
                 </div>
                 <div class="card-actions">
@@ -866,20 +866,16 @@
 
               <div class="trow" *ngFor="let l of labor; trackBy: trackByLabor">
                 <div class="cell strong">{{ l.laborName }}</div>
-                <div class="cell muted">{{ formatQuantity(l.quantity) ?? '—' }}</div>
                 <div class="cell muted">
-                  {{
-                    l.unitCostOverride === null || l.unitCostOverride === undefined
-                      ? '—'
-                      : (l.unitCostOverride | number : '1.2-2')
-                  }}
+                  {{ formatQuantity(l.quantity) ?? '—' }}
                 </div>
                 <div class="cell muted">
-                  {{
-                    l.sellCostOverride === null || l.sellCostOverride === undefined
-                      ? '—'
-                      : (l.sellCostOverride | number : '1.2-2')
-                  }}
+                  {{ l.unitCostOverride === null || l.unitCostOverride ===
+                  undefined ? '—' : (l.unitCostOverride | number : '1.2-2') }}
+                </div>
+                <div class="cell muted">
+                  {{ l.sellCostOverride === null || l.sellCostOverride ===
+                  undefined ? '—' : (l.sellCostOverride | number : '1.2-2') }}
                 </div>
                 <div class="cell actions-col">
                   <button
@@ -921,24 +917,20 @@
               >
                 <div class="row">
                   <div class="name">{{ l.laborName }}</div>
-                  <div class="muted">{{ formatQuantity(l.quantity) ?? '—' }}</div>
+                  <div class="muted">
+                    {{ formatQuantity(l.quantity) ?? '—' }}
+                  </div>
                 </div>
                 <div class="meta">
                   <div>
                     <span>Unit Cost:</span>
-                    {{
-                      l.unitCostOverride === null || l.unitCostOverride === undefined
-                        ? '—'
-                        : (l.unitCostOverride | number : '1.2-2')
-                    }}
+                    {{ l.unitCostOverride === null || l.unitCostOverride ===
+                    undefined ? '—' : (l.unitCostOverride | number : '1.2-2') }}
                   </div>
                   <div>
                     <span>Sell Cost:</span>
-                    {{
-                      l.sellCostOverride === null || l.sellCostOverride === undefined
-                        ? '—'
-                        : (l.sellCostOverride | number : '1.2-2')
-                    }}
+                    {{ l.sellCostOverride === null || l.sellCostOverride ===
+                    undefined ? '—' : (l.sellCostOverride | number : '1.2-2') }}
                   </div>
                 </div>
                 <div class="card-actions">
@@ -1103,7 +1095,9 @@
         <div class="quote-summary">
           <div class="quote-card">
             <span>Materials cost $</span>
-            <strong>{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong>
+            <strong
+              >{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong
+            >
           </div>
           <div class="quote-card">
             <span>Labor cost $</span>
