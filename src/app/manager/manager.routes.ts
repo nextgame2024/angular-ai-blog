@@ -11,11 +11,15 @@ import { ManagerPricingPageComponent } from './components/pricing/manager-pricin
 import { ManagerSuppliersPageComponent } from './components/suppliers/manager-suppliers.page';
 import { ManagerUsersPageComponent } from './components/users/manager-users.page';
 import { ManagerProjectsPageComponent } from './components/projects/manager-projects.page';
+import { ManagerProjectTypesPageComponent } from './components/projectTypes/manager-project-types.page';
+import { ManagerCompanyPageComponent } from './components/company/manager-company.page';
 import { ManagerMaterialsService } from './services/manager.materials.service';
 import { ManagerLaborService } from './services/manager.labor.service';
 import { ManagerPricingService } from './services/manager.pricing.service';
 import { ManagerProjectsService } from './services/manager.projects.service';
+import { ManagerProjectTypesService } from './services/manager.project.types.service';
 import { ManagerSuppliersService } from './services/manager.suppliers.service';
+import { ManagerCompanyService } from './services/manager.company.service';
 import { ManagerService } from './services/manager.service';
 import { ManagerMaterialsEffects } from './store/materials/manager.effects';
 import {
@@ -42,6 +46,16 @@ import {
   MANAGER_PROJECTS_FEATURE_KEY,
   managerProjectsReducer,
 } from './store/projects/manager.reducer';
+import { ManagerProjectTypesEffects } from './store/projectTypes/manager.effects';
+import {
+  MANAGER_PROJECT_TYPES_FEATURE_KEY,
+  managerProjectTypesReducer,
+} from './store/projectTypes/manager.reducer';
+import { ManagerCompanyEffects } from './store/company/manager.effects';
+import {
+  MANAGER_COMPANY_FEATURE_KEY,
+  managerCompanyReducer,
+} from './store/company/manager.reducer';
 import { ManagerEffects } from './store/manager.effects';
 import { MANAGER_FEATURE_KEY, managerReducer } from './store/manager.reducer';
 
@@ -85,9 +99,35 @@ export const MANAGER_ROUTES: Route[] = [
         data: { title: 'Projects', fullscreen: true },
       },
       {
+        path: 'project-types',
+        component: ManagerProjectTypesPageComponent,
+        providers: [
+          ManagerProjectTypesService,
+          ManagerSuppliersService,
+          ManagerMaterialsService,
+          ManagerLaborService,
+          provideEffects(ManagerProjectTypesEffects),
+          provideState(
+            MANAGER_PROJECT_TYPES_FEATURE_KEY,
+            managerProjectTypesReducer,
+          ),
+        ],
+        data: { title: 'Project types', fullscreen: true },
+      },
+      {
         path: 'users',
         component: ManagerUsersPageComponent,
         data: { title: 'Users', fullscreen: true },
+      },
+      {
+        path: 'company',
+        component: ManagerCompanyPageComponent,
+        providers: [
+          ManagerCompanyService,
+          provideEffects(ManagerCompanyEffects),
+          provideState(MANAGER_COMPANY_FEATURE_KEY, managerCompanyReducer),
+        ],
+        data: { title: 'Company', fullscreen: true },
       },
       {
         path: 'suppliers',

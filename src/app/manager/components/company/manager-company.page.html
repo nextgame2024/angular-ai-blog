@@ -1,0 +1,543 @@
+<div class="company-shell">
+  <div
+    class="list-header"
+    *ngIf="(viewMode$ | async) === 'list' && isSuperAdmin"
+  >
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <span>Company</span>
+    </nav>
+
+    <div class="company-toolbar">
+      <div class="title">
+        <h3>Company</h3>
+        <p class="sub">Manage your company profile and legal details.</p>
+      </div>
+
+      <div class="actions" *ngIf="isSuperAdmin">
+        <button type="button" class="btn primary" (click)="openCreate()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 5v14"></path>
+              <path d="M5 12h14"></path>
+            </svg>
+          </span>
+          Create
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar-row">
+      <label class="search-field">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </span>
+        <input
+          type="search"
+          [formControl]="searchCtrl"
+          placeholder="Search by company name, ABN, email"
+          aria-label="Search company"
+        />
+        <button
+          *ngIf="searchCtrl.value"
+          class="icon-btn"
+          type="button"
+          (click)="searchCtrl.setValue('')"
+          aria-label="Clear search"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </button>
+      </label>
+    </div>
+
+    <div class="table-head" aria-hidden="true">
+      <div>Company</div>
+      <div>Legal Name</div>
+      <div>ABN</div>
+      <div>Email</div>
+      <div>Mobile</div>
+      <div>Status</div>
+      <div class="actions-col">Actions</div>
+    </div>
+  </div>
+
+  <ng-container *ngIf="(error$ | async) as err">
+    <div class="error" *ngIf="!isErrorDismissed(err)">
+      <span>{{ err }}</span>
+      <button
+        type="button"
+        class="error-dismiss"
+        aria-label="Dismiss error"
+        (click)="dismissError(err)"
+      >
+        x
+      </button>
+    </div>
+  </ng-container>
+
+  <div
+    class="screen-loader"
+    *ngIf="(loading$ | async)"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <div class="loader-card">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <div class="loader-bar" aria-hidden="true"></div>
+      <div class="loader-text">Loading…</div>
+    </div>
+  </div>
+
+  <ng-container *ngIf="(viewMode$ | async) === 'form'">
+    <ng-container
+      *ngIf="editingCompany$ | async as company; else createCompanyBlock"
+    >
+      <div class="form-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/manager/menu">Menu</a>
+          <span class="sep">/</span>
+          <a href="#" (click)="$event.preventDefault(); closeForm()"
+            >Company</a
+          >
+          <span class="sep">/</span>
+          <span>Edit</span>
+        </nav>
+
+        <div class="form-header-mainrow">
+          <div class="header-main">
+            <h3>Company Details</h3>
+            <p class="sub">Update company profile and legal details.</p>
+          </div>
+          <div class="header-actions">
+            <button
+              *ngIf="isSuperAdmin"
+              class="btn"
+              type="button"
+              (click)="closeForm()"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+            <button
+              *ngIf="isSuperAdmin; else saveOnlyBtn"
+              class="btn primary"
+              type="button"
+              (click)="saveCompanyAndClose()"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save & Close
+            </button>
+            <ng-template #saveOnlyBtn>
+              <button class="btn primary" type="button" (click)="saveCompany()">
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 5h11l3 3v11H5z"></path>
+                    <path d="M9 5v6h6V5"></path>
+                  </svg>
+                </span>
+                Save
+              </button>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+
+      <section class="card">
+        <form class="form" [formGroup]="companyForm" autocomplete="off">
+          <div class="grid-2">
+            <label>
+              <span>Company Name *</span>
+              <input
+                formControlName="company_name"
+                placeholder="Company name"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Legal Name</span>
+              <input
+                formControlName="legal_name"
+                placeholder="Legal name"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Trading Name</span>
+              <input
+                formControlName="trading_name"
+                placeholder="Trading name"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>ABN</span>
+              <input formControlName="abn" placeholder="ABN" />
+            </label>
+          </div>
+
+          <label class="address-label">
+            <span>Address</span>
+            <div class="address-field">
+              <input
+                formControlName="address"
+                placeholder="Street address"
+                (focus)="onAddressFocus()"
+                (blur)="onAddressBlur()"
+                (keydown)="onAddressKeydown($event)"
+                autocomplete="off"
+              />
+              <div
+                class="address-suggestions"
+                *ngIf="showAddressSuggestions && addressSuggestions.length"
+              >
+                <button
+                  type="button"
+                  class="address-suggestion"
+                  *ngFor="let s of addressSuggestions; let i = index"
+                  [class.is-active]="i === addressActiveIndex"
+                  (mousedown)="onAddressSelect(s)"
+                >
+                  {{ s.description }}
+                </button>
+              </div>
+            </div>
+          </label>
+
+          <div class="grid-2">
+            <label>
+              <span>Email</span>
+              <input
+                formControlName="email"
+                placeholder="Email"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Phone</span>
+              <input formControlName="phone" placeholder="Phone" />
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Tel</span>
+              <input formControlName="tel" placeholder="Tel" />
+            </label>
+
+            <label>
+              <span>Cel</span>
+              <input formControlName="cel" placeholder="Cel" />
+            </label>
+          </div>
+
+          <label>
+            <span>Status</span>
+            <app-manager-select
+              formControlName="status"
+              [options]="statusOptions"
+              placeholder="Select status"
+            ></app-manager-select>
+          </label>
+        </form>
+      </section>
+    </ng-container>
+
+    <ng-template #createCompanyBlock>
+      <ng-container *ngIf="isSuperAdmin; else loadingCompanyBlock">
+      <div class="form-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/manager/menu">Menu</a>
+          <span class="sep">/</span>
+          <a href="#" (click)="$event.preventDefault(); closeForm()">Company</a>
+          <span class="sep">/</span>
+          <span>Create</span>
+        </nav>
+
+        <div class="form-header-mainrow">
+          <div class="header-main">
+            <h3>Create Company</h3>
+            <p class="sub">Create a new company profile.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn" type="button" (click)="closeForm()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+            <button
+              class="btn primary"
+              type="button"
+              (click)="saveCompanyAndClose()"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
+                </svg>
+              </span>
+              Save & Close
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section class="card">
+        <form class="form" [formGroup]="companyForm" autocomplete="off">
+          <div class="grid-2">
+            <label>
+              <span>Company Name *</span>
+              <input
+                formControlName="company_name"
+                placeholder="Company name"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Legal Name</span>
+              <input
+                formControlName="legal_name"
+                placeholder="Legal name"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Trading Name</span>
+              <input
+                formControlName="trading_name"
+                placeholder="Trading name"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>ABN</span>
+              <input formControlName="abn" placeholder="ABN" />
+            </label>
+          </div>
+
+          <label class="address-label">
+            <span>Address</span>
+            <div class="address-field">
+              <input
+                formControlName="address"
+                placeholder="Street address"
+                (focus)="onAddressFocus()"
+                (blur)="onAddressBlur()"
+                (keydown)="onAddressKeydown($event)"
+                autocomplete="off"
+              />
+              <div
+                class="address-suggestions"
+                *ngIf="showAddressSuggestions && addressSuggestions.length"
+              >
+                <button
+                  type="button"
+                  class="address-suggestion"
+                  *ngFor="let s of addressSuggestions; let i = index"
+                  [class.is-active]="i === addressActiveIndex"
+                  (mousedown)="onAddressSelect(s)"
+                >
+                  {{ s.description }}
+                </button>
+              </div>
+            </div>
+          </label>
+
+          <div class="grid-2">
+            <label>
+              <span>Email</span>
+              <input
+                formControlName="email"
+                placeholder="Email"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Phone</span>
+              <input formControlName="phone" placeholder="Phone" />
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Tel</span>
+              <input formControlName="tel" placeholder="Tel" />
+            </label>
+
+            <label>
+              <span>Cel</span>
+              <input formControlName="cel" placeholder="Cel" />
+            </label>
+          </div>
+
+          <label>
+            <span>Status</span>
+            <app-manager-select
+              formControlName="status"
+              [options]="statusOptions"
+              placeholder="Select status"
+            ></app-manager-select>
+          </label>
+        </form>
+      </section>
+      </ng-container>
+    </ng-template>
+
+    <ng-template #loadingCompanyBlock>
+      <section class="card">
+        <div class="empty">Loading company details…</div>
+      </section>
+    </ng-template>
+  </ng-container>
+
+  <ng-container *ngIf="(viewMode$ | async) === 'list' && isSuperAdmin">
+    <section class="list" #companiesList>
+      <ng-container *ngIf="filteredCompanies$ | async as companies">
+        <div class="table" *ngIf="companies.length">
+          <div class="thead">
+            <div>Company</div>
+            <div>Legal Name</div>
+            <div>ABN</div>
+            <div>Email</div>
+            <div>Mobile</div>
+            <div>Status</div>
+            <div class="actions-col">Actions</div>
+          </div>
+
+          <div
+            class="trow"
+            *ngFor="let c of companies; trackBy: trackByCompany"
+          >
+            <div class="cell strong">{{ c.companyName }}</div>
+            <div class="cell muted">{{ c.legalName || '—' }}</div>
+            <div class="cell muted">{{ c.abn || '—' }}</div>
+            <div class="cell muted">{{ c.email || '—' }}</div>
+            <div class="cell muted">{{ c.cel || '—' }}</div>
+            <div class="cell">
+              <span class="badge" [class.archived]="c.status === 'archived'">
+                {{ c.status || 'active' }}
+              </span>
+            </div>
+            <div class="cell actions-col">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(c)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                    <path d="M13 6l4 4"></path>
+                  </svg>
+                </span>
+                Edit
+              </button>
+              <button
+                class="btn small danger"
+                type="button"
+                (click)="archiveCompany(c)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 8h16"></path>
+                    <path d="M6 8v10h12V8"></path>
+                    <path d="M10 12h4"></path>
+                    <path d="M9 4h6l1 2H8l1-2Z"></path>
+                  </svg>
+                </span>
+                Archive
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="cards" *ngIf="companies.length">
+          <article
+            class="company-card"
+            *ngFor="let c of companies; trackBy: trackByCompany"
+          >
+            <div class="row">
+              <div class="name">{{ c.companyName }}</div>
+              <span class="badge" [class.archived]="c.status === 'archived'">
+                {{ c.status || 'active' }}
+              </span>
+            </div>
+            <div class="meta">
+              <div><span>Legal name:</span> {{ c.legalName || '—' }}</div>
+              <div><span>ABN:</span> {{ c.abn || '—' }}</div>
+              <div><span>Email:</span> {{ c.email || '—' }}</div>
+              <div><span>Mobile:</span> {{ c.cel || '—' }}</div>
+            </div>
+            <div class="card-actions">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(c)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                    <path d="M13 6l4 4"></path>
+                  </svg>
+                </span>
+                Edit
+              </button>
+              <button
+                class="btn small danger"
+                type="button"
+                (click)="archiveCompany(c)"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 8h16"></path>
+                    <path d="M6 8v10h12V8"></path>
+                    <path d="M10 12h4"></path>
+                    <path d="M9 4h6l1 2H8l1-2Z"></path>
+                  </svg>
+                </span>
+                Archive
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <div class="empty" *ngIf="!companies.length && !(loading$ | async)">
+          No companies found.
+        </div>
+        <div class="infinite-sentinel" #infiniteSentinel></div>
+      </ng-container>
+    </section>
+  </ng-container>
+</div>

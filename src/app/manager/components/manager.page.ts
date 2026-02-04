@@ -45,7 +45,9 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   menu: MenuItem[] = [
     { label: 'Clients', route: '/manager/clients', icon: 'clients' },
     { label: 'Projects', route: '/manager/projects', icon: 'projects' },
+    { label: 'Project types', route: '/manager/project-types', icon: 'project-types' },
     { label: 'Users', route: '/manager/users', icon: 'users' },
+    { label: 'Company', route: '/manager/company', icon: 'company' },
     { label: 'Suppliers', route: '/manager/suppliers', icon: 'suppliers' },
     { label: 'Materials', route: '/manager/materials', icon: 'materials' },
     { label: 'Labor costs', route: '/manager/labor', icon: 'labor' },
