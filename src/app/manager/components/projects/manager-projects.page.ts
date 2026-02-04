@@ -15,11 +15,12 @@ import {
 } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { combineLatest, Observable, Subject } from 'rxjs';
+import { BehaviorSubject, combineLatest, Observable, Subject } from 'rxjs';
 import {
   debounceTime,
   distinctUntilChanged,
   map,
+  startWith,
   takeUntil,
 } from 'rxjs/operators';
 
@@ -51,6 +52,7 @@ import type {
   BmProjectLabor,
   BmProjectMaterial,
 } from '../../types/projects.interface';
+import type { BmPricingProfile } from '../../types/pricing.interface';
 import { ProjectFormTab } from '../../store/projects/manager.state';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 import { ManagerService } from '../../services/manager.service';
@@ -106,6 +108,8 @@ export class ManagerProjectsPageComponent
 
   searchCtrl: FormControl<string>;
   canLoadMore$!: Observable<boolean>;
+  materialsCost$!: Observable<number>;
+  laborCost$!: Observable<number>;
 
   statusOptions: ManagerSelectOption[] = [
     { value: 'to_do', label: 'To do' },
@@ -117,6 +121,7 @@ export class ManagerProjectsPageComponent
 
   clientOptions: ManagerSelectOption[] = [];
   pricingOptions: ManagerSelectOption[] = [];
+  private pricingProfiles$ = new BehaviorSubject<BmPricingProfile[]>([]);
   materialOptions: ManagerSelectOption[] = [];
   laborOptions: ManagerSelectOption[] = [];
   laborCatalog: { laborId: string; laborName: string; unitCost?: number | null; sellCost?: number | null }[] = [];
@@ -230,6 +235,37 @@ export class ManagerProjectsPageComponent
   ngOnInit(): void {
     this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
 
+    const defaultPricing$ =
+      this.projectForm.controls.default_pricing.valueChanges.pipe(
+        startWith(this.projectForm.controls.default_pricing.value),
+      );
+    const pricingProfileId$ =
+      this.projectForm.controls.pricing_profile_id.valueChanges.pipe(
+        startWith(this.projectForm.controls.pricing_profile_id.value),
+      );
+
+    this.materialsCost$ = combineLatest([
+      this.materials$,
+      defaultPricing$,
+      pricingProfileId$,
+      this.pricingProfiles$,
+    ]).pipe(
+      map(([materials, useDefault, profileId, profiles]) =>
+        this.calculateMaterialsCost(materials, useDefault, profileId, profiles),
+      ),
+    );
+
+    this.laborCost$ = combineLatest([
+      this.labor$,
+      defaultPricing$,
+      pricingProfileId$,
+      this.pricingProfiles$,
+    ]).pipe(
+      map(([labor, useDefault, profileId, profiles]) =>
+        this.calculateLaborCost(labor, useDefault, profileId, profiles),
+      ),
+    );
+
     this.searchCtrl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((value) => {
@@ -281,6 +317,16 @@ export class ManagerProjectsPageComponent
         this.clientSearchCtrl.setValue(project.clientName || '', {
           emitEvent: false,
         });
+        this.store.dispatch(
+          ManagerProjectsActions.loadProjectMaterials({
+            projectId: project.projectId,
+          }),
+        );
+        this.store.dispatch(
+          ManagerProjectsActions.loadProjectLabor({
+            projectId: project.projectId,
+          }),
+        );
       } else {
         this.projectForm.reset({
           client_id: '',
@@ -924,6 +970,17 @@ export class ManagerProjectsPageComponent
   }
 
   openLaborCreate(): void {
+    this.projectLaborForm.reset({
+      labor_id: '',
+      quantity: 1,
+      unit_cost_override: null,
+      sell_cost_override: null,
+      notes: '',
+    });
+    this.laborSearchCtrl.setValue('', { emitEvent: false });
+    this.laborSuggestions = [];
+    this.showLaborSuggestions = false;
+    this.laborActiveIndex = -1;
     this.store.dispatch(ManagerProjectsActions.openProjectLaborCreate());
   }
 
@@ -935,6 +992,20 @@ export class ManagerProjectsPageComponent
 
   closeLaborForm(): void {
     this.store.dispatch(ManagerProjectsActions.closeProjectLaborForm());
+  }
+
+  quoteProject(project: BmProject | null): void {
+    if (!project?.projectId) return;
+    this.store.dispatch(
+      ManagerProjectsActions.loadProjectMaterials({
+        projectId: project.projectId,
+      }),
+    );
+    this.store.dispatch(
+      ManagerProjectsActions.loadProjectLabor({
+        projectId: project.projectId,
+      }),
+    );
   }
 
   saveProjectLabor(project: BmProject, editing?: BmProjectLabor | null): void {
@@ -1018,7 +1089,9 @@ export class ManagerProjectsPageComponent
       .listPricingProfiles({ page: 1, limit: 200, status: 'active' })
       .pipe(takeUntil(this.destroy$))
       .subscribe((res) => {
-        this.pricingOptions = (res?.items ?? []).map((p) => ({
+        const items = res?.items ?? [];
+        this.pricingProfiles$.next(items);
+        this.pricingOptions = items.map((p) => ({
           value: p.pricingProfileId,
           label: p.profileName,
         }));
@@ -1115,5 +1188,51 @@ export class ManagerProjectsPageComponent
       .filter((c) => c.clientName?.toLowerCase().includes(q))
       .slice(0, 12);
     this.clientActiveIndex = this.clientSuggestions.length ? 0 : -1;
+  }
+
+  private calculateMaterialsCost(
+    materials: BmProjectMaterial[] | null | undefined,
+    useDefaultPricing: boolean,
+    pricingProfileId: string | null,
+    profiles: BmPricingProfile[],
+  ): number {
+    const items = materials ?? [];
+    const unitSum = items.reduce((sum, m) => {
+      const qty = Number(m.quantity ?? 1);
+      const cost = Number(m.unitCostOverride ?? 0);
+      return sum + cost * qty;
+    }, 0);
+    const sellSum = items.reduce((sum, m) => {
+      const qty = Number(m.quantity ?? 1);
+      const cost = Number(m.sellCostOverride ?? 0);
+      return sum + cost * qty;
+    }, 0);
+    if (useDefaultPricing) return sellSum;
+    const profile = profiles.find((p) => p.pricingProfileId === pricingProfileId);
+    const markup = Number(profile?.materialMarkup ?? 0);
+    return unitSum * (1 + markup);
+  }
+
+  private calculateLaborCost(
+    labor: BmProjectLabor[] | null | undefined,
+    useDefaultPricing: boolean,
+    pricingProfileId: string | null,
+    profiles: BmPricingProfile[],
+  ): number {
+    const items = labor ?? [];
+    const unitSum = items.reduce((sum, l) => {
+      const qty = Number(l.quantity ?? 1);
+      const cost = Number(l.unitCostOverride ?? 0);
+      return sum + cost * qty;
+    }, 0);
+    const sellSum = items.reduce((sum, l) => {
+      const qty = Number(l.quantity ?? 1);
+      const cost = Number(l.sellCostOverride ?? 0);
+      return sum + cost * qty;
+    }, 0);
+    if (useDefaultPricing) return sellSum;
+    const profile = profiles.find((p) => p.pricingProfileId === pricingProfileId);
+    const markup = Number(profile?.laborMarkup ?? 0);
+    return unitSum * (1 + markup);
   }
 }

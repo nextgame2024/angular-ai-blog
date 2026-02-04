@@ -122,6 +122,17 @@
               </span>
               Cancel
             </button>
+            <button class="btn" type="button" (click)="quoteProject(project)">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 4h16v16H4z"></path>
+                  <path d="M8 8h8"></path>
+                  <path d="M8 12h8"></path>
+                  <path d="M8 16h5"></path>
+                </svg>
+              </span>
+              Quote
+            </button>
             <button class="btn primary" type="button" (click)="saveProjectAndClose()">
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -245,6 +256,16 @@
 
       <ng-container *ngIf="(tab$ | async) === 'details'">
         <section class="card">
+          <div class="quote-summary">
+            <div class="quote-card">
+              <span>Materials cost $</span>
+              <strong>{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong>
+            </div>
+            <div class="quote-card">
+              <span>Labor cost $</span>
+              <strong>{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong>
+            </div>
+          </div>
           <form class="form" [formGroup]="projectForm" autocomplete="off">
             <div class="grid-2">
               <label>
@@ -988,6 +1009,17 @@
               </span>
               Cancel
             </button>
+            <button class="btn" type="button" (click)="quoteProject(null)">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 4h16v16H4z"></path>
+                  <path d="M8 8h8"></path>
+                  <path d="M8 12h8"></path>
+                  <path d="M8 16h5"></path>
+                </svg>
+              </span>
+              Quote
+            </button>
             <button
               class="btn primary"
               type="button"
@@ -1068,6 +1100,16 @@
       </div>
 
       <section class="card">
+        <div class="quote-summary">
+          <div class="quote-card">
+            <span>Materials cost $</span>
+            <strong>{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong>
+          </div>
+          <div class="quote-card">
+            <span>Labor cost $</span>
+            <strong>{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong>
+          </div>
+        </div>
         <form class="form" [formGroup]="projectForm" autocomplete="off">
           <div class="grid-2">
             <label>
