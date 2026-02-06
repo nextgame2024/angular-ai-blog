@@ -84,6 +84,7 @@ export class ManagerProjectsPageComponent
   private infiniteObserver?: IntersectionObserver;
   private isLoadingMore = false;
   private isLoading = false;
+  isQuoteLoading = false;
 
   loading$ = this.store.select(selectManagerProjectsLoading);
   error$ = this.store.select(selectManagerProjectsError);
@@ -1164,13 +1165,22 @@ export class ManagerProjectsPageComponent
 
   quoteProject(project: BmProject | null): void {
     if (!project?.projectId) return;
+    this.isQuoteLoading = true;
     this.projectsService
       .createDocumentFromProject(project.projectId, { type: 'quote' })
       .pipe(takeUntil(this.destroy$))
-      .subscribe((res) => {
-        const documentId = res?.document?.documentId;
-        if (!documentId) return;
-        this.openQuotePdf(documentId);
+      .subscribe({
+        next: (res) => {
+          const documentId = res?.document?.documentId;
+          if (!documentId) {
+            this.isQuoteLoading = false;
+            return;
+          }
+          this.openQuotePdf(documentId);
+        },
+        error: () => {
+          this.isQuoteLoading = false;
+        },
       });
   }
 
@@ -1179,11 +1189,19 @@ export class ManagerProjectsPageComponent
     this.http
       .get(url, { responseType: 'blob' })
       .pipe(takeUntil(this.destroy$))
-      .subscribe((blob) => {
-        const file = new Blob([blob], { type: 'application/pdf' });
-        const objUrl = window.URL.createObjectURL(file);
-        window.open(objUrl, '_blank', 'noopener');
-        window.setTimeout(() => window.URL.revokeObjectURL(objUrl), 60_000);
+      .subscribe({
+        next: (blob) => {
+          const file = new Blob([blob], { type: 'application/pdf' });
+          const objUrl = window.URL.createObjectURL(file);
+          window.open(objUrl, '_blank', 'noopener');
+          window.setTimeout(() => window.URL.revokeObjectURL(objUrl), 60_000);
+        },
+        error: () => {
+          this.isQuoteLoading = false;
+        },
+        complete: () => {
+          this.isQuoteLoading = false;
+        },
       });
   }
 

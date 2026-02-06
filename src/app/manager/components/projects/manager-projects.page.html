@@ -128,6 +128,7 @@
               class="btn tertiary"
               type="button"
               (click)="quoteProject(project)"
+              [disabled]="isQuoteLoading"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -137,7 +138,7 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              Quote
+              {{ isQuoteLoading ? 'Loading...' : 'Quote' }}
             </button>
             <button
               class="btn primary"
@@ -1059,6 +1060,7 @@
               class="btn tertiary"
               type="button"
               (click)="quoteProject(null)"
+              [disabled]="isQuoteLoading"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -1068,7 +1070,7 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              Quote
+              {{ isQuoteLoading ? 'Loading...' : 'Quote' }}
             </button>
             <button
               class="btn primary"
