@@ -13,7 +13,11 @@ export interface BmProject {
 
   status?: ProjectStatus | null;
   defaultPricing?: boolean | null;
+  costInQuote?: boolean | null;
+  projectTypeId?: string | null;
+  projectTypeName?: string | null;
   pricingProfileId?: string | null;
+  pricingProfileName?: string | null;
 
   createdAt?: string | null;
   updatedAt?: string | null;

@@ -60,6 +60,7 @@ import { ManagerService } from '../../services/manager.service';
 import { ManagerSuppliersService } from '../../services/manager.suppliers.service';
 import { ManagerLaborService } from '../../services/manager.labor.service';
 import { ManagerPricingService } from '../../services/manager.pricing.service';
+import { ManagerProjectTypesService } from '../../services/manager.project.types.service';
 import type { ManagerSelectOption } from '../shared/manager-select/manager-select.component';
 import { ManagerProjectsService } from '../../services/manager.projects.service';
 import { environment } from '../../../../environments/environment';
@@ -113,6 +114,10 @@ export class ManagerProjectsPageComponent
   canLoadMore$!: Observable<boolean>;
   materialsCost$!: Observable<number>;
   laborCost$!: Observable<number>;
+  netMaterialsCost$!: Observable<number>;
+  netLaborCost$!: Observable<number>;
+  private previewMaterials$ = new BehaviorSubject<BmProjectMaterial[]>([]);
+  private previewLabor$ = new BehaviorSubject<BmProjectLabor[]>([]);
 
   statusOptions: ManagerSelectOption[] = [
     { value: 'to_do', label: 'To do' },
@@ -124,7 +129,9 @@ export class ManagerProjectsPageComponent
 
   clientOptions: ManagerSelectOption[] = [];
   pricingOptions: ManagerSelectOption[] = [];
+  projectTypeOptions: ManagerSelectOption[] = [];
   private pricingProfiles$ = new BehaviorSubject<BmPricingProfile[]>([]);
+  private defaultPricing$ = new BehaviorSubject<boolean>(false);
   materialOptions: ManagerSelectOption[] = [];
   laborOptions: ManagerSelectOption[] = [];
   laborCatalog: { laborId: string; laborName: string; unitCost?: number | null; sellCost?: number | null }[] = [];
@@ -167,12 +174,14 @@ export class ManagerProjectsPageComponent
       nonNullable: true,
       validators: [Validators.required],
     }),
+    project_type_id: new FormControl<string | null>(null),
     project_name: new FormControl<string>('', {
       nonNullable: true,
       validators: [Validators.required],
     }),
     description: new FormControl<string>('', { nonNullable: true }),
     status: new FormControl<string>('to_do', { nonNullable: true }),
+    cost_in_quote: new FormControl<boolean>(false, { nonNullable: true }),
     default_pricing: new FormControl<boolean>(false, { nonNullable: true }),
     pricing_profile_id: new FormControl<string | null>(null),
   });
@@ -209,6 +218,7 @@ export class ManagerProjectsPageComponent
     notes: new FormControl<string>('', { nonNullable: true }),
   });
 
+  editingProject: BmProject | null = null;
   editingMaterial: BmProjectMaterial | null = null;
   editingLabor: BmProjectLabor | null = null;
   dismissedErrors = new Set<string>();
@@ -219,6 +229,8 @@ export class ManagerProjectsPageComponent
 
   private currentPage = 1;
   private canLoadMore = false;
+  private suppressProjectTypeApply = false;
+  private lastProjectId: string | null = null;
 
   constructor(
     private store: Store,
@@ -227,6 +239,7 @@ export class ManagerProjectsPageComponent
     private projectsService: ManagerProjectsService,
     private laborService: ManagerLaborService,
     private pricingService: ManagerPricingService,
+    private projectTypesService: ManagerProjectTypesService,
     private suppliersService: ManagerSuppliersService,
     private http: HttpClient,
   ) {
@@ -239,11 +252,8 @@ export class ManagerProjectsPageComponent
 
   ngOnInit(): void {
     this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
+    this.defaultPricing$.next(this.projectForm.controls.default_pricing.value);
 
-    const defaultPricing$ =
-      this.projectForm.controls.default_pricing.valueChanges.pipe(
-        startWith(this.projectForm.controls.default_pricing.value),
-      );
     const pricingProfileId$ =
       this.projectForm.controls.pricing_profile_id.valueChanges.pipe(
         startWith(this.projectForm.controls.pricing_profile_id.value),
@@ -251,23 +261,61 @@ export class ManagerProjectsPageComponent
 
     this.materialsCost$ = combineLatest([
       this.materials$,
-      defaultPricing$,
+      this.previewMaterials$,
+      this.editingProject$,
+      this.defaultPricing$,
       pricingProfileId$,
       this.pricingProfiles$,
     ]).pipe(
-      map(([materials, useDefault, profileId, profiles]) =>
-        this.calculateMaterialsCost(materials, useDefault, profileId, profiles),
-      ),
+      map(([materials, preview, project, useDefault, profileId, profiles]) => {
+        const effectiveProfileId =
+          profileId || project?.pricingProfileId || null;
+        return this.calculateMaterialsCost(
+          project ? materials : preview,
+          useDefault,
+          effectiveProfileId,
+          profiles,
+        );
+      }),
     );
 
     this.laborCost$ = combineLatest([
       this.labor$,
-      defaultPricing$,
+      this.previewLabor$,
+      this.editingProject$,
+      this.defaultPricing$,
       pricingProfileId$,
       this.pricingProfiles$,
     ]).pipe(
-      map(([labor, useDefault, profileId, profiles]) =>
-        this.calculateLaborCost(labor, useDefault, profileId, profiles),
+      map(([labor, preview, project, useDefault, profileId, profiles]) => {
+        const effectiveProfileId =
+          profileId || project?.pricingProfileId || null;
+        return this.calculateLaborCost(
+          project ? labor : preview,
+          useDefault,
+          effectiveProfileId,
+          profiles,
+        );
+      }),
+    );
+
+    this.netMaterialsCost$ = combineLatest([
+      this.materials$,
+      this.previewMaterials$,
+      this.editingProject$,
+    ]).pipe(
+      map(([materials, preview, project]) =>
+        this.calculateNetMaterialsCost(project ? materials : preview),
+      ),
+    );
+
+    this.netLaborCost$ = combineLatest([
+      this.labor$,
+      this.previewLabor$,
+      this.editingProject$,
+    ]).pipe(
+      map(([labor, preview, project]) =>
+        this.calculateNetLaborCost(project ? labor : preview),
       ),
     );
 
@@ -308,20 +356,59 @@ export class ManagerProjectsPageComponent
         }
       });
 
+    this.projectForm.controls.project_type_id.valueChanges
+      .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((projectTypeId) => {
+        if (this.suppressProjectTypeApply) return;
+        const project = this.editingProject;
+        if (project?.projectId && projectTypeId) {
+          this.applyProjectType(project.projectId, projectTypeId);
+          return;
+        }
+        if (!project?.projectId) {
+          if (!projectTypeId) {
+            this.previewMaterials$.next([]);
+            this.previewLabor$.next([]);
+            return;
+          }
+          this.loadProjectTypePreview(projectTypeId);
+        }
+      });
+
     this.editingProject$.pipe(takeUntil(this.destroy$)).subscribe((project) => {
+      this.editingProject = project ?? null;
       if (project) {
-        this.projectForm.reset({
-          client_id: project.clientId,
-          project_name: project.projectName,
-          description: project.description ?? '',
+        const hasProjectChanged = this.lastProjectId !== project.projectId;
+        this.lastProjectId = project.projectId;
+        if (hasProjectChanged || !this.projectForm.dirty) {
+          this.suppressProjectTypeApply = true;
+          this.projectForm.reset({
+            client_id: project.clientId,
+            project_type_id: project.projectTypeId ?? null,
+            project_name: project.projectName,
+            description: project.description ?? '',
           status: project.status ?? 'to_do',
+          cost_in_quote: project.costInQuote ?? false,
           default_pricing: project.defaultPricing ?? false,
           pricing_profile_id: project.pricingProfileId ?? null,
-        });
-        this.useDefaultPricing = project.defaultPricing ?? false;
-        this.clientSearchCtrl.setValue(project.clientName || '', {
-          emitEvent: false,
-        });
+          });
+          this.useDefaultPricing = project.defaultPricing ?? false;
+          this.defaultPricing$.next(this.useDefaultPricing);
+          // Ensure default pricing toggle + cost streams are in sync on first load.
+          this.projectForm.controls.default_pricing.setValue(
+            this.useDefaultPricing,
+            { emitEvent: true },
+          );
+          if (this.useDefaultPricing) {
+            this.projectForm.controls.pricing_profile_id.setValue(null, {
+              emitEvent: true,
+            });
+          }
+          this.clientSearchCtrl.setValue(project.clientName || '', {
+            emitEvent: false,
+          });
+          this.suppressProjectTypeApply = false;
+        }
         this.store.dispatch(
           ManagerProjectsActions.loadProjectMaterials({
             projectId: project.projectId,
@@ -332,17 +419,25 @@ export class ManagerProjectsPageComponent
             projectId: project.projectId,
           }),
         );
+        this.previewMaterials$.next([]);
+        this.previewLabor$.next([]);
       } else {
+        this.lastProjectId = null;
         this.projectForm.reset({
           client_id: '',
+          project_type_id: null,
           project_name: '',
           description: '',
           status: 'to_do',
+          cost_in_quote: false,
           default_pricing: false,
           pricing_profile_id: null,
         });
         this.useDefaultPricing = false;
+        this.defaultPricing$.next(false);
         this.clientSearchCtrl.setValue('', { emitEvent: false });
+        this.previewMaterials$.next([]);
+        this.previewLabor$.next([]);
       }
     });
 
@@ -501,10 +596,15 @@ export class ManagerProjectsPageComponent
 
   setDefaultPricing(value: boolean): void {
     this.useDefaultPricing = value;
+    this.defaultPricing$.next(value);
     this.projectForm.controls.default_pricing.setValue(value);
     if (value) {
       this.projectForm.controls.pricing_profile_id.setValue(null);
     }
+  }
+
+  get costInQuote(): boolean {
+    return !!this.projectForm.controls.cost_in_quote.value;
   }
 
   formatQuantity(value?: number | null): number | null {
@@ -519,6 +619,69 @@ export class ManagerProjectsPageComponent
     const num = Number(value);
     if (Number.isNaN(num)) return null;
     return Math.round(num * 100) / 100;
+  }
+
+  private applyProjectType(projectId: string, projectTypeId: string): void {
+    this.projectsService
+      .updateProject(projectId, { project_type_id: projectTypeId })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          if (res?.project) {
+            this.store.dispatch(
+              ManagerProjectsActions.saveProjectSuccess({
+                project: res.project,
+                closeOnSuccess: false,
+              }),
+            );
+          }
+          this.store.dispatch(
+            ManagerProjectsActions.loadProjectMaterials({ projectId }),
+          );
+          this.store.dispatch(
+            ManagerProjectsActions.loadProjectLabor({ projectId }),
+          );
+        },
+      });
+  }
+
+  private loadProjectTypePreview(projectTypeId: string): void {
+    this.projectTypesService
+      .listProjectTypeMaterials(projectTypeId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((res) => {
+        const materials =
+          res?.materials?.map((m) => ({
+            projectId: 'preview',
+            materialId: m.materialId,
+            supplierId: m.supplierId ?? null,
+            supplierName: m.supplierName ?? null,
+            materialName: m.materialName || '',
+            quantity: m.quantity ?? 1,
+            unitCostOverride: m.unitCostOverride ?? null,
+            sellCostOverride: m.sellCostOverride ?? null,
+            notes: m.notes ?? null,
+          })) ?? [];
+        this.previewMaterials$.next(materials);
+      });
+
+    this.projectTypesService
+      .listProjectTypeLabor(projectTypeId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((res) => {
+        const labor =
+          res?.labor?.map((l) => ({
+            projectId: 'preview',
+            laborId: l.laborId,
+            laborName: l.laborName || '',
+            unitType: l.unitType ?? null,
+            quantity: l.quantity ?? 1,
+            unitCostOverride: l.unitCostOverride ?? null,
+            sellCostOverride: l.sellCostOverride ?? null,
+            notes: l.notes ?? null,
+          })) ?? [];
+        this.previewLabor$.next(labor);
+      });
   }
 
   private updateMaterialSuggestions(query: string): void {
@@ -1111,6 +1274,24 @@ export class ManagerProjectsPageComponent
           value: p.pricingProfileId,
           label: p.profileName,
         }));
+        const current = this.projectForm.controls.pricing_profile_id.value;
+        if (!current && !this.useDefaultPricing && this.editingProject?.pricingProfileId) {
+          this.projectForm.controls.pricing_profile_id.setValue(
+            this.editingProject.pricingProfileId,
+            { emitEvent: false },
+          );
+        }
+      });
+
+    this.projectTypesService
+      .listProjectTypes({ page: 1, limit: 200, status: 'active' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((res) => {
+        const items = res?.items ?? [];
+        this.projectTypeOptions = items.map((pt) => ({
+          value: pt.projectTypeId,
+          label: pt.name,
+        }));
       });
 
     this.suppliersService
@@ -1229,6 +1410,17 @@ export class ManagerProjectsPageComponent
     return unitSum * (1 + markup);
   }
 
+  private calculateNetMaterialsCost(
+    materials: BmProjectMaterial[] | null | undefined,
+  ): number {
+    const items = materials ?? [];
+    return items.reduce((sum, m) => {
+      const qty = Number(m.quantity ?? 1);
+      const cost = Number(m.unitCostOverride ?? 0);
+      return sum + cost * qty;
+    }, 0);
+  }
+
   private calculateLaborCost(
     labor: BmProjectLabor[] | null | undefined,
     useDefaultPricing: boolean,
@@ -1250,5 +1442,16 @@ export class ManagerProjectsPageComponent
     const profile = profiles.find((p) => p.pricingProfileId === pricingProfileId);
     const markup = Number(profile?.laborMarkup ?? 0);
     return unitSum * (1 + markup);
+  }
+
+  private calculateNetLaborCost(
+    labor: BmProjectLabor[] | null | undefined,
+  ): number {
+    const items = labor ?? [];
+    return items.reduce((sum, l) => {
+      const qty = Number(l.quantity ?? 1);
+      const cost = Number(l.unitCostOverride ?? 0);
+      return sum + cost * qty;
+    }, 0);
   }
 }

@@ -90,6 +90,7 @@ export const MANAGER_ROUTES: Route[] = [
         component: ManagerProjectsPageComponent,
         providers: [
           ManagerProjectsService,
+          ManagerProjectTypesService,
           ManagerSuppliersService,
           ManagerLaborService,
           ManagerPricingService,

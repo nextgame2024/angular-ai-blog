@@ -302,6 +302,11 @@
   background: rgba(248, 250, 252, 0.9);
 }
 
+.quote-summary-column {
+  display: grid;
+  gap: 0.6rem;
+}
+
 .quote-card {
   display: flex;
   align-items: center;
@@ -317,6 +322,16 @@
 .quote-card strong {
   font-size: 1.05rem;
   font-weight: 800;
+}
+
+.toggle-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.toggle-stack .toggle-field {
+  flex: 1 1 220px;
 }
 
 .card-header {
@@ -891,24 +906,30 @@
 
   .quote-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
   }
 
   .table-head {
     display: grid;
-    grid-template-columns: 1.4fr 1.2fr 1fr 0.8fr 1.1fr;
+    grid-template-columns: 1.4fr 1.2fr 1.1fr 0.9fr 1.2fr 0.9fr 1.1fr;
     gap: 0.5rem;
     align-items: center;
   }
 
-  .table {
-    display: block;
-  }
-  .cards {
-    display: none;
-  }
-  .grid-2 {
-    grid-template-columns: 1fr 1fr;
-  }
+.table {
+  display: block;
+}
+.cards {
+  display: none;
+}
+.grid-2 {
+  grid-template-columns: 1fr 1fr;
+}
+}
+
+.table .thead,
+.table .trow {
+  grid-template-columns: 1.4fr 1.2fr 1.1fr 0.9fr 1.2fr 0.9fr 1.1fr;
 }
 
 @media (min-width: 900px) {

@@ -58,8 +58,10 @@
     <div class="table-head" aria-hidden="true">
       <div>Name</div>
       <div>Client</div>
+      <div>Project Type</div>
+      <div>Default pricing</div>
+      <div>Pricing Profile</div>
       <div>Status</div>
-      <div>Pricing</div>
       <div class="actions-col">Actions</div>
     </div>
   </div>
@@ -265,17 +267,36 @@
       <ng-container *ngIf="(tab$ | async) === 'details'">
         <section class="card">
           <div class="quote-summary">
-            <div class="quote-card">
-              <span>Materials cost $</span>
-              <strong
-                >{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong
-              >
+            <div class="quote-summary-column">
+              <div class="quote-card">
+                <span>Net Materials Cost $</span>
+                <strong
+                  >{{ ((netMaterialsCost$ | async) || 0) | number: '1.2-2'
+                  }}</strong
+                >
+              </div>
+              <div class="quote-card">
+                <span>Total Materials Cost $</span>
+                <strong
+                  >{{ ((materialsCost$ | async) || 0) | number: '1.2-2'
+                  }}</strong
+                >
+              </div>
             </div>
-            <div class="quote-card">
-              <span>Labor cost $</span>
-              <strong
-                >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
-              >
+            <div class="quote-summary-column">
+              <div class="quote-card">
+                <span>Net Labor Cost $</span>
+                <strong
+                  >{{ ((netLaborCost$ | async) || 0) | number: '1.2-2'
+                  }}</strong
+                >
+              </div>
+              <div class="quote-card">
+                <span>Total Labor Cost $</span>
+                <strong
+                  >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
+                >
+              </div>
             </div>
           </div>
           <form class="form" [formGroup]="projectForm" autocomplete="off">
@@ -289,6 +310,17 @@
                 />
               </label>
 
+              <label>
+                <span>Project Type</span>
+                <app-manager-select
+                  formControlName="project_type_id"
+                  [options]="projectTypeOptions"
+                  placeholder="Select project type"
+                ></app-manager-select>
+              </label>
+            </div>
+
+            <div class="grid-2">
               <label class="client-label">
                 <span>Client *</span>
                 <div class="client-field">
@@ -317,9 +349,7 @@
                   </div>
                 </div>
               </label>
-            </div>
 
-            <div class="grid-2">
               <label>
                 <span>Status</span>
                 <app-manager-select
@@ -328,37 +358,61 @@
                   placeholder="Select status"
                 ></app-manager-select>
               </label>
-
-              <label class="toggle-field">
-                <span>Default pricing</span>
-                <div class="toggle">
-                  <button
-                    type="button"
-                    [class.active]="isDefaultPricing"
-                    (click)="setDefaultPricing(true)"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    type="button"
-                    [class.active]="!isDefaultPricing"
-                    (click)="setDefaultPricing(false)"
-                  >
-                    No
-                  </button>
-                </div>
-              </label>
             </div>
 
-            <label>
-              <span>Pricing Profile</span>
-              <app-manager-select
-                formControlName="pricing_profile_id"
-                [options]="pricingOptions"
-                [disabled]="isPricingProfileDisabled"
-                placeholder="Select pricing profile"
-              ></app-manager-select>
-            </label>
+            <div class="grid-2">
+              <div class="toggle-stack">
+                <label class="toggle-field">
+                  <span>Cost in quote</span>
+                  <div class="toggle">
+                    <button
+                      type="button"
+                      [class.active]="projectForm.controls.cost_in_quote.value"
+                      (click)="projectForm.controls.cost_in_quote.setValue(true)"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      [class.active]="!projectForm.controls.cost_in_quote.value"
+                      (click)="projectForm.controls.cost_in_quote.setValue(false)"
+                    >
+                      No
+                    </button>
+                  </div>
+                </label>
+
+                <label class="toggle-field">
+                  <span>Default pricing</span>
+                  <div class="toggle">
+                    <button
+                      type="button"
+                      [class.active]="isDefaultPricing"
+                      (click)="setDefaultPricing(true)"
+                    >
+                      Yes
+                    </button>
+                    <button
+                      type="button"
+                      [class.active]="!isDefaultPricing"
+                      (click)="setDefaultPricing(false)"
+                    >
+                      No
+                    </button>
+                  </div>
+                </label>
+              </div>
+
+              <label>
+                <span>Pricing Profile</span>
+                <app-manager-select
+                  formControlName="pricing_profile_id"
+                  [options]="pricingOptions"
+                  [disabled]="isPricingProfileDisabled"
+                  placeholder="Select pricing profile"
+                ></app-manager-select>
+              </label>
+            </div>
 
             <label>
               <span>Description</span>
@@ -1001,7 +1055,11 @@
               </span>
               Cancel
             </button>
-            <button class="btn" type="button" (click)="quoteProject(null)">
+            <button
+              class="btn tertiary"
+              type="button"
+              (click)="quoteProject(null)"
+            >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
                   <path d="M4 4h16v16H4z"></path>
@@ -1093,15 +1151,34 @@
 
       <section class="card">
         <div class="quote-summary">
-          <div class="quote-card">
-            <span>Materials cost $</span>
-            <strong
-              >{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong
-            >
+          <div class="quote-summary-column">
+            <div class="quote-card">
+              <span>Net Materials Cost $</span>
+              <strong
+                >{{ ((netMaterialsCost$ | async) || 0) | number: '1.2-2'
+                }}</strong
+              >
+            </div>
+            <div class="quote-card">
+              <span>Total Materials Cost $</span>
+              <strong
+                >{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong
+              >
+            </div>
           </div>
-          <div class="quote-card">
-            <span>Labor cost $</span>
-            <strong>{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong>
+          <div class="quote-summary-column">
+            <div class="quote-card">
+              <span>Net Labor Cost $</span>
+              <strong
+                >{{ ((netLaborCost$ | async) || 0) | number: '1.2-2' }}</strong
+              >
+            </div>
+            <div class="quote-card">
+              <span>Total Labor Cost $</span>
+              <strong
+                >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
+              >
+            </div>
           </div>
         </div>
         <form class="form" [formGroup]="projectForm" autocomplete="off">
@@ -1115,6 +1192,17 @@
               />
             </label>
 
+            <label>
+              <span>Project Type</span>
+              <app-manager-select
+                formControlName="project_type_id"
+                [options]="projectTypeOptions"
+                placeholder="Select project type"
+              ></app-manager-select>
+            </label>
+          </div>
+
+          <div class="grid-2">
             <label class="client-label">
               <span>Client *</span>
               <div class="client-field">
@@ -1143,9 +1231,7 @@
                 </div>
               </div>
             </label>
-          </div>
 
-          <div class="grid-2">
             <label>
               <span>Status</span>
               <app-manager-select
@@ -1154,37 +1240,61 @@
                 placeholder="Select status"
               ></app-manager-select>
             </label>
-
-            <label class="toggle-field">
-              <span>Default pricing</span>
-              <div class="toggle">
-                <button
-                  type="button"
-                  [class.active]="isDefaultPricing"
-                  (click)="setDefaultPricing(true)"
-                >
-                  Yes
-                </button>
-                <button
-                  type="button"
-                  [class.active]="!isDefaultPricing"
-                  (click)="setDefaultPricing(false)"
-                >
-                  No
-                </button>
-              </div>
-            </label>
           </div>
 
-          <label>
-            <span>Pricing Profile</span>
-            <app-manager-select
-              formControlName="pricing_profile_id"
-              [options]="pricingOptions"
-              [disabled]="isPricingProfileDisabled"
-              placeholder="Select pricing profile"
-            ></app-manager-select>
-          </label>
+          <div class="grid-2">
+            <div class="toggle-stack">
+              <label class="toggle-field">
+                <span>Cost in quote</span>
+                <div class="toggle">
+                  <button
+                    type="button"
+                    [class.active]="projectForm.controls.cost_in_quote.value"
+                    (click)="projectForm.controls.cost_in_quote.setValue(true)"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    [class.active]="!projectForm.controls.cost_in_quote.value"
+                    (click)="projectForm.controls.cost_in_quote.setValue(false)"
+                  >
+                    No
+                  </button>
+                </div>
+              </label>
+
+              <label class="toggle-field">
+                <span>Default pricing</span>
+                <div class="toggle">
+                  <button
+                    type="button"
+                    [class.active]="isDefaultPricing"
+                    (click)="setDefaultPricing(true)"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    type="button"
+                    [class.active]="!isDefaultPricing"
+                    (click)="setDefaultPricing(false)"
+                  >
+                    No
+                  </button>
+                </div>
+              </label>
+            </div>
+
+            <label>
+              <span>Pricing Profile</span>
+              <app-manager-select
+                formControlName="pricing_profile_id"
+                [options]="pricingOptions"
+                [disabled]="isPricingProfileDisabled"
+                placeholder="Select pricing profile"
+              ></app-manager-select>
+            </label>
+          </div>
 
           <label>
             <span>Description</span>
@@ -1223,27 +1333,30 @@
   <!-- LIST MODE -->
   <ng-container *ngIf="(viewMode$ | async) === 'list'">
     <div class="list" #projectsList>
-      <div class="table" *ngIf="(projectsRaw$ | async) as projects">
-        <div class="thead">
-          <div>Name</div>
-          <div>Client</div>
-          <div>Status</div>
-          <div>Pricing</div>
-          <div class="actions-col">Actions</div>
-        </div>
+        <div class="table" *ngIf="(projectsRaw$ | async) as projects">
+          <div class="thead">
+            <div>Name</div>
+            <div>Client</div>
+            <div>Project Type</div>
+            <div>Default pricing</div>
+            <div>Pricing Profile</div>
+            <div>Status</div>
+            <div class="actions-col">Actions</div>
+          </div>
 
-        <div class="trow" *ngFor="let p of projects; trackBy: trackByProject">
-          <div class="cell strong">{{ p.projectName }}</div>
-          <div class="cell muted">{{ p.clientName || '—' }}</div>
-          <div class="cell">
-            <span class="badge" [class.archived]="p.status === 'cancelled'">
-              {{ formatStatus(p.status) }}
-            </span>
-          </div>
-          <div class="cell muted">
-            {{ p.defaultPricing ? 'Default' : (p.pricingProfileId ? 'Custom' :
-            '—') }}
-          </div>
+          <div class="trow" *ngFor="let p of projects; trackBy: trackByProject">
+            <div class="cell strong">{{ p.projectName }}</div>
+            <div class="cell muted">{{ p.clientName || '—' }}</div>
+            <div class="cell muted">{{ p.projectTypeName || '—' }}</div>
+            <div class="cell muted">{{ p.defaultPricing ? 'Yes' : 'No' }}</div>
+            <div class="cell muted">
+              {{ p.pricingProfileName || (p.pricingProfileId ? 'Custom' : '—') }}
+            </div>
+            <div class="cell">
+              <span class="badge" [class.archived]="p.status === 'cancelled'">
+                {{ formatStatus(p.status) }}
+              </span>
+            </div>
           <div class="cell actions-col">
             <button
               class="btn small secondary"
@@ -1290,9 +1403,15 @@
           </div>
           <div class="meta">
             <div><span>Client:</span> {{ p.clientName || '—' }}</div>
+            <div><span>Project Type:</span> {{ p.projectTypeName || '—' }}</div>
             <div>
-              <span>Pricing:</span> {{ p.defaultPricing ? 'Default' :
-              (p.pricingProfileId ? 'Custom' : '—') }}
+              <span>Default pricing:</span> {{ p.defaultPricing ? 'Yes' : 'No'
+              }}
+            </div>
+            <div>
+              <span>Pricing Profile:</span>
+              {{ p.pricingProfileName || (p.pricingProfileId ? 'Custom' : '—')
+              }}
             </div>
           </div>
           <div class="card-actions">
