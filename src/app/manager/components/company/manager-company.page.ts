@@ -38,6 +38,7 @@ import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_
 import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
 import { selectCurrentUser } from '../../../auth/store/reducers';
 import type { CurrentUserInterface } from '../../../shared/types/currentUser.interface';
+import { AvatarUploadService } from '../../../settings/components/settings/services/avatar-upload.service';
 
 @Component({
   selector: 'app-manager-company-page',
@@ -84,6 +85,12 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     { value: 'archived', label: 'archived' },
   ];
 
+  defaultLogo = '/assets/sophiaAi-logo.svg';
+  logoPreviewUrl: string | null = null;
+  selectedLogoFile?: File;
+  isUploadingLogo = false;
+  logoUploadError: string | null = null;
+
   @ViewChild('companiesList') companiesListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
 
@@ -98,6 +105,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     tel: [''],
     cel: [''],
     status: ['active', [Validators.required]],
+    logo_url: [''],
   });
 
   constructor(
@@ -105,6 +113,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private actions$: Actions,
     private townPlanner: TownPlannerV2Service,
+    private avatarUpload: AvatarUploadService,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
@@ -222,6 +231,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     this.editingCompany$.pipe(takeUntil(this.destroy$)).subscribe((c) => {
       if (!c) return;
 
+      this.resetLogoState();
       this.companyForm.patchValue({
         company_name: c.companyName ?? '',
         legal_name: c.legalName ?? '',
@@ -233,6 +243,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
         tel: c.tel ?? '',
         cel: c.cel ?? '',
         status: c.status ?? 'active',
+        logo_url: c.logoUrl ?? '',
       });
     });
 
@@ -260,6 +271,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     this.infiniteObserver?.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
+    this.revokeLogoPreview();
   }
 
   dismissError(message: string): void {
@@ -274,6 +286,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
 
   openCreate(): void {
     if (!this.isSuperAdmin) return;
+    this.resetLogoState();
     this.companyForm.reset({
       company_name: '',
       legal_name: '',
@@ -285,6 +298,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
       tel: '',
       cel: '',
       status: 'active',
+      logo_url: '',
     });
 
     this.store.dispatch(ManagerCompanyActions.openCompanyCreate());
@@ -336,6 +350,70 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     this.store.dispatch(
       ManagerCompanyActions.archiveCompany({ companyId: c.companyId }),
     );
+  }
+
+  get logoSrc(): string {
+    return this.logoPreviewUrl || this.companyForm.controls.logo_url.value || this.defaultLogo;
+  }
+
+  onLogoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5_000_000) {
+      this.logoUploadError = 'Image is too large. Max size is 5 MB.';
+      input.value = '';
+      return;
+    }
+
+    this.selectedLogoFile = file;
+    this.revokeLogoPreview();
+    this.logoPreviewUrl = URL.createObjectURL(file);
+    this.logoUploadError = null;
+
+    this.uploadLogo();
+  }
+
+  uploadLogo(): void {
+    if (!this.selectedLogoFile || this.isUploadingLogo) return;
+    this.isUploadingLogo = true;
+    this.avatarUpload
+      .uploadViaPresigned(this.selectedLogoFile, 'public/company-logos')
+      .subscribe({
+        next: ({ url }) => {
+          this.companyForm.controls.logo_url.setValue(url);
+          this.revokeLogoPreview();
+          this.selectedLogoFile = undefined;
+          this.isUploadingLogo = false;
+        },
+        error: (err) => {
+          this.isUploadingLogo = false;
+          const raw =
+            err?.error?.error ||
+            err?.error ||
+            err?.message ||
+            'Failed to upload image';
+          this.logoUploadError =
+            typeof raw === 'string' && raw.includes('EntityTooLarge')
+              ? 'Image is too large. Max size is 5 MB.'
+              : raw;
+        },
+      });
+  }
+
+  private revokeLogoPreview(): void {
+    if (this.logoPreviewUrl) {
+      URL.revokeObjectURL(this.logoPreviewUrl);
+      this.logoPreviewUrl = null;
+    }
+  }
+
+  private resetLogoState(): void {
+    this.revokeLogoPreview();
+    this.selectedLogoFile = undefined;
+    this.logoUploadError = null;
+    this.isUploadingLogo = false;
   }
 
   onAddressFocus(): void {

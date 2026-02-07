@@ -8,7 +8,7 @@ export class AvatarUploadService {
   private http = inject(HttpClient);
   private baseUrl = environment.apiUrl;
 
-  uploadViaPresigned(file: File) {
+  uploadViaPresigned(file: File, folder = 'public/avatars') {
     const contentType = file.type || 'application/octet-stream';
 
     return this.http
@@ -29,7 +29,7 @@ export class AvatarUploadService {
       >(`${this.baseUrl}/uploads/presign`, {
         filename: file.name,
         contentType,
-        folder: 'public/avatars',
+        folder,
         strategy: 'post',
       })
       .pipe(

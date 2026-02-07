@@ -161,106 +161,133 @@
 
       <section class="card">
         <form class="form" [formGroup]="companyForm" autocomplete="off">
-          <div class="grid-2">
-            <label>
-              <span>Company Name *</span>
-              <input
-                formControlName="company_name"
-                placeholder="Company name"
-                autocomplete="off"
+          <div class="company-form-grid">
+            <div class="avatar-stack">
+              <img
+                class="avatar-image"
+                [src]="logoSrc"
+                alt="Company logo"
+                referrerpolicy="no-referrer"
               />
-            </label>
-
-            <label>
-              <span>Legal Name</span>
-              <input
-                formControlName="legal_name"
-                placeholder="Legal name"
-                autocomplete="off"
-              />
-            </label>
-          </div>
-
-          <div class="grid-2">
-            <label>
-              <span>Trading Name</span>
-              <input
-                formControlName="trading_name"
-                placeholder="Trading name"
-                autocomplete="off"
-              />
-            </label>
-
-            <label>
-              <span>ABN</span>
-              <input formControlName="abn" placeholder="ABN" />
-            </label>
-          </div>
-
-          <label class="address-label">
-            <span>Address</span>
-            <div class="address-field">
-              <input
-                formControlName="address"
-                placeholder="Street address"
-                (focus)="onAddressFocus()"
-                (blur)="onAddressBlur()"
-                (keydown)="onAddressKeydown($event)"
-                autocomplete="off"
-              />
-              <div
-                class="address-suggestions"
-                *ngIf="showAddressSuggestions && addressSuggestions.length"
-              >
-                <button
-                  type="button"
-                  class="address-suggestion"
-                  *ngFor="let s of addressSuggestions; let i = index"
-                  [class.is-active]="i === addressActiveIndex"
-                  (mousedown)="onAddressSelect(s)"
-                >
-                  {{ s.description }}
-                </button>
+              <div class="avatar-actions">
+                <label class="upload-button">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    (change)="onLogoSelected($event)"
+                    [disabled]="isUploadingLogo"
+                  />
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 5v10"></path>
+                      <path d="M8 9l4-4 4 4"></path>
+                      <path d="M5 19h14"></path>
+                    </svg>
+                  </span>
+                  Upload
+                </label>
+                <span class="upload-hint">PNG/JPG/WebP, up to 5 MB.</span>
+                <span class="upload-error" *ngIf="logoUploadError">
+                  {{ logoUploadError }}
+                </span>
               </div>
             </div>
-          </label>
 
-          <div class="grid-2">
-            <label>
-              <span>Email</span>
-              <input
-                formControlName="email"
-                placeholder="Email"
-                autocomplete="off"
-              />
-            </label>
+            <div class="company-fields-grid">
+              <label>
+                <span>Company Name *</span>
+                <input
+                  formControlName="company_name"
+                  placeholder="Company name"
+                  autocomplete="off"
+                />
+              </label>
 
-            <label>
-              <span>Phone</span>
-              <input formControlName="phone" placeholder="Phone" />
-            </label>
+              <label>
+                <span>Legal Name</span>
+                <input
+                  formControlName="legal_name"
+                  placeholder="Legal name"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Trading Name</span>
+                <input
+                  formControlName="trading_name"
+                  placeholder="Trading name"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>ABN</span>
+                <input formControlName="abn" placeholder="ABN" />
+              </label>
+
+              <label class="address-label">
+                <span>Address</span>
+                <div class="address-field">
+                  <input
+                    formControlName="address"
+                    placeholder="Street address"
+                    (focus)="onAddressFocus()"
+                    (blur)="onAddressBlur()"
+                    (keydown)="onAddressKeydown($event)"
+                    autocomplete="off"
+                  />
+                  <div
+                    class="address-suggestions"
+                    *ngIf="showAddressSuggestions && addressSuggestions.length"
+                  >
+                    <button
+                      type="button"
+                      class="address-suggestion"
+                      *ngFor="let s of addressSuggestions; let i = index"
+                      [class.is-active]="i === addressActiveIndex"
+                      (mousedown)="onAddressSelect(s)"
+                    >
+                      {{ s.description }}
+                    </button>
+                  </div>
+                </div>
+              </label>
+
+              <label>
+                <span>Email</span>
+                <input
+                  formControlName="email"
+                  placeholder="Email"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Phone</span>
+                <input formControlName="phone" placeholder="Phone" />
+              </label>
+
+              <label>
+                <span>Tel</span>
+                <input formControlName="tel" placeholder="Tel" />
+              </label>
+
+              <label>
+                <span>Cel</span>
+                <input formControlName="cel" placeholder="Cel" />
+              </label>
+
+              <label class="span-2">
+                <span>Status</span>
+                <app-manager-select
+                  formControlName="status"
+                  [options]="statusOptions"
+                  placeholder="Select status"
+                ></app-manager-select>
+              </label>
+            </div>
           </div>
-
-          <div class="grid-2">
-            <label>
-              <span>Tel</span>
-              <input formControlName="tel" placeholder="Tel" />
-            </label>
-
-            <label>
-              <span>Cel</span>
-              <input formControlName="cel" placeholder="Cel" />
-            </label>
-          </div>
-
-          <label>
-            <span>Status</span>
-            <app-manager-select
-              formControlName="status"
-              [options]="statusOptions"
-              placeholder="Select status"
-            ></app-manager-select>
-          </label>
         </form>
       </section>
     </ng-container>
@@ -310,106 +337,133 @@
 
       <section class="card">
         <form class="form" [formGroup]="companyForm" autocomplete="off">
-          <div class="grid-2">
-            <label>
-              <span>Company Name *</span>
-              <input
-                formControlName="company_name"
-                placeholder="Company name"
-                autocomplete="off"
+          <div class="company-form-grid">
+            <div class="avatar-stack">
+              <img
+                class="avatar-image"
+                [src]="logoSrc"
+                alt="Company logo"
+                referrerpolicy="no-referrer"
               />
-            </label>
-
-            <label>
-              <span>Legal Name</span>
-              <input
-                formControlName="legal_name"
-                placeholder="Legal name"
-                autocomplete="off"
-              />
-            </label>
-          </div>
-
-          <div class="grid-2">
-            <label>
-              <span>Trading Name</span>
-              <input
-                formControlName="trading_name"
-                placeholder="Trading name"
-                autocomplete="off"
-              />
-            </label>
-
-            <label>
-              <span>ABN</span>
-              <input formControlName="abn" placeholder="ABN" />
-            </label>
-          </div>
-
-          <label class="address-label">
-            <span>Address</span>
-            <div class="address-field">
-              <input
-                formControlName="address"
-                placeholder="Street address"
-                (focus)="onAddressFocus()"
-                (blur)="onAddressBlur()"
-                (keydown)="onAddressKeydown($event)"
-                autocomplete="off"
-              />
-              <div
-                class="address-suggestions"
-                *ngIf="showAddressSuggestions && addressSuggestions.length"
-              >
-                <button
-                  type="button"
-                  class="address-suggestion"
-                  *ngFor="let s of addressSuggestions; let i = index"
-                  [class.is-active]="i === addressActiveIndex"
-                  (mousedown)="onAddressSelect(s)"
-                >
-                  {{ s.description }}
-                </button>
+              <div class="avatar-actions">
+                <label class="upload-button">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    (change)="onLogoSelected($event)"
+                    [disabled]="isUploadingLogo"
+                  />
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 5v10"></path>
+                      <path d="M8 9l4-4 4 4"></path>
+                      <path d="M5 19h14"></path>
+                    </svg>
+                  </span>
+                  Upload
+                </label>
+                <span class="upload-hint">PNG/JPG/WebP, up to 5 MB.</span>
+                <span class="upload-error" *ngIf="logoUploadError">
+                  {{ logoUploadError }}
+                </span>
               </div>
             </div>
-          </label>
 
-          <div class="grid-2">
-            <label>
-              <span>Email</span>
-              <input
-                formControlName="email"
-                placeholder="Email"
-                autocomplete="off"
-              />
-            </label>
+            <div class="company-fields-grid">
+              <label>
+                <span>Company Name *</span>
+                <input
+                  formControlName="company_name"
+                  placeholder="Company name"
+                  autocomplete="off"
+                />
+              </label>
 
-            <label>
-              <span>Phone</span>
-              <input formControlName="phone" placeholder="Phone" />
-            </label>
+              <label>
+                <span>Legal Name</span>
+                <input
+                  formControlName="legal_name"
+                  placeholder="Legal name"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Trading Name</span>
+                <input
+                  formControlName="trading_name"
+                  placeholder="Trading name"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>ABN</span>
+                <input formControlName="abn" placeholder="ABN" />
+              </label>
+
+              <label class="address-label">
+                <span>Address</span>
+                <div class="address-field">
+                  <input
+                    formControlName="address"
+                    placeholder="Street address"
+                    (focus)="onAddressFocus()"
+                    (blur)="onAddressBlur()"
+                    (keydown)="onAddressKeydown($event)"
+                    autocomplete="off"
+                  />
+                  <div
+                    class="address-suggestions"
+                    *ngIf="showAddressSuggestions && addressSuggestions.length"
+                  >
+                    <button
+                      type="button"
+                      class="address-suggestion"
+                      *ngFor="let s of addressSuggestions; let i = index"
+                      [class.is-active]="i === addressActiveIndex"
+                      (mousedown)="onAddressSelect(s)"
+                    >
+                      {{ s.description }}
+                    </button>
+                  </div>
+                </div>
+              </label>
+
+              <label>
+                <span>Email</span>
+                <input
+                  formControlName="email"
+                  placeholder="Email"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Phone</span>
+                <input formControlName="phone" placeholder="Phone" />
+              </label>
+
+              <label>
+                <span>Tel</span>
+                <input formControlName="tel" placeholder="Tel" />
+              </label>
+
+              <label>
+                <span>Cel</span>
+                <input formControlName="cel" placeholder="Cel" />
+              </label>
+
+              <label class="span-2">
+                <span>Status</span>
+                <app-manager-select
+                  formControlName="status"
+                  [options]="statusOptions"
+                  placeholder="Select status"
+                ></app-manager-select>
+              </label>
+            </div>
           </div>
-
-          <div class="grid-2">
-            <label>
-              <span>Tel</span>
-              <input formControlName="tel" placeholder="Tel" />
-            </label>
-
-            <label>
-              <span>Cel</span>
-              <input formControlName="cel" placeholder="Cel" />
-            </label>
-          </div>
-
-          <label>
-            <span>Status</span>
-            <app-manager-select
-              formControlName="status"
-              [options]="statusOptions"
-              placeholder="Select status"
-            ></app-manager-select>
-          </label>
         </form>
       </section>
       </ng-container>

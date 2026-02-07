@@ -1,4 +1,12 @@
-export type ProjectStatus = 'to_do' | 'active' | 'cancelled' | 'archived' | string;
+export type ProjectStatus =
+  | 'to_do'
+  | 'in_progress'
+  | 'quote_approved'
+  | 'done'
+  | 'on_hold'
+  | 'cancelled'
+  | 'archived'
+  | string;
 
 export interface BmProject {
   projectId: string;
@@ -12,12 +20,17 @@ export interface BmProject {
   description?: string | null;
 
   status?: ProjectStatus | null;
+  statusBeforeHold?: ProjectStatus | null;
   defaultPricing?: boolean | null;
   costInQuote?: boolean | null;
   projectTypeId?: string | null;
   projectTypeName?: string | null;
   pricingProfileId?: string | null;
   pricingProfileName?: string | null;
+  invoiceDocumentId?: string | null;
+  invoiceDocNumber?: string | null;
+  invoicePdfUrl?: string | null;
+  invoiceStatus?: string | null;
 
   createdAt?: string | null;
   updatedAt?: string | null;

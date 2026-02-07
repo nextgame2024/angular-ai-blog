@@ -54,7 +54,7 @@
       </label>
     </div>
 
-    <div class="table-head" aria-hidden="true">
+    <div class="table-head project-types-head" aria-hidden="true">
       <div>Name</div>
       <div>Status</div>
       <div class="actions-col">Actions</div>
@@ -89,7 +89,9 @@
   </div>
 
   <ng-container *ngIf="(viewMode$ | async) === 'form'">
-    <ng-container *ngIf="editingProjectType$ | async as projectType; else createBlock">
+    <ng-container
+      *ngIf="editingProjectType$ | async as projectType; else createBlock"
+    >
       <div class="form-header">
         <nav class="breadcrumb" aria-label="Breadcrumb">
           <a routerLink="/manager/menu">Menu</a>
@@ -164,7 +166,11 @@
         class="form-header-actions-row"
         *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
       >
-        <button class="btn primary" type="button" (click)="openMaterialCreate()">
+        <button
+          class="btn primary"
+          type="button"
+          (click)="openMaterialCreate()"
+        >
           <span class="btn-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
               <path d="M12 5v14"></path>
@@ -360,7 +366,12 @@
 
                 <label>
                   <span>Quantity</span>
-                  <input type="number" step="1" min="0" formControlName="quantity" />
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    formControlName="quantity"
+                  />
                 </label>
               </div>
 
@@ -428,17 +439,28 @@
               <div class="actions-col">Actions</div>
             </div>
 
-            <div class="trow" *ngFor="let m of materials; trackBy: trackByMaterial">
+            <div
+              class="trow"
+              *ngFor="let m of materials; trackBy: trackByMaterial"
+            >
               <div class="cell strong">{{ m.materialName }}</div>
-              <div class="cell muted">{{ formatQuantity(m.quantity) ?? '—' }}</div>
               <div class="cell muted">
-                {{ m.unitCostOverride === null || m.unitCostOverride === undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
+                {{ formatQuantity(m.quantity) ?? '—' }}
               </div>
               <div class="cell muted">
-                {{ m.sellCostOverride === null || m.sellCostOverride === undefined ? '—' : (m.sellCostOverride | number : '1.2-2') }}
+                {{ m.unitCostOverride === null || m.unitCostOverride ===
+                undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
+              </div>
+              <div class="cell muted">
+                {{ m.sellCostOverride === null || m.sellCostOverride ===
+                undefined ? '—' : (m.sellCostOverride | number : '1.2-2') }}
               </div>
               <div class="cell actions-col">
-                <button class="btn small secondary" type="button" (click)="openMaterialEdit(m)">
+                <button
+                  class="btn small secondary"
+                  type="button"
+                  (click)="openMaterialEdit(m)"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -447,7 +469,11 @@
                   </span>
                   Edit
                 </button>
-                <button class="btn small danger" type="button" (click)="removeProjectTypeMaterial(projectType.projectTypeId, m)">
+                <button
+                  class="btn small danger"
+                  type="button"
+                  (click)="removeProjectTypeMaterial(projectType.projectTypeId, m)"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M4 8h16"></path>
@@ -463,7 +489,10 @@
           </div>
 
           <div class="cards" *ngIf="(materials$ | async) as materials">
-            <article class="project-card" *ngFor="let m of materials; trackBy: trackByMaterial">
+            <article
+              class="project-card"
+              *ngFor="let m of materials; trackBy: trackByMaterial"
+            >
               <div class="row">
                 <div class="name">{{ m.materialName }}</div>
                 <div class="muted">{{ formatQuantity(m.quantity) ?? '—' }}</div>
@@ -471,15 +500,21 @@
               <div class="meta">
                 <div>
                   <span>Unit Cost:</span>
-                  {{ m.unitCostOverride === null || m.unitCostOverride === undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
+                  {{ m.unitCostOverride === null || m.unitCostOverride ===
+                  undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
                 </div>
                 <div>
                   <span>Sell Cost:</span>
-                  {{ m.sellCostOverride === null || m.sellCostOverride === undefined ? '—' : (m.sellCostOverride | number : '1.2-2') }}
+                  {{ m.sellCostOverride === null || m.sellCostOverride ===
+                  undefined ? '—' : (m.sellCostOverride | number : '1.2-2') }}
                 </div>
               </div>
               <div class="card-actions">
-                <button class="btn small secondary" type="button" (click)="openMaterialEdit(m)">
+                <button
+                  class="btn small secondary"
+                  type="button"
+                  (click)="openMaterialEdit(m)"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -488,7 +523,11 @@
                   </span>
                   Edit
                 </button>
-                <button class="btn small danger" type="button" (click)="removeProjectTypeMaterial(projectType.projectTypeId, m)">
+                <button
+                  class="btn small danger"
+                  type="button"
+                  (click)="removeProjectTypeMaterial(projectType.projectTypeId, m)"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M4 8h16"></path>
@@ -572,7 +611,12 @@
 
                 <label>
                   <span>Quantity</span>
-                  <input type="number" step="1" min="0" formControlName="quantity" />
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    formControlName="quantity"
+                  />
                 </label>
               </div>
 
@@ -642,15 +686,23 @@
 
             <div class="trow" *ngFor="let l of labor; trackBy: trackByLabor">
               <div class="cell strong">{{ l.laborName }}</div>
-              <div class="cell muted">{{ formatQuantity(l.quantity) ?? '—' }}</div>
               <div class="cell muted">
-                {{ l.unitCostOverride === null || l.unitCostOverride === undefined ? '—' : (l.unitCostOverride | number : '1.2-2') }}
+                {{ formatQuantity(l.quantity) ?? '—' }}
               </div>
               <div class="cell muted">
-                {{ l.sellCostOverride === null || l.sellCostOverride === undefined ? '—' : (l.sellCostOverride | number : '1.2-2') }}
+                {{ l.unitCostOverride === null || l.unitCostOverride ===
+                undefined ? '—' : (l.unitCostOverride | number : '1.2-2') }}
+              </div>
+              <div class="cell muted">
+                {{ l.sellCostOverride === null || l.sellCostOverride ===
+                undefined ? '—' : (l.sellCostOverride | number : '1.2-2') }}
               </div>
               <div class="cell actions-col">
-                <button class="btn small secondary" type="button" (click)="openLaborEdit(l)">
+                <button
+                  class="btn small secondary"
+                  type="button"
+                  (click)="openLaborEdit(l)"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -659,7 +711,11 @@
                   </span>
                   Edit
                 </button>
-                <button class="btn small danger" type="button" (click)="removeProjectTypeLabor(projectType.projectTypeId, l)">
+                <button
+                  class="btn small danger"
+                  type="button"
+                  (click)="removeProjectTypeLabor(projectType.projectTypeId, l)"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M4 8h16"></path>
@@ -675,7 +731,10 @@
           </div>
 
           <div class="cards" *ngIf="(labor$ | async) as labor">
-            <article class="project-card" *ngFor="let l of labor; trackBy: trackByLabor">
+            <article
+              class="project-card"
+              *ngFor="let l of labor; trackBy: trackByLabor"
+            >
               <div class="row">
                 <div class="name">{{ l.laborName }}</div>
                 <div class="muted">{{ formatQuantity(l.quantity) ?? '—' }}</div>
@@ -683,15 +742,21 @@
               <div class="meta">
                 <div>
                   <span>Unit Cost:</span>
-                  {{ l.unitCostOverride === null || l.unitCostOverride === undefined ? '—' : (l.unitCostOverride | number : '1.2-2') }}
+                  {{ l.unitCostOverride === null || l.unitCostOverride ===
+                  undefined ? '—' : (l.unitCostOverride | number : '1.2-2') }}
                 </div>
                 <div>
                   <span>Sell Cost:</span>
-                  {{ l.sellCostOverride === null || l.sellCostOverride === undefined ? '—' : (l.sellCostOverride | number : '1.2-2') }}
+                  {{ l.sellCostOverride === null || l.sellCostOverride ===
+                  undefined ? '—' : (l.sellCostOverride | number : '1.2-2') }}
                 </div>
               </div>
               <div class="card-actions">
-                <button class="btn small secondary" type="button" (click)="openLaborEdit(l)">
+                <button
+                  class="btn small secondary"
+                  type="button"
+                  (click)="openLaborEdit(l)"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -700,7 +765,11 @@
                   </span>
                   Edit
                 </button>
-                <button class="btn small danger" type="button" (click)="removeProjectTypeLabor(projectType.projectTypeId, l)">
+                <button
+                  class="btn small danger"
+                  type="button"
+                  (click)="removeProjectTypeLabor(projectType.projectTypeId, l)"
+                >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M4 8h16"></path>
@@ -727,7 +796,9 @@
         <nav class="breadcrumb" aria-label="Breadcrumb">
           <a routerLink="/manager/menu">Menu</a>
           <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()">Project types</a>
+          <a href="#" (click)="$event.preventDefault(); closeForm()"
+            >Project types</a
+          >
           <span class="sep">/</span>
           <span>Create</span>
         </nav>
@@ -802,7 +873,11 @@
             </span>
             Cancel
           </button>
-          <button class="btn primary" type="button" (click)="saveProjectType(false)">
+          <button
+            class="btn primary"
+            type="button"
+            (click)="saveProjectType(false)"
+          >
             <span class="btn-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
                 <path d="M5 5h11l3 3v11H5z"></path>
@@ -819,14 +894,17 @@
   <ng-container *ngIf="(viewMode$ | async) === 'list'">
     <section class="list" #projectTypesList>
       <ng-container *ngIf="projectTypesRaw$ | async as projectTypes">
-        <div class="table" *ngIf="projectTypes.length">
+        <div class="table project-types-table" *ngIf="projectTypes.length">
           <div class="thead">
             <div>Name</div>
             <div>Status</div>
             <div class="actions-col">Actions</div>
           </div>
 
-          <div class="trow" *ngFor="let pt of projectTypes; trackBy: trackByProjectType">
+          <div
+            class="trow"
+            *ngFor="let pt of projectTypes; trackBy: trackByProjectType"
+          >
             <div class="cell strong">{{ pt.name }}</div>
             <div class="cell">
               <span class="badge" [class.archived]="pt.status === 'archived'">
@@ -834,7 +912,11 @@
               </span>
             </div>
             <div class="cell actions-col">
-              <button class="btn small secondary" type="button" (click)="openEdit(pt)">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(pt)"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -843,7 +925,11 @@
                 </span>
                 Edit
               </button>
-              <button class="btn small danger" type="button" (click)="archiveProjectType(pt)">
+              <button
+                class="btn small danger"
+                type="button"
+                (click)="archiveProjectType(pt)"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M4 8h16"></path>
@@ -859,7 +945,10 @@
         </div>
 
         <div class="cards" *ngIf="projectTypes.length">
-          <article class="project-card" *ngFor="let pt of projectTypes; trackBy: trackByProjectType">
+          <article
+            class="project-card"
+            *ngFor="let pt of projectTypes; trackBy: trackByProjectType"
+          >
             <div class="row">
               <div class="name">{{ pt.name }}</div>
               <span class="badge" [class.archived]="pt.status === 'archived'">
@@ -870,7 +959,11 @@
               <div><span>Notes:</span> {{ pt.notes || '—' }}</div>
             </div>
             <div class="card-actions">
-              <button class="btn small secondary" type="button" (click)="openEdit(pt)">
+              <button
+                class="btn small secondary"
+                type="button"
+                (click)="openEdit(pt)"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
@@ -879,7 +972,11 @@
                 </span>
                 Edit
               </button>
-              <button class="btn small danger" type="button" (click)="archiveProjectType(pt)">
+              <button
+                class="btn small danger"
+                type="button"
+                (click)="archiveProjectType(pt)"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M4 8h16"></path>

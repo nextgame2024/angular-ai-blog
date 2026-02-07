@@ -123,6 +123,8 @@ export class ManagerProjectsPageComponent
   statusOptions: ManagerSelectOption[] = [
     { value: 'to_do', label: 'To do' },
     { value: 'in_progress', label: 'In progress' },
+    { value: 'quote_approved', label: 'Quote approved' },
+    { value: 'invoice_process', label: 'Invoice process' },
     { value: 'done', label: 'Done' },
     { value: 'on_hold', label: 'On hold' },
     { value: 'cancelled', label: 'Cancelled' },
@@ -133,6 +135,18 @@ export class ManagerProjectsPageComponent
   projectTypeOptions: ManagerSelectOption[] = [];
   private pricingProfiles$ = new BehaviorSubject<BmPricingProfile[]>([]);
   private defaultPricing$ = new BehaviorSubject<boolean>(false);
+  private suppressStatusUpdate = false;
+  private statusBeforeHold: string | null = null;
+  private currentStatus: string | null = null;
+  isStatusModalOpen = false;
+  statusModalTitle = '';
+  statusModalMessage = '';
+  statusModalConfirmLabel = 'Continue';
+  statusModalCancelLabel = 'Cancel';
+  statusModalShowCancel = false;
+  statusModalTone: 'info' | 'warning' | 'danger' = 'info';
+  private statusModalConfirmAction: (() => void) | null = null;
+  private statusModalCancelAction: (() => void) | null = null;
   materialOptions: ManagerSelectOption[] = [];
   laborOptions: ManagerSelectOption[] = [];
   laborCatalog: { laborId: string; laborName: string; unitCost?: number | null; sellCost?: number | null }[] = [];
@@ -357,6 +371,13 @@ export class ManagerProjectsPageComponent
         }
       });
 
+    this.projectForm.controls.status.valueChanges
+      .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((nextStatus) => {
+        if (this.suppressStatusUpdate) return;
+        this.handleStatusChange(nextStatus);
+      });
+
     this.projectForm.controls.project_type_id.valueChanges
       .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((projectTypeId) => {
@@ -383,6 +404,7 @@ export class ManagerProjectsPageComponent
         this.lastProjectId = project.projectId;
         if (hasProjectChanged || !this.projectForm.dirty) {
           this.suppressProjectTypeApply = true;
+          this.suppressStatusUpdate = true;
           this.projectForm.reset({
             client_id: project.clientId,
             project_type_id: project.projectTypeId ?? null,
@@ -395,6 +417,9 @@ export class ManagerProjectsPageComponent
           });
           this.useDefaultPricing = project.defaultPricing ?? false;
           this.defaultPricing$.next(this.useDefaultPricing);
+          this.currentStatus = project.status ?? 'to_do';
+          this.statusBeforeHold = project.statusBeforeHold ?? null;
+          this.suppressStatusUpdate = false;
           // Ensure default pricing toggle + cost streams are in sync on first load.
           this.projectForm.controls.default_pricing.setValue(
             this.useDefaultPricing,
@@ -424,6 +449,7 @@ export class ManagerProjectsPageComponent
         this.previewLabor$.next([]);
       } else {
         this.lastProjectId = null;
+        this.suppressStatusUpdate = true;
         this.projectForm.reset({
           client_id: '',
           project_type_id: null,
@@ -436,7 +462,10 @@ export class ManagerProjectsPageComponent
         });
         this.useDefaultPricing = false;
         this.defaultPricing$.next(false);
+        this.currentStatus = 'to_do';
+        this.statusBeforeHold = null;
         this.clientSearchCtrl.setValue('', { emitEvent: false });
+        this.suppressStatusUpdate = false;
         this.previewMaterials$.next([]);
         this.previewLabor$.next([]);
       }
@@ -786,6 +815,198 @@ export class ManagerProjectsPageComponent
     return match?.label ?? (status || 'To do');
   }
 
+  get statusSelectOptions(): ManagerSelectOption[] {
+    const current =
+      this.projectForm.controls.status.value ||
+      this.currentStatus ||
+      'to_do';
+    const prevHold = this.statusBeforeHold;
+
+    if (current === 'done' || current === 'cancelled') {
+      return this.statusOptions;
+    }
+
+    if (current === 'on_hold') {
+      if (prevHold) {
+        return this.statusOptions.filter(
+          (opt) =>
+            opt.value === 'on_hold' ||
+            opt.value === prevHold ||
+            opt.value === 'cancelled',
+        );
+      }
+      return this.statusOptions;
+    }
+
+    const allowedMap: Record<string, string[]> = {
+      to_do: ['to_do', 'in_progress', 'on_hold', 'cancelled'],
+      in_progress: ['in_progress', 'quote_approved', 'on_hold', 'cancelled'],
+      quote_approved: [
+        'quote_approved',
+        'invoice_process',
+        'on_hold',
+        'cancelled',
+      ],
+      invoice_process: ['invoice_process', 'done', 'on_hold', 'cancelled'],
+    };
+    const allowed = allowedMap[current] ?? [current];
+    return this.statusOptions.filter((opt) => allowed.includes(opt.value));
+  }
+
+  private handleStatusChange(nextStatus: string | null): void {
+    if (!nextStatus) return;
+    const current = this.currentStatus || nextStatus;
+    if (current === nextStatus) return;
+
+    const locked = current === 'done' || current === 'cancelled';
+    if (locked) {
+      this.openStatusInfoModal({
+        title: 'Status Locked',
+        message: 'Status cannot be changed once it is Done or Cancelled.',
+        tone: 'warning',
+        onConfirm: () => this.revertStatus(current),
+      });
+      return;
+    }
+
+    if (nextStatus === 'done' || nextStatus === 'cancelled') {
+      const title =
+        nextStatus === 'done' ? 'Mark As Done?' : 'Cancel Project?';
+      this.openStatusConfirmModal({
+        title,
+        message: 'Once set, this status cannot be changed. Continue?',
+        tone: 'danger',
+        confirmLabel: 'Yes, continue',
+        onConfirm: () => {
+          this.statusBeforeHold = null;
+          this.currentStatus = nextStatus;
+        },
+        onCancel: () => this.revertStatus(current),
+      });
+      return;
+    }
+
+    if (current === 'on_hold' && nextStatus !== 'on_hold') {
+      if (
+        nextStatus !== 'cancelled' &&
+        this.statusBeforeHold &&
+        nextStatus !== this.statusBeforeHold
+      ) {
+        this.openStatusInfoModal({
+          title: 'Status Restricted',
+          message: `Status can only return to ${this.formatStatus(
+            this.statusBeforeHold,
+          )} after On hold.`,
+          tone: 'warning',
+          onConfirm: () => this.revertStatus(current),
+        });
+        return;
+      }
+      this.statusBeforeHold = null;
+      this.currentStatus = nextStatus;
+      return;
+    }
+
+    if (nextStatus === 'on_hold' && current !== 'on_hold') {
+      this.statusBeforeHold = current;
+      this.currentStatus = nextStatus;
+      return;
+    }
+
+    const allowedMap: Record<string, string[]> = {
+      to_do: ['in_progress', 'on_hold', 'cancelled'],
+      in_progress: ['quote_approved', 'on_hold', 'cancelled'],
+      quote_approved: ['invoice_process', 'on_hold', 'cancelled'],
+      invoice_process: ['done', 'on_hold', 'cancelled'],
+    };
+    const allowed = allowedMap[current] ?? [];
+    if (!allowed.includes(nextStatus) && nextStatus !== current) {
+      this.openStatusInfoModal({
+        title: 'Invalid Transition',
+        message: 'This status change is not allowed.',
+        tone: 'warning',
+        onConfirm: () => this.revertStatus(current),
+      });
+      return;
+    }
+
+    this.currentStatus = nextStatus;
+  }
+
+  private openStatusInfoModal(options: {
+    title: string;
+    message: string;
+    tone?: 'info' | 'warning' | 'danger';
+    confirmLabel?: string;
+    onConfirm?: () => void;
+  }): void {
+    this.statusModalTitle = options.title;
+    this.statusModalMessage = options.message;
+    this.statusModalTone = options.tone ?? 'info';
+    this.statusModalConfirmLabel = options.confirmLabel ?? 'OK';
+    this.statusModalCancelLabel = 'Cancel';
+    this.statusModalShowCancel = false;
+    this.statusModalConfirmAction = options.onConfirm ?? null;
+    this.statusModalCancelAction = null;
+    this.isStatusModalOpen = true;
+  }
+
+  private openStatusConfirmModal(options: {
+    title: string;
+    message: string;
+    tone?: 'info' | 'warning' | 'danger';
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }): void {
+    this.statusModalTitle = options.title;
+    this.statusModalMessage = options.message;
+    this.statusModalTone = options.tone ?? 'info';
+    this.statusModalConfirmLabel = options.confirmLabel ?? 'Continue';
+    this.statusModalCancelLabel = options.cancelLabel ?? 'Cancel';
+    this.statusModalShowCancel = true;
+    this.statusModalConfirmAction = options.onConfirm;
+    this.statusModalCancelAction = options.onCancel ?? null;
+    this.isStatusModalOpen = true;
+  }
+
+  onStatusModalConfirm(): void {
+    const action = this.statusModalConfirmAction;
+    this.closeStatusModal();
+    if (action) {
+      action();
+    }
+  }
+
+  onStatusModalCancel(): void {
+    const action = this.statusModalCancelAction;
+    this.closeStatusModal();
+    if (action) {
+      action();
+    }
+  }
+
+  onStatusModalBackdrop(): void {
+    if (this.statusModalShowCancel) {
+      this.onStatusModalCancel();
+    } else {
+      this.onStatusModalConfirm();
+    }
+  }
+
+  private closeStatusModal(): void {
+    this.isStatusModalOpen = false;
+    this.statusModalConfirmAction = null;
+    this.statusModalCancelAction = null;
+  }
+
+  private revertStatus(status: string): void {
+    this.suppressStatusUpdate = true;
+    this.projectForm.controls.status.setValue(status, { emitEvent: false });
+    this.suppressStatusUpdate = false;
+  }
+
   onClientQueryFocus(): void {
     const query = (this.clientSearchCtrl.value || '').trim();
     if (query.length) {
@@ -1045,14 +1266,16 @@ export class ManagerProjectsPageComponent
   }
 
   archiveProject(project: BmProject): void {
-    const ok = window.confirm(
-      `Archive project "${project.projectName}"?\n\nThis will set status = cancelled.`,
-    );
-    if (!ok) return;
-
-    this.store.dispatch(
-      ManagerProjectsActions.archiveProject({ projectId: project.projectId }),
-    );
+    this.openStatusConfirmModal({
+      title: 'Archive Project?',
+      message: `Archive project "${project.projectName}"?\n\nThis will set status = cancelled.`,
+      tone: 'warning',
+      confirmLabel: 'Archive',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerProjectsActions.archiveProject({ projectId: project.projectId }),
+        ),
+    });
   }
 
   setTab(tab: ProjectFormTab, project: BmProject | null): void {
@@ -1125,17 +1348,19 @@ export class ManagerProjectsPageComponent
   }
 
   removeProjectMaterial(project: BmProject, material: BmProjectMaterial): void {
-    const ok = window.confirm(
-      `Remove material "${material.materialName}" from this project?`,
-    );
-    if (!ok) return;
-
-    this.store.dispatch(
-      ManagerProjectsActions.removeProjectMaterial({
-        projectId: project.projectId,
-        materialId: material.materialId,
-      }),
-    );
+    this.openStatusConfirmModal({
+      title: 'Remove Material?',
+      message: `Remove material "${material.materialName}" from this project?`,
+      tone: 'warning',
+      confirmLabel: 'Remove',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerProjectsActions.removeProjectMaterial({
+            projectId: project.projectId,
+            materialId: material.materialId,
+          }),
+        ),
+    });
   }
 
   openLaborCreate(): void {
@@ -1184,8 +1409,107 @@ export class ManagerProjectsPageComponent
       });
   }
 
+  invoiceProject(project: BmProject | null): void {
+    if (!project?.projectId) return;
+    if (project.invoiceDocumentId) {
+      if (project.status === 'quote_approved') {
+        this.projectsService
+          .updateProject(project.projectId, { status: 'invoice_process' })
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: (res) => {
+              if (res?.project) {
+                this.store.dispatch(
+                  ManagerProjectsActions.saveProjectSuccess({
+                    project: res.project,
+                    closeOnSuccess: false,
+                  }),
+                );
+              }
+            },
+          });
+      }
+      this.openStoredInvoice(project);
+      return;
+    }
+    this.isQuoteLoading = true;
+    this.projectsService
+      .createDocumentFromProject(project.projectId, { type: 'invoice' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          const documentId = res?.document?.documentId;
+          if (!documentId) {
+            this.isQuoteLoading = false;
+            return;
+          }
+          this.refreshProject(project.projectId);
+          const pdfUrl = res?.document?.pdfUrl || res?.document?.pdf_url;
+          if (pdfUrl) {
+            window.open(pdfUrl, '_blank', 'noopener');
+            this.isQuoteLoading = false;
+            return;
+          }
+          this.openInvoicePdf(documentId);
+        },
+        error: () => {
+          this.isQuoteLoading = false;
+        },
+      });
+  }
+
+  openStoredInvoice(project: BmProject | null): void {
+    if (!project) return;
+    const pdfUrl = project.invoicePdfUrl ?? null;
+    if (pdfUrl) {
+      window.open(pdfUrl, '_blank', 'noopener');
+      return;
+    }
+    if (project.invoiceDocumentId) {
+      this.openInvoicePdf(project.invoiceDocumentId);
+    }
+  }
+
+  private refreshProject(projectId: string): void {
+    this.projectsService
+      .getProject(projectId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          if (!res?.project) return;
+          this.store.dispatch(
+            ManagerProjectsActions.saveProjectSuccess({
+              project: res.project,
+              closeOnSuccess: false,
+            }),
+          );
+        },
+      });
+  }
+
   private openQuotePdf(documentId: string): void {
     const url = `${environment.apiUrl}/bm/documents/${documentId}/quote-pdf`;
+    this.http
+      .get(url, { responseType: 'blob' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (blob) => {
+          const file = new Blob([blob], { type: 'application/pdf' });
+          const objUrl = window.URL.createObjectURL(file);
+          window.open(objUrl, '_blank', 'noopener');
+          window.setTimeout(() => window.URL.revokeObjectURL(objUrl), 60_000);
+        },
+        error: () => {
+          this.isQuoteLoading = false;
+        },
+        complete: () => {
+          this.isQuoteLoading = false;
+        },
+      });
+  }
+
+  private openInvoicePdf(documentId: string): void {
+    const url = `${environment.apiUrl}/bm/documents/${documentId}/invoice-pdf`;
     this.http
       .get(url, { responseType: 'blob' })
       .pipe(takeUntil(this.destroy$))
@@ -1234,17 +1558,19 @@ export class ManagerProjectsPageComponent
   }
 
   removeProjectLabor(project: BmProject, labor: BmProjectLabor): void {
-    const ok = window.confirm(
-      `Remove labor "${labor.laborName}" from this project?`,
-    );
-    if (!ok) return;
-
-    this.store.dispatch(
-      ManagerProjectsActions.removeProjectLabor({
-        projectId: project.projectId,
-        laborId: labor.laborId,
-      }),
-    );
+    this.openStatusConfirmModal({
+      title: 'Remove Labor?',
+      message: `Remove labor "${labor.laborName}" from this project?`,
+      tone: 'warning',
+      confirmLabel: 'Remove',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerProjectsActions.removeProjectLabor({
+            projectId: project.projectId,
+            laborId: labor.laborId,
+          }),
+        ),
+    });
   }
 
   trackByProject(_: number, item: BmProject): string {

@@ -153,4 +153,10 @@ export class ManagerProjectsService {
       { document: payload },
     );
   }
+
+  updateDocument(documentId: string, payload: any): Observable<any> {
+    return this.http.put<any>(`${this.apiBase}/bm/documents/${documentId}`, {
+      document: payload,
+    });
+  }
 }

@@ -476,6 +476,14 @@
   align-items: start;
 }
 
+.company-form-grid {
+  display: grid;
+  grid-template-columns: minmax(200px, 240px) minmax(0, 1fr);
+  gap: 1.25rem;
+  padding: 0.25rem 0 0.75rem;
+  align-items: start;
+}
+
 .avatar-stack {
   display: grid;
   gap: 0.5rem;
@@ -486,6 +494,16 @@
   display: grid;
   gap: 0.65rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.company-fields-grid {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.company-fields-grid .span-2 {
+  grid-column: span 2;
 }
 
 .avatar-image {
@@ -543,6 +561,10 @@
     grid-template-columns: 1fr;
   }
 
+  .company-form-grid {
+    grid-template-columns: 1fr;
+  }
+
   .avatar-stack {
     justify-items: center;
     text-align: center;
@@ -550,6 +572,14 @@
 
   .avatar-fields {
     grid-template-columns: 1fr;
+  }
+
+  .company-fields-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .company-fields-grid .span-2 {
+    grid-column: span 1;
   }
 }
 

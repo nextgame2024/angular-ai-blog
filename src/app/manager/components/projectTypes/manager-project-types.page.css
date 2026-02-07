@@ -189,6 +189,11 @@
   background: rgba(255, 255, 255, 0.98);
 }
 
+.project-types-table .thead,
+.project-types-table .trow {
+  grid-template-columns: 1.6fr 1fr 1.1fr;
+}
+
 .search-field {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -931,5 +936,12 @@
 @media (max-width: 899px) {
   .list-header {
     margin-top: 0;
+  }
+}
+
+/* Sticky header row for Project types on desktop */
+@media (min-width: 900px) {
+  .project-types-head {
+    grid-template-columns: 1.6fr 1fr 1.1fr;
   }
 }

@@ -15,6 +15,7 @@ export interface BmCompany {
   phone?: string | null;
   tel?: string | null;
   cel?: string | null;
+  logoUrl?: string | null;
 }
 
 export interface ListCompaniesResponse {
