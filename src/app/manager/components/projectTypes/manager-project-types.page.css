@@ -693,6 +693,10 @@
 .materials-table .trow {
   grid-template-columns: 1.4fr 0.8fr 0.7fr 0.9fr 0.8fr 1.1fr;
 }
+.labor-table .thead,
+.labor-table .trow {
+  grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 1.1fr;
+}
 
 .thead {
   padding: 0.7rem 0.75rem;
@@ -907,6 +911,10 @@
 
   .table-head.materials-head {
     grid-template-columns: 1.4fr 0.8fr 0.7fr 0.9fr 0.8fr 1.1fr;
+  }
+
+  .table-head.labor-head {
+    grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr 1.1fr;
   }
 
   .table {

@@ -703,6 +703,10 @@
 .materials-table .trow {
   grid-template-columns: 1.4fr 1.1fr 0.9fr 0.8fr 0.8fr 1.1fr;
 }
+.labor-table .thead,
+.labor-table .trow {
+  grid-template-columns: 1.4fr 1fr 0.9fr 0.9fr 1.1fr;
+}
 
 .thead {
   padding: 0.7rem 0.75rem;
@@ -916,6 +920,14 @@
     align-items: center;
   }
 
+  .table-head.materials-head {
+    grid-template-columns: 1.4fr 1.1fr 0.9fr 0.8fr 0.8fr 1.1fr;
+  }
+
+  .table-head.labor-head {
+    grid-template-columns: 1.4fr 1fr 0.9fr 0.9fr 1.1fr;
+  }
+
   .table {
     display: block;
   }
@@ -930,6 +942,16 @@
 .table .thead,
 .table .trow {
   grid-template-columns: 1.4fr 1.2fr 1.1fr 0.9fr 1.2fr 0.9fr 0.8fr 1.1fr;
+}
+
+.materials-table .thead,
+.materials-table .trow {
+  grid-template-columns: 1.4fr 1.1fr 0.9fr 0.8fr 0.8fr 1.1fr;
+}
+
+.labor-table .thead,
+.labor-table .trow {
+  grid-template-columns: 1.4fr 1fr 0.9fr 0.9fr 1.1fr;
 }
 
 @media (min-width: 900px) {

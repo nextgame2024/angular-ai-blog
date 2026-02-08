@@ -231,12 +231,12 @@
       </div>
 
       <div
-        class="table-head"
+        class="table-head labor-head"
         *ngIf="(tab$ | async) === 'labor' && (laborViewMode$ | async) === 'list'"
         aria-hidden="true"
       >
-        <div>Labor</div>
-        <div>Quantity</div>
+        <div>Labor Name</div>
+        <div>Unit Type</div>
         <div>Unit Cost</div>
         <div>Sell Cost</div>
         <div class="actions-col">Actions</div>
@@ -398,7 +398,7 @@
 
                 <label>
                   <span>Unit</span>
-                  <input [value]="getSelectedMaterialUnit()" disabled />
+                  <input formControlName="unit" placeholder="Unit" />
                 </label>
               </div>
 
@@ -413,15 +413,36 @@
                   />
                 </label>
                 <label>
-                  <span>Sell Cost</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    formControlName="sell_cost_override"
-                  />
+                  <span>Cost per unit</span>
+                  <input [value]="getCostPerUnit()" disabled />
                 </label>
               </div>
+
+              <div class="grid-2">
+                <label>
+                  <span>Coverage ratio</span>
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    formControlName="coverage_ratio"
+                    (blur)="formatCoverageControl()"
+                  />
+                </label>
+                <label>
+                  <span>Coverage unit</span>
+                  <input formControlName="coverage_unit" />
+                </label>
+              </div>
+
+              <label>
+                <span>Sell Cost</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  formControlName="sell_cost_override"
+                />
+              </label>
 
               <label>
                 <span>Notes</span>
@@ -457,7 +478,10 @@
         </ng-container>
 
         <ng-container *ngIf="(materialsViewMode$ | async) === 'list'">
-          <div class="table materials-table" *ngIf="(materials$ | async) as materials">
+          <div
+            class="table materials-table"
+            *ngIf="(materials$ | async) as materials"
+          >
             <div class="thead">
               <div>Material</div>
               <div>Quantity</div>
@@ -527,9 +551,7 @@
                 <div class="muted">{{ formatQuantity(m.quantity) ?? '—' }}</div>
               </div>
               <div class="meta">
-                <div>
-                  <span>Unit:</span> {{ m.unit || '—' }}
-                </div>
+                <div><span>Unit:</span> {{ m.unit || '—' }}</div>
                 <div>
                   <span>Unit Cost:</span>
                   {{ m.unitCostOverride === null || m.unitCostOverride ===
@@ -613,7 +635,7 @@
             <form class="form" [formGroup]="projectTypeLaborForm">
               <div class="grid-2">
                 <label>
-                  <span>Labor *</span>
+                  <span>Labor Name *</span>
                   <div class="address-field">
                     <input
                       [formControl]="laborSearchCtrl"
@@ -642,13 +664,8 @@
                 </label>
 
                 <label>
-                  <span>Quantity</span>
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    formControlName="quantity"
-                  />
+                  <span>Unit Type</span>
+                  <input formControlName="unit_type" />
                 </label>
               </div>
 
@@ -670,6 +687,22 @@
                     min="0"
                     formControlName="sell_cost_override"
                   />
+                </label>
+              </div>
+
+              <div class="grid-2">
+                <label>
+                  <span>Productivity</span>
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    formControlName="unit_productivity"
+                    (blur)="formatProductivityControl()"
+                  />
+                </label>
+                <label>
+                  <span>Productivity Unit</span>
+                  <input formControlName="productivity_unit" />
                 </label>
               </div>
 
@@ -707,10 +740,10 @@
         </ng-container>
 
         <ng-container *ngIf="(laborViewMode$ | async) === 'list'">
-          <div class="table" *ngIf="(labor$ | async) as labor">
+          <div class="table labor-table" *ngIf="(labor$ | async) as labor">
             <div class="thead">
-              <div>Labor</div>
-              <div>Quantity</div>
+              <div>Labor Name</div>
+              <div>Unit Type</div>
               <div>Unit Cost</div>
               <div>Sell Cost</div>
               <div class="actions-col">Actions</div>
@@ -718,9 +751,7 @@
 
             <div class="trow" *ngFor="let l of labor; trackBy: trackByLabor">
               <div class="cell strong">{{ l.laborName }}</div>
-              <div class="cell muted">
-                {{ formatQuantity(l.quantity) ?? '—' }}
-              </div>
+              <div class="cell muted">{{ l.unitType || '—' }}</div>
               <div class="cell muted">
                 {{ l.unitCostOverride === null || l.unitCostOverride ===
                 undefined ? '—' : (l.unitCostOverride | number : '1.2-2') }}
@@ -769,7 +800,7 @@
             >
               <div class="row">
                 <div class="name">{{ l.laborName }}</div>
-                <div class="muted">{{ formatQuantity(l.quantity) ?? '—' }}</div>
+                <div class="muted">{{ l.unitType || '—' }}</div>
               </div>
               <div class="meta">
                 <div>

@@ -254,12 +254,13 @@
         </div>
 
         <div
-          class="table-head"
+          class="table-head materials-head"
           *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
           aria-hidden="true"
         >
           <div>Material</div>
           <div>Quantity</div>
+          <div>Unit</div>
           <div>Unit Cost</div>
           <div>Sell Cost</div>
           <div class="actions-col">Actions</div>
@@ -281,12 +282,12 @@
         </div>
 
         <div
-          class="table-head"
+          class="table-head labor-head"
           *ngIf="(tab$ | async) === 'labor' && (laborViewMode$ | async) === 'list'"
           aria-hidden="true"
         >
           <div>Labor</div>
-          <div>Quantity</div>
+          <div>Unit Type</div>
           <div>Unit Cost</div>
           <div>Sell Cost</div>
           <div class="actions-col">Actions</div>
@@ -329,16 +330,16 @@
             </div>
           </div>
           <form class="form" [formGroup]="projectForm" autocomplete="off">
-            <div class="grid-2">
-              <label>
-                <span>Project Name *</span>
-                <input
-                  formControlName="project_name"
-                  placeholder="Project name"
-                  autocomplete="off"
-                />
-              </label>
+            <label>
+              <span>Project Name *</span>
+              <input
+                formControlName="project_name"
+                placeholder="Project name"
+                autocomplete="off"
+              />
+            </label>
 
+            <div class="grid-2">
               <label>
                 <span>Project Type</span>
                 <app-manager-select
@@ -346,6 +347,17 @@
                   [options]="projectTypeOptions"
                   placeholder="Select project type"
                 ></app-manager-select>
+              </label>
+
+              <label>
+                <span>Meters Required</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  formControlName="meters_required"
+                  placeholder="0.00"
+                />
               </label>
             </div>
 
@@ -569,40 +581,40 @@
                   </div>
                 </label>
 
-                <div class="grid-2">
-                  <label>
-                    <span>Material *</span>
-                    <div class="address-field">
-                      <input
-                        [formControl]="materialSearchCtrl"
-                        [disabled]="!selectedSupplierId"
-                        [placeholder]="selectedSupplierId ? 'Search material' : 'Select supplier first'"
-                        (input)="onMaterialQueryInput(materialSearchCtrl.value)"
-                        (focus)="onMaterialQueryFocus()"
-                        (blur)="onMaterialQueryBlur()"
-                        (keydown)="onMaterialQueryKeydown($event)"
-                        autocomplete="off"
-                      />
-                      <div
-                        class="address-suggestions"
-                        *ngIf="showMaterialSuggestions && materialSuggestions.length"
+                <label>
+                  <span>Material *</span>
+                  <div class="address-field">
+                    <input
+                      [formControl]="materialSearchCtrl"
+                      [disabled]="!selectedSupplierId"
+                      [placeholder]="selectedSupplierId ? 'Search material' : 'Select supplier first'"
+                      (input)="onMaterialQueryInput(materialSearchCtrl.value)"
+                      (focus)="onMaterialQueryFocus()"
+                      (blur)="onMaterialQueryBlur()"
+                      (keydown)="onMaterialQueryKeydown($event)"
+                      autocomplete="off"
+                    />
+                    <div
+                      class="address-suggestions"
+                      *ngIf="showMaterialSuggestions && materialSuggestions.length"
+                    >
+                      <button
+                        type="button"
+                        class="address-suggestion"
+                        *ngFor="let m of materialSuggestions; let i = index"
+                        [class.is-active]="i === materialActiveIndex"
+                        (click)="onMaterialSelect(m)"
                       >
-                        <button
-                          type="button"
-                          class="address-suggestion"
-                          *ngFor="let m of materialSuggestions; let i = index"
-                          [class.is-active]="i === materialActiveIndex"
-                          (click)="onMaterialSelect(m)"
+                        {{ m.materialName }}
+                        <span class="hint" *ngIf="m.materialCode"
+                          >({{ m.materialCode }})</span
                         >
-                          {{ m.materialName }}
-                          <span class="hint" *ngIf="m.materialCode"
-                            >({{ m.materialCode }})</span
-                          >
-                        </button>
-                      </div>
+                      </button>
                     </div>
-                  </label>
+                  </div>
+                </label>
 
+                <div class="grid-2">
                   <label>
                     <span>Quantity</span>
                     <input
@@ -611,6 +623,11 @@
                       min="0"
                       formControlName="quantity"
                     />
+                  </label>
+
+                  <label>
+                    <span>Unit</span>
+                    <input formControlName="unit" placeholder="Unit" />
                   </label>
                 </div>
 
@@ -625,15 +642,36 @@
                     />
                   </label>
                   <label>
-                    <span>Sell Cost</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      formControlName="sell_cost_override"
-                    />
+                    <span>Cost per unit</span>
+                    <input [value]="getCostPerUnit()" disabled />
                   </label>
                 </div>
+
+                <div class="grid-2">
+                  <label>
+                    <span>Coverage ratio</span>
+                    <input
+                      type="text"
+                      inputmode="decimal"
+                      formControlName="coverage_ratio"
+                      (blur)="formatCoverageControl()"
+                    />
+                  </label>
+                  <label>
+                    <span>Coverage unit</span>
+                    <input formControlName="coverage_unit" />
+                  </label>
+                </div>
+
+                <label>
+                  <span>Sell Cost</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    formControlName="sell_cost_override"
+                  />
+                </label>
 
                 <label>
                   <span>Notes</span>
@@ -673,10 +711,11 @@
           </ng-container>
 
           <ng-container *ngIf="(materialsViewMode$ | async) === 'list'">
-            <div class="table" *ngIf="(materials$ | async) as materials">
+            <div class="table materials-table" *ngIf="(materials$ | async) as materials">
               <div class="thead">
                 <div>Material</div>
                 <div>Quantity</div>
+                <div>Unit</div>
                 <div>Unit Cost</div>
                 <div>Sell Cost</div>
                 <div class="actions-col">Actions</div>
@@ -690,6 +729,7 @@
                 <div class="cell muted">
                   {{ formatQuantity(m.quantity) ?? '—' }}
                 </div>
+                <div class="cell muted">{{ m.unit || '—' }}</div>
                 <div class="cell muted">
                   {{ m.unitCostOverride === null || m.unitCostOverride ===
                   undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
@@ -736,18 +776,19 @@
                 class="project-card"
                 *ngFor="let m of materials; trackBy: trackByMaterial"
               >
-                <div class="row">
-                  <div class="name">{{ m.materialName }}</div>
-                  <div class="muted">
-                    {{ formatQuantity(m.quantity) ?? '—' }}
-                  </div>
+              <div class="row">
+                <div class="name">{{ m.materialName }}</div>
+                <div class="muted">
+                  {{ formatQuantity(m.quantity) ?? '—' }}
                 </div>
-                <div class="meta">
-                  <div>
-                    <span>Unit Cost:</span>
-                    {{ m.unitCostOverride === null || m.unitCostOverride ===
-                    undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
-                  </div>
+              </div>
+              <div class="meta">
+                <div><span>Unit:</span> {{ m.unit || '—' }}</div>
+                <div>
+                  <span>Unit Cost:</span>
+                  {{ m.unitCostOverride === null || m.unitCostOverride ===
+                  undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
+                </div>
                   <div>
                     <span>Sell Cost:</span>
                     {{ m.sellCostOverride === null || m.sellCostOverride ===
@@ -879,13 +920,8 @@
                   </label>
 
                   <label>
-                    <span>Quantity</span>
-                    <input
-                      type="number"
-                      step="1"
-                      min="0"
-                      formControlName="quantity"
-                    />
+                    <span>Unit Type</span>
+                    <input formControlName="unit_type" />
                   </label>
                 </div>
 
@@ -907,6 +943,22 @@
                       min="0"
                       formControlName="sell_cost_override"
                     />
+                  </label>
+                </div>
+
+                <div class="grid-2">
+                  <label>
+                    <span>Productivity</span>
+                    <input
+                      type="text"
+                      inputmode="decimal"
+                      formControlName="unit_productivity"
+                      (blur)="formatProductivityControl()"
+                    />
+                  </label>
+                  <label>
+                    <span>Productivity Unit</span>
+                    <input formControlName="productivity_unit" />
                   </label>
                 </div>
 
@@ -948,10 +1000,10 @@
           </ng-container>
 
           <ng-container *ngIf="(laborViewMode$ | async) === 'list'">
-            <div class="table" *ngIf="(labor$ | async) as labor">
+            <div class="table labor-table" *ngIf="(labor$ | async) as labor">
               <div class="thead">
                 <div>Labor</div>
-                <div>Quantity</div>
+                <div>Unit Type</div>
                 <div>Unit Cost</div>
                 <div>Sell Cost</div>
                 <div class="actions-col">Actions</div>
@@ -960,7 +1012,7 @@
               <div class="trow" *ngFor="let l of labor; trackBy: trackByLabor">
                 <div class="cell strong">{{ l.laborName }}</div>
                 <div class="cell muted">
-                  {{ formatQuantity(l.quantity) ?? '—' }}
+                  {{ l.unitType || '—' }}
                 </div>
                 <div class="cell muted">
                   {{ l.unitCostOverride === null || l.unitCostOverride ===
@@ -1011,7 +1063,7 @@
                 <div class="row">
                   <div class="name">{{ l.laborName }}</div>
                   <div class="muted">
-                    {{ formatQuantity(l.quantity) ?? '—' }}
+                    {{ l.unitType || '—' }}
                   </div>
                 </div>
                 <div class="meta">
@@ -1222,16 +1274,16 @@
           </div>
         </div>
         <form class="form" [formGroup]="projectForm" autocomplete="off">
-          <div class="grid-2">
-            <label>
-              <span>Project Name *</span>
-              <input
-                formControlName="project_name"
-                placeholder="Project name"
-                autocomplete="off"
-              />
-            </label>
+          <label>
+            <span>Project Name *</span>
+            <input
+              formControlName="project_name"
+              placeholder="Project name"
+              autocomplete="off"
+            />
+          </label>
 
+          <div class="grid-2">
             <label>
               <span>Project Type</span>
               <app-manager-select
@@ -1239,6 +1291,17 @@
                 [options]="projectTypeOptions"
                 placeholder="Select project type"
               ></app-manager-select>
+            </label>
+
+            <label>
+              <span>Meters Required</span>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                formControlName="meters_required"
+                placeholder="0.00"
+              />
             </label>
           </div>
 
@@ -1282,14 +1345,14 @@
               </div>
             </label>
 
-              <label>
-                <span>Status</span>
-                <app-manager-select
-                  formControlName="status"
-                  [options]="statusSelectOptions"
-                  placeholder="Select status"
-                ></app-manager-select>
-              </label>
+            <label>
+              <span>Status</span>
+              <app-manager-select
+                formControlName="status"
+                [options]="statusSelectOptions"
+                placeholder="Select status"
+              ></app-manager-select>
+            </label>
           </div>
 
           <div class="grid-2">

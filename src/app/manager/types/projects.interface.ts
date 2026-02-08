@@ -17,6 +17,7 @@ export interface BmProject {
   clientName?: string | null;
 
   projectName: string;
+  metersRequired?: number | null;
   description?: string | null;
 
   status?: ProjectStatus | null;
@@ -42,6 +43,9 @@ export interface BmProjectMaterial {
   supplierId?: string | null;
   supplierName?: string | null;
   materialName: string;
+  unit?: string | null;
+  coverageRatio?: number | null;
+  coverageUnit?: string | null;
   quantity?: number | null;
   unitCostOverride?: number | null;
   sellCostOverride?: number | null;
@@ -53,6 +57,8 @@ export interface BmProjectLabor {
   laborId: string;
   laborName: string;
   unitType?: string | null;
+  unitProductivity?: number | null;
+  productivityUnit?: string | null;
   quantity?: number | null;
   unitCostOverride?: number | null;
   sellCostOverride?: number | null;

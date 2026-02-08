@@ -149,9 +149,25 @@ export class ManagerProjectsPageComponent
   private statusModalCancelAction: (() => void) | null = null;
   materialOptions: ManagerSelectOption[] = [];
   laborOptions: ManagerSelectOption[] = [];
-  laborCatalog: { laborId: string; laborName: string; unitCost?: number | null; sellCost?: number | null }[] = [];
+  laborCatalog: {
+    laborId: string;
+    laborName: string;
+    unitType?: string | null;
+    unitProductivity?: number | null;
+    productivityUnit?: string | null;
+    unitCost?: number | null;
+    sellCost?: number | null;
+  }[] = [];
   laborSearchCtrl: FormControl<string>;
-  laborSuggestions: { laborId: string; laborName: string; unitCost?: number | null; sellCost?: number | null }[] = [];
+  laborSuggestions: {
+    laborId: string;
+    laborName: string;
+    unitType?: string | null;
+    unitProductivity?: number | null;
+    productivityUnit?: string | null;
+    unitCost?: number | null;
+    sellCost?: number | null;
+  }[] = [];
   showLaborSuggestions = false;
   laborActiveIndex = -1;
   clientsCatalog: { clientId: string; clientName: string }[] = [];
@@ -160,6 +176,8 @@ export class ManagerProjectsPageComponent
     materialId: string;
     materialName: string;
     materialCode?: string | null;
+    unit?: string | null;
+    quantity?: number | null;
     unitCost?: number | null;
     sellCost?: number | null;
   }[] = [];
@@ -172,6 +190,8 @@ export class ManagerProjectsPageComponent
     materialId: string;
     materialName: string;
     materialCode?: string | null;
+    unit?: string | null;
+    quantity?: number | null;
     unitCost?: number | null;
     sellCost?: number | null;
   }[] = [];
@@ -194,6 +214,7 @@ export class ManagerProjectsPageComponent
       nonNullable: true,
       validators: [Validators.required],
     }),
+    meters_required: new FormControl<number | null>(null),
     description: new FormControl<string>('', { nonNullable: true }),
     status: new FormControl<string>('to_do', { nonNullable: true }),
     cost_in_quote: new FormControl<boolean>(false, { nonNullable: true }),
@@ -210,6 +231,9 @@ export class ManagerProjectsPageComponent
       nonNullable: true,
       validators: [Validators.required],
     }),
+    unit: new FormControl<string>('', { nonNullable: true }),
+    coverage_ratio: new FormControl<string>('', { nonNullable: true }),
+    coverage_unit: new FormControl<string>('', { nonNullable: true }),
     quantity: new FormControl<number>(1, {
       nonNullable: true,
       validators: [Validators.min(0)],
@@ -224,10 +248,9 @@ export class ManagerProjectsPageComponent
       nonNullable: true,
       validators: [Validators.required],
     }),
-    quantity: new FormControl<number>(1, {
-      nonNullable: true,
-      validators: [Validators.min(0)],
-    }),
+    unit_type: new FormControl<string>('', { nonNullable: true }),
+    unit_productivity: new FormControl<string>('', { nonNullable: true }),
+    productivity_unit: new FormControl<string>('', { nonNullable: true }),
     unit_cost_override: new FormControl<number | null>(null),
     sell_cost_override: new FormControl<number | null>(null),
     notes: new FormControl<string>('', { nonNullable: true }),
@@ -382,18 +405,19 @@ export class ManagerProjectsPageComponent
       .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((projectTypeId) => {
         if (this.suppressProjectTypeApply) return;
+        const normalizedProjectTypeId = projectTypeId || null;
         const project = this.editingProject;
-        if (project?.projectId && projectTypeId) {
-          this.applyProjectType(project.projectId, projectTypeId);
+        if (project?.projectId && normalizedProjectTypeId) {
+          this.applyProjectType(project.projectId, normalizedProjectTypeId);
           return;
         }
         if (!project?.projectId) {
-          if (!projectTypeId) {
+          if (!normalizedProjectTypeId) {
             this.previewMaterials$.next([]);
             this.previewLabor$.next([]);
             return;
           }
-          this.loadProjectTypePreview(projectTypeId);
+          this.loadProjectTypePreview(normalizedProjectTypeId);
         }
       });
 
@@ -409,6 +433,7 @@ export class ManagerProjectsPageComponent
             client_id: project.clientId,
             project_type_id: project.projectTypeId ?? null,
             project_name: project.projectName,
+            meters_required: this.formatMoney(project.metersRequired ?? null),
             description: project.description ?? '',
           status: project.status ?? 'to_do',
           cost_in_quote: project.costInQuote ?? false,
@@ -477,6 +502,9 @@ export class ManagerProjectsPageComponent
         this.projectMaterialForm.reset({
           supplier_id: mat.supplierId ?? '',
           material_id: mat.materialId,
+          unit: mat.unit ?? '',
+          coverage_ratio: this.formatCoverageDisplay(mat.coverageRatio ?? null),
+          coverage_unit: mat.coverageUnit ?? '',
           quantity: this.formatQuantity(mat.quantity ?? 1) ?? 1,
           unit_cost_override: this.formatMoney(mat.unitCostOverride ?? null),
           sell_cost_override: this.formatMoney(mat.sellCostOverride ?? null),
@@ -502,6 +530,9 @@ export class ManagerProjectsPageComponent
         this.projectMaterialForm.reset({
           supplier_id: '',
           material_id: '',
+          unit: '',
+          coverage_ratio: '',
+          coverage_unit: '',
           quantity: 1,
           unit_cost_override: null,
           sell_cost_override: null,
@@ -518,7 +549,11 @@ export class ManagerProjectsPageComponent
       if (labor) {
         this.projectLaborForm.reset({
           labor_id: labor.laborId,
-          quantity: this.formatQuantity(labor.quantity ?? 1) ?? 1,
+          unit_type: labor.unitType ?? '',
+          unit_productivity: this.formatProductivityDisplay(
+            labor.unitProductivity ?? null,
+          ),
+          productivity_unit: labor.productivityUnit ?? '',
           unit_cost_override: this.formatMoney(labor.unitCostOverride ?? null),
           sell_cost_override: this.formatMoney(labor.sellCostOverride ?? null),
           notes: labor.notes ?? '',
@@ -529,7 +564,9 @@ export class ManagerProjectsPageComponent
       } else {
         this.projectLaborForm.reset({
           labor_id: '',
-          quantity: 1,
+          unit_type: '',
+          unit_productivity: '',
+          productivity_unit: '',
           unit_cost_override: null,
           sell_cost_override: null,
           notes: '',
@@ -593,6 +630,12 @@ export class ManagerProjectsPageComponent
     if (useDefaultPricing) {
       payload.pricing_profile_id = null;
     }
+    if (payload.meters_required !== null && payload.meters_required !== undefined) {
+      payload.meters_required = this.formatMoney(payload.meters_required);
+    }
+    if (!payload.project_type_id) {
+      payload.project_type_id = null;
+    }
 
     this.store.dispatch(
       ManagerProjectsActions.saveProject({ payload, closeOnSuccess: false }),
@@ -609,6 +652,12 @@ export class ManagerProjectsPageComponent
     payload.default_pricing = useDefaultPricing;
     if (useDefaultPricing) {
       payload.pricing_profile_id = null;
+    }
+    if (payload.meters_required !== null && payload.meters_required !== undefined) {
+      payload.meters_required = this.formatMoney(payload.meters_required);
+    }
+    if (!payload.project_type_id) {
+      payload.project_type_id = null;
     }
 
     this.store.dispatch(
@@ -651,6 +700,66 @@ export class ManagerProjectsPageComponent
     return Math.round(num * 100) / 100;
   }
 
+  private formatCoverage(
+    value: number | string | null | undefined,
+  ): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) return null;
+    return Math.round(num * 100) / 100;
+  }
+
+  private formatCoverageDisplay(
+    value: number | string | null | undefined,
+  ): string {
+    if (value === null || value === undefined || value === '') return '';
+    const num = Number(value);
+    if (Number.isNaN(num)) return '';
+    return num.toFixed(2);
+  }
+
+  formatCoverageControl(): void {
+    const control = this.projectMaterialForm.controls.coverage_ratio;
+    control.setValue(this.formatCoverageDisplay(control.value), {
+      emitEvent: false,
+    });
+  }
+
+  getCostPerUnit(): string {
+    const qtyRaw = this.projectMaterialForm.controls.quantity.value;
+    const unitCostRaw =
+      this.projectMaterialForm.controls.unit_cost_override.value;
+    const qty = Number(qtyRaw ?? 0);
+    const unitCost = Number(unitCostRaw ?? 0);
+    if (!qty || !Number.isFinite(qty) || !Number.isFinite(unitCost)) return '0.00';
+    return (unitCost / qty).toFixed(2);
+  }
+
+  private formatProductivity(
+    value: number | string | null | undefined,
+  ): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) return null;
+    return Math.round(num * 100) / 100;
+  }
+
+  private formatProductivityDisplay(
+    value: number | string | null | undefined,
+  ): string {
+    if (value === null || value === undefined || value === '') return '';
+    const num = Number(value);
+    if (Number.isNaN(num)) return '';
+    return num.toFixed(2);
+  }
+
+  formatProductivityControl(): void {
+    const control = this.projectLaborForm.controls.unit_productivity;
+    control.setValue(this.formatProductivityDisplay(control.value), {
+      emitEvent: false,
+    });
+  }
+
   private applyProjectType(projectId: string, projectTypeId: string): void {
     this.projectsService
       .updateProject(projectId, { project_type_id: projectTypeId })
@@ -687,6 +796,9 @@ export class ManagerProjectsPageComponent
             supplierId: m.supplierId ?? null,
             supplierName: m.supplierName ?? null,
             materialName: m.materialName || '',
+            unit: m.unit ?? null,
+            coverageRatio: m.coverageRatio ?? null,
+            coverageUnit: m.coverageUnit ?? null,
             quantity: m.quantity ?? 1,
             unitCostOverride: m.unitCostOverride ?? null,
             sellCostOverride: m.sellCostOverride ?? null,
@@ -705,7 +817,9 @@ export class ManagerProjectsPageComponent
             laborId: l.laborId,
             laborName: l.laborName || '',
             unitType: l.unitType ?? null,
-            quantity: l.quantity ?? 1,
+            unitProductivity: l.unitProductivity ?? null,
+            productivityUnit: l.productivityUnit ?? null,
+            quantity: 1,
             unitCostOverride: l.unitCostOverride ?? null,
             sellCostOverride: l.sellCostOverride ?? null,
             notes: l.notes ?? null,
@@ -741,11 +855,19 @@ export class ManagerProjectsPageComponent
     this.showMaterialSuggestions =
       query.trim().length > 0 && this.materialSuggestions.length > 0;
     this.projectMaterialForm.controls.material_id.setValue('');
+    this.projectMaterialForm.controls.quantity.setValue(1);
     if (!value) {
       this.projectMaterialForm.controls.unit_cost_override.setValue(null, {
         emitEvent: false,
       });
       this.projectMaterialForm.controls.sell_cost_override.setValue(null, {
+        emitEvent: false,
+      });
+      this.projectMaterialForm.controls.unit.setValue('', { emitEvent: false });
+      this.projectMaterialForm.controls.coverage_ratio.setValue('', {
+        emitEvent: false,
+      });
+      this.projectMaterialForm.controls.coverage_unit.setValue('', {
         emitEvent: false,
       });
     }
@@ -791,6 +913,8 @@ export class ManagerProjectsPageComponent
   onMaterialSelect(material: {
     materialId: string;
     materialName: string;
+    unit?: string | null;
+    quantity?: number | null;
     unitCost?: number | null;
     sellCost?: number | null;
   }): void {
@@ -806,6 +930,15 @@ export class ManagerProjectsPageComponent
       this.formatMoney(material.sellCost ?? null),
       { emitEvent: false },
     );
+    if (material.unit !== null && material.unit !== undefined) {
+      this.projectMaterialForm.controls.unit.setValue(material.unit);
+    }
+    if (material.quantity !== null && material.quantity !== undefined) {
+      this.projectMaterialForm.controls.quantity.setValue(
+        this.formatQuantity(material.quantity) ?? 1,
+        { emitEvent: false },
+      );
+    }
     this.showMaterialSuggestions = false;
     this.materialActiveIndex = -1;
   }
@@ -1176,6 +1309,14 @@ export class ManagerProjectsPageComponent
     this.loadSupplierMaterials(supplier.supplierId);
     this.materialSearchCtrl.setValue('', { emitEvent: false });
     this.projectMaterialForm.controls.material_id.setValue('');
+    this.projectMaterialForm.controls.unit.setValue('', { emitEvent: false });
+    this.projectMaterialForm.controls.coverage_ratio.setValue('', {
+      emitEvent: false,
+    });
+    this.projectMaterialForm.controls.coverage_unit.setValue('', {
+      emitEvent: false,
+    });
+    this.projectMaterialForm.controls.quantity.setValue(1, { emitEvent: false });
     this.projectMaterialForm.controls.unit_cost_override.setValue(null, {
       emitEvent: false,
     });
@@ -1208,6 +1349,15 @@ export class ManagerProjectsPageComponent
         emitEvent: false,
       });
       this.projectLaborForm.controls.sell_cost_override.setValue(null, {
+        emitEvent: false,
+      });
+      this.projectLaborForm.controls.unit_type.setValue('', {
+        emitEvent: false,
+      });
+      this.projectLaborForm.controls.unit_productivity.setValue('', {
+        emitEvent: false,
+      });
+      this.projectLaborForm.controls.productivity_unit.setValue('', {
         emitEvent: false,
       });
     }
@@ -1252,6 +1402,9 @@ export class ManagerProjectsPageComponent
   onLaborSelect(labor: {
     laborId: string;
     laborName: string;
+    unitType?: string | null;
+    unitProductivity?: number | null;
+    productivityUnit?: string | null;
     unitCost?: number | null;
     sellCost?: number | null;
   }): void {
@@ -1265,6 +1418,21 @@ export class ManagerProjectsPageComponent
       this.formatMoney(labor.sellCost ?? null),
       { emitEvent: false },
     );
+    if (labor.unitType !== null && labor.unitType !== undefined) {
+      this.projectLaborForm.controls.unit_type.setValue(labor.unitType ?? '');
+    }
+    if (labor.unitProductivity !== null && labor.unitProductivity !== undefined) {
+      this.projectLaborForm.controls.unit_productivity.setValue(
+        this.formatProductivityDisplay(labor.unitProductivity ?? null),
+        { emitEvent: false },
+      );
+    }
+    if (labor.productivityUnit !== null && labor.productivityUnit !== undefined) {
+      this.projectLaborForm.controls.productivity_unit.setValue(
+        labor.productivityUnit ?? '',
+        { emitEvent: false },
+      );
+    }
     this.showLaborSuggestions = false;
     this.laborActiveIndex = -1;
   }
@@ -1278,6 +1446,8 @@ export class ManagerProjectsPageComponent
           materialId: m.materialId,
           materialName: m.materialName || '',
           materialCode: m.materialCode ?? null,
+          unit: m.unit ?? null,
+          quantity: m.quantity ?? null,
           unitCost: m.unitCost ?? null,
           sellCost: m.sellCost ?? null,
         }));
@@ -1350,6 +1520,7 @@ export class ManagerProjectsPageComponent
 
     const payload: any = this.projectMaterialForm.getRawValue();
     payload.quantity = this.formatQuantity(payload.quantity ?? 0);
+    payload.coverage_ratio = this.formatCoverage(payload.coverage_ratio);
     if (payload.unit_cost_override !== null) {
       payload.unit_cost_override = this.formatMoney(payload.unit_cost_override);
     }
@@ -1389,7 +1560,9 @@ export class ManagerProjectsPageComponent
   openLaborCreate(): void {
     this.projectLaborForm.reset({
       labor_id: '',
-      quantity: 1,
+      unit_type: '',
+      unit_productivity: '',
+      productivity_unit: '',
       unit_cost_override: null,
       sell_cost_override: null,
       notes: '',
@@ -1559,7 +1732,9 @@ export class ManagerProjectsPageComponent
     }
 
     const payload: any = this.projectLaborForm.getRawValue();
-    payload.quantity = this.formatQuantity(payload.quantity ?? 0);
+    payload.unit_productivity = this.formatProductivity(
+      payload.unit_productivity,
+    );
     if (payload.unit_cost_override !== null) {
       payload.unit_cost_override = this.formatMoney(payload.unit_cost_override);
     }
@@ -1655,10 +1830,13 @@ export class ManagerProjectsPageComponent
       .pipe(takeUntil(this.destroy$))
       .subscribe((res) => {
         const items = res?.items ?? [];
-        this.projectTypeOptions = items.map((pt) => ({
-          value: pt.projectTypeId,
-          label: pt.name,
-        }));
+        this.projectTypeOptions = [
+          { value: '', label: 'Not Selected' },
+          ...items.map((pt) => ({
+            value: pt.projectTypeId,
+            label: pt.name,
+          })),
+        ];
       });
 
     this.suppliersService
@@ -1687,6 +1865,9 @@ export class ManagerProjectsPageComponent
         this.laborCatalog = (res?.items ?? []).map((l) => ({
           laborId: l.laborId,
           laborName: l.laborName,
+          unitType: l.unitType ?? null,
+          unitProductivity: l.unitProductivity ?? null,
+          productivityUnit: l.productivityUnit ?? null,
           unitCost: l.unitCost ?? null,
           sellCost: l.sellCost ?? null,
         }));

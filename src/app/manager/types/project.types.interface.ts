@@ -18,6 +18,8 @@ export interface BmProjectTypeMaterial {
   supplierName?: string | null;
   materialName: string;
   unit?: string | null;
+  coverageRatio?: number | null;
+  coverageUnit?: string | null;
   quantity?: number | null;
   unitCostOverride?: number | null;
   sellCostOverride?: number | null;
@@ -29,9 +31,10 @@ export interface BmProjectTypeLabor {
   laborId: string;
   laborName: string;
   unitType?: string | null;
-  quantity?: number | null;
   unitCostOverride?: number | null;
   sellCostOverride?: number | null;
+  unitProductivity?: number | null;
+  productivityUnit?: string | null;
   notes?: string | null;
 }
 

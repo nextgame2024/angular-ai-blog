@@ -189,7 +189,7 @@
 
           <div class="grid-2">
             <label>
-              <span>Unit Productivity</span>
+              <span>Productivity</span>
               <input
                 formControlName="unit_productivity"
                 type="number"
@@ -314,7 +314,7 @@
 
           <div class="grid-2">
             <label>
-              <span>Unit Productivity</span>
+              <span>Productivity</span>
               <input
                 formControlName="unit_productivity"
                 type="number"
@@ -367,18 +367,12 @@
             <div class="cell strong">{{ l.laborName }}</div>
             <div class="cell muted">{{ l.unitType || '—' }}</div>
             <div class="cell muted">
-              {{
-                l.unitCost === null || l.unitCost === undefined
-                  ? '—'
-                  : (l.unitCost | number : '1.2-2')
-              }}
+              {{ l.unitCost === null || l.unitCost === undefined ? '—' :
+              (l.unitCost | number : '1.2-2') }}
             </div>
             <div class="cell muted">
-              {{
-                l.sellCost === null || l.sellCost === undefined
-                  ? '—'
-                  : (l.sellCost | number : '1.2-2')
-              }}
+              {{ l.sellCost === null || l.sellCost === undefined ? '—' :
+              (l.sellCost | number : '1.2-2') }}
             </div>
             <div class="cell muted">
               {{ formatInt(l.unitProductivity) }}
@@ -437,19 +431,13 @@
               <div><span>Unit Type:</span> {{ l.unitType || '—' }}</div>
               <div>
                 <span>Unit Cost:</span>
-                {{
-                  l.unitCost === null || l.unitCost === undefined
-                    ? '—'
-                    : (l.unitCost | number : '1.2-2')
-                }}
+                {{ l.unitCost === null || l.unitCost === undefined ? '—' :
+                (l.unitCost | number : '1.2-2') }}
               </div>
               <div>
                 <span>Sell Cost:</span>
-                {{
-                  l.sellCost === null || l.sellCost === undefined
-                    ? '—'
-                    : (l.sellCost | number : '1.2-2')
-                }}
+                {{ l.sellCost === null || l.sellCost === undefined ? '—' :
+                (l.sellCost | number : '1.2-2') }}
               </div>
               <div>
                 <span>Productivity:</span>
