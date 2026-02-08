@@ -296,6 +296,14 @@ export class ManagerProjectsPageComponent
       this.projectForm.controls.pricing_profile_id.valueChanges.pipe(
         startWith(this.projectForm.controls.pricing_profile_id.value),
       );
+    const projectTypeId$ =
+      this.projectForm.controls.project_type_id.valueChanges.pipe(
+        startWith(this.projectForm.controls.project_type_id.value),
+      );
+    const metersRequired$ =
+      this.projectForm.controls.meters_required.valueChanges.pipe(
+        startWith(this.projectForm.controls.meters_required.value),
+      );
 
     this.materialsCost$ = combineLatest([
       this.materials$,
@@ -304,8 +312,20 @@ export class ManagerProjectsPageComponent
       this.defaultPricing$,
       pricingProfileId$,
       this.pricingProfiles$,
+      projectTypeId$,
+      metersRequired$,
     ]).pipe(
-      map(([materials, preview, project, useDefault, profileId, profiles]) => {
+      map(
+        ([
+          materials,
+          preview,
+          project,
+          useDefault,
+          profileId,
+          profiles,
+          projectTypeId,
+          metersRequired,
+        ]) => {
         const effectiveProfileId =
           profileId || project?.pricingProfileId || null;
         return this.calculateMaterialsCost(
@@ -313,8 +333,11 @@ export class ManagerProjectsPageComponent
           useDefault,
           effectiveProfileId,
           profiles,
+          projectTypeId,
+          metersRequired,
         );
-      }),
+        },
+      ),
     );
 
     this.laborCost$ = combineLatest([
@@ -324,8 +347,20 @@ export class ManagerProjectsPageComponent
       this.defaultPricing$,
       pricingProfileId$,
       this.pricingProfiles$,
+      projectTypeId$,
+      metersRequired$,
     ]).pipe(
-      map(([labor, preview, project, useDefault, profileId, profiles]) => {
+      map(
+        ([
+          labor,
+          preview,
+          project,
+          useDefault,
+          profileId,
+          profiles,
+          projectTypeId,
+          metersRequired,
+        ]) => {
         const effectiveProfileId =
           profileId || project?.pricingProfileId || null;
         return this.calculateLaborCost(
@@ -333,17 +368,26 @@ export class ManagerProjectsPageComponent
           useDefault,
           effectiveProfileId,
           profiles,
+          projectTypeId,
+          metersRequired,
         );
-      }),
+        },
+      ),
     );
 
     this.netMaterialsCost$ = combineLatest([
       this.materials$,
       this.previewMaterials$,
       this.editingProject$,
+      projectTypeId$,
+      metersRequired$,
     ]).pipe(
-      map(([materials, preview, project]) =>
-        this.calculateNetMaterialsCost(project ? materials : preview),
+      map(([materials, preview, project, projectTypeId, metersRequired]) =>
+        this.calculateNetMaterialsCost(
+          project ? materials : preview,
+          projectTypeId,
+          metersRequired,
+        ),
       ),
     );
 
@@ -351,9 +395,15 @@ export class ManagerProjectsPageComponent
       this.labor$,
       this.previewLabor$,
       this.editingProject$,
+      projectTypeId$,
+      metersRequired$,
     ]).pipe(
-      map(([labor, preview, project]) =>
-        this.calculateNetLaborCost(project ? labor : preview),
+      map(([labor, preview, project, projectTypeId, metersRequired]) =>
+        this.calculateNetLaborCost(
+          project ? labor : preview,
+          projectTypeId,
+          metersRequired,
+        ),
       ),
     );
 
@@ -1940,13 +1990,18 @@ export class ManagerProjectsPageComponent
     useDefaultPricing: boolean,
     pricingProfileId: string | null,
     profiles: BmPricingProfile[],
+    projectTypeId: string | null,
+    metersRequired: number | string | null,
   ): number {
     const items = materials ?? [];
-    const unitSum = items.reduce((sum, m) => {
-      const qty = Number(m.quantity ?? 1);
-      const cost = Number(m.unitCostOverride ?? 0);
-      return sum + cost * qty;
-    }, 0);
+    const useProjectTypeFormula = !!projectTypeId;
+    const net = useProjectTypeFormula
+      ? this.calculateCoverageNet(items, metersRequired)
+      : items.reduce((sum, m) => {
+          const qty = Number(m.quantity ?? 1);
+          const cost = Number(m.unitCostOverride ?? 0);
+          return sum + cost * qty;
+        }, 0);
     const sellSum = items.reduce((sum, m) => {
       const qty = Number(m.quantity ?? 1);
       const cost = Number(m.sellCostOverride ?? 0);
@@ -1955,17 +2010,41 @@ export class ManagerProjectsPageComponent
     if (useDefaultPricing) return sellSum;
     const profile = profiles.find((p) => p.pricingProfileId === pricingProfileId);
     const markup = Number(profile?.materialMarkup ?? 0);
-    return unitSum * (1 + markup);
+    return net * (1 + markup);
   }
 
   private calculateNetMaterialsCost(
     materials: BmProjectMaterial[] | null | undefined,
+    projectTypeId: string | null,
+    metersRequired: number | string | null,
   ): number {
     const items = materials ?? [];
+    if (projectTypeId) {
+      return this.calculateCoverageNet(items, metersRequired);
+    }
     return items.reduce((sum, m) => {
       const qty = Number(m.quantity ?? 1);
       const cost = Number(m.unitCostOverride ?? 0);
       return sum + cost * qty;
+    }, 0);
+  }
+
+  private calculateCoverageNet(
+    materials: BmProjectMaterial[],
+    metersRequired: number | string | null,
+  ): number {
+    const meters = Number(metersRequired ?? 0);
+    if (!Number.isFinite(meters) || meters <= 0) return 0;
+    return materials.reduce((sum, m) => {
+      const coverage = Number(m.coverageRatio ?? 0);
+      if (!Number.isFinite(coverage) || coverage <= 0) return sum;
+      const qty = Number(m.quantity ?? 1);
+      const unitCost = Number(m.unitCostOverride ?? 0);
+      if (!Number.isFinite(unitCost) || !Number.isFinite(qty) || qty <= 0) {
+        return sum;
+      }
+      const costPerUnit = unitCost / qty;
+      return sum + (meters / coverage) * costPerUnit;
     }, 0);
   }
 
@@ -1974,13 +2053,18 @@ export class ManagerProjectsPageComponent
     useDefaultPricing: boolean,
     pricingProfileId: string | null,
     profiles: BmPricingProfile[],
+    projectTypeId: string | null,
+    metersRequired: number | string | null,
   ): number {
     const items = labor ?? [];
-    const unitSum = items.reduce((sum, l) => {
-      const qty = Number(l.quantity ?? 1);
-      const cost = Number(l.unitCostOverride ?? 0);
-      return sum + cost * qty;
-    }, 0);
+    const useProjectTypeFormula = !!projectTypeId;
+    const net = useProjectTypeFormula
+      ? this.calculateProductivityNet(items, metersRequired)
+      : items.reduce((sum, l) => {
+          const qty = Number(l.quantity ?? 1);
+          const cost = Number(l.unitCostOverride ?? 0);
+          return sum + cost * qty;
+        }, 0);
     const sellSum = items.reduce((sum, l) => {
       const qty = Number(l.quantity ?? 1);
       const cost = Number(l.sellCostOverride ?? 0);
@@ -1989,17 +2073,37 @@ export class ManagerProjectsPageComponent
     if (useDefaultPricing) return sellSum;
     const profile = profiles.find((p) => p.pricingProfileId === pricingProfileId);
     const markup = Number(profile?.laborMarkup ?? 0);
-    return unitSum * (1 + markup);
+    return net * (1 + markup);
   }
 
   private calculateNetLaborCost(
     labor: BmProjectLabor[] | null | undefined,
+    projectTypeId: string | null,
+    metersRequired: number | string | null,
   ): number {
     const items = labor ?? [];
+    if (projectTypeId) {
+      return this.calculateProductivityNet(items, metersRequired);
+    }
     return items.reduce((sum, l) => {
       const qty = Number(l.quantity ?? 1);
       const cost = Number(l.unitCostOverride ?? 0);
       return sum + cost * qty;
+    }, 0);
+  }
+
+  private calculateProductivityNet(
+    labor: BmProjectLabor[],
+    metersRequired: number | string | null,
+  ): number {
+    const meters = Number(metersRequired ?? 0);
+    if (!Number.isFinite(meters) || meters <= 0) return 0;
+    return labor.reduce((sum, l) => {
+      const productivity = Number(l.unitProductivity ?? 0);
+      if (!Number.isFinite(productivity) || productivity <= 0) return sum;
+      const unitCost = Number(l.unitCostOverride ?? 0);
+      if (!Number.isFinite(unitCost)) return sum;
+      return sum + (meters / productivity) * unitCost;
     }, 0);
   }
 }
