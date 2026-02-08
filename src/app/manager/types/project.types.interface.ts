@@ -17,6 +17,7 @@ export interface BmProjectTypeMaterial {
   supplierId?: string | null;
   supplierName?: string | null;
   materialName: string;
+  unit?: string | null;
   quantity?: number | null;
   unitCostOverride?: number | null;
   sellCostOverride?: number | null;

@@ -128,6 +128,8 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
     materialCode?: string | null;
     unitCost?: number | null;
     sellCost?: number | null;
+    unit?: string | null;
+    quantity?: number | null;
   }[] = [];
   supplierSearchCtrl: FormControl<string>;
   materialSearchCtrl: FormControl<string>;
@@ -138,6 +140,8 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
     materialCode?: string | null;
     unitCost?: number | null;
     sellCost?: number | null;
+    unit?: string | null;
+    quantity?: number | null;
   }[] = [];
   showSupplierSuggestions = false;
   showMaterialSuggestions = false;
@@ -707,6 +711,7 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
     this.showMaterialSuggestions =
       query.trim().length > 0 && this.materialSuggestions.length > 0;
     this.projectTypeMaterialForm.controls.material_id.setValue(null);
+    this.projectTypeMaterialForm.controls.quantity.setValue(1);
     if (!value) {
       this.projectTypeMaterialForm.controls.unit_cost_override.setValue(null, {
         emitEvent: false,
@@ -759,6 +764,8 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
     materialName: string;
     unitCost?: number | null;
     sellCost?: number | null;
+    unit?: string | null;
+    quantity?: number | null;
   }): void {
     this.projectTypeMaterialForm.controls.material_id.setValue(material.materialId);
     this.materialSearchCtrl.setValue(material.materialName, { emitEvent: false });
@@ -770,8 +777,40 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
       this.formatMoney(material.sellCost ?? null),
       { emitEvent: false },
     );
+    this.projectTypeMaterialForm.controls.quantity.setValue(
+      material.quantity ?? 1,
+    );
     this.showMaterialSuggestions = false;
     this.materialActiveIndex = -1;
+  }
+
+  private applySupplierMaterialDefaults(materialId: string | null): void {
+    if (!materialId) return;
+    const match = this.supplierMaterialsCatalog.find(
+      (m) => m.materialId === materialId,
+    );
+    if (!match) return;
+
+    this.projectTypeMaterialForm.controls.unit_cost_override.setValue(
+      this.formatMoney(match.unitCost ?? null),
+      { emitEvent: false },
+    );
+    this.projectTypeMaterialForm.controls.sell_cost_override.setValue(
+      this.formatMoney(match.sellCost ?? null),
+      { emitEvent: false },
+    );
+    this.projectTypeMaterialForm.controls.quantity.setValue(
+      match.quantity ?? 1,
+    );
+  }
+
+  getSelectedMaterialUnit(): string {
+    const materialId = this.projectTypeMaterialForm.controls.material_id.value;
+    if (!materialId) return this.editingMaterialValue?.unit ?? '';
+    const match = this.supplierMaterialsCatalog.find(
+      (m) => m.materialId === materialId,
+    );
+    return match?.unit ?? this.editingMaterialValue?.unit ?? '';
   }
 
   private updateLaborSuggestions(query: string): void {
@@ -871,8 +910,15 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
             materialCode: m.materialCode ?? null,
             unitCost: m.unitCost ?? null,
             sellCost: m.sellCost ?? null,
+            unit: m.unit ?? null,
+            quantity: m.quantity ?? null,
           }),
         );
+        const currentMaterialId =
+          this.projectTypeMaterialForm.controls.material_id.value;
+        if (currentMaterialId) {
+          this.applySupplierMaterialDefaults(currentMaterialId);
+        }
         const query = (this.materialSearchCtrl.value || '').trim();
         if (query.length) {
           this.updateMaterialSuggestions(query);

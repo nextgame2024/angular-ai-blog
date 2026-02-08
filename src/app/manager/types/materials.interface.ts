@@ -9,6 +9,8 @@ export interface BmMaterial {
   materialName: string;
   code?: string | null;
   category?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
   notes?: string | null;
 
   status?: MaterialStatus | null;

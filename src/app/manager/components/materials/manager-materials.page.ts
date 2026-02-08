@@ -77,6 +77,8 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
     code: [''],
     category: [''],
     type: [''],
+    quantity: [0, [Validators.min(0)]],
+    unit: [''],
     notes: [''],
     status: ['active', [Validators.required]],
   });
@@ -183,6 +185,8 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
         code: m.code ?? '',
         category: m.category ?? '',
         type: m.type ?? '',
+        quantity: m.quantity ?? 0,
+        unit: m.unit ?? '',
         notes: m.notes ?? '',
         status: m.status ?? 'active',
       });
@@ -211,6 +215,8 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
       code: '',
       category: '',
       type: '',
+      quantity: 0,
+      unit: '',
       notes: '',
       status: 'active',
     });
@@ -240,6 +246,9 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
     delete payload.companyId;
     delete payload.material_id;
     delete payload.materialId;
+
+    payload.quantity = Number(payload.quantity ?? 0);
+    if (Number.isNaN(payload.quantity)) payload.quantity = 0;
 
     this.store.dispatch(ManagerMaterialsActions.saveMaterial({ payload }));
   }

@@ -377,6 +377,16 @@
                     </button>
                   </div>
                 </div>
+                <div
+                  class="error-text"
+                  *ngIf="projectForm.controls.client_id.touched && projectForm.controls.client_id.invalid"
+                >
+                  {{
+                    projectForm.controls.client_id.hasError('invalidSelection')
+                      ? 'Please select a valid client.'
+                      : 'Client is required.'
+                  }}
+                </div>
               </label>
 
               <label>
@@ -1111,7 +1121,7 @@
                   <path d="M9 5v6h6V5"></path>
                 </svg>
               </span>
-              Save
+              Save & Close
             </button>
           </div>
         </div>
@@ -1259,6 +1269,16 @@
                     {{ c.clientName }}
                   </button>
                 </div>
+              </div>
+              <div
+                class="error-text"
+                *ngIf="projectForm.controls.client_id.touched && projectForm.controls.client_id.invalid"
+              >
+                {{
+                  projectForm.controls.client_id.hasError('invalidSelection')
+                    ? 'Please select a valid client.'
+                    : 'Client is required.'
+                }}
               </div>
             </label>
 

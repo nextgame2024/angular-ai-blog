@@ -1017,6 +1017,21 @@ export class ManagerProjectsPageComponent
 
   onClientQueryBlur(): void {
     window.setTimeout(() => {
+      const clientControl = this.projectForm.controls.client_id;
+      if (!clientControl.value) {
+        const query = (this.clientSearchCtrl.value || '').trim().toLowerCase();
+        if (query.length) {
+          const exact = this.clientsCatalog.find(
+            (c) => (c.clientName || '').toLowerCase() === query,
+          );
+          if (exact) {
+            this.onClientSelect(exact);
+          } else {
+            clientControl.setErrors({ invalidSelection: true });
+            clientControl.markAsTouched();
+          }
+        }
+      }
       this.showClientSuggestions = false;
       this.clientActiveIndex = -1;
     }, 120);
@@ -1047,14 +1062,22 @@ export class ManagerProjectsPageComponent
 
   onClientQueryInput(value: string): void {
     const query = (value || '').trim();
-    this.projectForm.controls.client_id.setValue('');
+    const clientControl = this.projectForm.controls.client_id;
+    clientControl.setValue('');
+    if (clientControl.hasError('invalidSelection')) {
+      clientControl.setErrors(null);
+    }
     this.updateClientSuggestions(query);
     this.showClientSuggestions =
       query.length > 0 && this.clientSuggestions.length > 0;
   }
 
   onClientSelect(client: { clientId: string; clientName: string }): void {
-    this.projectForm.controls.client_id.setValue(client.clientId);
+    const clientControl = this.projectForm.controls.client_id;
+    clientControl.setValue(client.clientId);
+    if (clientControl.hasError('invalidSelection')) {
+      clientControl.setErrors(null);
+    }
     this.clientSearchCtrl.setValue(client.clientName, { emitEvent: false });
     this.clientSuggestions = [];
     this.showClientSuggestions = false;

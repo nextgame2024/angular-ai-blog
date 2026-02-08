@@ -37,6 +37,8 @@ export interface BmSupplierMaterial {
   leadTimeDays?: number | null;
   unitCost?: number | null;
   sellCost?: number | null;
+  quantity?: number | null;
+  unit?: string | null;
   createdAt?: string | null;
 }
 

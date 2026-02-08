@@ -135,13 +135,20 @@
         </div>
       </div>
 
-      <section class="tabs">
+      <div class="form-tabs">
         <button
           type="button"
           class="tab"
           [class.active]="(tab$ | async) === 'details'"
           (click)="setTab('details', projectType.projectTypeId)"
         >
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 10v6"></path>
+              <path d="M12 7h.01"></path>
+            </svg>
+          </span>
           Details
         </button>
         <button
@@ -150,6 +157,14 @@
           [class.active]="(tab$ | async) === 'materials'"
           (click)="setTab('materials', projectType.projectTypeId)"
         >
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 6h16"></path>
+              <path d="M4 10h16"></path>
+              <path d="M4 14h16"></path>
+              <path d="M4 18h16"></path>
+            </svg>
+          </span>
           Materials
         </button>
         <button
@@ -158,9 +173,15 @@
           [class.active]="(tab$ | async) === 'labor'"
           (click)="setTab('labor', projectType.projectTypeId)"
         >
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="8"></circle>
+              <path d="M12 7v5l3.5 2"></path>
+            </svg>
+          </span>
           Labor
         </button>
-      </section>
+      </div>
 
       <div
         class="form-header-actions-row"
@@ -182,12 +203,13 @@
       </div>
 
       <div
-        class="table-head"
+        class="table-head materials-head"
         *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
         aria-hidden="true"
       >
         <div>Material</div>
         <div>Quantity</div>
+        <div>Unit</div>
         <div>Unit Cost</div>
         <div>Sell Cost</div>
         <div class="actions-col">Actions</div>
@@ -330,40 +352,40 @@
                 </div>
               </label>
 
-              <div class="grid-2">
-                <label>
-                  <span>Material *</span>
-                  <div class="address-field">
-                    <input
-                      [formControl]="materialSearchCtrl"
-                      [disabled]="!selectedSupplierId"
-                      [placeholder]="selectedSupplierId ? 'Search material' : 'Select supplier first'"
-                      (input)="onMaterialQueryInput(materialSearchCtrl.value)"
-                      (focus)="onMaterialQueryFocus()"
-                      (blur)="onMaterialQueryBlur()"
-                      (keydown)="onMaterialQueryKeydown($event)"
-                      autocomplete="off"
-                    />
-                    <div
-                      class="address-suggestions"
-                      *ngIf="showMaterialSuggestions && materialSuggestions.length"
+              <label>
+                <span>Material *</span>
+                <div class="address-field">
+                  <input
+                    [formControl]="materialSearchCtrl"
+                    [disabled]="!selectedSupplierId"
+                    [placeholder]="selectedSupplierId ? 'Search material' : 'Select supplier first'"
+                    (input)="onMaterialQueryInput(materialSearchCtrl.value)"
+                    (focus)="onMaterialQueryFocus()"
+                    (blur)="onMaterialQueryBlur()"
+                    (keydown)="onMaterialQueryKeydown($event)"
+                    autocomplete="off"
+                  />
+                  <div
+                    class="address-suggestions"
+                    *ngIf="showMaterialSuggestions && materialSuggestions.length"
+                  >
+                    <button
+                      type="button"
+                      class="address-suggestion"
+                      *ngFor="let m of materialSuggestions; let i = index"
+                      [class.is-active]="i === materialActiveIndex"
+                      (click)="onMaterialSelect(m)"
                     >
-                      <button
-                        type="button"
-                        class="address-suggestion"
-                        *ngFor="let m of materialSuggestions; let i = index"
-                        [class.is-active]="i === materialActiveIndex"
-                        (click)="onMaterialSelect(m)"
+                      {{ m.materialName }}
+                      <span class="hint" *ngIf="m.materialCode"
+                        >({{ m.materialCode }})</span
                       >
-                        {{ m.materialName }}
-                        <span class="hint" *ngIf="m.materialCode"
-                          >({{ m.materialCode }})</span
-                        >
-                      </button>
-                    </div>
+                    </button>
                   </div>
-                </label>
+                </div>
+              </label>
 
+              <div class="grid-2">
                 <label>
                   <span>Quantity</span>
                   <input
@@ -372,6 +394,11 @@
                     min="0"
                     formControlName="quantity"
                   />
+                </label>
+
+                <label>
+                  <span>Unit</span>
+                  <input [value]="getSelectedMaterialUnit()" disabled />
                 </label>
               </div>
 
@@ -430,10 +457,11 @@
         </ng-container>
 
         <ng-container *ngIf="(materialsViewMode$ | async) === 'list'">
-          <div class="table" *ngIf="(materials$ | async) as materials">
+          <div class="table materials-table" *ngIf="(materials$ | async) as materials">
             <div class="thead">
               <div>Material</div>
               <div>Quantity</div>
+              <div>Unit</div>
               <div>Unit Cost</div>
               <div>Sell Cost</div>
               <div class="actions-col">Actions</div>
@@ -447,6 +475,7 @@
               <div class="cell muted">
                 {{ formatQuantity(m.quantity) ?? '—' }}
               </div>
+              <div class="cell muted">{{ m.unit || '—' }}</div>
               <div class="cell muted">
                 {{ m.unitCostOverride === null || m.unitCostOverride ===
                 undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
@@ -498,6 +527,9 @@
                 <div class="muted">{{ formatQuantity(m.quantity) ?? '—' }}</div>
               </div>
               <div class="meta">
+                <div>
+                  <span>Unit:</span> {{ m.unit || '—' }}
+                </div>
                 <div>
                   <span>Unit Cost:</span>
                   {{ m.unitCostOverride === null || m.unitCostOverride ===
@@ -835,11 +867,38 @@
         </div>
       </div>
 
-      <section class="tabs">
-        <button type="button" class="tab active">Details</button>
-        <button type="button" class="tab" disabled>Materials</button>
-        <button type="button" class="tab" disabled>Labor</button>
-      </section>
+      <div class="form-tabs">
+        <button type="button" class="tab active">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9"></circle>
+              <path d="M12 10v6"></path>
+              <path d="M12 7h.01"></path>
+            </svg>
+          </span>
+          Details
+        </button>
+        <button type="button" class="tab" disabled>
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 6h16"></path>
+              <path d="M4 10h16"></path>
+              <path d="M4 14h16"></path>
+              <path d="M4 18h16"></path>
+            </svg>
+          </span>
+          Materials
+        </button>
+        <button type="button" class="tab" disabled>
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="8"></circle>
+              <path d="M12 7v5l3.5 2"></path>
+            </svg>
+          </span>
+          Labor
+        </button>
+      </div>
 
       <section class="card">
         <form class="form" [formGroup]="projectTypeForm">

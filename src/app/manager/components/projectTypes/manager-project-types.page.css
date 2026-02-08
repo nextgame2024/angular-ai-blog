@@ -691,7 +691,7 @@
 }
 .materials-table .thead,
 .materials-table .trow {
-  grid-template-columns: 1.4fr 1.1fr 0.9fr 0.8fr 0.8fr 1.1fr;
+  grid-template-columns: 1.4fr 0.8fr 0.7fr 0.9fr 0.8fr 1.1fr;
 }
 
 .thead {
@@ -903,6 +903,10 @@
     grid-template-columns: 1.4fr 1.2fr 1fr 0.8fr 1.1fr;
     gap: 0.5rem;
     align-items: center;
+  }
+
+  .table-head.materials-head {
+    grid-template-columns: 1.4fr 0.8fr 0.7fr 0.9fr 0.8fr 1.1fr;
   }
 
   .table {

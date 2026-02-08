@@ -142,7 +142,7 @@ export class ManagerSuppliersPageComponent
   dismissedWarnings = new Set<string>();
 
   materialsCatalog: BmMaterial[] = [];
-  private materialsMap = new Map<string, string>();
+  private materialsMap = new Map<string, BmMaterial>();
   materialSearchCtrl: FormControl<string>;
   materialSuggestions: BmMaterial[] = [];
   showMaterialSuggestions = false;
@@ -616,7 +616,32 @@ export class ManagerSuppliersPageComponent
 
   getMaterialName(materialId?: string | null): string {
     if (!materialId) return '—';
-    return this.materialsMap.get(materialId) || materialId;
+    return this.materialsMap.get(materialId)?.materialName || materialId;
+  }
+
+  getMaterialQuantity(materialId?: string | null, fallback?: number | null): number | null {
+    if (fallback !== null && fallback !== undefined) return fallback;
+    if (!materialId) return null;
+    return this.materialsMap.get(materialId)?.quantity ?? null;
+  }
+
+  getMaterialUnit(materialId?: string | null, fallback?: string | null): string | null {
+    if (fallback !== null && fallback !== undefined) return fallback;
+    if (!materialId) return null;
+    return this.materialsMap.get(materialId)?.unit ?? null;
+  }
+
+  getSelectedMaterialQuantity(): string {
+    const materialId = this.supplierMaterialForm.controls.material_id.value || null;
+    const quantity = this.getMaterialQuantity(materialId);
+    if (quantity === null || quantity === undefined) return '';
+    return String(quantity);
+  }
+
+  getSelectedMaterialUnit(): string {
+    const materialId = this.supplierMaterialForm.controls.material_id.value || null;
+    const unit = this.getMaterialUnit(materialId);
+    return unit ?? '';
   }
 
   private formatMoney(value: number | string | null | undefined): number | null {
@@ -769,7 +794,7 @@ export class ManagerSuppliersPageComponent
       .subscribe((res) => {
         this.materialsCatalog = res.items ?? [];
         this.materialsMap = new Map(
-          this.materialsCatalog.map((m) => [m.materialId, m.materialName]),
+          this.materialsCatalog.map((m) => [m.materialId, m]),
         );
         const currentId = this.supplierMaterialForm.controls.material_id.value;
         if (currentId) {

@@ -251,6 +251,8 @@
           aria-hidden="true"
         >
           <div>Material</div>
+          <div>Quantity</div>
+          <div>Unit</div>
           <div>Supplier SKU</div>
           <div>Lead Time</div>
           <div>Unit Cost</div>
@@ -621,6 +623,26 @@
 
               <div class="grid-2">
                 <label>
+                  <span>Quantity</span>
+                  <input
+                    [value]="getSelectedMaterialQuantity()"
+                    placeholder="0"
+                    disabled
+                  />
+                </label>
+
+                <label>
+                  <span>Unit</span>
+                  <input
+                    [value]="getSelectedMaterialUnit()"
+                    placeholder="Unit"
+                    disabled
+                  />
+                </label>
+              </div>
+
+              <div class="grid-2">
+                <label>
                   <span>Supplier SKU</span>
                   <input formControlName="supplier_sku" placeholder="SKU" />
                 </label>
@@ -701,6 +723,8 @@
               <div class="table materials-table" *ngIf="materials.length">
                 <div class="thead">
                   <div>Material</div>
+                  <div>Quantity</div>
+                  <div>Unit</div>
                   <div>Supplier SKU</div>
                   <div>Lead Time</div>
                   <div>Unit Cost</div>
@@ -714,6 +738,14 @@
                 >
                   <div class="cell strong">
                     {{ getMaterialName(sm.materialId) }}
+                  </div>
+                  <div class="cell muted">
+                    {{
+                      (sm.quantity ?? getMaterialQuantity(sm.materialId)) ?? '—'
+                    }}
+                  </div>
+                  <div class="cell muted">
+                    {{ (sm.unit ?? getMaterialUnit(sm.materialId)) || '—' }}
                   </div>
                   <div class="cell muted">{{ sm.supplierSku || '—' }}</div>
                   <div class="cell muted">{{ sm.leadTimeDays ?? '—' }}</div>
@@ -773,6 +805,17 @@
                     <div class="muted">{{ sm.supplierSku || '—' }}</div>
                   </div>
                   <div class="meta">
+                    <div>
+                      <span>Quantity:</span>
+                      {{
+                        (sm.quantity ?? getMaterialQuantity(sm.materialId)) ??
+                          '—'
+                      }}
+                    </div>
+                    <div>
+                      <span>Unit:</span>
+                      {{ (sm.unit ?? getMaterialUnit(sm.materialId)) || '—' }}
+                    </div>
                     <div>
                       <span>Lead Time:</span> {{ sm.leadTimeDays ?? '—' }}
                     </div>
