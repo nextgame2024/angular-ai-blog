@@ -328,13 +328,17 @@ export class ManagerProjectsPageComponent
         ]) => {
         const effectiveProfileId =
           profileId || project?.pricingProfileId || null;
+        const effectiveProjectTypeId =
+          projectTypeId || project?.projectTypeId || null;
+        const effectiveMetersRequired =
+          metersRequired ?? project?.metersRequired ?? null;
         return this.calculateMaterialsCost(
           project ? materials : preview,
           useDefault,
           effectiveProfileId,
           profiles,
-          projectTypeId,
-          metersRequired,
+          effectiveProjectTypeId,
+          effectiveMetersRequired,
         );
         },
       ),
@@ -363,13 +367,17 @@ export class ManagerProjectsPageComponent
         ]) => {
         const effectiveProfileId =
           profileId || project?.pricingProfileId || null;
+        const effectiveProjectTypeId =
+          projectTypeId || project?.projectTypeId || null;
+        const effectiveMetersRequired =
+          metersRequired ?? project?.metersRequired ?? null;
         return this.calculateLaborCost(
           project ? labor : preview,
           useDefault,
           effectiveProfileId,
           profiles,
-          projectTypeId,
-          metersRequired,
+          effectiveProjectTypeId,
+          effectiveMetersRequired,
         );
         },
       ),
@@ -382,13 +390,17 @@ export class ManagerProjectsPageComponent
       projectTypeId$,
       metersRequired$,
     ]).pipe(
-      map(([materials, preview, project, projectTypeId, metersRequired]) =>
-        this.calculateNetMaterialsCost(
+      map(([materials, preview, project, projectTypeId, metersRequired]) => {
+        const effectiveProjectTypeId =
+          projectTypeId || project?.projectTypeId || null;
+        const effectiveMetersRequired =
+          metersRequired ?? project?.metersRequired ?? null;
+        return this.calculateNetMaterialsCost(
           project ? materials : preview,
-          projectTypeId,
-          metersRequired,
-        ),
-      ),
+          effectiveProjectTypeId,
+          effectiveMetersRequired,
+        );
+      }),
     );
 
     this.netLaborCost$ = combineLatest([
@@ -398,13 +410,17 @@ export class ManagerProjectsPageComponent
       projectTypeId$,
       metersRequired$,
     ]).pipe(
-      map(([labor, preview, project, projectTypeId, metersRequired]) =>
-        this.calculateNetLaborCost(
+      map(([labor, preview, project, projectTypeId, metersRequired]) => {
+        const effectiveProjectTypeId =
+          projectTypeId || project?.projectTypeId || null;
+        const effectiveMetersRequired =
+          metersRequired ?? project?.metersRequired ?? null;
+        return this.calculateNetLaborCost(
           project ? labor : preview,
-          projectTypeId,
-          metersRequired,
-        ),
-      ),
+          effectiveProjectTypeId,
+          effectiveMetersRequired,
+        );
+      }),
     );
 
     this.searchCtrl.valueChanges
@@ -529,6 +545,7 @@ export class ManagerProjectsPageComponent
           client_id: '',
           project_type_id: null,
           project_name: '',
+          meters_required: null,
           description: '',
           status: 'to_do',
           cost_in_quote: false,
