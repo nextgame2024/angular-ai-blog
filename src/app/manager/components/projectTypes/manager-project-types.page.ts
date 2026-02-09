@@ -107,6 +107,15 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
   dismissedErrors = new Set<string>();
   dismissedWarnings = new Set<string>();
   private closeAfterSave = false;
+  isConfirmModalOpen = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmLabel = 'Continue';
+  confirmModalCancelLabel = 'Cancel';
+  confirmModalShowCancel = false;
+  confirmModalTone: 'info' | 'warning' | 'danger' = 'info';
+  private confirmModalConfirmAction: (() => void) | null = null;
+  private confirmModalCancelAction: (() => void) | null = null;
 
   statusOptions: ManagerSelectOption[] = [
     { value: 'active', label: 'active' },
@@ -443,16 +452,24 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
     this.saveProjectType(true);
   }
 
-  archiveProjectType(pt: BmProjectType): void {
-    const ok = window.confirm(
-      `Archive project type "${pt.name}"?\n\nThis is a soft-delete (status = archived).`,
-    );
-    if (!ok) return;
-    this.store.dispatch(
-      ManagerProjectTypesActions.archiveProjectType({
-        projectTypeId: pt.projectTypeId,
-      }),
-    );
+  removeProjectType(pt: BmProjectType): void {
+    const hasProjects = !!pt.hasProjects;
+    const title = hasProjects ? 'Archive Project Type?' : 'Delete Project Type?';
+    const message = hasProjects
+      ? `Are you sure you want to archive "${pt.name}"?`
+      : `Are you sure you want to delete "${pt.name}"?`;
+    this.openConfirmModal({
+      title,
+      message,
+      tone: hasProjects ? 'warning' : 'danger',
+      confirmLabel: hasProjects ? 'Archive' : 'Delete',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerProjectTypesActions.removeProjectType({
+            projectTypeId: pt.projectTypeId,
+          }),
+        ),
+    });
   }
 
   openMaterialCreate(): void {
@@ -504,14 +521,19 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
   }
 
   removeProjectTypeMaterial(projectTypeId: string, m: BmProjectTypeMaterial): void {
-    const ok = window.confirm(`Remove material "${m.materialName}"?`);
-    if (!ok) return;
-    this.store.dispatch(
-      ManagerProjectTypesActions.removeProjectTypeMaterial({
-        projectTypeId,
-        materialId: m.materialId,
-      }),
-    );
+    this.openConfirmModal({
+      title: 'Delete Material?',
+      message: `Are you sure you want to delete "${m.materialName}"?`,
+      tone: 'danger',
+      confirmLabel: 'Delete',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerProjectTypesActions.removeProjectTypeMaterial({
+            projectTypeId,
+            materialId: m.materialId,
+          }),
+        ),
+    });
   }
 
   openLaborCreate(): void {
@@ -560,14 +582,19 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
   }
 
   removeProjectTypeLabor(projectTypeId: string, l: BmProjectTypeLabor): void {
-    const ok = window.confirm(`Remove labor "${l.laborName}"?`);
-    if (!ok) return;
-    this.store.dispatch(
-      ManagerProjectTypesActions.removeProjectTypeLabor({
-        projectTypeId,
-        laborId: l.laborId,
-      }),
-    );
+    this.openConfirmModal({
+      title: 'Delete Labor?',
+      message: `Are you sure you want to delete "${l.laborName}"?`,
+      tone: 'danger',
+      confirmLabel: 'Delete',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerProjectTypesActions.removeProjectTypeLabor({
+            projectTypeId,
+            laborId: l.laborId,
+          }),
+        ),
+    });
   }
 
   formatQuantity(value: number | null | undefined): string | null {
@@ -1120,5 +1147,51 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
     this.store.dispatch(
       ManagerProjectTypesActions.loadProjectTypes({ page: this.currentPage + 1 }),
     );
+  }
+
+  private openConfirmModal(options: {
+    title: string;
+    message: string;
+    tone?: 'info' | 'warning' | 'danger';
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }): void {
+    this.confirmModalTitle = options.title;
+    this.confirmModalMessage = options.message;
+    this.confirmModalTone = options.tone ?? 'info';
+    this.confirmModalConfirmLabel = options.confirmLabel ?? 'Continue';
+    this.confirmModalCancelLabel = options.cancelLabel ?? 'Cancel';
+    this.confirmModalShowCancel = true;
+    this.confirmModalConfirmAction = options.onConfirm;
+    this.confirmModalCancelAction = options.onCancel ?? null;
+    this.isConfirmModalOpen = true;
+  }
+
+  onConfirmModalConfirm(): void {
+    const action = this.confirmModalConfirmAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalCancel(): void {
+    const action = this.confirmModalCancelAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalBackdrop(): void {
+    if (this.confirmModalShowCancel) {
+      this.onConfirmModalCancel();
+    } else {
+      this.onConfirmModalConfirm();
+    }
+  }
+
+  private closeConfirmModal(): void {
+    this.isConfirmModalOpen = false;
+    this.confirmModalConfirmAction = null;
+    this.confirmModalCancelAction = null;
   }
 }

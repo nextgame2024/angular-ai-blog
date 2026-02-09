@@ -49,7 +49,11 @@ export class ManagerLaborService {
     });
   }
 
-  archiveLabor(laborId: string): Observable<void> {
-    return this.http.delete<void>(`${this.laborBase}/${laborId}`);
+  removeLabor(
+    laborId: string,
+  ): Observable<{ laborId: string; action: 'archived' | 'deleted' }> {
+    return this.http.delete<{ laborId: string; action: 'archived' | 'deleted' }>(
+      `${this.laborBase}/${laborId}`,
+    );
   }
 }

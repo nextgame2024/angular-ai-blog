@@ -74,23 +74,24 @@ export class ManagerProjectTypesEffects {
     ),
   );
 
-  archiveProjectType$ = createEffect(() =>
+  removeProjectType$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(ManagerProjectTypesActions.archiveProjectType),
+      ofType(ManagerProjectTypesActions.removeProjectType),
       switchMap(({ projectTypeId }) =>
-        this.api.archiveProjectType(projectTypeId).pipe(
-          map(() =>
-            ManagerProjectTypesActions.archiveProjectTypeSuccess({
-              projectTypeId,
+        this.api.removeProjectType(projectTypeId).pipe(
+          map((res) =>
+            ManagerProjectTypesActions.removeProjectTypeSuccess({
+              projectTypeId: res.projectTypeId,
+              action: res.action,
             }),
           ),
           catchError((err) =>
             of(
-              ManagerProjectTypesActions.archiveProjectTypeFailure({
+              ManagerProjectTypesActions.removeProjectTypeFailure({
                 error:
                   err?.error?.error ||
                   err?.message ||
-                  'Failed to archive project type',
+                  'Failed to remove project type',
               }),
             ),
           ),

@@ -69,19 +69,24 @@ export class ManagerLaborEffects {
     ),
   );
 
-  archiveLabor$ = createEffect(() =>
+  removeLabor$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(ManagerLaborActions.archiveLabor),
+      ofType(ManagerLaborActions.removeLabor),
       switchMap(({ laborId }) =>
-        this.api.archiveLabor(laborId).pipe(
-          map(() => ManagerLaborActions.archiveLaborSuccess({ laborId })),
+        this.api.removeLabor(laborId).pipe(
+          map((res) =>
+            ManagerLaborActions.removeLaborSuccess({
+              laborId: res.laborId,
+              action: res.action,
+            }),
+          ),
           catchError((err) =>
             of(
-              ManagerLaborActions.archiveLaborFailure({
+              ManagerLaborActions.removeLaborFailure({
                 error:
                   err?.error?.error ||
                   err?.message ||
-                  'Failed to archive labor',
+                  'Failed to remove labor',
               }),
             ),
           ),

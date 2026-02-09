@@ -155,19 +155,28 @@ export const managerSuppliersReducer = createReducer(
     suppliersError: error,
   })),
 
-  on(ManagerSuppliersActions.archiveSupplier, (state) => ({
+  on(ManagerSuppliersActions.removeSupplier, (state) => ({
     ...state,
     suppliersLoading: true,
     suppliersError: null,
   })),
 
-  on(ManagerSuppliersActions.archiveSupplierSuccess, (state, { supplierId }) => ({
+  on(ManagerSuppliersActions.removeSupplierSuccess, (state, { supplierId, action }) => ({
     ...state,
     suppliersLoading: false,
-    suppliers: state.suppliers.filter((s) => s.supplierId !== supplierId),
+    suppliers:
+      action === 'deleted'
+        ? state.suppliers.filter((s) => s.supplierId !== supplierId)
+        : state.suppliers.map((s) =>
+            s.supplierId === supplierId ? { ...s, status: 'archived' } : s,
+          ),
+    suppliersTotal:
+      action === 'deleted'
+        ? Math.max(0, state.suppliersTotal - 1)
+        : state.suppliersTotal,
   })),
 
-  on(ManagerSuppliersActions.archiveSupplierFailure, (state, { error }) => ({
+  on(ManagerSuppliersActions.removeSupplierFailure, (state, { error }) => ({
     ...state,
     suppliersLoading: false,
     suppliersError: error,

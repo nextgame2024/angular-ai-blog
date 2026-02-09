@@ -9,6 +9,7 @@ export interface BmProjectType {
   status?: ProjectTypeStatus | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  hasProjects?: boolean | null;
 }
 
 export interface BmProjectTypeMaterial {

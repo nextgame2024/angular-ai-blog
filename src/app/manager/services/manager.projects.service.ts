@@ -68,8 +68,12 @@ export class ManagerProjectsService {
     );
   }
 
-  archiveProject(projectId: string): Observable<void> {
-    return this.http.delete<void>(`${this.projectsBase}/${projectId}`);
+  removeProject(
+    projectId: string,
+  ): Observable<{ projectId: string; action: 'archived' | 'deleted' }> {
+    return this.http.delete<{ projectId: string; action: 'archived' | 'deleted' }>(
+      `${this.projectsBase}/${projectId}`,
+    );
   }
 
   // Project materials

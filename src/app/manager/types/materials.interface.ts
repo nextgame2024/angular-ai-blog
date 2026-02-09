@@ -16,6 +16,7 @@ export interface BmMaterial {
   status?: MaterialStatus | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  hasProjects?: boolean | null;
 }
 
 export interface ListMaterialsResponse {

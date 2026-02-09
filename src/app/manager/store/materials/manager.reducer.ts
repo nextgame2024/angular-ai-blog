@@ -96,21 +96,28 @@ export const managerMaterialsReducer = createReducer(
     materialsError: error,
   })),
 
-  on(ManagerMaterialsActions.archiveMaterial, (state) => ({
+  on(ManagerMaterialsActions.removeMaterial, (state) => ({
     ...state,
     materialsLoading: true,
     materialsError: null,
   })),
 
-  on(ManagerMaterialsActions.archiveMaterialSuccess, (state, { materialId }) => ({
+  on(ManagerMaterialsActions.removeMaterialSuccess, (state, { materialId, action }) => ({
     ...state,
     materialsLoading: false,
-    materials: state.materials.map((m: BmMaterial) =>
-      m.materialId === materialId ? { ...m, status: 'archived' } : m,
-    ),
+    materials:
+      action === 'deleted'
+        ? state.materials.filter((m) => m.materialId !== materialId)
+        : state.materials.map((m: BmMaterial) =>
+            m.materialId === materialId ? { ...m, status: 'archived' } : m,
+          ),
+    materialsTotal:
+      action === 'deleted'
+        ? Math.max(0, state.materialsTotal - 1)
+        : state.materialsTotal,
   })),
 
-  on(ManagerMaterialsActions.archiveMaterialFailure, (state, { error }) => ({
+  on(ManagerMaterialsActions.removeMaterialFailure, (state, { error }) => ({
     ...state,
     materialsLoading: false,
     materialsError: error,

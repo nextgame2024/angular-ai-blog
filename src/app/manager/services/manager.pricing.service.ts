@@ -66,7 +66,11 @@ export class ManagerPricingService {
     );
   }
 
-  archivePricingProfile(pricingProfileId: string): Observable<void> {
-    return this.http.delete<void>(`${this.pricingBase}/${pricingProfileId}`);
+  removePricingProfile(
+    pricingProfileId: string,
+  ): Observable<{ pricingProfileId: string; action: 'archived' | 'deleted' }> {
+    return this.http.delete<{ pricingProfileId: string; action: 'archived' | 'deleted' }>(
+      `${this.pricingBase}/${pricingProfileId}`,
+    );
   }
 }

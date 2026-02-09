@@ -63,6 +63,15 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
   private canLoadMore = false;
   private isLoading = false;
   dismissedErrors = new Set<string>();
+  isConfirmModalOpen = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmLabel = 'Continue';
+  confirmModalCancelLabel = 'Cancel';
+  confirmModalShowCancel = false;
+  confirmModalTone: 'info' | 'warning' | 'danger' = 'info';
+  private confirmModalConfirmAction: (() => void) | null = null;
+  private confirmModalCancelAction: (() => void) | null = null;
 
   statusOptions = [
     { value: 'active', label: 'active' },
@@ -250,17 +259,24 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
     this.savePricing();
   }
 
-  archivePricing(p: BmPricingProfile): void {
-    const ok = window.confirm(
-      `Archive pricing profile "${p.profileName}"?\n\nThis is a soft-delete (status = archived).`,
-    );
-    if (!ok) return;
-
-    this.store.dispatch(
-      ManagerPricingActions.archivePricingProfile({
-        pricingProfileId: p.pricingProfileId,
-      }),
-    );
+  removePricing(p: BmPricingProfile): void {
+    const hasProjects = !!p.hasProjects;
+    const title = hasProjects ? 'Archive Pricing Profile?' : 'Delete Pricing Profile?';
+    const message = hasProjects
+      ? `Are you sure you want to archive "${p.profileName}"?`
+      : `Are you sure you want to delete "${p.profileName}"?`;
+    this.openConfirmModal({
+      title,
+      message,
+      tone: hasProjects ? 'warning' : 'danger',
+      confirmLabel: hasProjects ? 'Archive' : 'Delete',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerPricingActions.removePricingProfile({
+            pricingProfileId: p.pricingProfileId,
+          }),
+        ),
+    });
   }
 
   private setupInfiniteScroll(): void {
@@ -294,6 +310,52 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
     this.store.dispatch(
       ManagerPricingActions.loadPricingProfiles({ page: this.currentPage + 1 }),
     );
+  }
+
+  private openConfirmModal(options: {
+    title: string;
+    message: string;
+    tone?: 'info' | 'warning' | 'danger';
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }): void {
+    this.confirmModalTitle = options.title;
+    this.confirmModalMessage = options.message;
+    this.confirmModalTone = options.tone ?? 'info';
+    this.confirmModalConfirmLabel = options.confirmLabel ?? 'Continue';
+    this.confirmModalCancelLabel = options.cancelLabel ?? 'Cancel';
+    this.confirmModalShowCancel = true;
+    this.confirmModalConfirmAction = options.onConfirm;
+    this.confirmModalCancelAction = options.onCancel ?? null;
+    this.isConfirmModalOpen = true;
+  }
+
+  onConfirmModalConfirm(): void {
+    const action = this.confirmModalConfirmAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalCancel(): void {
+    const action = this.confirmModalCancelAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalBackdrop(): void {
+    if (this.confirmModalShowCancel) {
+      this.onConfirmModalCancel();
+    } else {
+      this.onConfirmModalConfirm();
+    }
+  }
+
+  private closeConfirmModal(): void {
+    this.isConfirmModalOpen = false;
+    this.confirmModalConfirmAction = null;
+    this.confirmModalCancelAction = null;
   }
 
   formatPercent(value?: number | null): string {

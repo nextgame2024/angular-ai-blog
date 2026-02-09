@@ -63,6 +63,15 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
   private canLoadMore = false;
   private isLoading = false;
   dismissedErrors = new Set<string>();
+  isConfirmModalOpen = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmLabel = 'Continue';
+  confirmModalCancelLabel = 'Cancel';
+  confirmModalShowCancel = false;
+  confirmModalTone: 'info' | 'warning' | 'danger' = 'info';
+  private confirmModalConfirmAction: (() => void) | null = null;
+  private confirmModalCancelAction: (() => void) | null = null;
 
   statusOptions = [
     { value: 'active', label: 'active' },
@@ -262,15 +271,22 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
     this.saveMaterial();
   }
 
-  archiveMaterial(m: BmMaterial): void {
-    const ok = window.confirm(
-      `Archive material "${m.materialName}"?\n\nThis is a soft-delete (status = archived).`,
-    );
-    if (!ok) return;
-
-    this.store.dispatch(
-      ManagerMaterialsActions.archiveMaterial({ materialId: m.materialId }),
-    );
+  removeMaterial(m: BmMaterial): void {
+    const hasProjects = !!m.hasProjects;
+    const title = hasProjects ? 'Archive Material?' : 'Delete Material?';
+    const message = hasProjects
+      ? `Are you sure you want to archive "${m.materialName}"?`
+      : `Are you sure you want to delete "${m.materialName}"?`;
+    this.openConfirmModal({
+      title,
+      message,
+      tone: hasProjects ? 'warning' : 'danger',
+      confirmLabel: hasProjects ? 'Archive' : 'Delete',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerMaterialsActions.removeMaterial({ materialId: m.materialId }),
+        ),
+    });
   }
 
   private setupInfiniteScroll(): void {
@@ -304,5 +320,51 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
     this.store.dispatch(
       ManagerMaterialsActions.loadMaterials({ page: this.currentPage + 1 }),
     );
+  }
+
+  private openConfirmModal(options: {
+    title: string;
+    message: string;
+    tone?: 'info' | 'warning' | 'danger';
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }): void {
+    this.confirmModalTitle = options.title;
+    this.confirmModalMessage = options.message;
+    this.confirmModalTone = options.tone ?? 'info';
+    this.confirmModalConfirmLabel = options.confirmLabel ?? 'Continue';
+    this.confirmModalCancelLabel = options.cancelLabel ?? 'Cancel';
+    this.confirmModalShowCancel = true;
+    this.confirmModalConfirmAction = options.onConfirm;
+    this.confirmModalCancelAction = options.onCancel ?? null;
+    this.isConfirmModalOpen = true;
+  }
+
+  onConfirmModalConfirm(): void {
+    const action = this.confirmModalConfirmAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalCancel(): void {
+    const action = this.confirmModalCancelAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalBackdrop(): void {
+    if (this.confirmModalShowCancel) {
+      this.onConfirmModalCancel();
+    } else {
+      this.onConfirmModalConfirm();
+    }
+  }
+
+  private closeConfirmModal(): void {
+    this.isConfirmModalOpen = false;
+    this.confirmModalConfirmAction = null;
+    this.confirmModalCancelAction = null;
   }
 }

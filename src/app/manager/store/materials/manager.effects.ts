@@ -73,21 +73,24 @@ export class ManagerMaterialsEffects {
     ),
   );
 
-  archiveMaterial$ = createEffect(() =>
+  removeMaterial$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(ManagerMaterialsActions.archiveMaterial),
+      ofType(ManagerMaterialsActions.removeMaterial),
       switchMap(({ materialId }) =>
-        this.api.archiveMaterial(materialId).pipe(
-          map(() =>
-            ManagerMaterialsActions.archiveMaterialSuccess({ materialId }),
+        this.api.removeMaterial(materialId).pipe(
+          map((res) =>
+            ManagerMaterialsActions.removeMaterialSuccess({
+              materialId: res.materialId,
+              action: res.action,
+            }),
           ),
           catchError((err) =>
             of(
-              ManagerMaterialsActions.archiveMaterialFailure({
+              ManagerMaterialsActions.removeMaterialFailure({
                 error:
                   err?.error?.error ||
                   err?.message ||
-                  'Failed to archive material',
+                  'Failed to remove material',
               }),
             ),
           ),

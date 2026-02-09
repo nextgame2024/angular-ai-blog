@@ -72,8 +72,13 @@ export class ManagerProjectTypesService {
     );
   }
 
-  archiveProjectType(projectTypeId: string): Observable<void> {
-    return this.http.delete<void>(`${this.projectTypesBase}/${projectTypeId}`);
+  removeProjectType(
+    projectTypeId: string,
+  ): Observable<{ projectTypeId: string; action: 'archived' | 'deleted' }> {
+    return this.http.delete<{
+      projectTypeId: string;
+      action: 'archived' | 'deleted';
+    }>(`${this.projectTypesBase}/${projectTypeId}`);
   }
 
   listProjectTypeMaterials(

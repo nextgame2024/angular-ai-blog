@@ -63,6 +63,15 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
   private canLoadMore = false;
   private isLoading = false;
   dismissedErrors = new Set<string>();
+  isConfirmModalOpen = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmLabel = 'Continue';
+  confirmModalCancelLabel = 'Cancel';
+  confirmModalShowCancel = false;
+  confirmModalTone: 'info' | 'warning' | 'danger' = 'info';
+  private confirmModalConfirmAction: (() => void) | null = null;
+  private confirmModalCancelAction: (() => void) | null = null;
 
   statusOptions = [
     { value: 'active', label: 'active' },
@@ -262,13 +271,20 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
     this.saveLabor();
   }
 
-  archiveLabor(l: BmLabor): void {
-    const ok = window.confirm(
-      `Archive labor "${l.laborName}"?\n\nThis is a soft-delete (status = archived).`,
-    );
-    if (!ok) return;
-
-    this.store.dispatch(ManagerLaborActions.archiveLabor({ laborId: l.laborId }));
+  removeLabor(l: BmLabor): void {
+    const hasProjects = !!l.hasProjects;
+    const title = hasProjects ? 'Archive Labor?' : 'Delete Labor?';
+    const message = hasProjects
+      ? `Are you sure you want to archive "${l.laborName}"?`
+      : `Are you sure you want to delete "${l.laborName}"?`;
+    this.openConfirmModal({
+      title,
+      message,
+      tone: hasProjects ? 'warning' : 'danger',
+      confirmLabel: hasProjects ? 'Archive' : 'Delete',
+      onConfirm: () =>
+        this.store.dispatch(ManagerLaborActions.removeLabor({ laborId: l.laborId })),
+    });
   }
 
   private setupInfiniteScroll(): void {
@@ -300,6 +316,52 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
     if (!this.canLoadMore || this.isLoading || this.isLoadingMore) return;
     this.isLoadingMore = true;
     this.store.dispatch(ManagerLaborActions.loadLabor({ page: this.currentPage + 1 }));
+  }
+
+  private openConfirmModal(options: {
+    title: string;
+    message: string;
+    tone?: 'info' | 'warning' | 'danger';
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }): void {
+    this.confirmModalTitle = options.title;
+    this.confirmModalMessage = options.message;
+    this.confirmModalTone = options.tone ?? 'info';
+    this.confirmModalConfirmLabel = options.confirmLabel ?? 'Continue';
+    this.confirmModalCancelLabel = options.cancelLabel ?? 'Cancel';
+    this.confirmModalShowCancel = true;
+    this.confirmModalConfirmAction = options.onConfirm;
+    this.confirmModalCancelAction = options.onCancel ?? null;
+    this.isConfirmModalOpen = true;
+  }
+
+  onConfirmModalConfirm(): void {
+    const action = this.confirmModalConfirmAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalCancel(): void {
+    const action = this.confirmModalCancelAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalBackdrop(): void {
+    if (this.confirmModalShowCancel) {
+      this.onConfirmModalCancel();
+    } else {
+      this.onConfirmModalConfirm();
+    }
+  }
+
+  private closeConfirmModal(): void {
+    this.isConfirmModalOpen = false;
+    this.confirmModalConfirmAction = null;
+    this.confirmModalCancelAction = null;
   }
 
   formatInt(value?: number | null): string {

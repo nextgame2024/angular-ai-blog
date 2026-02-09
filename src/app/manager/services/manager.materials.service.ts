@@ -63,7 +63,12 @@ export class ManagerMaterialsService {
     );
   }
 
-  archiveMaterial(materialId: string): Observable<void> {
-    return this.http.delete<void>(`${this.materialsBase}/${materialId}`);
+  removeMaterial(
+    materialId: string,
+  ): Observable<{ materialId: string; action: 'archived' | 'deleted' }> {
+    return this.http.delete<{
+      materialId: string;
+      action: 'archived' | 'deleted';
+    }>(`${this.materialsBase}/${materialId}`);
   }
 }

@@ -128,6 +128,7 @@ export class ManagerProjectsPageComponent
     { value: 'done', label: 'Done' },
     { value: 'on_hold', label: 'On hold' },
     { value: 'cancelled', label: 'Cancelled' },
+    { value: 'archived', label: 'Archived' },
   ];
 
   clientOptions: ManagerSelectOption[] = [];
@@ -1058,7 +1059,8 @@ export class ManagerProjectsPageComponent
     const current = this.currentStatus || nextStatus;
     if (current === nextStatus) return;
 
-    const locked = current === 'done' || current === 'cancelled';
+    const locked =
+      current === 'done' || current === 'cancelled' || current === 'archived';
     if (locked) {
       this.openStatusInfoModal({
         title: 'Status Locked',
@@ -1525,15 +1527,18 @@ export class ManagerProjectsPageComponent
       });
   }
 
-  archiveProject(project: BmProject): void {
+  removeProject(project: BmProject): void {
+    const hasProjects = !!project.hasProjects;
     this.openStatusConfirmModal({
-      title: 'Archive Project?',
-      message: `Archive project "${project.projectName}"?\n\nThis will set status = cancelled.`,
-      tone: 'warning',
-      confirmLabel: 'Archive',
+      title: hasProjects ? 'Archive Project?' : 'Delete Project?',
+      message: hasProjects
+        ? `Are you sure you want to archive "${project.projectName}"?`
+        : `Are you sure you want to delete "${project.projectName}"?`,
+      tone: hasProjects ? 'warning' : 'danger',
+      confirmLabel: hasProjects ? 'Archive' : 'Delete',
       onConfirm: () =>
         this.store.dispatch(
-          ManagerProjectsActions.archiveProject({ projectId: project.projectId }),
+          ManagerProjectsActions.removeProject({ projectId: project.projectId }),
         ),
     });
   }
@@ -1610,10 +1615,10 @@ export class ManagerProjectsPageComponent
 
   removeProjectMaterial(project: BmProject, material: BmProjectMaterial): void {
     this.openStatusConfirmModal({
-      title: 'Remove Material?',
-      message: `Remove material "${material.materialName}" from this project?`,
-      tone: 'warning',
-      confirmLabel: 'Remove',
+      title: 'Delete Material?',
+      message: `Are you sure you want to delete "${material.materialName}"?`,
+      tone: 'danger',
+      confirmLabel: 'Delete',
       onConfirm: () =>
         this.store.dispatch(
           ManagerProjectsActions.removeProjectMaterial({
@@ -1841,10 +1846,10 @@ export class ManagerProjectsPageComponent
 
   removeProjectLabor(project: BmProject, labor: BmProjectLabor): void {
     this.openStatusConfirmModal({
-      title: 'Remove Labor?',
-      message: `Remove labor "${labor.laborName}" from this project?`,
-      tone: 'warning',
-      confirmLabel: 'Remove',
+      title: 'Delete Labor?',
+      message: `Are you sure you want to delete "${labor.laborName}"?`,
+      tone: 'danger',
+      confirmLabel: 'Delete',
       onConfirm: () =>
         this.store.dispatch(
           ManagerProjectsActions.removeProjectLabor({

@@ -31,9 +31,12 @@ export const ManagerProjectTypesActions = createActionGroup({
     }>(),
     'Save Project Type Failure': props<{ error: string }>(),
 
-    'Archive Project Type': props<{ projectTypeId: string }>(),
-    'Archive Project Type Success': props<{ projectTypeId: string }>(),
-    'Archive Project Type Failure': props<{ error: string }>(),
+    'Remove Project Type': props<{ projectTypeId: string }>(),
+    'Remove Project Type Success': props<{
+      projectTypeId: string;
+      action: 'archived' | 'deleted';
+    }>(),
+    'Remove Project Type Failure': props<{ error: string }>(),
 
     // Materials
     'Load Project Type Materials': props<{ projectTypeId: string }>(),

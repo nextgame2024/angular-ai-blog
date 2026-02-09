@@ -96,26 +96,35 @@ export const managerPricingReducer = createReducer(
     pricingError: error,
   })),
 
-  on(ManagerPricingActions.archivePricingProfile, (state) => ({
+  on(ManagerPricingActions.removePricingProfile, (state) => ({
     ...state,
     pricingLoading: true,
     pricingError: null,
   })),
 
   on(
-    ManagerPricingActions.archivePricingProfileSuccess,
-    (state, { pricingProfileId }) => ({
-      ...state,
-      pricingLoading: false,
-      pricingProfiles: state.pricingProfiles.map((p: BmPricingProfile) =>
-        p.pricingProfileId === pricingProfileId
-          ? { ...p, status: 'archived' }
-          : p,
-      ),
-    }),
+    ManagerPricingActions.removePricingProfileSuccess,
+    (state, { pricingProfileId, action }) => {
+      const isDeleted = action === 'deleted';
+      const pricingProfiles = isDeleted
+        ? state.pricingProfiles.filter(
+            (p) => p.pricingProfileId !== pricingProfileId,
+          )
+        : state.pricingProfiles.map((p: BmPricingProfile) =>
+            p.pricingProfileId === pricingProfileId
+              ? { ...p, status: 'archived' }
+              : p,
+          );
+      return {
+        ...state,
+        pricingLoading: false,
+        pricingProfiles,
+        pricingTotal: isDeleted ? Math.max(state.pricingTotal - 1, 0) : state.pricingTotal,
+      };
+    },
   ),
 
-  on(ManagerPricingActions.archivePricingProfileFailure, (state, { error }) => ({
+  on(ManagerPricingActions.removePricingProfileFailure, (state, { error }) => ({
     ...state,
     pricingLoading: false,
     pricingError: error,

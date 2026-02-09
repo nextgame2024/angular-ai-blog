@@ -26,9 +26,9 @@ export const ManagerProjectsActions = createActionGroup({
     'Save Project Success': props<{ project: BmProject; closeOnSuccess?: boolean }>(),
     'Save Project Failure': props<{ error: string }>(),
 
-    'Archive Project': props<{ projectId: string }>(),
-    'Archive Project Success': props<{ projectId: string }>(),
-    'Archive Project Failure': props<{ error: string }>(),
+    'Remove Project': props<{ projectId: string }>(),
+    'Remove Project Success': props<{ projectId: string; action: 'archived' | 'deleted' }>(),
+    'Remove Project Failure': props<{ error: string }>(),
 
     // Materials
     'Load Project Materials': props<{ projectId: string }>(),

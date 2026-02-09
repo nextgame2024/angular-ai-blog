@@ -124,24 +124,33 @@ export const managerProjectTypesReducer = createReducer(
     projectTypesError: error,
   })),
 
-  on(ManagerProjectTypesActions.archiveProjectType, (state) => ({
+  on(ManagerProjectTypesActions.removeProjectType, (state) => ({
     ...state,
     projectTypesLoading: true,
     projectTypesError: null,
   })),
 
   on(
-    ManagerProjectTypesActions.archiveProjectTypeSuccess,
-    (state, { projectTypeId }) => ({
+    ManagerProjectTypesActions.removeProjectTypeSuccess,
+    (state, { projectTypeId, action }) => ({
       ...state,
       projectTypesLoading: false,
-      projectTypes: state.projectTypes.map((pt: BmProjectType) =>
-        pt.projectTypeId === projectTypeId ? { ...pt, status: 'archived' } : pt,
-      ),
+      projectTypes:
+        action === 'deleted'
+          ? state.projectTypes.filter((pt) => pt.projectTypeId !== projectTypeId)
+          : state.projectTypes.map((pt: BmProjectType) =>
+              pt.projectTypeId === projectTypeId
+                ? { ...pt, status: 'archived' }
+                : pt,
+            ),
+      projectTypesTotal:
+        action === 'deleted'
+          ? Math.max(0, state.projectTypesTotal - 1)
+          : state.projectTypesTotal,
     }),
   ),
 
-  on(ManagerProjectTypesActions.archiveProjectTypeFailure, (state, { error }) => ({
+  on(ManagerProjectTypesActions.removeProjectTypeFailure, (state, { error }) => ({
     ...state,
     projectTypesLoading: false,
     projectTypesError: error,

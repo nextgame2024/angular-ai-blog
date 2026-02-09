@@ -32,6 +32,7 @@ export interface BmProject {
   invoiceDocNumber?: string | null;
   invoicePdfUrl?: string | null;
   invoiceStatus?: string | null;
+  hasProjects?: boolean | null;
 
   createdAt?: string | null;
   updatedAt?: string | null;

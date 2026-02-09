@@ -65,8 +65,12 @@ export class ManagerSuppliersService {
     );
   }
 
-  archiveSupplier(supplierId: string): Observable<void> {
-    return this.http.delete<void>(`${this.suppliersBase}/${supplierId}`);
+  removeSupplier(
+    supplierId: string,
+  ): Observable<{ supplierId: string; action: 'archived' | 'deleted' }> {
+    return this.http.delete<{ supplierId: string; action: 'archived' | 'deleted' }>(
+      `${this.suppliersBase}/${supplierId}`,
+    );
   }
 
   // Contacts

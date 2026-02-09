@@ -75,21 +75,24 @@ export class ManagerSuppliersEffects {
     ),
   );
 
-  archiveSupplier$ = createEffect(() =>
+  removeSupplier$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(ManagerSuppliersActions.archiveSupplier),
+      ofType(ManagerSuppliersActions.removeSupplier),
       switchMap(({ supplierId }) =>
-        this.api.archiveSupplier(supplierId).pipe(
-          map(() =>
-            ManagerSuppliersActions.archiveSupplierSuccess({ supplierId }),
+        this.api.removeSupplier(supplierId).pipe(
+          map((res) =>
+            ManagerSuppliersActions.removeSupplierSuccess({
+              supplierId: res.supplierId,
+              action: res.action,
+            }),
           ),
           catchError((err) =>
             of(
-              ManagerSuppliersActions.archiveSupplierFailure({
+              ManagerSuppliersActions.removeSupplierFailure({
                 error:
                   err?.error?.error ||
                   err?.message ||
-                  'Failed to archive supplier',
+                  'Failed to remove supplier',
               }),
             ),
           ),

@@ -399,7 +399,7 @@
               <button
                 class="btn small danger"
                 type="button"
-                (click)="archiveMaterial(m)"
+                (click)="removeMaterial(m)"
               >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
@@ -409,7 +409,7 @@
                     <path d="M9 4h6l1 2H8l1-2Z"></path>
                   </svg>
                 </span>
-                Archive
+                {{ m.hasProjects ? 'Archive' : 'Delete' }}
               </button>
             </div>
           </div>
@@ -448,7 +448,7 @@
               <button
                 class="btn small danger"
                 type="button"
-                (click)="archiveMaterial(m)"
+                (click)="removeMaterial(m)"
               >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
@@ -458,7 +458,7 @@
                     <path d="M9 4h6l1 2H8l1-2Z"></path>
                   </svg>
                 </span>
-                Archive
+                {{ m.hasProjects ? 'Archive' : 'Delete' }}
               </button>
             </div>
           </article>
@@ -471,4 +471,52 @@
       </ng-container>
     </section>
   </ng-container>
+
+  <div
+    class="status-modal-backdrop"
+    *ngIf="isConfirmModalOpen"
+    (click)="onConfirmModalBackdrop()"
+  >
+    <div
+      class="status-modal"
+      [class.tone-warning]="confirmModalTone === 'warning'"
+      [class.tone-danger]="confirmModalTone === 'danger'"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      aria-describedby="confirm-modal-message"
+    >
+      <div class="status-modal-header">
+        <span class="status-modal-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7v6"></path>
+            <path d="M12 16.5h.01"></path>
+          </svg>
+        </span>
+        <div class="status-modal-text">
+          <h4 id="confirm-modal-title">{{ confirmModalTitle }}</h4>
+          <p id="confirm-modal-message">{{ confirmModalMessage }}</p>
+        </div>
+      </div>
+      <div class="status-modal-actions">
+        <button
+          *ngIf="confirmModalShowCancel"
+          type="button"
+          class="btn secondary"
+          (click)="onConfirmModalCancel()"
+        >
+          {{ confirmModalCancelLabel }}
+        </button>
+        <button
+          type="button"
+          class="btn primary"
+          (click)="onConfirmModalConfirm()"
+        >
+          {{ confirmModalConfirmLabel }}
+        </button>
+      </div>
+    </div>
+  </div>
 </div>

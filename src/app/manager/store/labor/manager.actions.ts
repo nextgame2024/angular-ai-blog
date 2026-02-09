@@ -18,8 +18,11 @@ export const ManagerLaborActions = createActionGroup({
     'Save Labor Success': props<{ labor: BmLabor }>(),
     'Save Labor Failure': props<{ error: string }>(),
 
-    'Archive Labor': props<{ laborId: string }>(),
-    'Archive Labor Success': props<{ laborId: string }>(),
-    'Archive Labor Failure': props<{ error: string }>(),
+    'Remove Labor': props<{ laborId: string }>(),
+    'Remove Labor Success': props<{
+      laborId: string;
+      action: 'archived' | 'deleted';
+    }>(),
+    'Remove Labor Failure': props<{ error: string }>(),
   },
 });

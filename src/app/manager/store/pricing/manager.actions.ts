@@ -18,8 +18,11 @@ export const ManagerPricingActions = createActionGroup({
     'Save Pricing Profile Success': props<{ pricingProfile: BmPricingProfile }>(),
     'Save Pricing Profile Failure': props<{ error: string }>(),
 
-    'Archive Pricing Profile': props<{ pricingProfileId: string }>(),
-    'Archive Pricing Profile Success': props<{ pricingProfileId: string }>(),
-    'Archive Pricing Profile Failure': props<{ error: string }>(),
+    'Remove Pricing Profile': props<{ pricingProfileId: string }>(),
+    'Remove Pricing Profile Success': props<{
+      pricingProfileId: string;
+      action: 'archived' | 'deleted';
+    }>(),
+    'Remove Pricing Profile Failure': props<{ error: string }>(),
   },
 });

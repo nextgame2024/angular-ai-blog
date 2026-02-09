@@ -15,6 +15,7 @@ export interface BmLabor {
   status?: LaborStatus | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  hasProjects?: boolean | null;
 }
 
 export interface ListLaborResponse {

@@ -9,6 +9,7 @@ export interface BmPricingProfile {
   materialMarkup?: number | null;
   laborMarkup?: number | null;
   gstRate?: number | null;
+  hasProjects?: boolean | null;
 
   status?: PricingStatus | null;
   createdAt?: string | null;

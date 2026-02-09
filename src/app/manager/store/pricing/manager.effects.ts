@@ -73,23 +73,24 @@ export class ManagerPricingEffects {
     ),
   );
 
-  archivePricingProfile$ = createEffect(() =>
+  removePricingProfile$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(ManagerPricingActions.archivePricingProfile),
+      ofType(ManagerPricingActions.removePricingProfile),
       switchMap(({ pricingProfileId }) =>
-        this.api.archivePricingProfile(pricingProfileId).pipe(
-          map(() =>
-            ManagerPricingActions.archivePricingProfileSuccess({
-              pricingProfileId,
+        this.api.removePricingProfile(pricingProfileId).pipe(
+          map((res) =>
+            ManagerPricingActions.removePricingProfileSuccess({
+              pricingProfileId: res?.pricingProfileId ?? pricingProfileId,
+              action: res?.action ?? 'archived',
             }),
           ),
           catchError((err) =>
             of(
-              ManagerPricingActions.archivePricingProfileFailure({
+              ManagerPricingActions.removePricingProfileFailure({
                 error:
                   err?.error?.error ||
                   err?.message ||
-                  'Failed to archive pricing profile',
+                  'Failed to remove pricing profile',
               }),
             ),
           ),

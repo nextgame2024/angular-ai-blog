@@ -765,7 +765,7 @@
                         <path d="M9 4h6l1 2H8l1-2Z"></path>
                       </svg>
                     </span>
-                    Remove
+                    Delete
                   </button>
                 </div>
               </div>
@@ -822,7 +822,7 @@
                         <path d="M9 4h6l1 2H8l1-2Z"></path>
                       </svg>
                     </span>
-                    Remove
+                    Delete
                   </button>
                 </div>
               </article>
@@ -1049,7 +1049,7 @@
                         <path d="M9 4h6l1 2H8l1-2Z"></path>
                       </svg>
                     </span>
-                    Remove
+                    Delete
                   </button>
                 </div>
               </div>
@@ -1105,7 +1105,7 @@
                         <path d="M9 4h6l1 2H8l1-2Z"></path>
                       </svg>
                     </span>
-                    Remove
+                    Delete
                   </button>
                 </div>
               </article>
@@ -1467,7 +1467,7 @@
               {{ p.pricingProfileName || (p.pricingProfileId ? 'Custom' : '—') }}
             </div>
             <div class="cell">
-              <span class="badge" [class.archived]="p.status === 'cancelled'">
+              <span class="badge" [class.archived]="p.status === 'archived'">
                 {{ formatStatus(p.status) }}
               </span>
             </div>
@@ -1499,7 +1499,7 @@
             <button
               class="btn small danger"
               type="button"
-              (click)="archiveProject(p)"
+              (click)="removeProject(p)"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -1509,7 +1509,7 @@
                   <path d="M9 4h6l1 2H8l1-2Z"></path>
                 </svg>
               </span>
-              Archive
+              {{ p.hasProjects ? 'Archive' : 'Delete' }}
             </button>
           </div>
         </div>
@@ -1522,7 +1522,7 @@
         >
           <div class="row">
             <div class="name">{{ p.projectName }}</div>
-            <span class="badge" [class.archived]="p.status === 'cancelled'">
+            <span class="badge" [class.archived]="p.status === 'archived'">
               {{ formatStatus(p.status) }}
             </span>
           </div>
@@ -1572,7 +1572,7 @@
             <button
               class="btn small danger"
               type="button"
-              (click)="archiveProject(p)"
+              (click)="removeProject(p)"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -1582,7 +1582,7 @@
                   <path d="M9 4h6l1 2H8l1-2Z"></path>
                 </svg>
               </span>
-              Archive
+              {{ p.hasProjects ? 'Archive' : 'Delete' }}
             </button>
           </div>
         </article>

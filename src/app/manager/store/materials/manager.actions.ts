@@ -18,8 +18,11 @@ export const ManagerMaterialsActions = createActionGroup({
     'Save Material Success': props<{ material: BmMaterial }>(),
     'Save Material Failure': props<{ error: string }>(),
 
-    'Archive Material': props<{ materialId: string }>(),
-    'Archive Material Success': props<{ materialId: string }>(),
-    'Archive Material Failure': props<{ error: string }>(),
+    'Remove Material': props<{ materialId: string }>(),
+    'Remove Material Success': props<{
+      materialId: string;
+      action: 'archived' | 'deleted';
+    }>(),
+    'Remove Material Failure': props<{ error: string }>(),
   },
 });

@@ -15,6 +15,7 @@ export interface BmSupplier {
   status?: SupplierStatus | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  hasProjects?: boolean | null;
 }
 
 export interface BmSupplierContact {

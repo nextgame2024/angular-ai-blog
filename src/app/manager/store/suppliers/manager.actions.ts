@@ -26,9 +26,12 @@ export const ManagerSuppliersActions = createActionGroup({
     'Save Supplier Success': props<{ supplier: BmSupplier }>(),
     'Save Supplier Failure': props<{ error: string }>(),
 
-    'Archive Supplier': props<{ supplierId: string }>(),
-    'Archive Supplier Success': props<{ supplierId: string }>(),
-    'Archive Supplier Failure': props<{ error: string }>(),
+    'Remove Supplier': props<{ supplierId: string }>(),
+    'Remove Supplier Success': props<{
+      supplierId: string;
+      action: 'archived' | 'deleted';
+    }>(),
+    'Remove Supplier Failure': props<{ error: string }>(),
 
     // Contacts
     'Load Supplier Contacts': props<{ supplierId: string; page: number }>(),

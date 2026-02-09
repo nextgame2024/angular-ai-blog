@@ -127,21 +127,26 @@ export const managerProjectsReducer = createReducer(
     projectFormTab: tab,
   })),
 
-  on(ManagerProjectsActions.archiveProject, (state) => ({
+  on(ManagerProjectsActions.removeProject, (state) => ({
     ...state,
     projectsLoading: true,
     projectsError: null,
   })),
 
-  on(ManagerProjectsActions.archiveProjectSuccess, (state, { projectId }) => ({
+  on(ManagerProjectsActions.removeProjectSuccess, (state, { projectId, action }) => ({
     ...state,
     projectsLoading: false,
-    projects: state.projects.map((p: BmProject) =>
-      p.projectId === projectId ? { ...p, status: 'cancelled' } : p,
-    ),
+    projects:
+      action === 'deleted'
+        ? state.projects.filter((p) => p.projectId !== projectId)
+        : state.projects.map((p: BmProject) =>
+            p.projectId === projectId ? { ...p, status: 'archived' } : p,
+          ),
+    projectsTotal:
+      action === 'deleted' ? Math.max(0, state.projectsTotal - 1) : state.projectsTotal,
   })),
 
-  on(ManagerProjectsActions.archiveProjectFailure, (state, { error }) => ({
+  on(ManagerProjectsActions.removeProjectFailure, (state, { error }) => ({
     ...state,
     projectsLoading: false,
     projectsError: error,

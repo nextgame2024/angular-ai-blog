@@ -91,21 +91,26 @@ export const managerLaborReducer = createReducer(
     laborError: error,
   })),
 
-  on(ManagerLaborActions.archiveLabor, (state) => ({
+  on(ManagerLaborActions.removeLabor, (state) => ({
     ...state,
     laborLoading: true,
     laborError: null,
   })),
 
-  on(ManagerLaborActions.archiveLaborSuccess, (state, { laborId }) => ({
+  on(ManagerLaborActions.removeLaborSuccess, (state, { laborId, action }) => ({
     ...state,
     laborLoading: false,
-    labor: state.labor.map((l: BmLabor) =>
-      l.laborId === laborId ? { ...l, status: 'archived' } : l,
-    ),
+    labor:
+      action === 'deleted'
+        ? state.labor.filter((l) => l.laborId !== laborId)
+        : state.labor.map((l: BmLabor) =>
+            l.laborId === laborId ? { ...l, status: 'archived' } : l,
+          ),
+    laborTotal:
+      action === 'deleted' ? Math.max(0, state.laborTotal - 1) : state.laborTotal,
   })),
 
-  on(ManagerLaborActions.archiveLaborFailure, (state, { error }) => ({
+  on(ManagerLaborActions.removeLaborFailure, (state, { error }) => ({
     ...state,
     laborLoading: false,
     laborError: error,

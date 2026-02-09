@@ -140,6 +140,15 @@ export class ManagerSuppliersPageComponent
   private isLoadingMaterials = false;
   dismissedErrors = new Set<string>();
   dismissedWarnings = new Set<string>();
+  isConfirmModalOpen = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmLabel = 'Continue';
+  confirmModalCancelLabel = 'Cancel';
+  confirmModalShowCancel = false;
+  confirmModalTone: 'info' | 'warning' | 'danger' = 'info';
+  private confirmModalConfirmAction: (() => void) | null = null;
+  private confirmModalCancelAction: (() => void) | null = null;
 
   materialsCatalog: BmMaterial[] = [];
   private materialsMap = new Map<string, BmMaterial>();
@@ -455,15 +464,22 @@ export class ManagerSuppliersPageComponent
     this.saveSupplier();
   }
 
-  archiveSupplier(s: BmSupplier): void {
-    const ok = window.confirm(
-      `Archive supplier "${s.supplierName}"?\n\nThis is a soft-delete (status = archived).`,
-    );
-    if (!ok) return;
-
-    this.store.dispatch(
-      ManagerSuppliersActions.archiveSupplier({ supplierId: s.supplierId }),
-    );
+  removeSupplier(s: BmSupplier): void {
+    const hasProjects = !!s.hasProjects;
+    const title = hasProjects ? 'Archive Supplier?' : 'Delete Supplier?';
+    const message = hasProjects
+      ? `Are you sure you want to archive "${s.supplierName}"?`
+      : `Are you sure you want to delete "${s.supplierName}"?`;
+    this.openConfirmModal({
+      title,
+      message,
+      tone: hasProjects ? 'warning' : 'danger',
+      confirmLabel: hasProjects ? 'Archive' : 'Delete',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerSuppliersActions.removeSupplier({ supplierId: s.supplierId }),
+        ),
+    });
   }
 
   // Tabs
@@ -531,17 +547,19 @@ export class ManagerSuppliersPageComponent
   }
 
   deleteContact(supplier: BmSupplier, contact: BmSupplierContact): void {
-    const ok = window.confirm(
-      `Delete contact "${contact.name}"?\n\nThis cannot be undone.`,
-    );
-    if (!ok) return;
-
-    this.store.dispatch(
-      ManagerSuppliersActions.deleteSupplierContact({
-        supplierId: supplier.supplierId,
-        contactId: contact.contactId,
-      }),
-    );
+    this.openConfirmModal({
+      title: 'Delete Contact?',
+      message: `Are you sure you want to delete "${contact.name}"?`,
+      tone: 'danger',
+      confirmLabel: 'Delete',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerSuppliersActions.deleteSupplierContact({
+            supplierId: supplier.supplierId,
+            contactId: contact.contactId,
+          }),
+        ),
+    });
   }
 
   // Supplier materials
@@ -601,17 +619,19 @@ export class ManagerSuppliersPageComponent
   }
 
   removeSupplierMaterial(supplier: BmSupplier, material: BmSupplierMaterial): void {
-    const ok = window.confirm(
-      `Remove this material from the supplier?\n\nThis cannot be undone.`,
-    );
-    if (!ok) return;
-
-    this.store.dispatch(
-      ManagerSuppliersActions.removeSupplierMaterial({
-        supplierId: supplier.supplierId,
-        materialId: material.materialId,
-      }),
-    );
+    this.openConfirmModal({
+      title: 'Delete Material?',
+      message: `Are you sure you want to delete this material from the supplier?`,
+      tone: 'danger',
+      confirmLabel: 'Delete',
+      onConfirm: () =>
+        this.store.dispatch(
+          ManagerSuppliersActions.removeSupplierMaterial({
+            supplierId: supplier.supplierId,
+            materialId: material.materialId,
+          }),
+        ),
+    });
   }
 
   getMaterialName(materialId?: string | null): string {
@@ -1008,5 +1028,51 @@ export class ManagerSuppliersPageComponent
           }),
         );
       });
+  }
+
+  private openConfirmModal(options: {
+    title: string;
+    message: string;
+    tone?: 'info' | 'warning' | 'danger';
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }): void {
+    this.confirmModalTitle = options.title;
+    this.confirmModalMessage = options.message;
+    this.confirmModalTone = options.tone ?? 'info';
+    this.confirmModalConfirmLabel = options.confirmLabel ?? 'Continue';
+    this.confirmModalCancelLabel = options.cancelLabel ?? 'Cancel';
+    this.confirmModalShowCancel = true;
+    this.confirmModalConfirmAction = options.onConfirm;
+    this.confirmModalCancelAction = options.onCancel ?? null;
+    this.isConfirmModalOpen = true;
+  }
+
+  onConfirmModalConfirm(): void {
+    const action = this.confirmModalConfirmAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalCancel(): void {
+    const action = this.confirmModalCancelAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalBackdrop(): void {
+    if (this.confirmModalShowCancel) {
+      this.onConfirmModalCancel();
+    } else {
+      this.onConfirmModalConfirm();
+    }
+  }
+
+  private closeConfirmModal(): void {
+    this.isConfirmModalOpen = false;
+    this.confirmModalConfirmAction = null;
+    this.confirmModalCancelAction = null;
   }
 }
