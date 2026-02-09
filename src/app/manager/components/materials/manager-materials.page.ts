@@ -194,8 +194,10 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
     this.viewMode$
       .pipe(takeUntil(this.destroy$))
       .subscribe((mode) => {
-        if (mode !== 'list') return;
-        setTimeout(() => this.setupInfiniteScroll(), 0);
+        if (mode === 'list') {
+          this.codeConflict = false;
+          setTimeout(() => this.setupInfiniteScroll(), 0);
+        }
       });
 
     this.editingMaterial$.pipe(takeUntil(this.destroy$)).subscribe((m) => {

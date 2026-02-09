@@ -64,6 +64,7 @@ export const managerMaterialsReducer = createReducer(
     ...state,
     materialsViewMode: 'list' as const,
     editingMaterialId: null,
+    materialsError: null,
   })),
 
   on(ManagerMaterialsActions.saveMaterial, (state) => ({
