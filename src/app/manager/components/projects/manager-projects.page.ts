@@ -1696,26 +1696,22 @@ export class ManagerProjectsPageComponent
 
   invoiceProject(project: BmProject | null): void {
     if (!project?.projectId) return;
-    if (project.invoiceDocumentId) {
-      if (project.status === 'quote_approved') {
-        this.projectsService
-          .updateProject(project.projectId, { status: 'invoice_process' })
-          .pipe(takeUntil(this.destroy$))
-          .subscribe({
-            next: (res) => {
-              if (res?.project) {
-                this.store.dispatch(
-                  ManagerProjectsActions.saveProjectSuccess({
-                    project: res.project,
-                    closeOnSuccess: false,
-                  }),
-                );
-              }
-            },
-          });
-      }
-      this.openStoredInvoice(project);
-      return;
+    if (project.status === 'quote_approved') {
+      this.projectsService
+        .updateProject(project.projectId, { status: 'invoice_process' })
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (res) => {
+            if (res?.project) {
+              this.store.dispatch(
+                ManagerProjectsActions.saveProjectSuccess({
+                  project: res.project,
+                  closeOnSuccess: false,
+                }),
+              );
+            }
+          },
+        });
     }
     this.isQuoteLoading = true;
     this.projectsService
