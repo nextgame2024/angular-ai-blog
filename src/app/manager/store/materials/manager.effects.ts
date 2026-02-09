@@ -61,10 +61,7 @@ export class ManagerMaterialsEffects {
           catchError((err) =>
             of(
               ManagerMaterialsActions.saveMaterialFailure({
-                error:
-                  err?.error?.error ||
-                  err?.message ||
-                  'Failed to save material',
+                error: this.formatMaterialSaveError(err),
               }),
             ),
           ),
@@ -98,4 +95,25 @@ export class ManagerMaterialsEffects {
       ),
     ),
   );
+
+  private formatMaterialSaveError(err: any): string {
+    const raw =
+      err?.error?.detail ||
+      err?.error?.error ||
+      err?.message ||
+      '';
+    if (
+      typeof raw === 'string' &&
+      raw.toLowerCase().includes('uq_bm_materials_user_code')
+    ) {
+      return 'A code with this name already exists.';
+    }
+    if (
+      typeof raw === 'string' &&
+      raw.toLowerCase().includes('duplicate key')
+    ) {
+      return 'A code with this name already exists.';
+    }
+    return raw || 'Failed to save material';
+  }
 }

@@ -416,6 +416,11 @@
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
 }
 
+.form input.input-error {
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
 .address-label {
   position: relative;
   grid-column: 1 / -1;

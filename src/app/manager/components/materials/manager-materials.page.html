@@ -158,7 +158,11 @@
                 formControlName="code"
                 placeholder="SKU / code"
                 autocomplete="off"
+                [class.input-error]="codeConflict"
               />
+              <span class="error-text" *ngIf="codeConflict">
+                {{ codeConflictMessage }}
+              </span>
             </label>
           </div>
 
@@ -287,7 +291,11 @@
                 formControlName="code"
                 placeholder="SKU / code"
                 autocomplete="off"
+                [class.input-error]="codeConflict"
               />
+              <!-- <span class="error-text" *ngIf="codeConflict">
+                {{ codeConflictMessage }}
+              </span> -->
             </label>
           </div>
 

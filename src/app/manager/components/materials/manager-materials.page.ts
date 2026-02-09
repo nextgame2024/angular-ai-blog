@@ -63,6 +63,8 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
   private canLoadMore = false;
   private isLoading = false;
   dismissedErrors = new Set<string>();
+  codeConflict = false;
+  codeConflictMessage = 'A code with this name already exists.';
   isConfirmModalOpen = false;
   confirmModalTitle = '';
   confirmModalMessage = '';
@@ -147,6 +149,16 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
       )
       .subscribe((action) => {
+        if (action.type === ManagerMaterialsActions.saveMaterialFailure.type) {
+          const err = (action as ReturnType<typeof ManagerMaterialsActions.saveMaterialFailure>)
+            ?.error;
+          this.codeConflict =
+            typeof err === 'string' &&
+            err.toLowerCase().includes('code with this name already exists');
+        }
+        if (action.type === ManagerMaterialsActions.saveMaterialSuccess.type) {
+          this.codeConflict = false;
+        }
         if (!this.closeAfterSave) return;
         this.closeAfterSave = false;
         if (action.type === ManagerMaterialsActions.saveMaterialSuccess.type) {
@@ -199,7 +211,15 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
         notes: m.notes ?? '',
         status: m.status ?? 'active',
       });
+      this.codeConflict = false;
     });
+
+    this.materialForm
+      .get('code')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (this.codeConflict) this.codeConflict = false;
+      });
   }
 
   ngOnDestroy(): void {
