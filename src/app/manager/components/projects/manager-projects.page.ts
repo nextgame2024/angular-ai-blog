@@ -1039,7 +1039,7 @@ export class ManagerProjectsPageComponent
     }
 
     const allowedMap: Record<string, string[]> = {
-      to_do: ['to_do', 'in_progress', 'on_hold', 'cancelled'],
+      to_do: ['to_do', 'in_progress', 'quote_approved', 'on_hold', 'cancelled'],
       in_progress: ['in_progress', 'quote_approved', 'on_hold', 'cancelled'],
       quote_approved: [
         'quote_approved',
@@ -1114,7 +1114,7 @@ export class ManagerProjectsPageComponent
     }
 
     const allowedMap: Record<string, string[]> = {
-      to_do: ['in_progress', 'on_hold', 'cancelled'],
+      to_do: ['in_progress', 'quote_approved', 'on_hold', 'cancelled'],
       in_progress: ['quote_approved', 'on_hold', 'cancelled'],
       quote_approved: ['invoice_process', 'on_hold', 'cancelled'],
       invoice_process: ['done', 'on_hold', 'cancelled'],
@@ -1663,6 +1663,23 @@ export class ManagerProjectsPageComponent
           if (!documentId) {
             this.isQuoteLoading = false;
             return;
+          }
+          if (project.status !== 'quote_approved') {
+            this.projectsService
+              .updateProject(project.projectId, { status: 'quote_approved' })
+              .pipe(takeUntil(this.destroy$))
+              .subscribe({
+                next: (updateRes) => {
+                  if (updateRes?.project) {
+                    this.store.dispatch(
+                      ManagerProjectsActions.saveProjectSuccess({
+                        project: updateRes.project,
+                        closeOnSuccess: false,
+                      }),
+                    );
+                  }
+                },
+              });
           }
           this.openQuotePdf(documentId);
         },
