@@ -215,7 +215,10 @@ export class ManagerProjectsPageComponent
       nonNullable: true,
       validators: [Validators.required],
     }),
-    meters_required: new FormControl<number | null>(null),
+    meters_required: new FormControl<number>(0, {
+      nonNullable: true,
+      validators: [Validators.required, Validators.min(0)],
+    }),
     description: new FormControl<string>('', { nonNullable: true }),
     status: new FormControl<string>('to_do', { nonNullable: true }),
     cost_in_quote: new FormControl<boolean>(false, { nonNullable: true }),
@@ -500,7 +503,7 @@ export class ManagerProjectsPageComponent
             client_id: project.clientId,
             project_type_id: project.projectTypeId ?? null,
             project_name: project.projectName,
-            meters_required: this.formatMoney(project.metersRequired ?? null),
+            meters_required: Number(project.metersRequired ?? 0),
             description: project.description ?? '',
           status: project.status ?? 'to_do',
           cost_in_quote: project.costInQuote ?? false,
@@ -546,7 +549,7 @@ export class ManagerProjectsPageComponent
           client_id: '',
           project_type_id: null,
           project_name: '',
-          meters_required: null,
+          meters_required: 0,
           description: '',
           status: 'to_do',
           cost_in_quote: false,
@@ -766,6 +769,63 @@ export class ManagerProjectsPageComponent
     const num = Number(value);
     if (Number.isNaN(num)) return null;
     return Math.round(num * 100) / 100;
+  }
+
+  formatMoneyLabel(value?: number | null): string {
+    const num = this.formatMoney(value);
+    return num === null ? '—' : num.toFixed(2);
+  }
+
+  formatQuantityLabel(value?: number | null): string {
+    const qty = this.formatQuantity(value);
+    return qty === null ? '—' : String(qty);
+  }
+
+  formatQuantityUnitLabel(
+    quantity?: number | null,
+    unit?: string | null,
+  ): string {
+    const qtyLabel = this.formatQuantityLabel(quantity);
+    if (qtyLabel === '—' && !unit) return '—';
+    return `${qtyLabel === '—' ? '' : qtyLabel}${unit ? ` ${unit}` : ''}`.trim()
+      || '—';
+  }
+
+  formatCoverageLabel(value?: number | null, unit?: string | null): string {
+    const num = this.formatMoney(value);
+    if (num === null && !unit) return '—';
+    return `${num === null ? '' : num.toFixed(2)}${unit ? ` ${unit}` : ''}`.trim()
+      || '—';
+  }
+
+  formatCostPerUnitLabel(material: {
+    quantity?: number | null;
+    unitCostOverride?: number | null;
+  }): string {
+    const qty = Number(material?.quantity ?? 0);
+    const unitCost = Number(material?.unitCostOverride ?? 0);
+    if (!qty || !Number.isFinite(qty) || !Number.isFinite(unitCost)) return '—';
+    return (unitCost / qty).toFixed(2);
+  }
+
+  formatUnitCostUnitTypeLabel(
+    unitCost?: number | null,
+    unitType?: string | null,
+  ): string {
+    const cost = this.formatMoney(unitCost);
+    if (cost === null && !unitType) return '—';
+    return `${cost === null ? '' : cost.toFixed(2)}${unitType ? ` ${unitType}` : ''}`.trim()
+      || '—';
+  }
+
+  formatProductivityUnitLabel(
+    productivity?: number | null,
+    unit?: string | null,
+  ): string {
+    const prod = this.formatMoney(productivity);
+    if (prod === null && !unit) return '—';
+    return `${prod === null ? '' : prod.toFixed(2)}${unit ? ` ${unit}` : ''}`.trim()
+      || '—';
   }
 
   private formatCoverage(
@@ -1014,6 +1074,21 @@ export class ManagerProjectsPageComponent
   formatStatus(status?: string | null): string {
     const match = this.statusOptions.find((opt) => opt.value === status);
     return match?.label ?? (status || 'To do');
+  }
+
+  formatErrorMessage(message: string | null | undefined): string {
+    if (!message) return '';
+    const lower = message.toLowerCase();
+    if (lower.includes('meters_required') || lower.includes('meters required')) {
+      return 'Please enter Meters Required.';
+    }
+    if (lower.includes('invalid input value for enum')) {
+      return 'Please select a valid status.';
+    }
+    if (lower.includes('invalid selection') || lower.includes('client')) {
+      return 'Please select a valid client.';
+    }
+    return message;
   }
 
   get statusSelectOptions(): ManagerSelectOption[] {

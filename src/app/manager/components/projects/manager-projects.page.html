@@ -59,7 +59,6 @@
       <div>Name</div>
       <div>Client</div>
       <div>Project Type</div>
-      <div>Default pricing</div>
       <div>Pricing Profile</div>
       <div>Status</div>
       <div>Invoice</div>
@@ -69,7 +68,7 @@
 
   <ng-container *ngIf="(error$ | async) as err">
     <div class="error" *ngIf="!isErrorDismissed(err)">
-      <span>{{ err }}</span>
+      <span>{{ formatErrorMessage(err) }}</span>
       <button
         type="button"
         class="error-dismiss"
@@ -259,10 +258,9 @@
           aria-hidden="true"
         >
           <div>Material</div>
-          <div>Quantity</div>
-          <div>Unit</div>
-          <div>Unit Cost</div>
-          <div>Sell Cost</div>
+          <div>Quantity - Unit</div>
+          <div>Unit Cost - Cost per unit</div>
+          <div>Coverage ratio - Coverage unit</div>
           <div class="actions-col">Actions</div>
         </div>
 
@@ -287,9 +285,8 @@
           aria-hidden="true"
         >
           <div>Labor</div>
-          <div>Unit Type</div>
-          <div>Unit Cost</div>
-          <div>Sell Cost</div>
+          <div>Unit Cost - Unit Type</div>
+          <div>Productivity - Productivity unit</div>
           <div class="actions-col">Actions</div>
         </div>
       </div>
@@ -358,6 +355,12 @@
                   formControlName="meters_required"
                   placeholder="0.00"
                 />
+                <div
+                  class="error-text"
+                  *ngIf="projectForm.controls.meters_required.touched && projectForm.controls.meters_required.invalid"
+                >
+                  Meters required is required.
+                </div>
               </label>
             </div>
 
@@ -524,7 +527,7 @@
         <ng-container *ngIf="project">
           <ng-container *ngIf="(materialsError$ | async) as err">
             <div class="error" *ngIf="!isErrorDismissed(err)">
-              <span>{{ err }}</span>
+              <span>{{ formatErrorMessage(err) }}</span>
               <button
                 type="button"
                 class="error-dismiss"
@@ -714,10 +717,9 @@
             <div class="table materials-table" *ngIf="(materials$ | async) as materials">
               <div class="thead">
                 <div>Material</div>
-                <div>Quantity</div>
-                <div>Unit</div>
-                <div>Unit Cost</div>
-                <div>Sell Cost</div>
+                <div>Quantity - Unit</div>
+                <div>Unit Cost - Cost per unit</div>
+                <div>Coverage ratio - Coverage unit</div>
                 <div class="actions-col">Actions</div>
               </div>
 
@@ -727,16 +729,16 @@
               >
                 <div class="cell strong">{{ m.materialName }}</div>
                 <div class="cell muted">
-                  {{ formatQuantity(m.quantity) ?? '—' }}
-                </div>
-                <div class="cell muted">{{ m.unit || '—' }}</div>
-                <div class="cell muted">
-                  {{ m.unitCostOverride === null || m.unitCostOverride ===
-                  undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
+                  {{ formatQuantityUnitLabel(m.quantity, m.unit) }}
                 </div>
                 <div class="cell muted">
-                  {{ m.sellCostOverride === null || m.sellCostOverride ===
-                  undefined ? '—' : (m.sellCostOverride | number : '1.2-2') }}
+                  <div>{{ formatMoneyLabel(m.unitCostOverride) }}</div>
+                  <div class="cell-subtle">
+                    Cost/unit: {{ formatCostPerUnitLabel(m) }}
+                  </div>
+                </div>
+                <div class="cell muted">
+                  {{ formatCoverageLabel(m.coverageRatio, m.coverageUnit) }}
                 </div>
                 <div class="cell actions-col">
                   <button
@@ -779,21 +781,20 @@
               <div class="row">
                 <div class="name">{{ m.materialName }}</div>
                 <div class="muted">
-                  {{ formatQuantity(m.quantity) ?? '—' }}
+                  {{ formatQuantityUnitLabel(m.quantity, m.unit) }}
                 </div>
               </div>
               <div class="meta">
-                <div><span>Unit:</span> {{ m.unit || '—' }}</div>
                 <div>
-                  <span>Unit Cost:</span>
-                  {{ m.unitCostOverride === null || m.unitCostOverride ===
-                  undefined ? '—' : (m.unitCostOverride | number : '1.2-2') }}
+                  <span>Unit Cost:</span> {{ formatMoneyLabel(m.unitCostOverride) }}
                 </div>
-                  <div>
-                    <span>Sell Cost:</span>
-                    {{ m.sellCostOverride === null || m.sellCostOverride ===
-                    undefined ? '—' : (m.sellCostOverride | number : '1.2-2') }}
-                  </div>
+                <div>
+                  <span>Cost per unit:</span> {{ formatCostPerUnitLabel(m) }}
+                </div>
+                <div>
+                  <span>Coverage:</span>
+                  {{ formatCoverageLabel(m.coverageRatio, m.coverageUnit) }}
+                </div>
                 </div>
                 <div class="card-actions">
                   <button
@@ -861,7 +862,7 @@
         <ng-container *ngIf="project">
           <ng-container *ngIf="(laborError$ | async) as err">
             <div class="error" *ngIf="!isErrorDismissed(err)">
-              <span>{{ err }}</span>
+              <span>{{ formatErrorMessage(err) }}</span>
               <button
                 type="button"
                 class="error-dismiss"
@@ -1003,24 +1004,18 @@
             <div class="table labor-table" *ngIf="(labor$ | async) as labor">
               <div class="thead">
                 <div>Labor</div>
-                <div>Unit Type</div>
-                <div>Unit Cost</div>
-                <div>Sell Cost</div>
+                <div>Unit Cost - Unit Type</div>
+                <div>Productivity - Productivity unit</div>
                 <div class="actions-col">Actions</div>
               </div>
 
               <div class="trow" *ngFor="let l of labor; trackBy: trackByLabor">
                 <div class="cell strong">{{ l.laborName }}</div>
                 <div class="cell muted">
-                  {{ l.unitType || '—' }}
+                  {{ formatUnitCostUnitTypeLabel(l.unitCostOverride, l.unitType) }}
                 </div>
                 <div class="cell muted">
-                  {{ l.unitCostOverride === null || l.unitCostOverride ===
-                  undefined ? '—' : (l.unitCostOverride | number : '1.2-2') }}
-                </div>
-                <div class="cell muted">
-                  {{ l.sellCostOverride === null || l.sellCostOverride ===
-                  undefined ? '—' : (l.sellCostOverride | number : '1.2-2') }}
+                  {{ formatProductivityUnitLabel(l.unitProductivity, l.productivityUnit) }}
                 </div>
                 <div class="cell actions-col">
                   <button
@@ -1063,19 +1058,13 @@
                 <div class="row">
                   <div class="name">{{ l.laborName }}</div>
                   <div class="muted">
-                    {{ l.unitType || '—' }}
+                    {{ formatUnitCostUnitTypeLabel(l.unitCostOverride, l.unitType) }}
                   </div>
                 </div>
                 <div class="meta">
                   <div>
-                    <span>Unit Cost:</span>
-                    {{ l.unitCostOverride === null || l.unitCostOverride ===
-                    undefined ? '—' : (l.unitCostOverride | number : '1.2-2') }}
-                  </div>
-                  <div>
-                    <span>Sell Cost:</span>
-                    {{ l.sellCostOverride === null || l.sellCostOverride ===
-                    undefined ? '—' : (l.sellCostOverride | number : '1.2-2') }}
+                    <span>Productivity:</span>
+                    {{ formatProductivityUnitLabel(l.unitProductivity, l.productivityUnit) }}
                   </div>
                 </div>
                 <div class="card-actions">
@@ -1302,6 +1291,12 @@
                 formControlName="meters_required"
                 placeholder="0.00"
               />
+              <div
+                class="error-text"
+                *ngIf="projectForm.controls.meters_required.touched && projectForm.controls.meters_required.invalid"
+              >
+                Meters required is required.
+              </div>
             </label>
           </div>
 
@@ -1451,7 +1446,6 @@
             <div>Name</div>
             <div>Client</div>
             <div>Project Type</div>
-            <div>Default pricing</div>
             <div>Pricing Profile</div>
             <div>Status</div>
             <div>Invoice</div>
@@ -1462,7 +1456,6 @@
             <div class="cell strong">{{ p.projectName }}</div>
             <div class="cell muted">{{ p.clientName || '—' }}</div>
             <div class="cell muted">{{ p.projectTypeName || '—' }}</div>
-            <div class="cell muted">{{ p.defaultPricing ? 'Yes' : 'No' }}</div>
             <div class="cell muted">
               {{ p.pricingProfileName || (p.pricingProfileId ? 'Custom' : '—') }}
             </div>
@@ -1529,10 +1522,6 @@
           <div class="meta">
             <div><span>Client:</span> {{ p.clientName || '—' }}</div>
             <div><span>Project Type:</span> {{ p.projectTypeName || '—' }}</div>
-            <div>
-              <span>Default pricing:</span> {{ p.defaultPricing ? 'Yes' : 'No'
-              }}
-            </div>
             <div>
               <span>Pricing Profile:</span>
               {{ p.pricingProfileName || (p.pricingProfileId ? 'Custom' : '—')

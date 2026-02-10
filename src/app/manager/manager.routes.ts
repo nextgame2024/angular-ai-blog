@@ -9,6 +9,7 @@ import { ManagerMaterialsPageComponent } from './components/materials/manager-ma
 import { ManagerLaborPageComponent } from './components/labor/manager-labor.page';
 import { ManagerPricingPageComponent } from './components/pricing/manager-pricing.page';
 import { ManagerQuotesPageComponent } from './components/quotes/manager-quotes.page';
+import { ManagerInvoicesPageComponent } from './components/invoices/manager-invoices.page';
 import { ManagerSuppliersPageComponent } from './components/suppliers/manager-suppliers.page';
 import { ManagerUsersPageComponent } from './components/users/manager-users.page';
 import { ManagerProjectsPageComponent } from './components/projects/manager-projects.page';
@@ -181,8 +182,9 @@ export const MANAGER_ROUTES: Route[] = [
       },
       {
         path: 'invoices',
-        component: ManagerSectionPageComponent,
-        data: { title: 'Invoices' },
+        component: ManagerInvoicesPageComponent,
+        providers: [ManagerDocumentsService, ManagerProjectsService],
+        data: { title: 'Invoices', fullscreen: true },
       },
     ],
   },

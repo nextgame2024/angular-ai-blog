@@ -3,13 +3,13 @@
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/manager/menu">Menu</a>
       <span class="sep">/</span>
-      <span>Quotes</span>
+      <span>Invoices</span>
     </nav>
 
     <div class="projects-toolbar">
       <div class="title">
-        <h3>Quotes</h3>
-        <p class="sub">Manage quotes generated from projects.</p>
+        <h3>Invoices</h3>
+        <p class="sub">Manage invoices generated from projects.</p>
       </div>
     </div>
 
@@ -24,8 +24,8 @@
         <input
           type="search"
           [formControl]="searchCtrl"
-          placeholder="Search by quote #, project, or client"
-          aria-label="Search quotes"
+          placeholder="Search by invoice #, project, or client"
+          aria-label="Search invoices"
         />
         <button
           *ngIf="searchCtrl.value"
@@ -43,7 +43,7 @@
     </div>
 
     <div class="table-head" aria-hidden="true">
-      <div>Quote #</div>
+      <div>Invoice #</div>
       <div>Project</div>
       <div>Client</div>
       <div>Issue Date</div>
@@ -67,10 +67,10 @@
   </ng-container>
 
   <ng-container *ngIf="viewMode === 'list'">
-    <div class="list" #quotesList>
-      <div class="table" *ngIf="quotes.length">
+    <div class="list" #invoicesList>
+      <div class="table" *ngIf="invoices.length">
         <div class="thead">
-          <div>Quote #</div>
+          <div>Invoice #</div>
           <div>Project</div>
           <div>Client</div>
           <div>Issue Date</div>
@@ -78,22 +78,22 @@
           <div class="actions-col">Actions</div>
         </div>
 
-        <div class="trow" *ngFor="let q of quotes">
-          <div class="cell strong">{{ q.docNumber || '—' }}</div>
-          <div class="cell muted">{{ q.projectName || '—' }}</div>
-          <div class="cell muted">{{ q.clientName || '—' }}</div>
+        <div class="trow" *ngFor="let inv of invoices">
+          <div class="cell strong">{{ inv.docNumber || '—' }}</div>
+          <div class="cell muted">{{ inv.projectName || '—' }}</div>
+          <div class="cell muted">{{ inv.clientName || '—' }}</div>
           <div class="cell muted">
-            {{ q.issueDate ? (q.issueDate | date : 'dd MMM yyyy') : '—' }}
+            {{ inv.issueDate ? (inv.issueDate | date : 'dd MMM yyyy') : '—' }}
           </div>
           <div class="cell">
-            {{ formatMoney(q.totalAmount ?? q.subtotal ?? 0) }}
+            {{ formatMoney(inv.totalAmount ?? inv.subtotal ?? 0) }}
           </div>
           <div class="cell actions-col">
             <button
               class="btn small secondary"
               type="button"
-              (click)="openQuotePdf(q)"
-              [disabled]="pdfLoadingId === q.documentId"
+              (click)="openInvoicePdf(inv)"
+              [disabled]="pdfLoadingId === inv.documentId"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -103,12 +103,12 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              {{ pdfLoadingId === q.documentId ? 'Loading...' : 'Quote' }}
+              {{ pdfLoadingId === inv.documentId ? 'Loading...' : 'Invoice' }}
             </button>
             <button
               class="btn small tertiary"
               type="button"
-              (click)="viewQuote(q)"
+              (click)="viewInvoice(inv)"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -122,20 +122,20 @@
         </div>
       </div>
 
-      <div class="cards" *ngIf="quotes.length">
-        <article class="project-card" *ngFor="let q of quotes">
+      <div class="cards" *ngIf="invoices.length">
+        <article class="project-card" *ngFor="let inv of invoices">
           <div class="row">
-            <div class="name">{{ q.docNumber || '—' }}</div>
+            <div class="name">{{ inv.docNumber || '—' }}</div>
             <span class="badge"
-              >{{ q.issueDate ? (q.issueDate | date : 'dd MMM yyyy') : '—'
+              >{{ inv.issueDate ? (inv.issueDate | date : 'dd MMM yyyy') : '—'
               }}</span
             >
           </div>
           <div class="meta">
-            <div><span>Project:</span> {{ q.projectName || '—' }}</div>
-            <div><span>Client:</span> {{ q.clientName || '—' }}</div>
+            <div><span>Project:</span> {{ inv.projectName || '—' }}</div>
+            <div><span>Client:</span> {{ inv.clientName || '—' }}</div>
             <div>
-              <span>Total:</span> {{ formatMoney(q.totalAmount ?? q.subtotal ??
+              <span>Total:</span> {{ formatMoney(inv.totalAmount ?? inv.subtotal ??
               0) }}
             </div>
           </div>
@@ -143,8 +143,8 @@
             <button
               class="btn small secondary"
               type="button"
-              (click)="openQuotePdf(q)"
-              [disabled]="pdfLoadingId === q.documentId"
+              (click)="openInvoicePdf(inv)"
+              [disabled]="pdfLoadingId === inv.documentId"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -154,12 +154,12 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              {{ pdfLoadingId === q.documentId ? 'Loading...' : 'Quote' }}
+              {{ pdfLoadingId === inv.documentId ? 'Loading...' : 'Invoice' }}
             </button>
             <button
               class="btn small tertiary"
               type="button"
-              (click)="viewQuote(q)"
+              (click)="viewInvoice(inv)"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -173,8 +173,8 @@
         </article>
       </div>
 
-      <div class="empty" *ngIf="!quotes.length && !loading">
-        No quotes found.
+      <div class="empty" *ngIf="!invoices.length && !loading">
+        No invoices found.
       </div>
 
       <div
@@ -198,14 +198,14 @@
       <nav class="breadcrumb" aria-label="Breadcrumb">
         <a routerLink="/manager/menu">Menu</a>
         <span class="sep">/</span>
-        <a href="#" (click)="$event.preventDefault(); closeDetail()">Quotes</a>
+        <a href="#" (click)="$event.preventDefault(); closeDetail()">Invoices</a>
         <span class="sep">/</span>
         <span>View</span>
       </nav>
 
       <div class="form-header-mainrow">
         <div class="header-main">
-          <h3>Quote Details</h3>
+          <h3>Invoice Details</h3>
           <p class="sub">View project details in read-only mode.</p>
         </div>
         <div class="header-actions">

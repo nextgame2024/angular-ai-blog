@@ -13,13 +13,13 @@ import type { BmProject, BmProjectLabor, BmProjectMaterial } from '../../types/p
 import { environment } from '../../../../environments/environment';
 
 @Component({
-  selector: 'app-manager-quotes-page',
+  selector: 'app-manager-invoices-page',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  templateUrl: './manager-quotes.page.html',
-  styleUrls: ['./manager-quotes.page.css'],
+  templateUrl: './manager-invoices.page.html',
+  styleUrls: ['./manager-invoices.page.css'],
 })
-export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
+export class ManagerInvoicesPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   viewMode: 'list' | 'detail' = 'list';
@@ -31,15 +31,15 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
   detailLoading = false;
   error: string | null = null;
 
-  quotes: BmDocument[] = [];
-  filteredQuotes$ = new BehaviorSubject<BmDocument[]>([]);
+  invoices: BmDocument[] = [];
+  filteredInvoices$ = new BehaviorSubject<BmDocument[]>([]);
   total = 0;
   currentPage = 1;
   limit = 20;
   canLoadMore = false;
   isLoadingMore = false;
   private infiniteObserver?: IntersectionObserver;
-  selectedQuote: BmDocument | null = null;
+  selectedInvoice: BmDocument | null = null;
   selectedProject: BmProject | null = null;
   projectMaterials: BmProjectMaterial[] = [];
   projectLabor: BmProjectLabor[] = [];
@@ -65,7 +65,7 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
     description: [''],
   });
 
-  @ViewChild('quotesList') quotesListRef?: ElementRef<HTMLElement>;
+  @ViewChild('invoicesList') invoicesListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
 
   constructor(
@@ -79,20 +79,20 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.projectForm.disable({ emitEvent: false });
-    this.loadQuotes(1);
+    this.loadInvoices(1);
 
-    this.filteredQuotes$
+    this.filteredInvoices$
       .pipe(takeUntil(this.destroy$))
       .subscribe((items) => {
-        this.quotes = items;
+        this.invoices = items;
       });
 
     this.searchCtrl.valueChanges
       .pipe(debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe(() => {
         this.currentPage = 1;
-        this.filteredQuotes$.next([]);
-        this.loadQuotes(1);
+        this.filteredInvoices$.next([]);
+        this.loadInvoices(1);
       });
   }
 
@@ -102,7 +102,7 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadQuotes(page: number, append = false): void {
+  loadInvoices(page: number, append = false): void {
     if (this.loading || this.isLoadingMore) return;
     if (append) this.isLoadingMore = true;
     else this.loading = true;
@@ -111,16 +111,16 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
     const q = (this.searchCtrl.value || '').trim();
 
     this.documentsService
-      .listDocuments({ type: 'quote', page, limit: this.limit, q })
+      .listDocuments({ type: 'invoice', page, limit: this.limit, q })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {
           const items = res.documents || [];
           this.total = res.total ?? items.length;
           const nextItems = append
-            ? [...this.filteredQuotes$.value, ...items]
+            ? [...this.filteredInvoices$.value, ...items]
             : items;
-          this.filteredQuotes$.next(nextItems);
+          this.filteredInvoices$.next(nextItems);
           this.currentPage = res.page ?? page;
           this.canLoadMore = nextItems.length < this.total;
           this.loading = false;
@@ -131,12 +131,12 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
           this.loading = false;
           this.isLoadingMore = false;
           this.error =
-            err?.error?.error || err?.message || 'Failed to load quotes';
+            err?.error?.error || err?.message || 'Failed to load invoices';
         },
       });
   }
 
-  openQuotePdf(doc: BmDocument): void {
+  openInvoicePdf(doc: BmDocument): void {
     if (!doc?.documentId) return;
     if (this.pdfLoadingId) return;
     this.pdfLoadingId = doc.documentId;
@@ -145,7 +145,7 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
       this.pdfLoadingId = null;
       return;
     }
-    const url = `${environment.apiUrl}/bm/documents/${doc.documentId}/quote-pdf`;
+    const url = `${environment.apiUrl}/bm/documents/${doc.documentId}/invoice-pdf`;
     this.http
       .get(url, { responseType: 'blob' })
       .pipe(takeUntil(this.destroy$))
@@ -163,11 +163,11 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
       });
   }
 
-  viewQuote(doc: BmDocument): void {
+  viewInvoice(doc: BmDocument): void {
     if (!doc?.projectId) return;
     this.viewMode = 'detail';
     this.activeTab = 'details';
-    this.selectedQuote = doc;
+    this.selectedInvoice = doc;
     this.selectedProject = null;
     this.projectMaterials = [];
     this.projectLabor = [];
@@ -202,7 +202,7 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
 
   closeDetail(): void {
     this.viewMode = 'list';
-    this.selectedQuote = null;
+    this.selectedInvoice = null;
     this.selectedProject = null;
     this.projectMaterials = [];
     this.projectLabor = [];
@@ -300,8 +300,8 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
       projectTypeId,
       metersRequired,
     );
-    this.totalMaterialsCost = Number(this.selectedQuote?.materialTotal ?? 0);
-    this.totalLaborCost = Number(this.selectedQuote?.laborTotal ?? 0);
+    this.totalMaterialsCost = Number(this.selectedInvoice?.materialTotal ?? 0);
+    this.totalLaborCost = Number(this.selectedInvoice?.laborTotal ?? 0);
   }
 
   private calculateNetMaterialsCost(
@@ -373,7 +373,7 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
   private setupInfiniteScroll(): void {
     if (this.viewMode !== 'list') return;
     const sentinel = this.infiniteSentinelRef?.nativeElement;
-    const list = this.quotesListRef?.nativeElement;
+    const list = this.invoicesListRef?.nativeElement;
     if (!sentinel || !list) return;
 
     this.infiniteObserver?.disconnect();
@@ -384,7 +384,7 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
         const entry = entries[0];
         if (!entry?.isIntersecting) return;
         if (!this.canLoadMore || this.loading || this.isLoadingMore) return;
-        this.loadQuotes(this.currentPage + 1, true);
+        this.loadInvoices(this.currentPage + 1, true);
       },
       { root: scrollRoot, rootMargin: '200px 0px', threshold: 0.1 },
     );
