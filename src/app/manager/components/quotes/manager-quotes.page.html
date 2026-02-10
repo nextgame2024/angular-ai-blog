@@ -1,0 +1,643 @@
+<div class="projects-shell">
+  <div class="list-header" *ngIf="viewMode === 'list'">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <span>Quotes</span>
+    </nav>
+
+    <div class="projects-toolbar">
+      <div class="title">
+        <h3>Quotes</h3>
+        <p class="sub">Manage quotes generated from projects.</p>
+      </div>
+    </div>
+
+    <div class="toolbar-row">
+      <label class="search-field">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </span>
+        <input
+          type="search"
+          [formControl]="searchCtrl"
+          placeholder="Search by quote #, project, or client"
+          aria-label="Search quotes"
+        />
+        <button
+          *ngIf="searchCtrl.value"
+          class="icon-btn"
+          type="button"
+          (click)="searchCtrl.setValue('')"
+          aria-label="Clear search"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </button>
+      </label>
+    </div>
+
+    <div class="table-head" aria-hidden="true">
+      <div>Quote #</div>
+      <div>Project</div>
+      <div>Client</div>
+      <div>Issue Date</div>
+      <div>Total</div>
+      <div class="actions-col">Actions</div>
+    </div>
+  </div>
+
+  <ng-container *ngIf="error">
+    <div class="error">
+      <span>{{ error }}</span>
+      <button
+        type="button"
+        class="error-dismiss"
+        aria-label="Dismiss error"
+        (click)="error = null"
+      >
+        x
+      </button>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="viewMode === 'list'">
+    <div class="list" #quotesList>
+      <div class="table" *ngIf="quotes.length">
+        <div class="thead">
+          <div>Quote #</div>
+          <div>Project</div>
+          <div>Client</div>
+          <div>Issue Date</div>
+          <div>Total</div>
+          <div class="actions-col">Actions</div>
+        </div>
+
+        <div class="trow" *ngFor="let q of quotes">
+          <div class="cell strong">{{ q.docNumber || '—' }}</div>
+          <div class="cell muted">{{ q.projectName || '—' }}</div>
+          <div class="cell muted">{{ q.clientName || '—' }}</div>
+          <div class="cell muted">
+            {{ q.issueDate ? (q.issueDate | date : 'dd MMM yyyy') : '—' }}
+          </div>
+          <div class="cell">
+            {{ formatMoney(q.totalAmount ?? q.subtotal ?? 0) }}
+          </div>
+          <div class="cell actions-col">
+            <button
+              class="btn small secondary"
+              type="button"
+              (click)="openQuotePdf(q)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 4h16v16H4z"></path>
+                  <path d="M8 8h8"></path>
+                  <path d="M8 12h8"></path>
+                  <path d="M8 16h5"></path>
+                </svg>
+              </span>
+              Quote
+            </button>
+            <button
+              class="btn small tertiary"
+              type="button"
+              (click)="viewQuote(q)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
+                  <circle cx="12" cy="12" r="2.5"></circle>
+                </svg>
+              </span>
+              View
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cards" *ngIf="quotes.length">
+        <article class="project-card" *ngFor="let q of quotes">
+          <div class="row">
+            <div class="name">{{ q.docNumber || '—' }}</div>
+            <span class="badge"
+              >{{ q.issueDate ? (q.issueDate | date : 'dd MMM yyyy') : '—'
+              }}</span
+            >
+          </div>
+          <div class="meta">
+            <div><span>Project:</span> {{ q.projectName || '—' }}</div>
+            <div><span>Client:</span> {{ q.clientName || '—' }}</div>
+            <div>
+              <span>Total:</span> {{ formatMoney(q.totalAmount ?? q.subtotal ??
+              0) }}
+            </div>
+          </div>
+          <div class="card-actions">
+            <button
+              class="btn small secondary"
+              type="button"
+              (click)="openQuotePdf(q)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 4h16v16H4z"></path>
+                  <path d="M8 8h8"></path>
+                  <path d="M8 12h8"></path>
+                  <path d="M8 16h5"></path>
+                </svg>
+              </span>
+              Quote
+            </button>
+            <button
+              class="btn small tertiary"
+              type="button"
+              (click)="viewQuote(q)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
+                  <circle cx="12" cy="12" r="2.5"></circle>
+                </svg>
+              </span>
+              View
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <div class="empty" *ngIf="!quotes.length && !loading">
+        No quotes found.
+      </div>
+
+      <div
+        class="screen-loader"
+        *ngIf="loading || isLoadingMore"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <div class="loader-card">
+          <div class="loader-ring" aria-hidden="true"></div>
+          <div class="loader-text">Loading…</div>
+        </div>
+      </div>
+
+      <div #infiniteSentinel class="infinite-sentinel" aria-hidden="true"></div>
+    </div>
+  </ng-container>
+
+  <ng-container *ngIf="viewMode === 'detail'">
+    <div class="form-header">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/manager/menu">Menu</a>
+        <span class="sep">/</span>
+        <a href="#" (click)="$event.preventDefault(); closeDetail()">Quotes</a>
+        <span class="sep">/</span>
+        <span>View</span>
+      </nav>
+
+      <div class="form-header-mainrow">
+        <div class="header-main">
+          <h3>Quote Details</h3>
+          <p class="sub">View project details in read-only mode.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn" type="button" (click)="closeDetail()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 6l12 12"></path>
+                <path d="M18 6l-12 12"></path>
+              </svg>
+            </span>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-tabs">
+      <button
+        type="button"
+        class="tab"
+        [class.active]="activeTab === 'details'"
+        (click)="setTab('details')"
+      >
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 10v6"></path>
+            <path d="M12 7h.01"></path>
+          </svg>
+        </span>
+        Details
+      </button>
+      <button
+        type="button"
+        class="tab"
+        [class.active]="activeTab === 'materials'"
+        (click)="setTab('materials')"
+      >
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 6h16"></path>
+            <path d="M4 10h16"></path>
+            <path d="M4 14h16"></path>
+            <path d="M4 18h16"></path>
+          </svg>
+        </span>
+        Materials
+      </button>
+      <button
+        type="button"
+        class="tab"
+        [class.active]="activeTab === 'labor'"
+        (click)="setTab('labor')"
+      >
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="8"></circle>
+            <path d="M12 7v5l3.5 2"></path>
+          </svg>
+        </span>
+        Labor
+      </button>
+    </div>
+
+    <div class="screen-loader" *ngIf="detailLoading">
+      <div class="loader-card">
+        <div class="loader-ring" aria-hidden="true"></div>
+        <div class="loader-text">Loading…</div>
+      </div>
+    </div>
+
+    <ng-container *ngIf="!detailLoading">
+      <ng-container *ngIf="activeTab === 'details'">
+        <section class="card">
+          <div class="quote-summary">
+            <div class="quote-card">
+              <div class="quote-label">Net Materials Cost $</div>
+              <div class="quote-value">{{ formatMoney(netMaterialsCost) }}</div>
+            </div>
+            <div class="quote-card">
+              <div class="quote-label">Net Labor Cost $</div>
+              <div class="quote-value">{{ formatMoney(netLaborCost) }}</div>
+            </div>
+            <div class="quote-card">
+              <div class="quote-label">Total Materials Cost $</div>
+              <div class="quote-value">{{ formatMoney(totalMaterialsCost) }}</div>
+            </div>
+            <div class="quote-card">
+              <div class="quote-label">Total Labor Cost $</div>
+              <div class="quote-value">{{ formatMoney(totalLaborCost) }}</div>
+            </div>
+          </div>
+
+          <form class="form" [formGroup]="projectForm" autocomplete="off">
+            <div class="grid-2">
+              <label>
+                <span>Project Name</span>
+                <input formControlName="project_name" [disabled]="true" />
+              </label>
+              <label>
+                <span>Project Type</span>
+                <input formControlName="project_type" [disabled]="true" />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Client</span>
+                <input formControlName="client_name" [disabled]="true" />
+              </label>
+              <label>
+                <span>Meters Required</span>
+                <input formControlName="meters_required" [disabled]="true" />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Status</span>
+                <input formControlName="status" [disabled]="true" />
+              </label>
+              <label>
+                <span>Pricing Profile</span>
+                <input formControlName="pricing_profile" [disabled]="true" />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Cost in quote</span>
+                <input formControlName="cost_in_quote" [disabled]="true" />
+              </label>
+              <label>
+                <span>Default pricing</span>
+                <input formControlName="default_pricing" [disabled]="true" />
+              </label>
+            </div>
+
+            <label>
+              <span>Description</span>
+              <textarea
+                formControlName="description"
+                rows="3"
+                [disabled]="true"
+              ></textarea>
+            </label>
+          </form>
+        </section>
+      </ng-container>
+
+      <ng-container *ngIf="activeTab === 'materials'">
+        <div
+          class="table-head materials-head"
+          *ngIf="materialsViewMode === 'list'"
+          aria-hidden="true"
+        >
+          <div>Material</div>
+          <div>Quantity</div>
+          <div>Unit</div>
+          <div>Unit Cost</div>
+          <div>Sell Cost</div>
+          <div class="actions-col">Actions</div>
+        </div>
+
+        <section class="card" *ngIf="materialsViewMode === 'list'">
+          <div class="table materials-table">
+            <div class="thead">
+              <div>Material</div>
+              <div>Quantity</div>
+              <div>Unit</div>
+              <div>Unit Cost</div>
+              <div>Sell Cost</div>
+              <div class="actions-col">Actions</div>
+            </div>
+            <div class="trow" *ngFor="let m of projectMaterials">
+              <div class="cell strong">{{ m.materialName }}</div>
+              <div class="cell muted">{{ formatNumber(m.quantity) }}</div>
+              <div class="cell muted">{{ m.unit || '—' }}</div>
+              <div class="cell">{{ formatMoney(m.unitCostOverride) }}</div>
+              <div class="cell">{{ formatMoney(m.sellCostOverride) }}</div>
+              <div class="cell actions-col">
+                <button
+                  class="btn small tertiary"
+                  type="button"
+                  (click)="openMaterialView(m)"
+                >
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
+                      <circle cx="12" cy="12" r="2.5"></circle>
+                    </svg>
+                  </span>
+                  View
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="empty" *ngIf="!projectMaterials.length">No materials</div>
+        </section>
+
+        <section class="card" *ngIf="materialsViewMode === 'view'">
+          <form class="form">
+            <label>
+              <span>Supplier *</span>
+              <input
+                [value]="selectedMaterial?.supplierName || '—'"
+                [disabled]="true"
+              />
+            </label>
+
+            <label>
+              <span>Material *</span>
+              <input
+                [value]="selectedMaterial?.materialName || '—'"
+                [disabled]="true"
+              />
+            </label>
+
+            <div class="grid-2">
+              <label>
+                <span>Quantity</span>
+                <input
+                  [value]="formatNumber(selectedMaterial?.quantity)"
+                  [disabled]="true"
+                />
+              </label>
+              <label>
+                <span>Unit</span>
+                <input
+                  [value]="selectedMaterial?.unit || '—'"
+                  [disabled]="true"
+                />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Unit Cost</span>
+                <input
+                  [value]="formatMoney(selectedMaterial?.unitCostOverride)"
+                  [disabled]="true"
+                />
+              </label>
+              <label>
+                <span>Cost per unit</span>
+                <input
+                  [value]="
+                    selectedMaterial?.unitCostOverride !== null &&
+                    selectedMaterial?.unitCostOverride !== undefined &&
+                    selectedMaterial?.quantity
+                      ? formatMoney(
+                          (selectedMaterial?.unitCostOverride || 0) /
+                            (selectedMaterial?.quantity || 0)
+                        )
+                      : formatMoney(0)
+                  "
+                  [disabled]="true"
+                />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Coverage ratio</span>
+                <input
+                  [value]="formatNumber(selectedMaterial?.coverageRatio)"
+                  [disabled]="true"
+                />
+              </label>
+              <label>
+                <span>Coverage unit</span>
+                <input
+                  [value]="selectedMaterial?.coverageUnit || '—'"
+                  [disabled]="true"
+                />
+              </label>
+            </div>
+
+            <label>
+              <span>Sell Cost</span>
+              <input
+                [value]="formatMoney(selectedMaterial?.sellCostOverride)"
+                [disabled]="true"
+              />
+            </label>
+
+            <label>
+              <span>Notes</span>
+              <textarea
+                rows="3"
+                [value]="selectedMaterial?.notes || ''"
+                [disabled]="true"
+              ></textarea>
+            </label>
+          </form>
+
+          <div class="card-actions right-actions">
+            <button class="btn" type="button" (click)="closeMaterialView()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+          </div>
+        </section>
+      </ng-container>
+
+      <ng-container *ngIf="activeTab === 'labor'">
+        <div
+          class="table-head labor-head"
+          *ngIf="laborViewMode === 'list'"
+          aria-hidden="true"
+        >
+          <div>Labor</div>
+          <div>Unit Type</div>
+          <div>Unit Cost</div>
+          <div>Sell Cost</div>
+          <div class="actions-col">Actions</div>
+        </div>
+
+        <section class="card" *ngIf="laborViewMode === 'list'">
+          <div class="table labor-table">
+            <div class="thead">
+              <div>Labor</div>
+              <div>Unit Type</div>
+              <div>Unit Cost</div>
+              <div>Sell Cost</div>
+              <div class="actions-col">Actions</div>
+            </div>
+            <div class="trow" *ngFor="let l of projectLabor">
+              <div class="cell strong">{{ l.laborName }}</div>
+              <div class="cell muted">{{ l.unitType || '—' }}</div>
+              <div class="cell">{{ formatMoney(l.unitCostOverride) }}</div>
+              <div class="cell">{{ formatMoney(l.sellCostOverride) }}</div>
+              <div class="cell actions-col">
+                <button
+                  class="btn small tertiary"
+                  type="button"
+                  (click)="openLaborView(l)"
+                >
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
+                      <circle cx="12" cy="12" r="2.5"></circle>
+                    </svg>
+                  </span>
+                  View
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="empty" *ngIf="!projectLabor.length">No labor</div>
+        </section>
+
+        <section class="card" *ngIf="laborViewMode === 'view'">
+          <form class="form">
+            <div class="grid-2">
+              <label>
+                <span>Labor *</span>
+                <input
+                  [value]="selectedLabor?.laborName || '—'"
+                  [disabled]="true"
+                />
+              </label>
+              <label>
+                <span>Unit Type</span>
+                <input
+                  [value]="selectedLabor?.unitType || '—'"
+                  [disabled]="true"
+                />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Unit Cost</span>
+                <input
+                  [value]="formatMoney(selectedLabor?.unitCostOverride)"
+                  [disabled]="true"
+                />
+              </label>
+              <label>
+                <span>Sell Cost</span>
+                <input
+                  [value]="formatMoney(selectedLabor?.sellCostOverride)"
+                  [disabled]="true"
+                />
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Productivity</span>
+                <input
+                  [value]="formatNumber(selectedLabor?.unitProductivity)"
+                  [disabled]="true"
+                />
+              </label>
+              <label>
+                <span>Productivity Unit</span>
+                <input
+                  [value]="selectedLabor?.productivityUnit || '—'"
+                  [disabled]="true"
+                />
+              </label>
+            </div>
+
+            <label>
+              <span>Notes</span>
+              <textarea
+                rows="3"
+                [value]="selectedLabor?.notes || ''"
+                [disabled]="true"
+              ></textarea>
+            </label>
+          </form>
+
+          <div class="card-actions right-actions">
+            <button class="btn" type="button" (click)="closeLaborView()">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12"></path>
+                  <path d="M18 6l-12 12"></path>
+                </svg>
+              </span>
+              Cancel
+            </button>
+          </div>
+        </section>
+      </ng-container>
+    </ng-container>
+  </ng-container>
+
+</div>

@@ -8,6 +8,7 @@ import { ManagerClientsPageComponent } from './components/clients/manager-client
 import { ManagerMaterialsPageComponent } from './components/materials/manager-materials.page';
 import { ManagerLaborPageComponent } from './components/labor/manager-labor.page';
 import { ManagerPricingPageComponent } from './components/pricing/manager-pricing.page';
+import { ManagerQuotesPageComponent } from './components/quotes/manager-quotes.page';
 import { ManagerSuppliersPageComponent } from './components/suppliers/manager-suppliers.page';
 import { ManagerUsersPageComponent } from './components/users/manager-users.page';
 import { ManagerProjectsPageComponent } from './components/projects/manager-projects.page';
@@ -16,6 +17,7 @@ import { ManagerCompanyPageComponent } from './components/company/manager-compan
 import { ManagerMaterialsService } from './services/manager.materials.service';
 import { ManagerLaborService } from './services/manager.labor.service';
 import { ManagerPricingService } from './services/manager.pricing.service';
+import { ManagerDocumentsService } from './services/manager.documents.service';
 import { ManagerProjectsService } from './services/manager.projects.service';
 import { ManagerProjectTypesService } from './services/manager.project.types.service';
 import { ManagerSuppliersService } from './services/manager.suppliers.service';
@@ -173,8 +175,9 @@ export const MANAGER_ROUTES: Route[] = [
       },
       {
         path: 'quotes',
-        component: ManagerSectionPageComponent,
-        data: { title: 'Quotes' },
+        component: ManagerQuotesPageComponent,
+        providers: [ManagerDocumentsService, ManagerProjectsService],
+        data: { title: 'Quotes', fullscreen: true },
       },
       {
         path: 'invoices',
