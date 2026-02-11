@@ -294,34 +294,57 @@
       <ng-container *ngIf="(tab$ | async) === 'details'">
         <section class="card">
           <div class="quote-summary">
-            <div class="quote-summary-column">
-              <div class="quote-card">
-                <span>Net Materials Cost $</span>
-                <strong
-                  >{{ ((netMaterialsCost$ | async) || 0) | number: '1.2-2'
-                  }}</strong
-                >
-              </div>
-              <div class="quote-card">
-                <span>Total Materials Cost $</span>
+            <div class="quote-summary-column cost-summary">
+              <div class="quote-card quote-card-wide">
+                <div class="cost-line">
+                  <span>Materials Cost $</span>
+                  <span class="net-note"
+                    >(Net Cost $
+                    {{ ((netMaterialsCost$ | async) || 0) | number: '1.2-2'
+                    }})</span
+                  >
+                </div>
                 <strong
                   >{{ ((materialsCost$ | async) || 0) | number: '1.2-2'
                   }}</strong
                 >
               </div>
-            </div>
-            <div class="quote-summary-column">
-              <div class="quote-card">
-                <span>Net Labor Cost $</span>
+              <div class="quote-card quote-card-wide">
+                <div class="cost-line">
+                  <span>Labor Cost $</span>
+                  <span class="net-note"
+                    >(Net Cost $
+                    {{ ((netLaborCost$ | async) || 0) | number: '1.2-2'
+                    }})</span
+                  >
+                </div>
                 <strong
-                  >{{ ((netLaborCost$ | async) || 0) | number: '1.2-2'
-                  }}</strong
+                  >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
+                >
+              </div>
+            </div>
+            <div class="quote-summary-column totals-summary">
+              <div class="quote-card">
+                <span>Subtotal</span>
+                <strong
+                  >{{ ((subtotal$ | async) || 0) | number: '1.2-2' }}</strong
                 >
               </div>
               <div class="quote-card">
-                <span>Total Labor Cost $</span>
+                <span
+                  >GST ({{
+                    ((gstRatePercent$ | async) || 0) | number: '1.2-2'
+                  }}%)</span
+                >
                 <strong
-                  >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
+                  >{{ ((gstAmount$ | async) || 0) | number: '1.2-2' }}</strong
+                >
+              </div>
+              <div class="quote-card">
+                <span>Total</span>
+                <strong
+                  >{{ ((grandTotal$ | async) || 0) | number: '1.2-2'
+                  }}</strong
                 >
               </div>
             </div>
@@ -1232,32 +1255,56 @@
 
       <section class="card">
         <div class="quote-summary">
-          <div class="quote-summary-column">
-            <div class="quote-card">
-              <span>Net Materials Cost $</span>
-              <strong
-                >{{ ((netMaterialsCost$ | async) || 0) | number: '1.2-2'
-                }}</strong
-              >
-            </div>
-            <div class="quote-card">
-              <span>Total Materials Cost $</span>
+          <div class="quote-summary-column cost-summary">
+            <div class="quote-card quote-card-wide">
+              <div class="cost-line">
+                <span>Materials Cost $</span>
+                <span class="net-note"
+                  >(Net Cost $
+                  {{ ((netMaterialsCost$ | async) || 0) | number: '1.2-2'
+                  }})</span
+                >
+              </div>
               <strong
                 >{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong
               >
             </div>
-          </div>
-          <div class="quote-summary-column">
-            <div class="quote-card">
-              <span>Net Labor Cost $</span>
+            <div class="quote-card quote-card-wide">
+              <div class="cost-line">
+                <span>Labor Cost $</span>
+                <span class="net-note"
+                  >(Net Cost $
+                  {{ ((netLaborCost$ | async) || 0) | number: '1.2-2'
+                  }})</span
+                >
+              </div>
               <strong
-                >{{ ((netLaborCost$ | async) || 0) | number: '1.2-2' }}</strong
+                >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
+              >
+            </div>
+          </div>
+          <div class="quote-summary-column totals-summary">
+            <div class="quote-card">
+              <span>Subtotal</span>
+              <strong
+                >{{ ((subtotal$ | async) || 0) | number: '1.2-2' }}</strong
               >
             </div>
             <div class="quote-card">
-              <span>Total Labor Cost $</span>
+              <span
+                >GST ({{
+                  ((gstRatePercent$ | async) || 0) | number: '1.2-2'
+                }}%)</span
+              >
               <strong
-                >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
+                >{{ ((gstAmount$ | async) || 0) | number: '1.2-2' }}</strong
+              >
+            </div>
+            <div class="quote-card">
+              <span>Total</span>
+              <strong
+                >{{ ((grandTotal$ | async) || 0) | number: '1.2-2'
+                }}</strong
               >
             </div>
           </div>

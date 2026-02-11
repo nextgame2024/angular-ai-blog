@@ -49,6 +49,11 @@ export class ManagerInvoicesPageComponent implements OnInit, OnDestroy {
   netLaborCost = 0;
   totalMaterialsCost = 0;
   totalLaborCost = 0;
+  subtotal = 0;
+  gstRate = 0;
+  gstRatePercent = 0;
+  gstAmount = 0;
+  grandTotal = 0;
   pdfLoadingId: string | null = null;
 
   searchCtrl: FormControl<string>;
@@ -212,6 +217,11 @@ export class ManagerInvoicesPageComponent implements OnInit, OnDestroy {
     this.netLaborCost = 0;
     this.totalMaterialsCost = 0;
     this.totalLaborCost = 0;
+    this.subtotal = 0;
+    this.gstRate = 0;
+    this.gstRatePercent = 0;
+    this.gstAmount = 0;
+    this.grandTotal = 0;
     this.projectForm.reset();
     setTimeout(() => this.setupInfiniteScroll(), 0);
   }
@@ -302,6 +312,17 @@ export class ManagerInvoicesPageComponent implements OnInit, OnDestroy {
     );
     this.totalMaterialsCost = Number(this.selectedInvoice?.materialTotal ?? 0);
     this.totalLaborCost = Number(this.selectedInvoice?.laborTotal ?? 0);
+    this.subtotal = Number(
+      this.selectedInvoice?.subtotal ??
+        this.totalMaterialsCost + this.totalLaborCost,
+    );
+    const totalAmount = Number(this.selectedInvoice?.totalAmount ?? 0);
+    const docGst = Number(this.selectedInvoice?.gst ?? 0);
+    this.gstAmount =
+      docGst || (totalAmount && this.subtotal ? totalAmount - this.subtotal : 0);
+    this.gstRate = this.subtotal > 0 ? this.gstAmount / this.subtotal : 0;
+    this.gstRatePercent = this.gstRate * 100;
+    this.grandTotal = totalAmount || this.subtotal + this.gstAmount;
   }
 
   private calculateNetMaterialsCost(

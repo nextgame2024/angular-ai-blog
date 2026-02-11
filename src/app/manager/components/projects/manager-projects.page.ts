@@ -16,7 +16,7 @@ import {
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, combineLatest, Observable, Subject } from 'rxjs';
+import { BehaviorSubject, combineLatest, defer, Observable, Subject } from 'rxjs';
 import {
   debounceTime,
   distinctUntilChanged,
@@ -117,6 +117,11 @@ export class ManagerProjectsPageComponent
   laborCost$!: Observable<number>;
   netMaterialsCost$!: Observable<number>;
   netLaborCost$!: Observable<number>;
+  subtotal$!: Observable<number>;
+  gstRate$!: Observable<number>;
+  gstRatePercent$!: Observable<number>;
+  gstAmount$!: Observable<number>;
+  grandTotal$!: Observable<number>;
   private previewMaterials$ = new BehaviorSubject<BmProjectMaterial[]>([]);
   private previewLabor$ = new BehaviorSubject<BmProjectLabor[]>([]);
 
@@ -296,18 +301,21 @@ export class ManagerProjectsPageComponent
     this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
     this.defaultPricing$.next(this.projectForm.controls.default_pricing.value);
 
-    const pricingProfileId$ =
+    const pricingProfileId$ = defer(() =>
       this.projectForm.controls.pricing_profile_id.valueChanges.pipe(
         startWith(this.projectForm.controls.pricing_profile_id.value),
-      );
-    const projectTypeId$ =
+      ),
+    );
+    const projectTypeId$ = defer(() =>
       this.projectForm.controls.project_type_id.valueChanges.pipe(
         startWith(this.projectForm.controls.project_type_id.value),
-      );
-    const metersRequired$ =
+      ),
+    );
+    const metersRequired$ = defer(() =>
       this.projectForm.controls.meters_required.valueChanges.pipe(
         startWith(this.projectForm.controls.meters_required.value),
-      );
+      ),
+    );
 
     this.materialsCost$ = combineLatest([
       this.materials$,
@@ -425,6 +433,37 @@ export class ManagerProjectsPageComponent
           effectiveMetersRequired,
         );
       }),
+    );
+
+    this.gstRate$ = combineLatest([
+      pricingProfileId$,
+      this.editingProject$,
+      this.pricingProfiles$,
+    ]).pipe(
+      map(([profileId, project, profiles]) => {
+        const effectiveProfileId =
+          profileId || project?.pricingProfileId || null;
+        const profile = profiles.find(
+          (p) => p.pricingProfileId === effectiveProfileId,
+        );
+        return Number(profile?.gstRate ?? 0);
+      }),
+    );
+
+    this.gstRatePercent$ = this.gstRate$.pipe(
+      map((rate) => Number(rate) * 100),
+    );
+
+    this.subtotal$ = combineLatest([this.materialsCost$, this.laborCost$]).pipe(
+      map(([materialsTotal, laborTotal]) => materialsTotal + laborTotal),
+    );
+
+    this.gstAmount$ = combineLatest([this.subtotal$, this.gstRate$]).pipe(
+      map(([subtotal, rate]) => subtotal * Number(rate)),
+    );
+
+    this.grandTotal$ = combineLatest([this.subtotal$, this.gstAmount$]).pipe(
+      map(([subtotal, gst]) => subtotal + gst),
     );
 
     this.searchCtrl.valueChanges
