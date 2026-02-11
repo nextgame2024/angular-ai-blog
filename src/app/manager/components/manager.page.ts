@@ -7,7 +7,11 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { GoogleMapsModule, MapInfoWindow, MapMarker } from '@angular/google-maps';
+import {
+  GoogleMapsModule,
+  MapInfoWindow,
+  MapMarker,
+} from '@angular/google-maps';
 import {
   ActivatedRoute,
   NavigationEnd,
@@ -55,6 +59,7 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     string,
     Promise<google.maps.LatLngLiteral | null>
   >();
+  private mapsApiKey: string | null = null;
 
   @ViewChild(MapInfoWindow) infoWindow?: MapInfoWindow;
 
@@ -75,7 +80,11 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   menu: MenuItem[] = [
     { label: 'Clients', route: '/manager/clients', icon: 'clients' },
     { label: 'Projects', route: '/manager/projects', icon: 'projects' },
-    { label: 'Project types', route: '/manager/project-types', icon: 'project-types' },
+    {
+      label: 'Project types',
+      route: '/manager/project-types',
+      icon: 'project-types',
+    },
     { label: 'Users', route: '/manager/users', icon: 'users' },
     { label: 'Company', route: '/manager/company', icon: 'company' },
     { label: 'Suppliers', route: '/manager/suppliers', icon: 'suppliers' },
@@ -87,7 +96,7 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   ];
 
   mapCenter: google.maps.LatLngLiteral = { lat: -27.4698, lng: 153.0251 };
-  mapZoom = 11;
+  mapZoom = 12;
 
   mapOptions: google.maps.MapOptions = {
     clickableIcons: false,
@@ -100,28 +109,49 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   projectMarkers: Array<{
     project: BmProject;
     position: google.maps.LatLngLiteral;
-    icon: google.maps.Symbol;
+    icon: google.maps.Icon;
   }> = [];
   activeProject: BmProject | null = null;
 
-  private readonly hiddenStatuses = new Set(['cancelled', 'on_hold', 'done']);
+  private readonly allowedStatuses = new Set([
+    'to_do',
+    'in_progress',
+    'quote_created',
+    'quote_approved',
+    'invoice_process',
+  ]);
   private readonly statusColors: Record<string, string> = {
-    to_do: '#2563eb',
-    in_progress: '#f59e0b',
-    quote_created: '#0ea5a5',
-    quote_approved: '#16a34a',
-    invoice_process: '#7c3aed',
+    to_do: '#11eed8',
+    in_progress: '#f4f00c',
+    quote_created: '#ee8510',
+    quote_approved: '#0cf41c',
+    invoice_process: '#f125dd',
   };
+  private readonly photoFallbackSrc =
+    'data:image/svg+xml;charset=utf-8,' +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360">
+        <rect width="100%" height="100%" fill="#e2e8f0"/>
+        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#334155" font-family="Arial" font-size="22">
+          No preview available
+        </text>
+      </svg>`,
+    );
 
   constructor(
     private store: Store,
     private mapsLoader: GoogleMapsLoaderService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
     this.updateIsMobile();
+
+    this.mapsLoader
+      .getApiKey()
+      .then((k) => (this.mapsApiKey = k))
+      .catch(() => (this.mapsApiKey = null));
 
     this.mapsLoader
       .load()
@@ -203,7 +233,7 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     this.router.events
       .pipe(
         filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-        takeUntil(this.destroy$)
+        takeUntil(this.destroy$),
       )
       .subscribe(() => this.syncRouteUIState());
 
@@ -271,6 +301,13 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  streetViewPhotoUrl(project: BmProject | null): string {
+    if (!project?.clientAddress || !this.mapsApiKey)
+      return this.photoFallbackSrc;
+    const addr = encodeURIComponent(project.clientAddress);
+    return `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${addr}&fov=70&pitch=0&key=${this.mapsApiKey}`;
+  }
+
   private ensureGeocoder(): void {
     if (this.geocoder) return;
     if (typeof google === 'undefined' || !google.maps?.Geocoder) return;
@@ -286,12 +323,13 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     const query = this.searchSnapshot.trim().toLowerCase();
     const visible = this.projectsSnapshot.filter(
       (project) =>
-        !this.hiddenStatuses.has(project.status || '') &&
+        this.allowedStatuses.has(project.status || '') &&
         this.matchesSearch(project, query),
     );
+    const limited = visible.slice(0, 50);
 
     const markers = await Promise.all(
-      visible.map(async (project) => {
+      limited.map(async (project) => {
         const address = (project.clientAddress || '').trim();
         if (!address) return null;
         const position = await this.geocodeAddress(address);
@@ -306,10 +344,12 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
 
     if (token !== this.mapRefreshToken) return;
     this.projectMarkers = markers.filter(
-      (marker): marker is {
+      (
+        marker,
+      ): marker is {
         project: BmProject;
         position: google.maps.LatLngLiteral;
-        icon: google.maps.Symbol;
+        icon: google.maps.Icon;
       } => Boolean(marker),
     );
   }
@@ -329,18 +369,25 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     return haystack.includes(query);
   }
 
-  private buildMarkerIcon(status?: string | null): google.maps.Symbol {
-    const color =
-      this.statusColors[status || ''] ?? this.statusColors['to_do'];
+  private buildMarkerIcon(status?: string | null): google.maps.Icon {
+    const color = this.statusColors[status || ''] ?? this.statusColors['to_do'];
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 24 32">` +
+      `<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#0f172a" fill-opacity="0.35" transform="translate(0 2)"/>` +
+      `<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="${color}" stroke="#0f172a" stroke-opacity="0.65" stroke-width="0.8"/>` +
+      `<circle cx="12" cy="9" r="3.2" fill="#ffffff" fill-opacity="0.9"/>` +
+      `</svg>`;
+    const url = this.svgToDataUrl(svg);
     return {
-      path: google.maps.SymbolPath.CIRCLE,
-      fillColor: color,
-      fillOpacity: 0.9,
-      strokeColor: '#0f172a',
-      strokeOpacity: 0.7,
-      strokeWeight: 1,
-      scale: 7,
+      url,
+      scaledSize: new google.maps.Size(38, 50),
+      anchor: new google.maps.Point(21, 48),
     };
+  }
+
+  private svgToDataUrl(svg: string): string {
+    const encoded = window.btoa(unescape(encodeURIComponent(svg)));
+    return `data:image/svg+xml;base64,${encoded}`;
   }
 
   private maybeLoadMoreProjectsForMap(): void {
@@ -348,11 +395,21 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     if (this.projectsLoading) return;
     if (this.projectsTotal === 0) return;
     if (this.projectsSnapshot.length >= this.projectsTotal) return;
+    if (this.countVisibleProjects() >= 50) return;
     const expectedLoaded = this.projectsPage * this.projectsLimit;
     if (expectedLoaded >= this.projectsTotal) return;
     this.store.dispatch(
       ManagerProjectsActions.loadProjects({ page: this.projectsPage + 1 }),
     );
+  }
+
+  private countVisibleProjects(): number {
+    const query = this.searchSnapshot.trim().toLowerCase();
+    return this.projectsSnapshot.filter(
+      (project) =>
+        this.allowedStatuses.has(project.status || '') &&
+        this.matchesSearch(project, query),
+    ).length;
   }
 
   private async geocodeAddress(

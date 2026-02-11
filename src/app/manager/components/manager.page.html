@@ -18,8 +18,14 @@
           (mapMouseout)="closeProjectInfo()"
         ></map-marker>
 
-        <map-info-window>
+        <map-info-window [options]="{ disableAutoPan: true }">
           <div class="map-info" *ngIf="activeProject">
+            <img
+              class="map-info-photo"
+              [src]="streetViewPhotoUrl(activeProject)"
+              alt="Property photo preview"
+              loading="lazy"
+            />
             <div class="map-info-title">{{ activeProject.projectName }}</div>
             <div class="map-info-row">
               <span>Client</span>

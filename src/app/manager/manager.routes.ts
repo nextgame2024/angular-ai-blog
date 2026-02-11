@@ -68,8 +68,11 @@ export const MANAGER_ROUTES: Route[] = [
     component: ManagerPageComponent,
     providers: [
       ManagerService,
+      ManagerProjectsService,
       provideEffects(ManagerEffects),
+      provideEffects(ManagerProjectsEffects),
       provideState(MANAGER_FEATURE_KEY, managerReducer),
+      provideState(MANAGER_PROJECTS_FEATURE_KEY, managerProjectsReducer),
     ],
     children: [
       // IMPORTANT: menu is the “home” state to show menu again after Back
@@ -92,13 +95,10 @@ export const MANAGER_ROUTES: Route[] = [
         path: 'projects',
         component: ManagerProjectsPageComponent,
         providers: [
-          ManagerProjectsService,
           ManagerProjectTypesService,
           ManagerSuppliersService,
           ManagerLaborService,
           ManagerPricingService,
-          provideEffects(ManagerProjectsEffects),
-          provideState(MANAGER_PROJECTS_FEATURE_KEY, managerProjectsReducer),
         ],
         data: { title: 'Projects', fullscreen: true },
       },
