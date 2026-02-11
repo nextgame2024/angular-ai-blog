@@ -273,6 +273,7 @@ export class ManagerProjectsPageComponent
   editingLabor: BmProjectLabor | null = null;
   dismissedErrors = new Set<string>();
   dismissedWarnings = new Set<string>();
+  private actionLoading = new Map<string, { quote: boolean; invoice: boolean }>();
 
   @ViewChild('projectsList') projectsListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
@@ -1191,6 +1192,7 @@ export class ManagerProjectsPageComponent
       quote_created: [
         'quote_created',
         'quote_approved',
+        'invoice_process',
         'on_hold',
         'cancelled',
       ],
@@ -1270,7 +1272,7 @@ export class ManagerProjectsPageComponent
     const allowedMap: Record<string, string[]> = {
       to_do: ['in_progress', 'quote_created', 'quote_approved', 'on_hold', 'cancelled'],
       in_progress: ['quote_created', 'quote_approved', 'on_hold', 'cancelled'],
-      quote_created: ['quote_approved', 'on_hold', 'cancelled'],
+      quote_created: ['quote_approved', 'invoice_process', 'on_hold', 'cancelled'],
       quote_approved: ['invoice_process', 'on_hold', 'cancelled'],
       invoice_process: ['done', 'on_hold', 'cancelled'],
     };
@@ -1894,8 +1896,9 @@ export class ManagerProjectsPageComponent
 
   openStoredInvoice(project: BmProject | null): void {
     if (!project) return;
+    this.setActionLoading(project.projectId, 'invoice', true);
     if (project.invoiceDocumentId) {
-      this.openInvoicePdf(project.invoiceDocumentId);
+      this.openInvoicePdf(project.invoiceDocumentId, false, project.projectId);
       return;
     }
     const pdfUrl = project.invoicePdfUrl ?? null;
@@ -1903,19 +1906,26 @@ export class ManagerProjectsPageComponent
       const cacheBust = `t=${Date.now()}`;
       const url = pdfUrl.includes('?') ? `${pdfUrl}&${cacheBust}` : `${pdfUrl}?${cacheBust}`;
       window.open(url, '_blank', 'noopener');
+      this.setActionLoading(project.projectId, 'invoice', false);
+    } else {
+      this.setActionLoading(project.projectId, 'invoice', false);
     }
   }
 
   openStoredQuote(project: BmProject | null): void {
     if (!project) return;
+    this.setActionLoading(project.projectId, 'quote', true);
     const pdfUrl = project.quotePdfUrl ?? null;
     if (pdfUrl) {
       window.open(pdfUrl, '_blank', 'noopener');
+      this.setActionLoading(project.projectId, 'quote', false);
       return;
     }
     if (project.quoteDocumentId) {
-      this.openQuotePdf(project.quoteDocumentId);
+      this.openQuotePdf(project.quoteDocumentId, project.projectId);
+      return;
     }
+    this.setActionLoading(project.projectId, 'quote', false);
   }
 
   private refreshProject(projectId: string): void {
@@ -1935,7 +1945,7 @@ export class ManagerProjectsPageComponent
       });
   }
 
-  private openQuotePdf(documentId: string): void {
+  private openQuotePdf(documentId: string, projectId?: string): void {
     const url = `${environment.apiUrl}/bm/documents/${documentId}/quote-pdf`;
     this.http
       .get(url, { responseType: 'blob' })
@@ -1949,14 +1959,20 @@ export class ManagerProjectsPageComponent
         },
         error: () => {
           this.isQuoteLoading = false;
+          if (projectId) this.setActionLoading(projectId, 'quote', false);
         },
         complete: () => {
           this.isQuoteLoading = false;
+          if (projectId) this.setActionLoading(projectId, 'quote', false);
         },
       });
   }
 
-  private openInvoicePdf(documentId: string, refresh = false): void {
+  private openInvoicePdf(
+    documentId: string,
+    refresh = false,
+    projectId?: string,
+  ): void {
     const url = `${environment.apiUrl}/bm/documents/${documentId}/invoice-pdf${
       refresh ? '?refresh=1' : ''
     }`;
@@ -1972,11 +1988,31 @@ export class ManagerProjectsPageComponent
         },
         error: () => {
           this.isQuoteLoading = false;
+          if (projectId) this.setActionLoading(projectId, 'invoice', false);
         },
         complete: () => {
           this.isQuoteLoading = false;
+          if (projectId) this.setActionLoading(projectId, 'invoice', false);
         },
       });
+  }
+
+  isActionLoading(projectId: string, type: 'quote' | 'invoice'): boolean {
+    const entry = this.actionLoading.get(projectId);
+    return type === 'quote' ? !!entry?.quote : !!entry?.invoice;
+  }
+
+  private setActionLoading(
+    projectId: string,
+    type: 'quote' | 'invoice',
+    value: boolean,
+  ): void {
+    const entry = this.actionLoading.get(projectId) ?? {
+      quote: false,
+      invoice: false,
+    };
+    entry[type] = value;
+    this.actionLoading.set(projectId, entry);
   }
 
   saveProjectLabor(project: BmProject, editing?: BmProjectLabor | null): void {

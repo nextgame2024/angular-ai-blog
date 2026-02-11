@@ -1509,6 +1509,7 @@
               class="btn small secondary"
               type="button"
               (click)="openStoredInvoice(p)"
+              [disabled]="isActionLoading(p.projectId, 'invoice')"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -1518,7 +1519,9 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              Invoice
+              {{
+                isActionLoading(p.projectId, 'invoice') ? 'Loading...' : 'Invoice'
+              }}
             </button>
             <button
               *ngIf="
@@ -1531,6 +1534,7 @@
               class="btn small secondary"
               type="button"
               (click)="openStoredQuote(p)"
+              [disabled]="isActionLoading(p.projectId, 'quote')"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -1540,7 +1544,7 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              Quote
+              {{ isActionLoading(p.projectId, 'quote') ? 'Loading...' : 'Quote' }}
             </button>
             <button
               class="btn small secondary"
@@ -1600,6 +1604,7 @@
               class="btn small secondary"
               type="button"
               (click)="openStoredInvoice(p)"
+              [disabled]="isActionLoading(p.projectId, 'invoice')"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -1609,7 +1614,9 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              Invoice
+              {{
+                isActionLoading(p.projectId, 'invoice') ? 'Loading...' : 'Invoice'
+              }}
             </button>
             <button
               *ngIf="
@@ -1622,6 +1629,7 @@
               class="btn small secondary"
               type="button"
               (click)="openStoredQuote(p)"
+              [disabled]="isActionLoading(p.projectId, 'quote')"
             >
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
@@ -1631,7 +1639,7 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              Quote
+              {{ isActionLoading(p.projectId, 'quote') ? 'Loading...' : 'Quote' }}
             </button>
             <button
               class="btn small secondary"
