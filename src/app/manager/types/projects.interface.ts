@@ -15,6 +15,7 @@ export interface BmProject {
 
   clientId: string;
   clientName?: string | null;
+  clientAddress?: string | null;
 
   projectName: string;
   metersRequired?: number | null;

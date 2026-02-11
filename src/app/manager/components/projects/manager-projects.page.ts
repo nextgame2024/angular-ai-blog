@@ -26,6 +26,7 @@ import {
 } from 'rxjs/operators';
 
 import { ManagerProjectsActions } from '../../store/projects/manager.actions';
+import { ManagerActions } from '../../store/manager.actions';
 import {
   selectManagerEditingProject,
   selectManagerEditingProjectLabor,
@@ -48,6 +49,7 @@ import {
   selectManagerProjectsTotal,
   selectManagerProjectsViewMode,
 } from '../../store/projects/manager.selectors';
+import { selectManagerSearchQuery } from '../../store/manager.selectors';
 import type {
   BmProject,
   BmProjectLabor,
@@ -466,11 +468,27 @@ export class ManagerProjectsPageComponent
       map(([subtotal, gst]) => subtotal + gst),
     );
 
+    this.store
+      .select(selectManagerSearchQuery)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((query) => {
+        const next = query || '';
+        if (this.searchCtrl.value !== next) {
+          this.searchCtrl.setValue(next, { emitEvent: false });
+          this.store.dispatch(
+            ManagerProjectsActions.setProjectsSearchQuery({ query: next }),
+          );
+          this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
+        }
+      });
+
     this.searchCtrl.valueChanges
       .pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((value) => {
+        const next = value || '';
+        this.store.dispatch(ManagerActions.setSearchQuery({ query: next }));
         this.store.dispatch(
-          ManagerProjectsActions.setProjectsSearchQuery({ query: value || '' }),
+          ManagerProjectsActions.setProjectsSearchQuery({ query: next }),
         );
         this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
       });
@@ -1839,13 +1857,7 @@ export class ManagerProjectsPageComponent
             return;
           }
           this.refreshProject(project.projectId);
-          const pdfUrl = res?.document?.pdfUrl || res?.document?.pdf_url;
-          if (pdfUrl) {
-            window.open(pdfUrl, '_blank', 'noopener');
-            this.isQuoteLoading = false;
-            return;
-          }
-          this.openInvoicePdf(documentId);
+          this.openInvoicePdf(documentId, true);
         },
         error: () => {
           this.isQuoteLoading = false;
@@ -1855,13 +1867,15 @@ export class ManagerProjectsPageComponent
 
   openStoredInvoice(project: BmProject | null): void {
     if (!project) return;
-    const pdfUrl = project.invoicePdfUrl ?? null;
-    if (pdfUrl) {
-      window.open(pdfUrl, '_blank', 'noopener');
-      return;
-    }
     if (project.invoiceDocumentId) {
       this.openInvoicePdf(project.invoiceDocumentId);
+      return;
+    }
+    const pdfUrl = project.invoicePdfUrl ?? null;
+    if (pdfUrl) {
+      const cacheBust = `t=${Date.now()}`;
+      const url = pdfUrl.includes('?') ? `${pdfUrl}&${cacheBust}` : `${pdfUrl}?${cacheBust}`;
+      window.open(url, '_blank', 'noopener');
     }
   }
 
@@ -1915,8 +1929,10 @@ export class ManagerProjectsPageComponent
       });
   }
 
-  private openInvoicePdf(documentId: string): void {
-    const url = `${environment.apiUrl}/bm/documents/${documentId}/invoice-pdf`;
+  private openInvoicePdf(documentId: string, refresh = false): void {
+    const url = `${environment.apiUrl}/bm/documents/${documentId}/invoice-pdf${
+      refresh ? '?refresh=1' : ''
+    }`;
     this.http
       .get(url, { responseType: 'blob' })
       .pipe(takeUntil(this.destroy$))

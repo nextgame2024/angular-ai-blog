@@ -67,6 +67,31 @@
   opacity: 0.6;
 }
 
+/* Map info window */
+.map-info {
+  min-width: 220px;
+  font-size: 0.85rem;
+  color: #0f172a;
+}
+
+.map-info-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.35rem;
+}
+
+.map-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.2rem 0;
+}
+
+.map-info-row span:first-child {
+  color: #64748b;
+  font-weight: 600;
+}
+
 /* Right panel (desktop default) */
 .right-panel {
   position: absolute;

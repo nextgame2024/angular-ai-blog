@@ -8,7 +8,38 @@
         [center]="mapCenter"
         [zoom]="mapZoom"
         [options]="mapOptions"
-      ></google-map>
+      >
+        <map-marker
+          *ngFor="let marker of projectMarkers; trackBy: trackByProjectMarker"
+          #markerRef="mapMarker"
+          [position]="marker.position"
+          [icon]="marker.icon"
+          (mapMouseover)="openProjectInfo(markerRef, marker.project)"
+          (mapMouseout)="closeProjectInfo()"
+        ></map-marker>
+
+        <map-info-window>
+          <div class="map-info" *ngIf="activeProject">
+            <div class="map-info-title">{{ activeProject.projectName }}</div>
+            <div class="map-info-row">
+              <span>Client</span>
+              <span>{{ activeProject.clientName || '—' }}</span>
+            </div>
+            <div class="map-info-row">
+              <span>Address</span>
+              <span>{{ activeProject.clientAddress || '—' }}</span>
+            </div>
+            <div class="map-info-row">
+              <span>Type</span>
+              <span>{{ activeProject.projectTypeName || '—' }}</span>
+            </div>
+            <div class="map-info-row">
+              <span>Status</span>
+              <span>{{ formatStatus(activeProject.status) }}</span>
+            </div>
+          </div>
+        </map-info-window>
+      </google-map>
     </ng-container>
 
     <ng-template #mapsFallback>
@@ -26,7 +57,7 @@
       <input
         type="text"
         [formControl]="searchCtrl"
-        placeholder="Search (address / client / project) – coming next"
+        placeholder="Search by project, client, or address"
         aria-label="Search"
       />
     </div>
