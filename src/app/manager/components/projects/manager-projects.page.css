@@ -2,6 +2,7 @@
   display: grid;
   gap: 0.85rem;
   --list-header-height: 0px;
+  --projects-table-columns: 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr minmax(220px, 1.2fr);
 }
 
 .list-header {
@@ -187,6 +188,7 @@
   font-weight: 800;
   border: 1px solid rgba(15, 23, 42, 0.08);
   background: rgba(255, 255, 255, 0.98);
+  grid-template-columns: var(--projects-table-columns);
 }
 
 .search-field {
@@ -707,7 +709,7 @@
 .thead,
 .trow {
   display: grid;
-  grid-template-columns: 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 1.1fr;
+  grid-template-columns: var(--projects-table-columns);
   gap: 0.5rem;
   align-items: center;
 }
@@ -935,7 +937,6 @@
 
   .table-head {
     display: grid;
-    grid-template-columns: 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 1.1fr;
     gap: 0.5rem;
     align-items: center;
   }
@@ -961,7 +962,7 @@
 
 .table .thead,
 .table .trow {
-  grid-template-columns: 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 1.1fr;
+  grid-template-columns: var(--projects-table-columns);
 }
 
 .materials-table .thead,
