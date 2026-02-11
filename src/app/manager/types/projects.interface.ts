@@ -1,6 +1,7 @@
 export type ProjectStatus =
   | 'to_do'
   | 'in_progress'
+  | 'quote_created'
   | 'quote_approved'
   | 'done'
   | 'on_hold'

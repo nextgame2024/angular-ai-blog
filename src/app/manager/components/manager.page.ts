@@ -108,6 +108,7 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   private readonly statusColors: Record<string, string> = {
     to_do: '#2563eb',
     in_progress: '#f59e0b',
+    quote_created: '#0ea5a5',
     quote_approved: '#16a34a',
     invoice_process: '#7c3aed',
   };
@@ -253,6 +254,8 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
         return 'In progress';
       case 'quote_approved':
         return 'Quote approved';
+      case 'quote_created':
+        return 'Quote created';
       case 'invoice_process':
         return 'Invoice process';
       case 'done':

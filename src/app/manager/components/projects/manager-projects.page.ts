@@ -130,6 +130,7 @@ export class ManagerProjectsPageComponent
   statusOptions: ManagerSelectOption[] = [
     { value: 'to_do', label: 'To do' },
     { value: 'in_progress', label: 'In progress' },
+    { value: 'quote_created', label: 'Quote created' },
     { value: 'quote_approved', label: 'Quote approved' },
     { value: 'invoice_process', label: 'Invoice process' },
     { value: 'done', label: 'Done' },
@@ -1172,8 +1173,27 @@ export class ManagerProjectsPageComponent
     }
 
     const allowedMap: Record<string, string[]> = {
-      to_do: ['to_do', 'in_progress', 'quote_approved', 'on_hold', 'cancelled'],
-      in_progress: ['in_progress', 'quote_approved', 'on_hold', 'cancelled'],
+      to_do: [
+        'to_do',
+        'in_progress',
+        'quote_created',
+        'quote_approved',
+        'on_hold',
+        'cancelled',
+      ],
+      in_progress: [
+        'in_progress',
+        'quote_created',
+        'quote_approved',
+        'on_hold',
+        'cancelled',
+      ],
+      quote_created: [
+        'quote_created',
+        'quote_approved',
+        'on_hold',
+        'cancelled',
+      ],
       quote_approved: [
         'quote_approved',
         'invoice_process',
@@ -1248,8 +1268,9 @@ export class ManagerProjectsPageComponent
     }
 
     const allowedMap: Record<string, string[]> = {
-      to_do: ['in_progress', 'quote_approved', 'on_hold', 'cancelled'],
-      in_progress: ['quote_approved', 'on_hold', 'cancelled'],
+      to_do: ['in_progress', 'quote_created', 'quote_approved', 'on_hold', 'cancelled'],
+      in_progress: ['quote_created', 'quote_approved', 'on_hold', 'cancelled'],
+      quote_created: ['quote_approved', 'on_hold', 'cancelled'],
       quote_approved: ['invoice_process', 'on_hold', 'cancelled'],
       invoice_process: ['done', 'on_hold', 'cancelled'],
     };
@@ -1801,9 +1822,9 @@ export class ManagerProjectsPageComponent
             this.isQuoteLoading = false;
             return;
           }
-          if (project.status !== 'quote_approved') {
+          if (project.status !== 'quote_created') {
             this.projectsService
-              .updateProject(project.projectId, { status: 'quote_approved' })
+              .updateProject(project.projectId, { status: 'quote_created' })
               .pipe(takeUntil(this.destroy$))
               .subscribe({
                 next: (updateRes) => {
@@ -1815,8 +1836,14 @@ export class ManagerProjectsPageComponent
                       }),
                     );
                   }
+                  this.refreshProject(project.projectId);
+                },
+                error: () => {
+                  this.refreshProject(project.projectId);
                 },
               });
+          } else {
+            this.refreshProject(project.projectId);
           }
           this.openQuotePdf(documentId);
         },
