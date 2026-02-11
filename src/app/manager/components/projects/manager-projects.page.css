@@ -336,7 +336,7 @@
 }
 
 .quote-card strong {
-  font-size: 1.05rem;
+  font-size: 0.85rem;
   font-weight: 800;
 }
 
@@ -707,7 +707,7 @@
 .thead,
 .trow {
   display: grid;
-  grid-template-columns: 1.4fr 1.2fr 1fr 0.8fr 1.1fr;
+  grid-template-columns: 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 1.1fr;
   gap: 0.5rem;
   align-items: center;
 }
@@ -935,7 +935,7 @@
 
   .table-head {
     display: grid;
-    grid-template-columns: 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 0.8fr 1.1fr;
+    grid-template-columns: 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 1.1fr;
     gap: 0.5rem;
     align-items: center;
   }
@@ -961,7 +961,7 @@
 
 .table .thead,
 .table .trow {
-  grid-template-columns: 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 0.8fr 1.1fr;
+  grid-template-columns: 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr 1.1fr;
 }
 
 .materials-table .thead,

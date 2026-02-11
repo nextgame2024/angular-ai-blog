@@ -28,6 +28,9 @@ export interface BmProject {
   projectTypeName?: string | null;
   pricingProfileId?: string | null;
   pricingProfileName?: string | null;
+  quoteDocumentId?: string | null;
+  quoteDocNumber?: string | null;
+  quotePdfUrl?: string | null;
   invoiceDocumentId?: string | null;
   invoiceDocNumber?: string | null;
   invoicePdfUrl?: string | null;

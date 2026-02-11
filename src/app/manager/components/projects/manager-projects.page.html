@@ -61,7 +61,6 @@
       <div>Project Type</div>
       <div>Pricing Profile</div>
       <div>Status</div>
-      <div>Invoice</div>
       <div class="actions-col">Actions</div>
     </div>
   </div>
@@ -297,11 +296,10 @@
             <div class="quote-summary-column cost-summary">
               <div class="quote-card quote-card-wide">
                 <div class="cost-line">
-                  <span>Materials Cost $</span>
+                  <strong>Materials Cost $</strong>
                   <span class="net-note"
-                    >(Net Cost $
-                    {{ ((netMaterialsCost$ | async) || 0) | number: '1.2-2'
-                    }})</span
+                    >(Net Cost $ {{ ((netMaterialsCost$ | async) || 0) | number:
+                    '1.2-2' }})</span
                   >
                 </div>
                 <strong
@@ -311,11 +309,10 @@
               </div>
               <div class="quote-card quote-card-wide">
                 <div class="cost-line">
-                  <span>Labor Cost $</span>
+                  <strong>Labor Cost $</strong>
                   <span class="net-note"
-                    >(Net Cost $
-                    {{ ((netLaborCost$ | async) || 0) | number: '1.2-2'
-                    }})</span
+                    >(Net Cost $ {{ ((netLaborCost$ | async) || 0) | number:
+                    '1.2-2' }})</span
                   >
                 </div>
                 <strong
@@ -325,26 +322,24 @@
             </div>
             <div class="quote-summary-column totals-summary">
               <div class="quote-card">
-                <span>Subtotal</span>
+                <strong>Subtotal</strong>
                 <strong
                   >{{ ((subtotal$ | async) || 0) | number: '1.2-2' }}</strong
                 >
               </div>
               <div class="quote-card">
-                <span
-                  >GST ({{
-                    ((gstRatePercent$ | async) || 0) | number: '1.2-2'
-                  }}%)</span
+                <strong
+                  >GST ({{ ((gstRatePercent$ | async) || 0) | number: '1.2-2'
+                  }}%)</strong
                 >
                 <strong
                   >{{ ((gstAmount$ | async) || 0) | number: '1.2-2' }}</strong
                 >
               </div>
               <div class="quote-card">
-                <span>Total</span>
+                <strong>Total</strong>
                 <strong
-                  >{{ ((grandTotal$ | async) || 0) | number: '1.2-2'
-                  }}</strong
+                  >{{ ((grandTotal$ | async) || 0) | number: '1.2-2' }}</strong
                 >
               </div>
             </div>
@@ -419,11 +414,8 @@
                   class="error-text"
                   *ngIf="projectForm.controls.client_id.touched && projectForm.controls.client_id.invalid"
                 >
-                  {{
-                    projectForm.controls.client_id.hasError('invalidSelection')
-                      ? 'Please select a valid client.'
-                      : 'Client is required.'
-                  }}
+                  {{ projectForm.controls.client_id.hasError('invalidSelection')
+                  ? 'Please select a valid client.' : 'Client is required.' }}
                 </div>
               </label>
 
@@ -737,7 +729,10 @@
           </ng-container>
 
           <ng-container *ngIf="(materialsViewMode$ | async) === 'list'">
-            <div class="table materials-table" *ngIf="(materials$ | async) as materials">
+            <div
+              class="table materials-table"
+              *ngIf="(materials$ | async) as materials"
+            >
               <div class="thead">
                 <div>Material</div>
                 <div>Quantity - Unit</div>
@@ -801,23 +796,24 @@
                 class="project-card"
                 *ngFor="let m of materials; trackBy: trackByMaterial"
               >
-              <div class="row">
-                <div class="name">{{ m.materialName }}</div>
-                <div class="muted">
-                  {{ formatQuantityUnitLabel(m.quantity, m.unit) }}
+                <div class="row">
+                  <div class="name">{{ m.materialName }}</div>
+                  <div class="muted">
+                    {{ formatQuantityUnitLabel(m.quantity, m.unit) }}
+                  </div>
                 </div>
-              </div>
-              <div class="meta">
-                <div>
-                  <span>Unit Cost:</span> {{ formatMoneyLabel(m.unitCostOverride) }}
-                </div>
-                <div>
-                  <span>Cost per unit:</span> {{ formatCostPerUnitLabel(m) }}
-                </div>
-                <div>
-                  <span>Coverage:</span>
-                  {{ formatCoverageLabel(m.coverageRatio, m.coverageUnit) }}
-                </div>
+                <div class="meta">
+                  <div>
+                    <span>Unit Cost:</span> {{
+                    formatMoneyLabel(m.unitCostOverride) }}
+                  </div>
+                  <div>
+                    <span>Cost per unit:</span> {{ formatCostPerUnitLabel(m) }}
+                  </div>
+                  <div>
+                    <span>Coverage:</span>
+                    {{ formatCoverageLabel(m.coverageRatio, m.coverageUnit) }}
+                  </div>
                 </div>
                 <div class="card-actions">
                   <button
@@ -1035,10 +1031,12 @@
               <div class="trow" *ngFor="let l of labor; trackBy: trackByLabor">
                 <div class="cell strong">{{ l.laborName }}</div>
                 <div class="cell muted">
-                  {{ formatUnitCostUnitTypeLabel(l.unitCostOverride, l.unitType) }}
+                  {{ formatUnitCostUnitTypeLabel(l.unitCostOverride, l.unitType)
+                  }}
                 </div>
                 <div class="cell muted">
-                  {{ formatProductivityUnitLabel(l.unitProductivity, l.productivityUnit) }}
+                  {{ formatProductivityUnitLabel(l.unitProductivity,
+                  l.productivityUnit) }}
                 </div>
                 <div class="cell actions-col">
                   <button
@@ -1081,13 +1079,15 @@
                 <div class="row">
                   <div class="name">{{ l.laborName }}</div>
                   <div class="muted">
-                    {{ formatUnitCostUnitTypeLabel(l.unitCostOverride, l.unitType) }}
+                    {{ formatUnitCostUnitTypeLabel(l.unitCostOverride,
+                    l.unitType) }}
                   </div>
                 </div>
                 <div class="meta">
                   <div>
                     <span>Productivity:</span>
-                    {{ formatProductivityUnitLabel(l.unitProductivity, l.productivityUnit) }}
+                    {{ formatProductivityUnitLabel(l.unitProductivity,
+                    l.productivityUnit) }}
                   </div>
                 </div>
                 <div class="card-actions">
@@ -1260,9 +1260,8 @@
               <div class="cost-line">
                 <span>Materials Cost $</span>
                 <span class="net-note"
-                  >(Net Cost $
-                  {{ ((netMaterialsCost$ | async) || 0) | number: '1.2-2'
-                  }})</span
+                  >(Net Cost $ {{ ((netMaterialsCost$ | async) || 0) | number:
+                  '1.2-2' }})</span
                 >
               </div>
               <strong
@@ -1273,9 +1272,8 @@
               <div class="cost-line">
                 <span>Labor Cost $</span>
                 <span class="net-note"
-                  >(Net Cost $
-                  {{ ((netLaborCost$ | async) || 0) | number: '1.2-2'
-                  }})</span
+                  >(Net Cost $ {{ ((netLaborCost$ | async) || 0) | number:
+                  '1.2-2' }})</span
                 >
               </div>
               <strong
@@ -1292,8 +1290,7 @@
             </div>
             <div class="quote-card">
               <span
-                >GST ({{
-                  ((gstRatePercent$ | async) || 0) | number: '1.2-2'
+                >GST ({{ ((gstRatePercent$ | async) || 0) | number: '1.2-2'
                 }}%)</span
               >
               <strong
@@ -1303,8 +1300,7 @@
             <div class="quote-card">
               <span>Total</span>
               <strong
-                >{{ ((grandTotal$ | async) || 0) | number: '1.2-2'
-                }}</strong
+                >{{ ((grandTotal$ | async) || 0) | number: '1.2-2' }}</strong
               >
             </div>
           </div>
@@ -1379,11 +1375,8 @@
                 class="error-text"
                 *ngIf="projectForm.controls.client_id.touched && projectForm.controls.client_id.invalid"
               >
-                {{
-                  projectForm.controls.client_id.hasError('invalidSelection')
-                    ? 'Please select a valid client.'
-                    : 'Client is required.'
-                }}
+                {{ projectForm.controls.client_id.hasError('invalidSelection') ?
+                'Please select a valid client.' : 'Client is required.' }}
               </div>
             </label>
 
@@ -1488,41 +1481,67 @@
   <!-- LIST MODE -->
   <ng-container *ngIf="(viewMode$ | async) === 'list'">
     <div class="list" #projectsList>
-        <div class="table" *ngIf="(projectsRaw$ | async) as projects">
-          <div class="thead">
-            <div>Name</div>
-            <div>Client</div>
-            <div>Project Type</div>
-            <div>Pricing Profile</div>
-            <div>Status</div>
-            <div>Invoice</div>
-            <div class="actions-col">Actions</div>
-          </div>
+      <div class="table" *ngIf="(projectsRaw$ | async) as projects">
+        <div class="thead">
+          <div>Name</div>
+          <div>Client</div>
+          <div>Project Type</div>
+          <div>Pricing Profile</div>
+          <div>Status</div>
+          <div class="actions-col">Actions</div>
+        </div>
 
-          <div class="trow" *ngFor="let p of projects; trackBy: trackByProject">
-            <div class="cell strong">{{ p.projectName }}</div>
-            <div class="cell muted">{{ p.clientName || '—' }}</div>
-            <div class="cell muted">{{ p.projectTypeName || '—' }}</div>
-            <div class="cell muted">
-              {{ p.pricingProfileName || (p.pricingProfileId ? 'Custom' : '—') }}
-            </div>
-            <div class="cell">
-              <span class="badge" [class.archived]="p.status === 'archived'">
-                {{ formatStatus(p.status) }}
-              </span>
-            </div>
-            <div class="cell">
-              <button
-                *ngIf="p.invoiceDocumentId"
-                class="btn small secondary"
-                type="button"
-                (click)="openStoredInvoice(p)"
-              >
-                Invoice
-              </button>
-              <span *ngIf="!p.invoiceDocumentId" class="muted">—</span>
-            </div>
+        <div class="trow" *ngFor="let p of projects; trackBy: trackByProject">
+          <div class="cell strong">{{ p.projectName }}</div>
+          <div class="cell muted">{{ p.clientName || '—' }}</div>
+          <div class="cell muted">{{ p.projectTypeName || '—' }}</div>
+          <div class="cell muted">
+            {{ p.pricingProfileName || (p.pricingProfileId ? 'Custom' : '—') }}
+          </div>
+          <div class="cell">
+            <span class="badge" [class.archived]="p.status === 'archived'">
+              {{ formatStatus(p.status) }}
+            </span>
+          </div>
           <div class="cell actions-col">
+            <button
+              *ngIf="p.invoiceDocumentId || p.invoicePdfUrl || p.invoiceDocNumber"
+              class="btn small secondary"
+              type="button"
+              (click)="openStoredInvoice(p)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 4h16v16H4z"></path>
+                  <path d="M8 8h8"></path>
+                  <path d="M8 12h8"></path>
+                  <path d="M8 16h5"></path>
+                </svg>
+              </span>
+              Invoice
+            </button>
+            <button
+              *ngIf="
+                !(p.invoiceDocumentId || p.invoicePdfUrl || p.invoiceDocNumber) &&
+                (p.quoteDocumentId ||
+                  p.quotePdfUrl ||
+                  p.quoteDocNumber ||
+                  p.status === 'quote_approved')
+              "
+              class="btn small secondary"
+              type="button"
+              (click)="openStoredQuote(p)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 4h16v16H4z"></path>
+                  <path d="M8 8h8"></path>
+                  <path d="M8 12h8"></path>
+                  <path d="M8 16h5"></path>
+                </svg>
+              </span>
+              Quote
+            </button>
             <button
               class="btn small secondary"
               type="button"
@@ -1577,7 +1596,7 @@
           </div>
           <div class="card-actions">
             <button
-              *ngIf="p.invoiceDocumentId"
+              *ngIf="p.invoiceDocumentId || p.invoicePdfUrl || p.invoiceDocNumber"
               class="btn small secondary"
               type="button"
               (click)="openStoredInvoice(p)"
@@ -1591,6 +1610,28 @@
                 </svg>
               </span>
               Invoice
+            </button>
+            <button
+              *ngIf="
+                !(p.invoiceDocumentId || p.invoicePdfUrl || p.invoiceDocNumber) &&
+                (p.quoteDocumentId ||
+                  p.quotePdfUrl ||
+                  p.quoteDocNumber ||
+                  p.status === 'quote_approved')
+              "
+              class="btn small secondary"
+              type="button"
+              (click)="openStoredQuote(p)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 4h16v16H4z"></path>
+                  <path d="M8 8h8"></path>
+                  <path d="M8 12h8"></path>
+                  <path d="M8 16h5"></path>
+                </svg>
+              </span>
+              Quote
             </button>
             <button
               class="btn small secondary"

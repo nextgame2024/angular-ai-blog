@@ -1865,6 +1865,18 @@ export class ManagerProjectsPageComponent
     }
   }
 
+  openStoredQuote(project: BmProject | null): void {
+    if (!project) return;
+    const pdfUrl = project.quotePdfUrl ?? null;
+    if (pdfUrl) {
+      window.open(pdfUrl, '_blank', 'noopener');
+      return;
+    }
+    if (project.quoteDocumentId) {
+      this.openQuotePdf(project.quoteDocumentId);
+    }
+  }
+
   private refreshProject(projectId: string): void {
     this.projectsService
       .getProject(projectId)

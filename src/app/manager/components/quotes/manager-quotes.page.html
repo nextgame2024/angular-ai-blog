@@ -284,7 +284,7 @@
             <div class="quote-summary-column cost-summary">
               <div class="quote-card quote-card-wide">
                 <div class="cost-line">
-                  <span>Materials Cost $</span>
+                  <strong>Materials Cost $</strong>
                   <span class="net-note"
                     >(Net Cost $ {{ formatMoney(netMaterialsCost) }})</span
                   >
@@ -293,7 +293,7 @@
               </div>
               <div class="quote-card quote-card-wide">
                 <div class="cost-line">
-                  <span>Labor Cost $</span>
+                  <strong>Labor Cost $</strong>
                   <span class="net-note"
                     >(Net Cost $ {{ formatMoney(netLaborCost) }})</span
                   >
@@ -303,15 +303,15 @@
             </div>
             <div class="quote-summary-column totals-summary">
               <div class="quote-card">
-                <span>Subtotal</span>
+                <strong>Subtotal</strong>
                 <strong>{{ formatMoney(subtotal) }}</strong>
               </div>
               <div class="quote-card">
-                <span>GST ({{ formatNumber(gstRatePercent) }}%)</span>
+                <strong>GST ({{ formatNumber(gstRatePercent) }}%)</strong>
                 <strong>{{ formatMoney(gstAmount) }}</strong>
               </div>
               <div class="quote-card">
-                <span>Total</span>
+                <strong>Total</strong>
                 <strong>{{ formatMoney(grandTotal) }}</strong>
               </div>
             </div>
@@ -659,5 +659,4 @@
       </ng-container>
     </ng-container>
   </ng-container>
-
 </div>
