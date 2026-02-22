@@ -219,8 +219,7 @@ export class TownPlannerV2Effects {
           ((result as any)?.address as string) ||
           ((result as any)?.formattedAddress as string) ||
           '';
-        const planningSnapshot = ((result as any)?.planning ?? null) as any;
-        return { lat, lng, placeId, addressLabel, planningSnapshot };
+        return { lat, lng, placeId, addressLabel };
       }),
       filter(
         ({ lat, lng, addressLabel }) =>
@@ -231,13 +230,12 @@ export class TownPlannerV2Effects {
           typeof addressLabel === 'string' &&
           !!addressLabel.trim()
       ),
-      map(({ lat, lng, placeId, addressLabel, planningSnapshot }) =>
+      map(({ lat, lng, placeId, addressLabel }) =>
         TownPlannerV2Actions.primeReport({
           addressLabel: addressLabel.trim(),
           placeId,
           lat,
           lng,
-          planningSnapshot,
         })
       )
     )
@@ -246,14 +244,13 @@ export class TownPlannerV2Effects {
   primeReport$ = createEffect(() =>
     this.actions$.pipe(
       ofType(TownPlannerV2Actions.primeReport),
-      switchMap(({ addressLabel, placeId, lat, lng, planningSnapshot }) =>
+      switchMap(({ addressLabel, placeId, lat, lng }) =>
         this.api
           .generateReport({
             addressLabel,
             placeId: placeId || null,
             lat,
             lng,
-            planningSnapshot: planningSnapshot ?? null,
           })
           .pipe(
             switchMap((resp) => {
@@ -321,7 +318,6 @@ export class TownPlannerV2Effects {
           ((selected as any).address as string) ||
           ((selected as any).formattedAddress as string) ||
           '';
-        const planningSnapshot = ((selected as any).planning ?? null) as any;
         const existingToken = (state as any)?.reportToken || null;
         const existingStatus = (state as any)?.reportStatus || 'idle';
         const existingPdfUrl = (state as any)?.reportPdfUrl || null;
@@ -360,7 +356,6 @@ export class TownPlannerV2Effects {
             placeId,
             lat,
             lng,
-            planningSnapshot,
           })
           .pipe(
             switchMap((resp) => {
