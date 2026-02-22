@@ -148,8 +148,8 @@
         ></map-polygon>
 
         <map-polygon
-          *ngIf="zoningPolygonPath.length"
-          [paths]="zoningPolygonPath"
+          *ngFor="let zonePath of zoningPolygonPaths"
+          [paths]="zonePath"
           [options]="zoningPolygonOptions"
         ></map-polygon>
 
@@ -179,7 +179,7 @@
             <span class="tp2-legend-swatch tp2-legend-swatch--parcel"></span>
             <span class="tp2-legend-label">Property boundary</span>
           </div>
-          <div class="tp2-legend-item" *ngIf="zoningPolygonPath.length">
+          <div class="tp2-legend-item" *ngIf="zoningPolygonPaths.length">
             <span class="tp2-legend-swatch tp2-legend-swatch--zoning"></span>
             <span class="tp2-legend-label">Zoning for subject site</span>
           </div>
@@ -291,7 +291,7 @@
                 ></span>
                 <span class="tp2-legend-label">Property boundary</span>
               </div>
-              <div class="tp2-legend-item" *ngIf="zoningPolygonPath.length">
+              <div class="tp2-legend-item" *ngIf="zoningPolygonPaths.length">
                 <span
                   class="tp2-legend-swatch tp2-legend-swatch--zoning"
                 ></span>

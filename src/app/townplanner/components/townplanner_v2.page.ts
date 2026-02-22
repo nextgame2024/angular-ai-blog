@@ -113,7 +113,7 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   markerPosition: google.maps.LatLngLiteral | null = null;
 
   siteParcelPath: google.maps.LatLngLiteral[] = [];
-  zoningPolygonPath: google.maps.LatLngLiteral[] = [];
+  zoningPolygonPaths: google.maps.LatLngLiteral[][] = [];
   overlayPolygonPaths: OverlayPolygonPath[] = [];
   overlayPolylinePaths: OverlayPolylinePath[] = [];
 
@@ -408,7 +408,7 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   hasMapLayers(): boolean {
     return (
       !!this.siteParcelPath.length ||
-      !!this.zoningPolygonPath.length ||
+      !!this.zoningPolygonPaths.length ||
       !!this.overlayPolygonPaths.length ||
       !!this.overlayPolylinePaths.length
     );
@@ -416,7 +416,7 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
 
   private clearMapLayers(): void {
     this.siteParcelPath = [];
-    this.zoningPolygonPath = [];
+    this.zoningPolygonPaths = [];
     this.overlayPolygonPaths = [];
     this.overlayPolylinePaths = [];
   }
@@ -432,16 +432,21 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
       : [];
 
     const zoningGeom = this.extractGeometry(planning.zoningPolygon);
-    this.zoningPolygonPath = zoningGeom
-      ? this.toSinglePolygonPath(zoningGeom, focus)
+    this.zoningPolygonPaths = zoningGeom
+      ? this.toPolygonPaths(zoningGeom, focus)
       : [];
 
     const polyPaths: OverlayPolygonPath[] = [];
     const linePaths: OverlayPolylinePath[] = [];
 
-    const rawOverlays = Array.isArray(planning.overlayPolygons)
-      ? planning.overlayPolygons
-      : [];
+    const rawOverlays = [
+      ...(Array.isArray(planning.overlayPolygons)
+        ? planning.overlayPolygons
+        : []),
+      ...(Array.isArray(planning.overlayPolylines)
+        ? planning.overlayPolylines
+        : []),
+    ];
 
     for (const ov of rawOverlays) {
       const code = String((ov as any)?.code ?? (ov as any)?.name ?? 'overlay');
@@ -451,16 +456,20 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
       if (!geom?.type || !geom?.coordinates) continue;
 
       if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
-        const path = this.toSinglePolygonPath(geom, focus);
-        if (!path.length) continue;
-        polyPaths.push({ code, path, style: this.getOverlayStyle(code) });
+        const paths = this.toPolygonPaths(geom, focus);
+        if (!paths.length) continue;
+        for (const path of paths) {
+          polyPaths.push({ code, path, style: this.getOverlayStyle(code) });
+        }
         continue;
       }
 
       if (geom.type === 'LineString' || geom.type === 'MultiLineString') {
-        const path = this.toSingleLinePath(geom);
-        if (!path.length) continue;
-        linePaths.push({ code, path, style: this.getOverlayLineStyle(code) });
+        const paths = this.toLinePaths(geom, focus);
+        if (!paths.length) continue;
+        for (const path of paths) {
+          linePaths.push({ code, path, style: this.getOverlayLineStyle(code) });
+        }
         continue;
       }
     }
@@ -569,6 +578,72 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
       .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
   }
 
+  private toPolygonPaths(
+    geometry: GeoJsonGeometry,
+    focusPoint?: google.maps.LatLngLiteral
+  ): google.maps.LatLngLiteral[][] {
+    if (!geometry || !geometry.type || !geometry.coordinates) return [];
+
+    const type = geometry.type;
+    const coords: any = geometry.coordinates;
+    const rings: LngLatTuple[][] = [];
+
+    if (type === 'Polygon') {
+      const outer = (coords[0] || []) as LngLatTuple[];
+      if (outer?.length >= 3) rings.push(outer);
+    } else if (type === 'MultiPolygon') {
+      for (const poly of coords as any[]) {
+        const outer = (poly?.[0] || []) as LngLatTuple[];
+        if (outer?.length >= 3) rings.push(outer);
+      }
+    } else {
+      return [];
+    }
+
+    const converted = rings
+      .map((ring) =>
+        ring
+          .filter((p) => Array.isArray(p) && p.length >= 2)
+          .map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }))
+          .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+      )
+      .filter((path) => path.length >= 3);
+
+    if (!converted.length) return [];
+    if (!focusPoint || converted.length === 1) return converted.slice(0, 40);
+
+    const scored = converted.map((path) => {
+      const ring = path.map((p) => [p.lng, p.lat] as LngLatTuple);
+      const centroid = this.ringCentroid(ring);
+      return {
+        path,
+        contains: this.isPointInRing(focusPoint, ring),
+        distance: this.haversineMeters(focusPoint, centroid),
+        area: this.ringArea(ring),
+      };
+    });
+
+    scored.sort((a, b) => {
+      if (a.contains !== b.contains) return a.contains ? -1 : 1;
+      if (Math.abs(a.distance - b.distance) > 0.01) return a.distance - b.distance;
+      return a.area - b.area;
+    });
+
+    const keep: typeof scored = [];
+    for (const s of scored) {
+      if (s.contains || s.distance <= 420) keep.push(s);
+    }
+
+    const minContext = Math.min(8, scored.length);
+    let i = 0;
+    while (keep.length < minContext && i < scored.length) {
+      if (!keep.includes(scored[i])) keep.push(scored[i]);
+      i += 1;
+    }
+
+    return (keep.length ? keep : scored).slice(0, 40).map((x) => x.path);
+  }
+
   private toSingleLinePath(
     geometry: GeoJsonGeometry
   ): google.maps.LatLngLiteral[] {
@@ -593,6 +668,65 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
       .filter((p) => Array.isArray(p) && p.length >= 2)
       .map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }))
       .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+  }
+
+  private toLinePaths(
+    geometry: GeoJsonGeometry,
+    focusPoint?: google.maps.LatLngLiteral
+  ): google.maps.LatLngLiteral[][] {
+    if (!geometry || !geometry.type || !geometry.coordinates) return [];
+
+    const linesRaw: LngLatTuple[][] =
+      geometry.type === 'LineString'
+        ? [geometry.coordinates as LngLatTuple[]]
+        : geometry.type === 'MultiLineString'
+          ? (geometry.coordinates as LngLatTuple[][])
+          : [];
+
+    const lines = linesRaw
+      .map((line) =>
+        line
+          .filter((p) => Array.isArray(p) && p.length >= 2)
+          .map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }))
+          .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng))
+      )
+      .filter((line) => line.length >= 2);
+
+    if (!lines.length) return [];
+    if (!focusPoint || lines.length === 1) return lines.slice(0, 80);
+
+    const scored = lines.map((line) => {
+      const ring = line.map((p) => [p.lng, p.lat] as LngLatTuple);
+      const center = this.ringCentroid(ring);
+      const lineLen = line.reduce((sum, p, idx) => {
+        if (idx === 0) return 0;
+        return sum + this.haversineMeters(line[idx - 1], p);
+      }, 0);
+      return {
+        line,
+        distance: this.haversineMeters(focusPoint, center),
+        lineLen,
+      };
+    });
+
+    scored.sort((a, b) => {
+      if (Math.abs(a.distance - b.distance) > 0.01) return a.distance - b.distance;
+      return b.lineLen - a.lineLen;
+    });
+
+    const keep: typeof scored = [];
+    for (const s of scored) {
+      if (s.distance <= 520) keep.push(s);
+    }
+
+    const minContext = Math.min(24, scored.length);
+    let i = 0;
+    while (keep.length < minContext && i < scored.length) {
+      if (!keep.includes(scored[i])) keep.push(scored[i]);
+      i += 1;
+    }
+
+    return (keep.length ? keep : scored).slice(0, 80).map((x) => x.line);
   }
 
   private computeCentroid(
