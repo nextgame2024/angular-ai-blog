@@ -21,9 +21,12 @@ export type TownPlannerV2OverlayGeometry = {
 };
 
 export type TownPlannerV2PlanningPayload = {
+  zoning?: string | null;
   zoningName?: string | null;
   zoningCode?: string | null;
   neighbourhoodPlan?: string | null;
+  neighbourhoodPlanPrecinct?: string | null;
+  neighbourhoodPlanPrecinctCode?: string | null;
 
   // Map-ready geometries (GeoJSON in EPSG:4326)
   siteParcelPolygon?:
@@ -40,6 +43,17 @@ export type TownPlannerV2PlanningPayload = {
 
   // Human readable overlay list
   overlays?: TownPlannerV2OverlayMeta[] | null;
+
+  // Optional parcel metadata (if provided by backend)
+  propertyParcel?: {
+    properties?: Record<string, any> | null;
+    geometry?: GeoJsonGeometry | null;
+    debug?: {
+      areaM2?: number | null;
+      area_m2?: number | null;
+      [k: string]: any;
+    } | null;
+  } | null;
 };
 
 export interface TownPlannerV2AddressSuggestion {
@@ -79,6 +93,7 @@ export interface TownPlannerV2State {
 
   // Report generation
   reportStatus: TownPlannerV2ReportStatus;
+  reportRequested: boolean;
   reportToken: string | null;
   reportPdfUrl: string | null;
   reportError: string | null;
@@ -96,6 +111,7 @@ export const initialTownPlannerV2State: TownPlannerV2State = {
   selected: null,
 
   reportStatus: 'idle',
+  reportRequested: false,
   reportToken: null,
   reportPdfUrl: null,
   reportError: null,

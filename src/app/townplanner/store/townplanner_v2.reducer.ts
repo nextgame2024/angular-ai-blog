@@ -59,6 +59,7 @@ export const townPlannerV2Reducer = createReducer<TownPlannerV2State>(
 
       // reset report state when selecting a new property
       reportStatus: 'idle',
+      reportRequested: false,
       reportToken: null,
       reportPdfUrl: null,
       reportError: null,
@@ -84,17 +85,43 @@ export const townPlannerV2Reducer = createReducer<TownPlannerV2State>(
     error,
   })),
 
+  // Background pre-generation reducers
+  on(TownPlannerV2Actions.primeReportRunning, (state, { token }) => ({
+    ...state,
+    reportStatus: 'running',
+    reportRequested: false,
+    reportToken: token,
+    reportError: null,
+    reportPdfUrl: null,
+  })),
+
+  on(TownPlannerV2Actions.primeReportReady, (state, { token, pdfUrl }) => ({
+    ...state,
+    reportStatus: 'ready',
+    reportRequested: false,
+    reportToken: token,
+    reportPdfUrl: pdfUrl,
+    reportError: null,
+  })),
+
+  on(TownPlannerV2Actions.primeReportFailure, (state, { error }) => ({
+    ...state,
+    reportStatus: 'failed',
+    reportRequested: false,
+    reportError: error,
+  })),
+
   // Report generation reducers
   on(TownPlannerV2Actions.generateReport, (state) => ({
     ...state,
-    reportStatus: 'running',
+    reportRequested: true,
     reportError: null,
-    reportPdfUrl: null,
   })),
 
   on(TownPlannerV2Actions.generateReportRunning, (state, { token }) => ({
     ...state,
     reportStatus: 'running',
+    reportRequested: true,
     reportToken: token,
     reportError: null,
     reportPdfUrl: null,
@@ -103,6 +130,7 @@ export const townPlannerV2Reducer = createReducer<TownPlannerV2State>(
   on(TownPlannerV2Actions.generateReportReady, (state, { token, pdfUrl }) => ({
     ...state,
     reportStatus: 'ready',
+    reportRequested: true,
     reportToken: token,
     reportPdfUrl: pdfUrl,
     reportError: null,
@@ -111,12 +139,14 @@ export const townPlannerV2Reducer = createReducer<TownPlannerV2State>(
   on(TownPlannerV2Actions.generateReportFailure, (state, { error }) => ({
     ...state,
     reportStatus: 'failed',
+    reportRequested: true,
     reportError: error,
   })),
 
   on(TownPlannerV2Actions.clearReport, (state) => ({
     ...state,
     reportStatus: 'idle',
+    reportRequested: false,
     reportToken: null,
     reportPdfUrl: null,
     reportError: null,

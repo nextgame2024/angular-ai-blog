@@ -41,14 +41,20 @@ export const selectReportStatus = createSelector(
   (s) => s.reportStatus
 );
 
+export const selectReportRequested = createSelector(
+  selectTownPlannerV2State,
+  (s) => !!s.reportRequested
+);
+
 export const selectReportGenerating = createSelector(
   selectReportStatus,
-  (st) => st === 'running'
+  selectReportRequested,
+  (st, requested) => st === 'running' && requested
 );
 
 export const selectReportError = createSelector(
   selectTownPlannerV2State,
-  (s) => s.reportError
+  (s) => (s.reportRequested ? s.reportError : null)
 );
 
 export const selectReportPdfUrl = createSelector(
@@ -61,5 +67,5 @@ export const selectReportPdfUrl = createSelector(
 // - generating report
 export const selectTownPlannerV2Loading = createSelector(
   selectTownPlannerV2State,
-  (s) => s.status === 'loading' || s.reportStatus === 'running'
+  (s) => s.status === 'loading' || (s.reportStatus === 'running' && !!s.reportRequested)
 );

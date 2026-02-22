@@ -268,7 +268,17 @@
 
           <div class="tp2-card">
             <div class="tp2-card-title">Property overview</div>
-            <div class="tp2-card-muted">(Coming soon)</div>
+            <ng-container *ngIf="propertyOverviewRows(selected) as rows">
+              <div class="tp2-overview-list" *ngIf="rows.length; else overviewFallback">
+                <div class="tp2-overview-row" *ngFor="let row of rows">
+                  <span class="tp2-overview-label">{{ row.label }}</span>
+                  <span class="tp2-overview-value">{{ row.value }}</span>
+                </div>
+              </div>
+            </ng-container>
+            <ng-template #overviewFallback>
+              <div class="tp2-card-muted">No overview data available.</div>
+            </ng-template>
           </div>
 
           <!-- Panel legend (mobile). Hidden on desktop via CSS. -->

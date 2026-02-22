@@ -19,7 +19,7 @@ export interface PlaceDetailsResponse {
 export interface ReportGenerateResponse {
   ok: boolean;
   token: string;
-  status: 'running' | 'ready';
+  status: 'queued' | 'running' | 'ready';
   pdfUrl?: string;
   cached?: boolean;
 }
@@ -77,6 +77,8 @@ export class TownPlannerV2Service {
     placeId?: string | null;
     lat: number;
     lng: number;
+    token?: string | null;
+    planningSnapshot?: TownPlannerV2PlanningPayload | null;
     force?: boolean;
   }): Observable<ReportGenerateResponse> {
     return this.http.post<ReportGenerateResponse>(

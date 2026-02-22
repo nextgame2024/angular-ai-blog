@@ -1,6 +1,7 @@
 import { createActionGroup, emptyProps, props } from '@ngrx/store';
 import {
   TownPlannerV2AddressSuggestion,
+  TownPlannerV2PlanningPayload,
   TownPlannerV2Result,
 } from './townplanner_v2.state';
 
@@ -34,6 +35,18 @@ export const TownPlannerV2Actions = createActionGroup({
     }>(),
     'Load Place Details Success': props<{ result: TownPlannerV2Result }>(),
     'Load Place Details Failure': props<{ error: string }>(),
+
+    // Background pre-generation (first interaction)
+    'Prime Report': props<{
+      addressLabel: string;
+      placeId?: string | null;
+      lat: number;
+      lng: number;
+      planningSnapshot?: TownPlannerV2PlanningPayload | null;
+    }>(),
+    'Prime Report Running': props<{ token: string }>(),
+    'Prime Report Ready': props<{ token: string; pdfUrl: string }>(),
+    'Prime Report Failure': props<{ error: string }>(),
 
     // Report generation
     'Generate Report': emptyProps(),

@@ -479,6 +479,28 @@
   color: #0f172a;
 }
 
+.tp2-overview-list {
+  display: grid;
+  gap: 7px;
+}
+
+.tp2-overview-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+}
+
+.tp2-overview-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #334155;
+}
+
+.tp2-overview-value {
+  font-size: 13px;
+  color: #0f172a;
+}
+
 .tp2-btn {
   display: inline-flex;
   align-items: center;

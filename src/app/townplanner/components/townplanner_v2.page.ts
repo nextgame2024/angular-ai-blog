@@ -44,6 +44,11 @@ interface OverlayPolylinePath {
   style: google.maps.PolylineOptions;
 }
 
+interface PropertyOverviewRow {
+  label: string;
+  value: string;
+}
+
 @Component({
   selector: 'app-townplanner-v2-page',
   standalone: true,
@@ -313,6 +318,91 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
       typeof label === 'string' &&
       !!label.trim()
     );
+  }
+
+  propertyOverviewRows(selected: any): PropertyOverviewRow[] {
+    const planning = (selected as any)?.planning ?? null;
+    if (!planning || typeof planning !== 'object') return [];
+
+    const zoning =
+      (planning as any)?.zoning ||
+      (planning as any)?.zoningName ||
+      (planning as any)?.zoningCode ||
+      null;
+    const neighbourhoodPlan = (planning as any)?.neighbourhoodPlan || null;
+    const precinct = (planning as any)?.neighbourhoodPlanPrecinct || null;
+    const overlays = Array.isArray((planning as any)?.overlays)
+      ? (planning as any).overlays
+      : [];
+
+    const parcelDebug = (planning as any)?.propertyParcel?.debug ?? null;
+    const areaM2Raw =
+      (parcelDebug as any)?.areaM2 ?? (parcelDebug as any)?.area_m2 ?? null;
+    const areaM2 = Number(areaM2Raw);
+    const areaLabel =
+      Number.isFinite(areaM2) && areaM2 > 0
+        ? `${Math.round(areaM2).toLocaleString('en-AU')} m²`
+        : null;
+
+    const lotPlan = this.extractLotPlan((planning as any)?.propertyParcel);
+
+    const rows: PropertyOverviewRow[] = [];
+    if (zoning) rows.push({ label: 'Zoning', value: String(zoning) });
+    if (neighbourhoodPlan) {
+      rows.push({ label: 'Neighbourhood plan', value: String(neighbourhoodPlan) });
+    }
+    if (precinct) rows.push({ label: 'Precinct', value: String(precinct) });
+    if (lotPlan) rows.push({ label: 'Lot/Plan', value: lotPlan });
+    if (areaLabel) rows.push({ label: 'Site area (approx.)', value: areaLabel });
+
+    rows.push({
+      label: 'Overlay count',
+      value: String(overlays.length),
+    });
+
+    return rows;
+  }
+
+  private extractLotPlan(parcel: any): string | null {
+    const props = parcel?.properties;
+    if (!props || typeof props !== 'object') return null;
+
+    const pick = (keys: string[]): string | null => {
+      for (const key of keys) {
+        const direct = (props as any)[key];
+        if (direct !== undefined && direct !== null && String(direct).trim()) {
+          return String(direct).trim();
+        }
+        const hit = Object.keys(props).find(
+          (k) => String(k || '').toLowerCase() === key.toLowerCase()
+        );
+        if (hit) {
+          const v = (props as any)[hit];
+          if (v !== undefined && v !== null && String(v).trim()) {
+            return String(v).trim();
+          }
+        }
+      }
+      return null;
+    };
+
+    const lot = pick(['lot', 'lot_number', 'lot_no', 'lotnum', 'lotno']);
+    const plan = pick(['plan', 'plan_number', 'plan_no', 'planno']);
+    const lotPlan =
+      pick([
+        'lot_plan',
+        'lotplan',
+        'lot_plan_desc',
+        'lotplan_desc',
+        'lot_plan_number',
+        'lotplan_number',
+      ]) || null;
+
+    if (lot && plan) return `Lot ${lot} on ${plan}`;
+    if (lotPlan) return lotPlan;
+    if (lot) return `Lot ${lot}`;
+    if (plan) return `Plan ${plan}`;
+    return null;
   }
 
   hasMapLayers(): boolean {
