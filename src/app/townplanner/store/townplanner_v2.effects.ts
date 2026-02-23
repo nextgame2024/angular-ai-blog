@@ -8,6 +8,7 @@ import {
   distinctUntilChanged,
   exhaustMap,
   filter,
+  from,
   map,
   of,
   switchMap,
@@ -175,22 +176,63 @@ export class TownPlannerV2Effects {
       ofType(TownPlannerV2Actions.loadPlaceDetails),
       filter(({ placeId }) => !!placeId),
       switchMap(({ placeId, addressLabel, sessionToken }) =>
-        this.api.getPlaceDetails(placeId, sessionToken).pipe(
-          map((d) =>
-            TownPlannerV2Actions.loadPlaceDetailsSuccess({
-              result: {
-                placeId,
-                addressLabel: addressLabel || undefined,
-                formattedAddress: d.formattedAddress ?? undefined,
-                address: addressLabel || d.formattedAddress || undefined,
-                lat: d.lat ?? undefined,
-                lng: d.lng ?? undefined,
+        this.api
+          .bootstrap({
+            placeId,
+            sessionToken,
+            addressLabel: addressLabel || null,
+          })
+          .pipe(
+            switchMap((d) => {
+              const nextActions: any[] = [
+                TownPlannerV2Actions.loadPlaceDetailsSuccess({
+                  result: {
+                    placeId,
+                    addressLabel: addressLabel || undefined,
+                    formattedAddress: d.formattedAddress ?? undefined,
+                    address: addressLabel || d.formattedAddress || undefined,
+                    lat: d.lat ?? undefined,
+                    lng: d.lng ?? undefined,
+                    planning: d.planning ?? null,
+                  },
+                }),
+              ];
 
-                // Option A: planning payload is optional; keep null if missing
-                planning: d.planning ?? null,
-              },
-            })
-          ),
+              const report = (d as any)?.report ?? null;
+              const token =
+                typeof report?.token === 'string' ? report.token : null;
+              const status = String(report?.status || '')
+                .trim()
+                .toLowerCase();
+              const pdfUrl =
+                typeof report?.pdfUrl === 'string' ? report.pdfUrl : null;
+
+              if (token && status === 'ready' && pdfUrl) {
+                nextActions.push(
+                  TownPlannerV2Actions.primeReportReady({
+                    token,
+                    pdfUrl,
+                  })
+                );
+              } else if (
+                token &&
+                (status === 'running' || status === 'queued')
+              ) {
+                nextActions.push(
+                  TownPlannerV2Actions.primeReportRunning({ token })
+                );
+              } else if (status === 'failed') {
+                nextActions.push(
+                  TownPlannerV2Actions.primeReportFailure({
+                    error:
+                      report?.errorMessage ||
+                      'Background report pre-generation failed',
+                  })
+                );
+              }
+
+              return from(nextActions);
+            }),
           catchError((err) =>
             of(
               TownPlannerV2Actions.loadPlaceDetailsFailure({
@@ -206,89 +248,22 @@ export class TownPlannerV2Effects {
     )
   );
 
-  // Start report generation in background after first place details load.
-  primeReportOnLoadSuccess$ = createEffect(() =>
+  // Background report polling starts from bootstrap response.
+  primeReportRunningPoll$ = createEffect(() =>
     this.actions$.pipe(
-      ofType(TownPlannerV2Actions.loadPlaceDetailsSuccess),
-      map(({ result }) => {
-        const lat = (result as any)?.lat;
-        const lng = (result as any)?.lng;
-        const placeId = ((result as any)?.placeId as string) || null;
-        const addressLabel =
-          ((result as any)?.addressLabel as string) ||
-          ((result as any)?.address as string) ||
-          ((result as any)?.formattedAddress as string) ||
-          '';
-        return { lat, lng, placeId, addressLabel };
-      }),
-      filter(
-        ({ lat, lng, addressLabel }) =>
-          typeof lat === 'number' &&
-          typeof lng === 'number' &&
-          Number.isFinite(lat) &&
-          Number.isFinite(lng) &&
-          typeof addressLabel === 'string' &&
-          !!addressLabel.trim()
-      ),
-      map(({ lat, lng, placeId, addressLabel }) =>
-        TownPlannerV2Actions.primeReport({
-          addressLabel: addressLabel.trim(),
-          placeId,
-          lat,
-          lng,
-        })
-      )
-    )
-  );
-
-  primeReport$ = createEffect(() =>
-    this.actions$.pipe(
-      ofType(TownPlannerV2Actions.primeReport),
-      switchMap(({ addressLabel, placeId, lat, lng }) =>
-        this.api
-          .generateReport({
-            addressLabel,
-            placeId: placeId || null,
-            lat,
-            lng,
-          })
-          .pipe(
-            switchMap((resp) => {
-              const token = resp.token;
-              if (resp.status === 'ready' && resp.pdfUrl) {
-                return of(
-                  TownPlannerV2Actions.primeReportReady({
-                    token,
-                    pdfUrl: resp.pdfUrl,
-                  })
-                );
-              }
-
-              const running$ = of(
-                TownPlannerV2Actions.primeReportRunning({ token })
-              );
-              const poll$ = this.pollReportTokenForPrime$(token);
-              return concat(running$, poll$);
-            }),
-            catchError((err) =>
-              of(
-                TownPlannerV2Actions.primeReportFailure({
-                  error:
-                    err?.error?.error ||
-                    err?.message ||
-                    'Background report pre-generation failed',
-                })
-              )
-            ),
-            takeUntil(
-              this.actions$.pipe(
-                ofType(
-                  TownPlannerV2Actions.selectSuggestion,
-                  TownPlannerV2Actions.clear
-                )
+      ofType(TownPlannerV2Actions.primeReportRunning),
+      switchMap(({ token }) =>
+        this.pollReportTokenForPrime$(token).pipe(
+          takeUntil(
+            this.actions$.pipe(
+              ofType(
+                TownPlannerV2Actions.selectSuggestion,
+                TownPlannerV2Actions.clear,
+                TownPlannerV2Actions.generateReport
               )
             )
           )
+        )
       )
     )
   );

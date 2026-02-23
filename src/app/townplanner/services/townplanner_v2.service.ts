@@ -16,6 +16,16 @@ export interface PlaceDetailsResponse {
   planning?: TownPlannerV2PlanningPayload | null;
 }
 
+export interface BootstrapResponse extends PlaceDetailsResponse {
+  report?: {
+    ok?: boolean;
+    token?: string;
+    status?: 'queued' | 'running' | 'ready' | 'failed' | string;
+    pdfUrl?: string | null;
+    errorMessage?: string | null;
+  } | null;
+}
+
 export interface ReportGenerateResponse {
   ok: boolean;
   token: string;
@@ -69,6 +79,17 @@ export class TownPlannerV2Service {
     return this.http.get<PlaceDetailsResponse>(
       `${this.tpV2Base}/place-details`,
       { params }
+    );
+  }
+
+  bootstrap(payload: {
+    placeId: string;
+    sessionToken?: string | null;
+    addressLabel?: string | null;
+  }): Observable<BootstrapResponse> {
+    return this.http.post<BootstrapResponse>(
+      `${this.tpV2Base}/bootstrap`,
+      payload
     );
   }
 
