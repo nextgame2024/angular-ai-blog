@@ -16,12 +16,22 @@ import {
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Store } from '@ngrx/store';
-import { BehaviorSubject, combineLatest, defer, Observable, Subject } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  defer,
+  firstValueFrom,
+  Observable,
+  of,
+  Subject,
+} from 'rxjs';
 import {
   debounceTime,
   distinctUntilChanged,
   map,
   startWith,
+  switchMap,
+  take,
   takeUntil,
 } from 'rxjs/operators';
 
@@ -58,7 +68,7 @@ import type {
 import type { BmPricingProfile } from '../../types/pricing.interface';
 import { ProjectFormTab } from '../../store/projects/manager.state';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
-import { ManagerService } from '../../services/manager.service';
+import { type BmClient, ManagerService } from '../../services/manager.service';
 import { ManagerSuppliersService } from '../../services/manager.suppliers.service';
 import { ManagerLaborService } from '../../services/manager.labor.service';
 import { ManagerPricingService } from '../../services/manager.pricing.service';
@@ -66,6 +76,8 @@ import { ManagerProjectTypesService } from '../../services/manager.project.types
 import type { ManagerSelectOption } from '../shared/manager-select/manager-select.component';
 import { ManagerProjectsService } from '../../services/manager.projects.service';
 import { environment } from '../../../../environments/environment';
+import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
+import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
 
 @Component({
   selector: 'app-manager-projects-page',
@@ -179,7 +191,13 @@ export class ManagerProjectsPageComponent
   }[] = [];
   showLaborSuggestions = false;
   laborActiveIndex = -1;
-  clientsCatalog: { clientId: string; clientName: string }[] = [];
+  clientsCatalog: {
+    clientId: string;
+    clientName: string;
+    address?: string | null;
+    email?: string | null;
+    cel?: string | null;
+  }[] = [];
   suppliersCatalog: { supplierId: string; supplierName: string }[] = [];
   supplierMaterialsCatalog: {
     materialId: string;
@@ -210,14 +228,32 @@ export class ManagerProjectsPageComponent
   clientActiveIndex = -1;
   supplierActiveIndex = -1;
   materialActiveIndex = -1;
+  clientAddressSuggestions: TownPlannerV2AddressSuggestion[] = [];
+  showClientAddressSuggestions = false;
+  clientAddressActiveIndex = -1;
+  private clientAddressSessionToken: string | null = null;
+  private clientAddressHasFocus = false;
   selectedSupplierId: string | null = null;
   useDefaultPricing = true;
 
   projectForm = this.fb.group({
+    client_is_new: new FormControl<boolean>(false, { nonNullable: true }),
     client_id: new FormControl<string>('', {
       nonNullable: true,
       validators: [Validators.required],
     }),
+    client_address: new FormControl<string>(
+      { value: '', disabled: true },
+      { nonNullable: true },
+    ),
+    client_email: new FormControl<string>(
+      { value: '', disabled: true },
+      { nonNullable: true, validators: [Validators.email] },
+    ),
+    client_cel: new FormControl<string>(
+      { value: '', disabled: true },
+      { nonNullable: true },
+    ),
     project_type_id: new FormControl<string | null>(null),
     project_name: new FormControl<string>('', {
       nonNullable: true,
@@ -282,6 +318,7 @@ export class ManagerProjectsPageComponent
   private canLoadMore = false;
   private suppressProjectTypeApply = false;
   private lastProjectId: string | null = null;
+  private allowClientChangeOnEdit = false;
 
   constructor(
     private store: Store,
@@ -292,6 +329,7 @@ export class ManagerProjectsPageComponent
     private pricingService: ManagerPricingService,
     private projectTypesService: ManagerProjectTypesService,
     private suppliersService: ManagerSuppliersService,
+    private townPlanner: TownPlannerV2Service,
     private http: HttpClient,
   ) {
     this.searchCtrl = new FormControl('', { nonNullable: true });
@@ -304,6 +342,9 @@ export class ManagerProjectsPageComponent
   ngOnInit(): void {
     this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
     this.defaultPricing$.next(this.projectForm.controls.default_pricing.value);
+    this.applyClientSelectionValidators();
+    this.syncClientDetailsControls();
+    this.setupClientAddressAutocomplete();
 
     const pricingProfileId$ = defer(() =>
       this.projectForm.controls.pricing_profile_id.valueChanges.pipe(
@@ -550,16 +591,32 @@ export class ManagerProjectsPageComponent
         }
       });
 
+    this.projectForm.controls.client_is_new.valueChanges
+      .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.applyClientSelectionValidators();
+        this.syncClientDetailsControls();
+        if (this.isClientSearchMode) return;
+        this.showClientSuggestions = false;
+        this.clientSuggestions = [];
+        this.clientActiveIndex = -1;
+      });
+
     this.editingProject$.pipe(takeUntil(this.destroy$)).subscribe((project) => {
       this.editingProject = project ?? null;
       if (project) {
         const hasProjectChanged = this.lastProjectId !== project.projectId;
         this.lastProjectId = project.projectId;
         if (hasProjectChanged || !this.projectForm.dirty) {
+          this.allowClientChangeOnEdit = false;
           this.suppressProjectTypeApply = true;
           this.suppressStatusUpdate = true;
           this.projectForm.reset({
+            client_is_new: false,
             client_id: project.clientId,
+            client_address: project.clientAddress ?? '',
+            client_email: '',
+            client_cel: '',
             project_type_id: project.projectTypeId ?? null,
             project_name: project.projectName,
             meters_required: Number(project.metersRequired ?? 0),
@@ -587,6 +644,10 @@ export class ManagerProjectsPageComponent
           this.clientSearchCtrl.setValue(project.clientName || '', {
             emitEvent: false,
           });
+          this.clientSearchCtrl.markAsUntouched();
+          this.applyClientSelectionValidators();
+          this.syncClientDetailsControls();
+          this.populateInlineClientDetails(project.clientId, true);
           this.suppressProjectTypeApply = false;
         }
         this.store.dispatch(
@@ -602,10 +663,15 @@ export class ManagerProjectsPageComponent
         this.previewMaterials$.next([]);
         this.previewLabor$.next([]);
       } else {
+        this.allowClientChangeOnEdit = false;
         this.lastProjectId = null;
         this.suppressStatusUpdate = true;
         this.projectForm.reset({
+          client_is_new: false,
           client_id: '',
+          client_address: '',
+          client_email: '',
+          client_cel: '',
           project_type_id: null,
           project_name: '',
           meters_required: 0,
@@ -620,6 +686,9 @@ export class ManagerProjectsPageComponent
         this.currentStatus = 'to_do';
         this.statusBeforeHold = null;
         this.clientSearchCtrl.setValue('', { emitEvent: false });
+        this.clientSearchCtrl.markAsUntouched();
+        this.applyClientSelectionValidators();
+        this.syncClientDetailsControls();
         this.suppressStatusUpdate = false;
         this.previewMaterials$.next([]);
         this.previewLabor$.next([]);
@@ -735,10 +804,16 @@ export class ManagerProjectsPageComponent
   }
 
   openCreate(): void {
+    this.allowClientChangeOnEdit = false;
+    this.projectForm.controls.client_is_new.setValue(false, { emitEvent: false });
+    this.applyClientSelectionValidators();
+    this.syncClientDetailsControls();
     this.store.dispatch(ManagerProjectsActions.openProjectCreate());
   }
 
   openEdit(project: BmProject): void {
+    this.allowClientChangeOnEdit = false;
+    this.projectForm.controls.client_is_new.setValue(false, { emitEvent: false });
     this.store.dispatch(
       ManagerProjectsActions.openProjectEdit({ projectId: project.projectId }),
     );
@@ -749,50 +824,322 @@ export class ManagerProjectsPageComponent
   }
 
   saveProject(): void {
-    if (this.projectForm.invalid) {
-      this.projectForm.markAllAsTouched();
-      return;
-    }
-
-    const payload: any = this.projectForm.getRawValue();
-    const useDefaultPricing = this.useDefaultPricing;
-    payload.default_pricing = useDefaultPricing;
-    if (useDefaultPricing) {
-      payload.pricing_profile_id = null;
-    }
-    if (payload.meters_required !== null && payload.meters_required !== undefined) {
-      payload.meters_required = this.formatMoney(payload.meters_required);
-    }
-    if (!payload.project_type_id) {
-      payload.project_type_id = null;
-    }
-
-    this.store.dispatch(
-      ManagerProjectsActions.saveProject({ payload, closeOnSuccess: false }),
-    );
+    void this.saveProjectWithClient(false);
   }
 
   saveProjectAndClose(): void {
-    if (this.projectForm.invalid) {
+    void this.saveProjectWithClient(true);
+  }
+
+  get isEditingProjectMode(): boolean {
+    return !!this.editingProject?.projectId;
+  }
+
+  get isNewCheckboxDisabled(): boolean {
+    return this.isEditingProjectMode && !this.allowClientChangeOnEdit;
+  }
+
+  get showChangeClientButton(): boolean {
+    return this.isEditingProjectMode && !this.allowClientChangeOnEdit;
+  }
+
+  get isCreateNewClientMode(): boolean {
+    const canSelectClient =
+      !this.isEditingProjectMode || this.allowClientChangeOnEdit;
+    return canSelectClient && !!this.projectForm.controls.client_is_new.value;
+  }
+
+  get isClientSearchMode(): boolean {
+    const canSelectClient =
+      !this.isEditingProjectMode || this.allowClientChangeOnEdit;
+    return canSelectClient && !this.isCreateNewClientMode;
+  }
+
+  get isInlineClientDetailsEditable(): boolean {
+    if (this.isEditingProjectMode && !this.allowClientChangeOnEdit) return true;
+    return this.isCreateNewClientMode;
+  }
+
+  get clientInputPlaceholder(): string {
+    if (this.isClientSearchMode) return 'Select client';
+    return this.isEditingProjectMode ? 'Client name' : 'Enter client name';
+  }
+
+  isClientFieldInvalid(): boolean {
+    if (this.needsInlineClientName()) {
+      return this.clientSearchCtrl.touched && !this.getInlineClientName();
+    }
+    const control = this.projectForm.controls.client_id;
+    return control.touched && control.invalid;
+  }
+
+  onClientNewToggle(checked: boolean): void {
+    if (this.isNewCheckboxDisabled) return;
+
+    this.projectForm.controls.client_is_new.setValue(checked, { emitEvent: false });
+    this.clientSearchCtrl.setValue('', { emitEvent: false });
+    this.clientSearchCtrl.markAsUntouched();
+    this.projectForm.controls.client_id.setValue('');
+    this.clearInlineClientDetails();
+    this.clearClientSelectionErrors();
+    this.applyClientSelectionValidators();
+    this.syncClientDetailsControls();
+    this.showClientSuggestions = false;
+    this.clientSuggestions = [];
+    this.clientActiveIndex = -1;
+  }
+
+  enableClientChangeInEditMode(): void {
+    if (!this.isEditingProjectMode) return;
+    this.allowClientChangeOnEdit = true;
+    this.projectForm.controls.client_is_new.setValue(false, { emitEvent: false });
+    this.projectForm.controls.client_id.setValue('');
+    this.clientSearchCtrl.setValue('', { emitEvent: false });
+    this.clientSearchCtrl.markAsUntouched();
+    this.clearInlineClientDetails();
+    this.clearClientSelectionErrors();
+    this.applyClientSelectionValidators();
+    this.syncClientDetailsControls();
+    this.showClientSuggestions = false;
+    this.clientSuggestions = [];
+    this.clientActiveIndex = -1;
+  }
+
+  private async saveProjectWithClient(closeOnSuccess: boolean): Promise<void> {
+    this.applyClientSelectionValidators();
+
+    const requiresInlineName = this.needsInlineClientName();
+    if (requiresInlineName && !this.getInlineClientName()) {
+      this.clientSearchCtrl.markAsTouched();
+    }
+
+    if (this.projectForm.invalid || (requiresInlineName && !this.getInlineClientName())) {
       this.projectForm.markAllAsTouched();
       return;
     }
-    const payload: any = this.projectForm.getRawValue();
-    const useDefaultPricing = this.useDefaultPricing;
-    payload.default_pricing = useDefaultPricing;
-    if (useDefaultPricing) {
-      payload.pricing_profile_id = null;
+
+    let clientId = (this.projectForm.controls.client_id.value || '').trim();
+    const clientPayload = this.buildInlineClientPayload();
+
+    try {
+      if (this.isCreateNewClientMode) {
+        if (clientId) {
+          const updateRes = await firstValueFrom(
+            this.managerService.updateClient(clientId, clientPayload),
+          );
+          if (updateRes?.client) {
+            this.upsertClientCatalogEntry(updateRes.client);
+          }
+        } else {
+          const res = await firstValueFrom(
+            this.managerService.createClient(clientPayload),
+          );
+          const created = res?.client;
+          clientId = (created?.clientId || '').trim();
+          if (!clientId) {
+            throw new Error('Failed to create client before saving the project.');
+          }
+
+          if (created) {
+            this.upsertClientCatalogEntry(created);
+            this.clientSearchCtrl.setValue(
+              created.clientName || this.getInlineClientName(),
+              {
+                emitEvent: false,
+              },
+            );
+          }
+        }
+
+        this.projectForm.controls.client_id.setValue(clientId, { emitEvent: false });
+        this.populateInlineClientDetails(clientId, true);
+      } else if (this.isEditingProjectMode && !this.allowClientChangeOnEdit) {
+        if (!clientId) {
+          throw new Error('Client is required.');
+        }
+        const res = await firstValueFrom(
+          this.managerService.updateClient(clientId, clientPayload),
+        );
+        if (res?.client) {
+          this.upsertClientCatalogEntry(res.client);
+          this.clientSearchCtrl.setValue(res.client.clientName || this.getInlineClientName(), {
+            emitEvent: false,
+          });
+          this.populateInlineClientDetails(clientId, true);
+        }
+      }
+    } catch (error: any) {
+      this.store.dispatch(
+        ManagerProjectsActions.saveProjectFailure({
+          error:
+            error?.error?.error ||
+            error?.message ||
+            'Failed to save client details.',
+        }),
+      );
+      return;
     }
+
+    const payload = this.buildProjectPayload(clientId);
+    this.store.dispatch(
+      ManagerProjectsActions.saveProject({ payload, closeOnSuccess }),
+    );
+  }
+
+  private buildProjectPayload(clientId: string): any {
+    const raw = this.projectForm.getRawValue();
+    const payload: any = {
+      client_id: clientId,
+      project_type_id: raw.project_type_id || null,
+      project_name: raw.project_name,
+      meters_required: raw.meters_required,
+      description: raw.description,
+      status: raw.status,
+      cost_in_quote: raw.cost_in_quote,
+      default_pricing: this.useDefaultPricing,
+      pricing_profile_id: this.useDefaultPricing ? null : raw.pricing_profile_id,
+    };
+
     if (payload.meters_required !== null && payload.meters_required !== undefined) {
       payload.meters_required = this.formatMoney(payload.meters_required);
     }
-    if (!payload.project_type_id) {
-      payload.project_type_id = null;
+
+    if (!payload.pricing_profile_id) {
+      payload.pricing_profile_id = null;
     }
 
-    this.store.dispatch(
-      ManagerProjectsActions.saveProject({ payload, closeOnSuccess: true }),
+    return payload;
+  }
+
+  private buildInlineClientPayload(): any {
+    const raw = this.projectForm.getRawValue();
+    return {
+      client_name: this.getInlineClientName(),
+      address: (raw.client_address || '').trim(),
+      email: (raw.client_email || '').trim(),
+      cel: (raw.client_cel || '').trim(),
+    };
+  }
+
+  private getInlineClientName(): string {
+    return (this.clientSearchCtrl.value || '').trim();
+  }
+
+  private needsInlineClientName(): boolean {
+    return this.isCreateNewClientMode || (this.isEditingProjectMode && !this.allowClientChangeOnEdit);
+  }
+
+  private applyClientSelectionValidators(): void {
+    const clientControl = this.projectForm.controls.client_id;
+    if (this.isClientSearchMode) {
+      clientControl.setValidators([Validators.required]);
+    } else {
+      clientControl.clearValidators();
+      this.clearClientSelectionErrors();
+    }
+    clientControl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private syncClientDetailsControls(): void {
+    const shouldEnable = this.isInlineClientDetailsEditable;
+    const controls = [
+      this.projectForm.controls.client_address,
+      this.projectForm.controls.client_email,
+      this.projectForm.controls.client_cel,
+    ];
+    controls.forEach((control) => {
+      if (shouldEnable) {
+        control.enable({ emitEvent: false });
+      } else {
+        control.disable({ emitEvent: false });
+      }
+    });
+
+    if (!shouldEnable) {
+      this.clientAddressHasFocus = false;
+      this.showClientAddressSuggestions = false;
+      this.clientAddressActiveIndex = -1;
+      this.clientAddressSuggestions = [];
+    }
+  }
+
+  private clearInlineClientDetails(): void {
+    this.projectForm.patchValue(
+      {
+        client_address: '',
+        client_email: '',
+        client_cel: '',
+      },
+      { emitEvent: false },
     );
+    this.clientAddressSuggestions = [];
+    this.showClientAddressSuggestions = false;
+    this.clientAddressActiveIndex = -1;
+  }
+
+  private clearClientSelectionErrors(): void {
+    const clientControl = this.projectForm.controls.client_id;
+    if (clientControl.hasError('invalidSelection')) {
+      clientControl.setErrors(null);
+    }
+  }
+
+  private populateInlineClientDetails(
+    clientId: string | null | undefined,
+    force = false,
+  ): void {
+    const addressControl = this.projectForm.controls.client_address;
+    const emailControl = this.projectForm.controls.client_email;
+    const mobileControl = this.projectForm.controls.client_cel;
+
+    if (
+      !force &&
+      (addressControl.dirty || emailControl.dirty || mobileControl.dirty)
+    ) {
+      return;
+    }
+
+    if (!clientId) {
+      this.clearInlineClientDetails();
+      return;
+    }
+
+    const match = this.clientsCatalog.find((c) => c.clientId === clientId);
+    this.projectForm.patchValue(
+      {
+        client_address:
+          match?.address ??
+          (this.editingProject?.clientId === clientId
+            ? this.editingProject?.clientAddress ?? ''
+            : ''),
+        client_email: match?.email ?? '',
+        client_cel: match?.cel ?? '',
+      },
+      { emitEvent: false },
+    );
+  }
+
+  private upsertClientCatalogEntry(client: BmClient): void {
+    if (!client?.clientId) return;
+    const normalized = {
+      clientId: client.clientId,
+      clientName: client.clientName || '',
+      address: client.address ?? '',
+      email: client.email ?? '',
+      cel: client.cel ?? '',
+    };
+    const idx = this.clientsCatalog.findIndex(
+      (item) => item.clientId === normalized.clientId,
+    );
+    if (idx >= 0) {
+      this.clientsCatalog[idx] = normalized;
+    } else {
+      this.clientsCatalog.unshift(normalized);
+    }
+    this.clientOptions = this.clientsCatalog.map((c) => ({
+      value: c.clientId,
+      label: c.clientName,
+    }));
   }
 
   get isDefaultPricing(): boolean {
@@ -1365,6 +1712,11 @@ export class ManagerProjectsPageComponent
   }
 
   onClientQueryFocus(): void {
+    if (!this.isClientSearchMode) {
+      this.showClientSuggestions = false;
+      this.clientActiveIndex = -1;
+      return;
+    }
     const query = (this.clientSearchCtrl.value || '').trim();
     if (query.length) {
       this.updateClientSuggestions(query);
@@ -1373,7 +1725,13 @@ export class ManagerProjectsPageComponent
   }
 
   onClientQueryBlur(): void {
+    this.clientSearchCtrl.markAsTouched();
     window.setTimeout(() => {
+      if (!this.isClientSearchMode) {
+        this.showClientSuggestions = false;
+        this.clientActiveIndex = -1;
+        return;
+      }
       const clientControl = this.projectForm.controls.client_id;
       if (!clientControl.value) {
         const query = (this.clientSearchCtrl.value || '').trim().toLowerCase();
@@ -1395,6 +1753,7 @@ export class ManagerProjectsPageComponent
   }
 
   onClientQueryKeydown(event: KeyboardEvent): void {
+    if (!this.isClientSearchMode) return;
     if (!this.clientSuggestions.length) return;
 
     if (event.key === 'ArrowDown') {
@@ -1418,6 +1777,17 @@ export class ManagerProjectsPageComponent
   }
 
   onClientQueryInput(value: string): void {
+    if (!this.isClientSearchMode) {
+      this.showClientSuggestions = false;
+      this.clientSuggestions = [];
+      this.clientActiveIndex = -1;
+      this.clearClientSelectionErrors();
+      if (this.isCreateNewClientMode) {
+        this.projectForm.controls.client_id.setValue('');
+      }
+      return;
+    }
+
     const query = (value || '').trim();
     const clientControl = this.projectForm.controls.client_id;
     clientControl.setValue('');
@@ -1427,9 +1797,14 @@ export class ManagerProjectsPageComponent
     this.updateClientSuggestions(query);
     this.showClientSuggestions =
       query.length > 0 && this.clientSuggestions.length > 0;
+    if (!query.length) {
+      this.clearInlineClientDetails();
+    }
   }
 
   onClientSelect(client: { clientId: string; clientName: string }): void {
+    if (!this.isClientSearchMode) return;
+
     const clientControl = this.projectForm.controls.client_id;
     clientControl.setValue(client.clientId);
     if (clientControl.hasError('invalidSelection')) {
@@ -1439,6 +1814,119 @@ export class ManagerProjectsPageComponent
     this.clientSuggestions = [];
     this.showClientSuggestions = false;
     this.clientActiveIndex = -1;
+    this.populateInlineClientDetails(client.clientId, true);
+  }
+
+  onClientAddressFocus(): void {
+    if (!this.isInlineClientDetailsEditable) return;
+    this.clientAddressHasFocus = true;
+    const current = (this.projectForm.controls.client_address.value || '').trim();
+    if (current.length >= 3 && this.clientAddressSuggestions.length) {
+      this.showClientAddressSuggestions = true;
+    }
+  }
+
+  onClientAddressBlur(): void {
+    this.clientAddressHasFocus = false;
+    window.setTimeout(() => {
+      this.showClientAddressSuggestions = false;
+      this.clientAddressActiveIndex = -1;
+    }, 120);
+  }
+
+  onClientAddressKeydown(event: KeyboardEvent): void {
+    if (!this.clientAddressSuggestions.length) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.clientAddressActiveIndex = Math.min(
+        this.clientAddressActiveIndex + 1,
+        this.clientAddressSuggestions.length - 1,
+      );
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.clientAddressActiveIndex = Math.max(
+        this.clientAddressActiveIndex - 1,
+        0,
+      );
+    } else if (event.key === 'Enter') {
+      if (this.clientAddressActiveIndex >= 0) {
+        event.preventDefault();
+        this.onClientAddressSelect(
+          this.clientAddressSuggestions[this.clientAddressActiveIndex],
+        );
+      }
+    } else if (event.key === 'Escape') {
+      this.showClientAddressSuggestions = false;
+      this.clientAddressActiveIndex = -1;
+    }
+  }
+
+  onClientAddressSelect(suggestion: TownPlannerV2AddressSuggestion): void {
+    this.projectForm.controls.client_address.setValue(suggestion.description, {
+      emitEvent: false,
+    });
+    this.clientAddressSuggestions = [];
+    this.showClientAddressSuggestions = false;
+    this.clientAddressActiveIndex = -1;
+
+    const token = this.clientAddressSessionToken;
+    this.clientAddressSessionToken = null;
+
+    this.townPlanner
+      .getPlaceDetails(suggestion.placeId, token)
+      .pipe(take(1))
+      .subscribe((details) => {
+        const next = details?.formattedAddress || suggestion.description || '';
+        if (next) {
+          this.projectForm.controls.client_address.setValue(next, {
+            emitEvent: false,
+          });
+        }
+      });
+  }
+
+  private setupClientAddressAutocomplete(): void {
+    this.projectForm.controls.client_address.valueChanges
+      .pipe(
+        debounceTime(200),
+        distinctUntilChanged(),
+        switchMap((query) => {
+          const q = (query || '').toString().trim();
+          if (!this.clientAddressHasFocus || !this.isInlineClientDetailsEditable) {
+            this.clientAddressSuggestions = [];
+            this.showClientAddressSuggestions = false;
+            this.clientAddressActiveIndex = -1;
+            return of([]);
+          }
+          if (q.length < 3) {
+            this.clientAddressSuggestions = [];
+            this.showClientAddressSuggestions = false;
+            this.clientAddressActiveIndex = -1;
+            return of([]);
+          }
+
+          if (!this.clientAddressSessionToken) {
+            this.clientAddressSessionToken = this.createSessionToken();
+          }
+
+          return this.townPlanner.suggestAddresses(q, this.clientAddressSessionToken);
+        }),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((suggestions) => {
+        this.clientAddressSuggestions = suggestions || [];
+        const shouldShow =
+          this.clientAddressHasFocus && this.clientAddressSuggestions.length > 0;
+        this.showClientAddressSuggestions = shouldShow;
+        this.clientAddressActiveIndex = shouldShow ? 0 : -1;
+      });
+  }
+
+  private createSessionToken(): string {
+    const cryptoObj = globalThis.crypto as Crypto | undefined;
+    if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
+    return Math.random().toString(36).slice(2);
   }
 
   private updateSupplierSuggestions(query: string): void {
@@ -2078,7 +2566,13 @@ export class ManagerProjectsPageComponent
       .listClients({ page: 1, limit: 200, status: 'active' })
       .pipe(takeUntil(this.destroy$))
       .subscribe((res) => {
-        this.clientsCatalog = res?.clients ?? [];
+        this.clientsCatalog = (res?.clients ?? []).map((client) => ({
+          clientId: client.clientId,
+          clientName: client.clientName || '',
+          address: client.address ?? '',
+          email: client.email ?? '',
+          cel: client.cel ?? '',
+        }));
         this.clientOptions = this.clientsCatalog.map((c) => ({
           value: c.clientId,
           label: c.clientName,
@@ -2093,6 +2587,7 @@ export class ManagerProjectsPageComponent
               emitEvent: false,
             });
           }
+          this.populateInlineClientDetails(currentId);
         }
       });
 

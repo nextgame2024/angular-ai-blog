@@ -481,6 +481,43 @@
 }
 
 .client-label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  position: relative;
+}
+
+.client-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.55rem;
+}
+
+.client-new-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.82);
+}
+
+.client-new-toggle input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.client-change-btn {
+  margin-left: auto;
+  padding: 0.12rem 0.45rem;
+  line-height: 0.8;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+.client-address-label {
   position: relative;
 }
 

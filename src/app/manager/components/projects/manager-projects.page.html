@@ -345,14 +345,25 @@
             </div>
           </div>
           <form class="form" [formGroup]="projectForm" autocomplete="off">
-            <label>
-              <span>Project Name *</span>
-              <input
-                formControlName="project_name"
-                placeholder="Project name"
-                autocomplete="off"
-              />
-            </label>
+            <div class="grid-2">
+              <label>
+                <span>Project Name *</span>
+                <input
+                  formControlName="project_name"
+                  placeholder="Project name"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Status</span>
+                <app-manager-select
+                  formControlName="status"
+                  [options]="statusSelectOptions"
+                  placeholder="Select status"
+                ></app-manager-select>
+              </label>
+            </div>
 
             <div class="grid-2">
               <label>
@@ -383,12 +394,33 @@
             </div>
 
             <div class="grid-2">
-              <label class="client-label">
-                <span>Client *</span>
+              <div class="client-label">
+                <div class="client-label-row">
+                  <span>Client *</span>
+                  <span class="client-new-toggle">
+                    <input
+                      type="checkbox"
+                      [checked]="isCreateNewClientMode"
+                      [disabled]="isNewCheckboxDisabled"
+                      (change)="onClientNewToggle($any($event.target).checked)"
+                    />
+                    <span>New</span>
+                  </span>
+                  <button
+                    *ngIf="showChangeClientButton"
+                    class="btn primary small client-change-btn"
+                    type="button"
+                    (click)="enableClientChangeInEditMode()"
+                  >
+                    Change Client
+                  </button>
+                </div>
                 <div class="client-field">
                   <input
                     [formControl]="clientSearchCtrl"
-                    placeholder="Select client"
+                    [class.ng-invalid]="isClientFieldInvalid()"
+                    [class.ng-touched]="isClientFieldInvalid()"
+                    [placeholder]="clientInputPlaceholder"
                     (focus)="onClientQueryFocus()"
                     (blur)="onClientQueryBlur()"
                     (keydown)="onClientQueryKeydown($event)"
@@ -397,7 +429,7 @@
                   />
                   <div
                     class="client-suggestions"
-                    *ngIf="showClientSuggestions && clientSuggestions.length"
+                    *ngIf="isClientSearchMode && showClientSuggestions && clientSuggestions.length"
                   >
                     <button
                       type="button"
@@ -410,22 +442,52 @@
                     </button>
                   </div>
                 </div>
+              </div>
+
+              <label class="client-address-label">
+                <span>Client address</span>
+                <div class="address-field">
+                  <input
+                    formControlName="client_address"
+                    placeholder="Client address"
+                    (focus)="onClientAddressFocus()"
+                    (blur)="onClientAddressBlur()"
+                    (keydown)="onClientAddressKeydown($event)"
+                    autocomplete="off"
+                  />
+                  <div
+                    class="address-suggestions"
+                    *ngIf="showClientAddressSuggestions && clientAddressSuggestions.length"
+                  >
+                    <button
+                      type="button"
+                      class="address-suggestion"
+                      *ngFor="let s of clientAddressSuggestions; let i = index"
+                      [class.is-active]="i === clientAddressActiveIndex"
+                      (mousedown)="onClientAddressSelect(s)"
+                    >
+                      {{ s.description }}
+                    </button>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            <div class="grid-2">
+              <label>
+                <span>Client email</span>
+                <input formControlName="client_email" placeholder="email@example.com" />
                 <div
                   class="error-text"
-                  *ngIf="projectForm.controls.client_id.touched && projectForm.controls.client_id.invalid"
+                  *ngIf="projectForm.controls.client_email.touched && projectForm.controls.client_email.invalid"
                 >
-                  {{ projectForm.controls.client_id.hasError('invalidSelection')
-                  ? 'Please select a valid client.' : 'Client is required.' }}
+                  Please enter a valid email.
                 </div>
               </label>
 
               <label>
-                <span>Status</span>
-                <app-manager-select
-                  formControlName="status"
-                  [options]="statusSelectOptions"
-                  placeholder="Select status"
-                ></app-manager-select>
+                <span>Client mobile</span>
+                <input formControlName="client_cel" placeholder="0412..." />
               </label>
             </div>
 
@@ -1306,14 +1368,25 @@
           </div>
         </div>
         <form class="form" [formGroup]="projectForm" autocomplete="off">
-          <label>
-            <span>Project Name *</span>
-            <input
-              formControlName="project_name"
-              placeholder="Project name"
-              autocomplete="off"
-            />
-          </label>
+          <div class="grid-2">
+            <label>
+              <span>Project Name *</span>
+              <input
+                formControlName="project_name"
+                placeholder="Project name"
+                autocomplete="off"
+              />
+            </label>
+
+            <label>
+              <span>Status</span>
+              <app-manager-select
+                formControlName="status"
+                [options]="statusSelectOptions"
+                placeholder="Select status"
+              ></app-manager-select>
+            </label>
+          </div>
 
           <div class="grid-2">
             <label>
@@ -1344,12 +1417,33 @@
           </div>
 
           <div class="grid-2">
-            <label class="client-label">
-              <span>Client *</span>
+            <div class="client-label">
+              <div class="client-label-row">
+                <span>Client *</span>
+                <span class="client-new-toggle">
+                  <input
+                    type="checkbox"
+                    [checked]="isCreateNewClientMode"
+                    [disabled]="isNewCheckboxDisabled"
+                    (change)="onClientNewToggle($any($event.target).checked)"
+                  />
+                  <span>New</span>
+                </span>
+                <button
+                  *ngIf="showChangeClientButton"
+                  class="btn primary small client-change-btn"
+                  type="button"
+                  (click)="enableClientChangeInEditMode()"
+                >
+                  Change Client
+                </button>
+              </div>
               <div class="client-field">
                 <input
                   [formControl]="clientSearchCtrl"
-                  placeholder="Select client"
+                  [class.ng-invalid]="isClientFieldInvalid()"
+                  [class.ng-touched]="isClientFieldInvalid()"
+                  [placeholder]="clientInputPlaceholder"
                   (focus)="onClientQueryFocus()"
                   (blur)="onClientQueryBlur()"
                   (keydown)="onClientQueryKeydown($event)"
@@ -1358,7 +1452,7 @@
                 />
                 <div
                   class="client-suggestions"
-                  *ngIf="showClientSuggestions && clientSuggestions.length"
+                  *ngIf="isClientSearchMode && showClientSuggestions && clientSuggestions.length"
                 >
                   <button
                     type="button"
@@ -1371,22 +1465,52 @@
                   </button>
                 </div>
               </div>
+            </div>
+
+            <label class="client-address-label">
+              <span>Client address</span>
+              <div class="address-field">
+                <input
+                  formControlName="client_address"
+                  placeholder="Client address"
+                  (focus)="onClientAddressFocus()"
+                  (blur)="onClientAddressBlur()"
+                  (keydown)="onClientAddressKeydown($event)"
+                  autocomplete="off"
+                />
+                <div
+                  class="address-suggestions"
+                  *ngIf="showClientAddressSuggestions && clientAddressSuggestions.length"
+                >
+                  <button
+                    type="button"
+                    class="address-suggestion"
+                    *ngFor="let s of clientAddressSuggestions; let i = index"
+                    [class.is-active]="i === clientAddressActiveIndex"
+                    (mousedown)="onClientAddressSelect(s)"
+                  >
+                    {{ s.description }}
+                  </button>
+                </div>
+              </div>
+            </label>
+          </div>
+
+          <div class="grid-2">
+            <label>
+              <span>Client email</span>
+              <input formControlName="client_email" placeholder="email@example.com" />
               <div
                 class="error-text"
-                *ngIf="projectForm.controls.client_id.touched && projectForm.controls.client_id.invalid"
+                *ngIf="projectForm.controls.client_email.touched && projectForm.controls.client_email.invalid"
               >
-                {{ projectForm.controls.client_id.hasError('invalidSelection') ?
-                'Please select a valid client.' : 'Client is required.' }}
+                Please enter a valid email.
               </div>
             </label>
 
             <label>
-              <span>Status</span>
-              <app-manager-select
-                formControlName="status"
-                [options]="statusSelectOptions"
-                placeholder="Select status"
-              ></app-manager-select>
+              <span>Client mobile</span>
+              <input formControlName="client_cel" placeholder="0412..." />
             </label>
           </div>
 
