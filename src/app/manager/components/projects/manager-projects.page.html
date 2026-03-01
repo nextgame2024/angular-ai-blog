@@ -233,9 +233,19 @@
         </div>
 
         <div
-          class="form-header-actions-row"
+          class="form-header-actions-row materials-actions-row"
           *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
         >
+          <div class="materials-inline-cost">
+            <strong>Materials Cost $</strong>
+            <span class="net-note"
+              >(Net Cost $ {{ ((netMaterialsCost$ | async) || 0) | number:
+              '1.2-2' }})</span
+            >
+            <strong
+              >{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong
+            >
+          </div>
           <button
             class="btn primary"
             type="button"
@@ -257,9 +267,10 @@
           aria-hidden="true"
         >
           <div>Material</div>
-          <div>Quantity - Unit</div>
-          <div>Unit Cost - Cost per unit</div>
-          <div>Coverage ratio - Coverage unit</div>
+          <div>Quantity</div>
+          <div>Unit Cost</div>
+          <div>Coverage ratio</div>
+          <div>Material Cost</div>
           <div class="actions-col">Actions</div>
         </div>
 
@@ -476,7 +487,10 @@
             <div class="grid-2">
               <label>
                 <span>Client email</span>
-                <input formControlName="client_email" placeholder="email@example.com" />
+                <input
+                  formControlName="client_email"
+                  placeholder="email@example.com"
+                />
                 <div
                   class="error-text"
                   *ngIf="projectForm.controls.client_email.touched && projectForm.controls.client_email.invalid"
@@ -800,6 +814,7 @@
                 <div>Quantity - Unit</div>
                 <div>Unit Cost - Cost per unit</div>
                 <div>Coverage ratio - Coverage unit</div>
+                <div>Material Cost</div>
                 <div class="actions-col">Actions</div>
               </div>
 
@@ -819,6 +834,12 @@
                 </div>
                 <div class="cell muted">
                   {{ formatCoverageLabel(m.coverageRatio, m.coverageUnit) }}
+                </div>
+                <div class="cell muted">
+                  <div>{{ formatMaterialCostLabel(m) }}</div>
+                  <div class="cell-subtle">
+                    Net Cost $ {{ formatMaterialNetCostLabel(m) }}
+                  </div>
                 </div>
                 <div class="cell actions-col">
                   <button
@@ -875,6 +896,12 @@
                   <div>
                     <span>Coverage:</span>
                     {{ formatCoverageLabel(m.coverageRatio, m.coverageUnit) }}
+                  </div>
+                  <div>
+                    <span>Material Cost:</span> {{ formatMaterialCostLabel(m) }}
+                  </div>
+                  <div>
+                    <span>Net Cost:</span> {{ formatMaterialNetCostLabel(m) }}
                   </div>
                 </div>
                 <div class="card-actions">
@@ -1499,7 +1526,10 @@
           <div class="grid-2">
             <label>
               <span>Client email</span>
-              <input formControlName="client_email" placeholder="email@example.com" />
+              <input
+                formControlName="client_email"
+                placeholder="email@example.com"
+              />
               <div
                 class="error-text"
                 *ngIf="projectForm.controls.client_email.touched && projectForm.controls.client_email.invalid"
@@ -1643,9 +1673,8 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              {{
-                isActionLoading(p.projectId, 'invoice') ? 'Loading...' : 'Invoice'
-              }}
+              {{ isActionLoading(p.projectId, 'invoice') ? 'Loading...' :
+              'Invoice' }}
             </button>
             <button
               *ngIf="
@@ -1668,7 +1697,8 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              {{ isActionLoading(p.projectId, 'quote') ? 'Loading...' : 'Quote' }}
+              {{ isActionLoading(p.projectId, 'quote') ? 'Loading...' : 'Quote'
+              }}
             </button>
             <button
               class="btn small secondary"
@@ -1738,9 +1768,8 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              {{
-                isActionLoading(p.projectId, 'invoice') ? 'Loading...' : 'Invoice'
-              }}
+              {{ isActionLoading(p.projectId, 'invoice') ? 'Loading...' :
+              'Invoice' }}
             </button>
             <button
               *ngIf="
@@ -1763,7 +1792,8 @@
                   <path d="M8 16h5"></path>
                 </svg>
               </span>
-              {{ isActionLoading(p.projectId, 'quote') ? 'Loading...' : 'Quote' }}
+              {{ isActionLoading(p.projectId, 'quote') ? 'Loading...' : 'Quote'
+              }}
             </button>
             <button
               class="btn small secondary"

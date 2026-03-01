@@ -124,6 +124,29 @@
   padding-top: 0.25rem;
 }
 
+.materials-actions-row {
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.materials-inline-cost {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 10px;
+  border: 1px dashed rgb(185 242 237);
+  background: rgb(226 247 248);
+}
+
+.materials-inline-cost strong {
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
 .warning-banner {
   margin-top: 0.75rem;
   display: flex;
@@ -756,7 +779,7 @@
 }
 .materials-table .thead,
 .materials-table .trow {
-  grid-template-columns: 1.5fr 1.2fr 1.3fr 1.2fr 1fr;
+  grid-template-columns: 1.4fr 1.1fr 1.25fr 1.2fr 0.85fr 1fr;
 }
 .labor-table .thead,
 .labor-table .trow {
@@ -979,7 +1002,7 @@
   }
 
   .table-head.materials-head {
-    grid-template-columns: 1.5fr 1.2fr 1.3fr 1.2fr 1fr;
+    grid-template-columns: 1.4fr 1.1fr 1.25fr 1.2fr 0.85fr 1fr;
   }
 
   .table-head.labor-head {
@@ -1004,7 +1027,7 @@
 
 .materials-table .thead,
 .materials-table .trow {
-  grid-template-columns: 1.5fr 1.2fr 1.3fr 1.2fr 1fr;
+  grid-template-columns: 1.4fr 1.1fr 1.25fr 1.2fr 0.85fr 1fr;
 }
 
 .labor-table .thead,

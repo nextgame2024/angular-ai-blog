@@ -1204,14 +1204,117 @@ export class ManagerProjectsPageComponent
       || '—';
   }
 
+  private calculateCostPerUnit(material: {
+    quantity?: number | null;
+    unitCostOverride?: number | null;
+  }): number | null {
+    const qty = Number(material?.quantity ?? 0);
+    const unitCost = Number(material?.unitCostOverride ?? 0);
+    if (!qty || !Number.isFinite(qty) || !Number.isFinite(unitCost)) return null;
+    return unitCost / qty;
+  }
+
   formatCostPerUnitLabel(material: {
     quantity?: number | null;
     unitCostOverride?: number | null;
   }): string {
-    const qty = Number(material?.quantity ?? 0);
+    const costPerUnit = this.calculateCostPerUnit(material);
+    return costPerUnit === null ? '—' : costPerUnit.toFixed(2);
+  }
+
+  private getEffectiveProjectTypeId(): string | null {
+    return (
+      this.projectForm.controls.project_type_id.value
+      || this.editingProject?.projectTypeId
+      || null
+    );
+  }
+
+  private getEffectiveMetersRequired(): number {
+    const meters =
+      this.projectForm.controls.meters_required.value
+      ?? this.editingProject?.metersRequired
+      ?? 0;
+    const num = Number(meters);
+    return Number.isFinite(num) ? num : 0;
+  }
+
+  private getEffectivePricingProfileMarkup(): number {
+    if (this.useDefaultPricing) return 0;
+    const profileId =
+      this.projectForm.controls.pricing_profile_id.value
+      || this.editingProject?.pricingProfileId
+      || null;
+    const profile = this.pricingProfiles$
+      .getValue()
+      .find((p) => p.pricingProfileId === profileId);
+    const markup = Number(profile?.materialMarkup ?? 0);
+    return Number.isFinite(markup) ? markup : 0;
+  }
+
+  private calculateMaterialNetCost(material: {
+    quantity?: number | null;
+    unitCostOverride?: number | null;
+    coverageRatio?: number | null;
+  }): number {
+    const projectTypeId = this.getEffectiveProjectTypeId();
+    if (projectTypeId) {
+      const costPerUnit = this.calculateCostPerUnit(material);
+      const coverage = Number(material?.coverageRatio ?? 0);
+      const meters = this.getEffectiveMetersRequired();
+      if (
+        costPerUnit === null
+        || !Number.isFinite(coverage)
+        || coverage <= 0
+        || !Number.isFinite(meters)
+        || meters <= 0
+      ) {
+        return 0;
+      }
+      return (meters / coverage) * costPerUnit;
+    }
+
+    const qty = Number(material?.quantity ?? 1);
     const unitCost = Number(material?.unitCostOverride ?? 0);
-    if (!qty || !Number.isFinite(qty) || !Number.isFinite(unitCost)) return '—';
-    return (unitCost / qty).toFixed(2);
+    if (!Number.isFinite(qty) || !Number.isFinite(unitCost) || qty <= 0) return 0;
+    return unitCost * qty;
+  }
+
+  private calculateMaterialDisplayCost(material: {
+    quantity?: number | null;
+    unitCostOverride?: number | null;
+    coverageRatio?: number | null;
+    sellCostOverride?: number | null;
+  }): number {
+    if (this.useDefaultPricing) {
+      const qty = Number(material?.quantity ?? 1);
+      const sell = Number(material?.sellCostOverride ?? 0);
+      if (!Number.isFinite(qty) || !Number.isFinite(sell) || qty <= 0) return 0;
+      return qty * sell;
+    }
+
+    const net = this.calculateMaterialNetCost(material);
+    const markup = this.getEffectivePricingProfileMarkup();
+    return net * (1 + markup);
+  }
+
+  formatMaterialNetCostLabel(material: {
+    quantity?: number | null;
+    unitCostOverride?: number | null;
+    coverageRatio?: number | null;
+  }): string {
+    const net = this.formatMoney(this.calculateMaterialNetCost(material));
+    return (net ?? 0).toFixed(2);
+  }
+
+  formatMaterialCostLabel(material: {
+    quantity?: number | null;
+    unitCostOverride?: number | null;
+    coverageRatio?: number | null;
+    sellCostOverride?: number | null;
+  }): string {
+    const cost = this.formatMoney(this.calculateMaterialDisplayCost(material));
+    return (cost ?? 0).toFixed(2);
   }
 
   formatUnitCostUnitTypeLabel(
