@@ -148,14 +148,18 @@
                 </span>
                 Cancel
               </button>
-              <button class="btn primary" type="button" (click)="saveClientAndClose()">
+              <button
+                class="btn primary"
+                type="button"
+                (click)="saveClientAndClose()"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M5 5h11l3 3v11H5z"></path>
                     <path d="M9 5v6h6V5"></path>
                   </svg>
                 </span>
-                Save & Close
+                Finish
               </button>
             </div>
           </div>
@@ -566,7 +570,11 @@
                 </span>
                 Cancel
               </button>
-              <button class="btn primary" type="button" (click)="saveClientAndClose()">
+              <button
+                class="btn primary"
+                type="button"
+                (click)="saveClientAndClose()"
+              >
                 <span class="btn-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
                     <path d="M5 5h11l3 3v11H5z"></path>
@@ -604,7 +612,10 @@
         </div>
       </div>
 
-      <div class="warning-banner" *ngIf="!isWarningDismissed('client-create-tabs')">
+      <div
+        class="warning-banner"
+        *ngIf="!isWarningDismissed('client-create-tabs')"
+      >
         <span class="warning-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24">
             <path d="M12 4 3 20h18L12 4Z"></path>

@@ -71,6 +71,13 @@ export interface BmProjectLabor {
   notes?: string | null;
 }
 
+export interface BmProjectLaborExtras {
+  dailyRate: number;
+  laborHours: number;
+  additionalTotal: number;
+  dailyRateSource?: 'project' | 'global' | string;
+}
+
 export interface ListProjectsResponse {
   projects: BmProject[];
   page: number;

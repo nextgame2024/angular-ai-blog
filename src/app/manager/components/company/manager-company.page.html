@@ -103,9 +103,7 @@
         <nav class="breadcrumb" aria-label="Breadcrumb">
           <a routerLink="/manager/menu">Menu</a>
           <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()"
-            >Company</a
-          >
+          <a href="#" (click)="$event.preventDefault(); closeForm()">Company</a>
           <span class="sep">/</span>
           <span>Edit</span>
         </nav>
@@ -142,7 +140,7 @@
                   <path d="M9 5v6h6V5"></path>
                 </svg>
               </span>
-              Save & Close
+              Finish
             </button>
             <ng-template #saveOnlyBtn>
               <button class="btn primary" type="button" (click)="saveCompany()">
@@ -294,178 +292,180 @@
 
     <ng-template #createCompanyBlock>
       <ng-container *ngIf="isSuperAdmin; else loadingCompanyBlock">
-      <div class="form-header">
-        <nav class="breadcrumb" aria-label="Breadcrumb">
-          <a routerLink="/manager/menu">Menu</a>
-          <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()">Company</a>
-          <span class="sep">/</span>
-          <span>Create</span>
-        </nav>
-
-        <div class="form-header-mainrow">
-          <div class="header-main">
-            <h3>Create Company</h3>
-            <p class="sub">Create a new company profile.</p>
-          </div>
-          <div class="header-actions">
-            <button class="btn" type="button" (click)="closeForm()">
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M6 6l12 12"></path>
-                  <path d="M18 6l-12 12"></path>
-                </svg>
-              </span>
-              Cancel
-            </button>
-            <button
-              class="btn primary"
-              type="button"
-              (click)="saveCompanyAndClose()"
+        <div class="form-header">
+          <nav class="breadcrumb" aria-label="Breadcrumb">
+            <a routerLink="/manager/menu">Menu</a>
+            <span class="sep">/</span>
+            <a href="#" (click)="$event.preventDefault(); closeForm()"
+              >Company</a
             >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M5 5h11l3 3v11H5z"></path>
-                  <path d="M9 5v6h6V5"></path>
-                </svg>
-              </span>
-              Save & Close
-            </button>
+            <span class="sep">/</span>
+            <span>Create</span>
+          </nav>
+
+          <div class="form-header-mainrow">
+            <div class="header-main">
+              <h3>Create Company</h3>
+              <p class="sub">Create a new company profile.</p>
+            </div>
+            <div class="header-actions">
+              <button class="btn" type="button" (click)="closeForm()">
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M6 6l12 12"></path>
+                    <path d="M18 6l-12 12"></path>
+                  </svg>
+                </span>
+                Cancel
+              </button>
+              <button
+                class="btn primary"
+                type="button"
+                (click)="saveCompanyAndClose()"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M5 5h11l3 3v11H5z"></path>
+                    <path d="M9 5v6h6V5"></path>
+                  </svg>
+                </span>
+                Finish
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <section class="card">
-        <form class="form" [formGroup]="companyForm" autocomplete="off">
-          <div class="company-form-grid">
-            <div class="avatar-stack">
-              <img
-                class="avatar-image"
-                [src]="logoSrc"
-                alt="Company logo"
-                referrerpolicy="no-referrer"
-              />
-              <div class="avatar-actions">
-                <label class="upload-button">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    (change)="onLogoSelected($event)"
-                    [disabled]="isUploadingLogo"
-                  />
-                  <span class="btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 5v10"></path>
-                      <path d="M8 9l4-4 4 4"></path>
-                      <path d="M5 19h14"></path>
-                    </svg>
+        <section class="card">
+          <form class="form" [formGroup]="companyForm" autocomplete="off">
+            <div class="company-form-grid">
+              <div class="avatar-stack">
+                <img
+                  class="avatar-image"
+                  [src]="logoSrc"
+                  alt="Company logo"
+                  referrerpolicy="no-referrer"
+                />
+                <div class="avatar-actions">
+                  <label class="upload-button">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      (change)="onLogoSelected($event)"
+                      [disabled]="isUploadingLogo"
+                    />
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M12 5v10"></path>
+                        <path d="M8 9l4-4 4 4"></path>
+                        <path d="M5 19h14"></path>
+                      </svg>
+                    </span>
+                    Upload
+                  </label>
+                  <span class="upload-hint">PNG/JPG/WebP, up to 5 MB.</span>
+                  <span class="upload-error" *ngIf="logoUploadError">
+                    {{ logoUploadError }}
                   </span>
-                  Upload
-                </label>
-                <span class="upload-hint">PNG/JPG/WebP, up to 5 MB.</span>
-                <span class="upload-error" *ngIf="logoUploadError">
-                  {{ logoUploadError }}
-                </span>
+                </div>
               </div>
-            </div>
 
-            <div class="company-fields-grid">
-              <label>
-                <span>Company Name *</span>
-                <input
-                  formControlName="company_name"
-                  placeholder="Company name"
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Legal Name</span>
-                <input
-                  formControlName="legal_name"
-                  placeholder="Legal name"
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Trading Name</span>
-                <input
-                  formControlName="trading_name"
-                  placeholder="Trading name"
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>ABN</span>
-                <input formControlName="abn" placeholder="ABN" />
-              </label>
-
-              <label class="address-label">
-                <span>Address</span>
-                <div class="address-field">
+              <div class="company-fields-grid">
+                <label>
+                  <span>Company Name *</span>
                   <input
-                    formControlName="address"
-                    placeholder="Street address"
-                    (focus)="onAddressFocus()"
-                    (blur)="onAddressBlur()"
-                    (keydown)="onAddressKeydown($event)"
+                    formControlName="company_name"
+                    placeholder="Company name"
                     autocomplete="off"
                   />
-                  <div
-                    class="address-suggestions"
-                    *ngIf="showAddressSuggestions && addressSuggestions.length"
-                  >
-                    <button
-                      type="button"
-                      class="address-suggestion"
-                      *ngFor="let s of addressSuggestions; let i = index"
-                      [class.is-active]="i === addressActiveIndex"
-                      (mousedown)="onAddressSelect(s)"
+                </label>
+
+                <label>
+                  <span>Legal Name</span>
+                  <input
+                    formControlName="legal_name"
+                    placeholder="Legal name"
+                    autocomplete="off"
+                  />
+                </label>
+
+                <label>
+                  <span>Trading Name</span>
+                  <input
+                    formControlName="trading_name"
+                    placeholder="Trading name"
+                    autocomplete="off"
+                  />
+                </label>
+
+                <label>
+                  <span>ABN</span>
+                  <input formControlName="abn" placeholder="ABN" />
+                </label>
+
+                <label class="address-label">
+                  <span>Address</span>
+                  <div class="address-field">
+                    <input
+                      formControlName="address"
+                      placeholder="Street address"
+                      (focus)="onAddressFocus()"
+                      (blur)="onAddressBlur()"
+                      (keydown)="onAddressKeydown($event)"
+                      autocomplete="off"
+                    />
+                    <div
+                      class="address-suggestions"
+                      *ngIf="showAddressSuggestions && addressSuggestions.length"
                     >
-                      {{ s.description }}
-                    </button>
+                      <button
+                        type="button"
+                        class="address-suggestion"
+                        *ngFor="let s of addressSuggestions; let i = index"
+                        [class.is-active]="i === addressActiveIndex"
+                        (mousedown)="onAddressSelect(s)"
+                      >
+                        {{ s.description }}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </label>
+                </label>
 
-              <label>
-                <span>Email</span>
-                <input
-                  formControlName="email"
-                  placeholder="Email"
-                  autocomplete="off"
-                />
-              </label>
+                <label>
+                  <span>Email</span>
+                  <input
+                    formControlName="email"
+                    placeholder="Email"
+                    autocomplete="off"
+                  />
+                </label>
 
-              <label>
-                <span>Phone</span>
-                <input formControlName="phone" placeholder="Phone" />
-              </label>
+                <label>
+                  <span>Phone</span>
+                  <input formControlName="phone" placeholder="Phone" />
+                </label>
 
-              <label>
-                <span>Tel</span>
-                <input formControlName="tel" placeholder="Tel" />
-              </label>
+                <label>
+                  <span>Tel</span>
+                  <input formControlName="tel" placeholder="Tel" />
+                </label>
 
-              <label>
-                <span>Cel</span>
-                <input formControlName="cel" placeholder="Cel" />
-              </label>
+                <label>
+                  <span>Cel</span>
+                  <input formControlName="cel" placeholder="Cel" />
+                </label>
 
-              <label class="span-2">
-                <span>Status</span>
-                <app-manager-select
-                  formControlName="status"
-                  [options]="statusOptions"
-                  placeholder="Select status"
-                ></app-manager-select>
-              </label>
+                <label class="span-2">
+                  <span>Status</span>
+                  <app-manager-select
+                    formControlName="status"
+                    [options]="statusOptions"
+                    placeholder="Select status"
+                  ></app-manager-select>
+                </label>
+              </div>
             </div>
-          </div>
-        </form>
-      </section>
+          </form>
+        </section>
       </ng-container>
     </ng-template>
 

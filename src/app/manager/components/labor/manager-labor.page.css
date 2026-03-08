@@ -786,6 +786,8 @@
   font-size: 0.87rem;
   font-weight: 600;
   color: #0f172a;
+  line-height: 1.35;
+  word-break: break-word;
   animation: daily-rate-toast-in 220ms ease-out forwards;
 }
 
@@ -824,6 +826,37 @@
   to {
     opacity: 0;
     transform: translateY(-6px) translateX(8px);
+  }
+}
+
+@media (max-width: 899px) {
+  .daily-rate-toast-wrap {
+    top: calc(env(safe-area-inset-top) + 4rem);
+    right: 0.75rem;
+    left: 0.75rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  .daily-rate-toast {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0.78rem 0.9rem;
+    font-size: 0.9rem;
+    border-width: 1px;
+  }
+
+  .daily-rate-toast.success {
+    background: #dcfce7;
+    border-color: #34d399;
+    color: #065f46;
+  }
+
+  .daily-rate-toast.error {
+    background: #fee2e2;
+    border-color: #f87171;
+    color: #991b1b;
   }
 }
 

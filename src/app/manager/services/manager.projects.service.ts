@@ -7,6 +7,7 @@ import { environment } from 'src/environments/environment';
 import type {
   BmProject,
   BmProjectLabor,
+  BmProjectLaborExtras,
   BmProjectMaterial,
   ListProjectsResponse,
   PagedResult,
@@ -145,6 +146,24 @@ export class ManagerProjectsService {
   removeProjectLabor(projectId: string, laborId: string): Observable<void> {
     return this.http.delete<void>(
       `${this.projectsBase}/${projectId}/labor/${laborId}`,
+    );
+  }
+
+  getProjectLaborExtras(
+    projectId: string,
+  ): Observable<{ laborExtras: BmProjectLaborExtras }> {
+    return this.http.get<{ laborExtras: BmProjectLaborExtras }>(
+      `${this.projectsBase}/${projectId}/labor-extras`,
+    );
+  }
+
+  updateProjectLaborExtras(
+    projectId: string,
+    payload: { daily_rate: number; labor_hours: number },
+  ): Observable<{ laborExtras: BmProjectLaborExtras }> {
+    return this.http.put<{ laborExtras: BmProjectLaborExtras }>(
+      `${this.projectsBase}/${projectId}/labor-extras`,
+      { laborExtras: payload },
     );
   }
 

@@ -62,6 +62,7 @@ import {
 import { selectManagerSearchQuery } from '../../store/manager.selectors';
 import type {
   BmProject,
+  BmProjectLaborExtras,
   BmProjectLabor,
   BmProjectMaterial,
 } from '../../types/projects.interface';
@@ -180,6 +181,8 @@ export class ManagerProjectsPageComponent
     sellCost?: number | null;
   }[] = [];
   laborSearchCtrl: FormControl<string>;
+  projectLaborDailyRateCtrl: FormControl<string>;
+  projectLaborHoursCtrl: FormControl<string>;
   laborSuggestions: {
     laborId: string;
     laborName: string;
@@ -309,16 +312,28 @@ export class ManagerProjectsPageComponent
   editingLabor: BmProjectLabor | null = null;
   dismissedErrors = new Set<string>();
   dismissedWarnings = new Set<string>();
+  projectLaborToastVisible = false;
+  projectLaborToastClosing = false;
+  projectLaborToastTone: 'success' | 'error' = 'success';
+  projectLaborToastMessage = '';
   private actionLoading = new Map<string, { quote: boolean; invoice: boolean }>();
 
   @ViewChild('projectsList') projectsListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
+  @ViewChild('tabScrollTopAnchor') tabScrollTopAnchorRef?: ElementRef<HTMLElement>;
 
   private currentPage = 1;
   private canLoadMore = false;
   private suppressProjectTypeApply = false;
   private lastProjectId: string | null = null;
   private allowClientChangeOnEdit = false;
+  private laborExtrasProjectId: string | null = null;
+  private lastSavedLaborExtras: { dailyRate: number; laborHours: number } = {
+    dailyRate: 0,
+    laborHours: 0,
+  };
+  private projectLaborToastHideTimer: ReturnType<typeof setTimeout> | null = null;
+  private projectLaborToastRemoveTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private store: Store,
@@ -337,6 +352,8 @@ export class ManagerProjectsPageComponent
     this.supplierSearchCtrl = new FormControl('', { nonNullable: true });
     this.materialSearchCtrl = new FormControl('', { nonNullable: true });
     this.laborSearchCtrl = new FormControl('', { nonNullable: true });
+    this.projectLaborDailyRateCtrl = new FormControl('0.00', { nonNullable: true });
+    this.projectLaborHoursCtrl = new FormControl('0.00', { nonNullable: true });
   }
 
   ngOnInit(): void {
@@ -536,6 +553,31 @@ export class ManagerProjectsPageComponent
         this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
       });
 
+    combineLatest([
+      this.projectLaborDailyRateCtrl.valueChanges.pipe(
+        startWith(this.projectLaborDailyRateCtrl.value),
+      ),
+      this.projectLaborHoursCtrl.valueChanges.pipe(
+        startWith(this.projectLaborHoursCtrl.value),
+      ),
+    ])
+      .pipe(
+        map(([dailyRateRaw, laborHoursRaw]) => ({
+          dailyRate: this.parseNonNegativeMoney(dailyRateRaw),
+          laborHours: this.parseNonNegativeMoney(laborHoursRaw),
+        })),
+        debounceTime(500),
+        distinctUntilChanged(
+          (a, b) =>
+            a.dailyRate === b.dailyRate && a.laborHours === b.laborHours,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe(({ dailyRate, laborHours }) => {
+        if (dailyRate === null || laborHours === null) return;
+        this.saveProjectLaborExtras(dailyRate, laborHours);
+      });
+
     this.loading$.pipe(takeUntil(this.destroy$)).subscribe((loading) => {
       this.isLoading = loading;
       if (!loading) this.isLoadingMore = false;
@@ -605,6 +647,10 @@ export class ManagerProjectsPageComponent
     this.editingProject$.pipe(takeUntil(this.destroy$)).subscribe((project) => {
       this.editingProject = project ?? null;
       if (project) {
+        if (this.laborExtrasProjectId !== project.projectId) {
+          this.laborExtrasProjectId = project.projectId;
+          this.loadProjectLaborExtras(project.projectId);
+        }
         const hasProjectChanged = this.lastProjectId !== project.projectId;
         this.lastProjectId = project.projectId;
         if (hasProjectChanged || !this.projectForm.dirty) {
@@ -665,6 +711,12 @@ export class ManagerProjectsPageComponent
       } else {
         this.allowClientChangeOnEdit = false;
         this.lastProjectId = null;
+        this.laborExtrasProjectId = null;
+        this.setProjectLaborExtrasControls({
+          dailyRate: 0,
+          laborHours: 0,
+          additionalTotal: 0,
+        });
         this.suppressStatusUpdate = true;
         this.projectForm.reset({
           client_is_new: false,
@@ -782,6 +834,12 @@ export class ManagerProjectsPageComponent
   }
 
   ngOnDestroy(): void {
+    if (this.projectLaborToastHideTimer) {
+      clearTimeout(this.projectLaborToastHideTimer);
+    }
+    if (this.projectLaborToastRemoveTimer) {
+      clearTimeout(this.projectLaborToastRemoveTimer);
+    }
     this.destroy$.next();
     this.destroy$.complete();
     this.infiniteObserver?.disconnect();
@@ -980,10 +1038,58 @@ export class ManagerProjectsPageComponent
       return;
     }
 
+    const laborExtrasOk = await this.savePendingLaborExtrasBeforeProjectSave();
+    if (!laborExtrasOk) return;
+
     const payload = this.buildProjectPayload(clientId);
     this.store.dispatch(
       ManagerProjectsActions.saveProject({ payload, closeOnSuccess }),
     );
+  }
+
+  private async savePendingLaborExtrasBeforeProjectSave(): Promise<boolean> {
+    const projectId = this.editingProject?.projectId;
+    if (!projectId) return true;
+
+    const dailyRate = this.parseNonNegativeMoney(this.projectLaborDailyRateCtrl.value);
+    const laborHours = this.parseNonNegativeMoney(this.projectLaborHoursCtrl.value);
+    if (dailyRate === null || laborHours === null) {
+      this.showProjectLaborToast(
+        'Please enter valid labor values before saving.',
+        'error',
+      );
+      return false;
+    }
+
+    const dailyRateChanged =
+      Math.abs(dailyRate - this.lastSavedLaborExtras.dailyRate) >= 0.0001;
+    const laborHoursChanged =
+      Math.abs(laborHours - this.lastSavedLaborExtras.laborHours) >= 0.0001;
+    if (!dailyRateChanged && !laborHoursChanged) return true;
+
+    try {
+      const res = await firstValueFrom(
+        this.projectsService.updateProjectLaborExtras(projectId, {
+          daily_rate: dailyRate,
+          labor_hours: laborHours,
+        }),
+      );
+
+      this.setProjectLaborExtrasControls(
+        res?.laborExtras ?? {
+          dailyRate,
+          laborHours,
+          additionalTotal: dailyRate * laborHours,
+        },
+      );
+      return true;
+    } catch {
+      this.showProjectLaborToast(
+        'Unable to update labor values. Please try again.',
+        'error',
+      );
+      return false;
+    }
   }
 
   private buildProjectPayload(clientId: string): any {
@@ -1252,6 +1358,19 @@ export class ManagerProjectsPageComponent
     return Number.isFinite(markup) ? markup : 0;
   }
 
+  private getEffectiveLaborPricingProfileMarkup(): number {
+    if (this.useDefaultPricing) return 0;
+    const profileId =
+      this.projectForm.controls.pricing_profile_id.value
+      || this.editingProject?.pricingProfileId
+      || null;
+    const profile = this.pricingProfiles$
+      .getValue()
+      .find((p) => p.pricingProfileId === profileId);
+    const markup = Number(profile?.laborMarkup ?? 0);
+    return Number.isFinite(markup) ? markup : 0;
+  }
+
   private calculateMaterialNetCost(material: {
     quantity?: number | null;
     unitCostOverride?: number | null;
@@ -1335,6 +1454,67 @@ export class ManagerProjectsPageComponent
     if (prod === null && !unit) return '—';
     return `${prod === null ? '' : prod.toFixed(2)}${unit ? ` ${unit}` : ''}`.trim()
       || '—';
+  }
+
+  private calculateLaborNetLineCost(labor: {
+    unitProductivity?: number | null;
+    unitCostOverride?: number | null;
+    quantity?: number | null;
+  }): number {
+    const meters = this.getEffectiveMetersRequired();
+    const productivity = Number(labor?.unitProductivity ?? 0);
+    const unitCost = Number(labor?.unitCostOverride ?? 0);
+    if (!Number.isFinite(unitCost)) return 0;
+
+    if (
+      Number.isFinite(meters)
+      && meters > 0
+      && Number.isFinite(productivity)
+      && productivity > 0
+    ) {
+      return (meters / productivity) * unitCost;
+    }
+
+    const qty = Number(labor?.quantity ?? 1);
+    if (!Number.isFinite(qty) || qty <= 0) return 0;
+    return qty * unitCost;
+  }
+
+  private calculateLaborDisplayLineCost(labor: {
+    unitProductivity?: number | null;
+    unitCostOverride?: number | null;
+    sellCostOverride?: number | null;
+    quantity?: number | null;
+  }): number {
+    if (this.useDefaultPricing) {
+      const qty = Number(labor?.quantity ?? 1);
+      const sell = Number(labor?.sellCostOverride ?? 0);
+      if (!Number.isFinite(qty) || qty <= 0 || !Number.isFinite(sell)) return 0;
+      return qty * sell;
+    }
+
+    const net = this.calculateLaborNetLineCost(labor);
+    const markup = this.getEffectiveLaborPricingProfileMarkup();
+    return net * (1 + markup);
+  }
+
+  formatLaborNetCostLabel(labor: {
+    unitProductivity?: number | null;
+    unitCostOverride?: number | null;
+    quantity?: number | null;
+  }): string {
+    const net = this.formatMoney(this.calculateLaborNetLineCost(labor));
+    return (net ?? 0).toFixed(2);
+  }
+
+  formatLaborCostLabel(labor: {
+    unitProductivity?: number | null;
+    unitCostOverride?: number | null;
+    sellCostOverride?: number | null;
+    quantity?: number | null;
+  }): string {
+    const total = this.formatMoney(this.calculateLaborDisplayLineCost(labor));
+    return (total ?? 0).toFixed(2);
   }
 
   private formatCoverage(
@@ -2303,12 +2483,26 @@ export class ManagerProjectsPageComponent
     }
 
     if (tab === 'labor' && project) {
+      this.loadProjectLaborExtras(project.projectId);
       this.store.dispatch(
         ManagerProjectsActions.loadProjectLabor({
           projectId: project.projectId,
         }),
       );
     }
+
+    this.scrollToTopOnTabChange();
+  }
+
+  private scrollToTopOnTabChange(): void {
+    window.setTimeout(() => {
+      const anchor = this.tabScrollTopAnchorRef?.nativeElement;
+      if (anchor) {
+        anchor.scrollIntoView({ block: 'start', behavior: 'auto' });
+        return;
+      }
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }, 0);
   }
 
   openMaterialCreate(): void {
@@ -2891,18 +3085,11 @@ export class ManagerProjectsPageComponent
     useDefaultPricing: boolean,
     pricingProfileId: string | null,
     profiles: BmPricingProfile[],
-    projectTypeId: string | null,
+    _projectTypeId: string | null,
     metersRequired: number | string | null,
   ): number {
     const items = labor ?? [];
-    const useProjectTypeFormula = !!projectTypeId;
-    const net = useProjectTypeFormula
-      ? this.calculateProductivityNet(items, metersRequired)
-      : items.reduce((sum, l) => {
-          const qty = Number(l.quantity ?? 1);
-          const cost = Number(l.unitCostOverride ?? 0);
-          return sum + cost * qty;
-        }, 0);
+    const net = this.calculateProductivityNet(items, metersRequired);
     const sellSum = items.reduce((sum, l) => {
       const qty = Number(l.quantity ?? 1);
       const cost = Number(l.sellCostOverride ?? 0);
@@ -2916,18 +3103,11 @@ export class ManagerProjectsPageComponent
 
   private calculateNetLaborCost(
     labor: BmProjectLabor[] | null | undefined,
-    projectTypeId: string | null,
+    _projectTypeId: string | null,
     metersRequired: number | string | null,
   ): number {
     const items = labor ?? [];
-    if (projectTypeId) {
-      return this.calculateProductivityNet(items, metersRequired);
-    }
-    return items.reduce((sum, l) => {
-      const qty = Number(l.quantity ?? 1);
-      const cost = Number(l.unitCostOverride ?? 0);
-      return sum + cost * qty;
-    }, 0);
+    return this.calculateProductivityNet(items, metersRequired);
   }
 
   private calculateProductivityNet(
@@ -2935,13 +3115,188 @@ export class ManagerProjectsPageComponent
     metersRequired: number | string | null,
   ): number {
     const meters = Number(metersRequired ?? 0);
-    if (!Number.isFinite(meters) || meters <= 0) return 0;
     return labor.reduce((sum, l) => {
-      const productivity = Number(l.unitProductivity ?? 0);
-      if (!Number.isFinite(productivity) || productivity <= 0) return sum;
       const unitCost = Number(l.unitCostOverride ?? 0);
       if (!Number.isFinite(unitCost)) return sum;
-      return sum + (meters / productivity) * unitCost;
+
+      const productivity = Number(l.unitProductivity ?? 0);
+      if (
+        Number.isFinite(meters)
+        && meters > 0
+        && Number.isFinite(productivity)
+        && productivity > 0
+      ) {
+        return sum + (meters / productivity) * unitCost;
+      }
+
+      const qty = Number(l.quantity ?? 1);
+      if (!Number.isFinite(qty) || qty <= 0) return sum;
+      return sum + qty * unitCost;
     }, 0);
+  }
+
+  get projectLaborAdditionalTotalLabel(): string {
+    const dailyRate = this.parseNonNegativeMoney(this.projectLaborDailyRateCtrl.value) ?? 0;
+    const laborHours = this.parseNonNegativeMoney(this.projectLaborHoursCtrl.value) ?? 0;
+    return (Math.round(dailyRate * laborHours * 100) / 100).toFixed(2);
+  }
+
+  onProjectLaborDailyRateBlur(): void {
+    const normalized =
+      this.parseNonNegativeMoney(this.projectLaborDailyRateCtrl.value) ?? 0;
+    this.projectLaborDailyRateCtrl.setValue(this.formatMoneyInput(normalized) ?? '0.00', {
+      emitEvent: false,
+    });
+  }
+
+  onProjectLaborHoursBlur(): void {
+    const normalized =
+      this.parseNonNegativeMoney(this.projectLaborHoursCtrl.value) ?? 0;
+    this.projectLaborHoursCtrl.setValue(this.formatMoneyInput(normalized) ?? '0.00', {
+      emitEvent: false,
+    });
+  }
+
+  private parseNonNegativeMoney(
+    value: number | string | null | undefined,
+  ): number | null {
+    if (value === null || value === undefined || value === '') return 0;
+    const num = Number(value);
+    if (!Number.isFinite(num) || num < 0) return null;
+    return Math.round(num * 100) / 100;
+  }
+
+  private formatMoneyInput(
+    value: number | string | null | undefined,
+  ): string | null {
+    if (value === null || value === undefined || value === '') return null;
+    const num = Number(value);
+    if (Number.isNaN(num)) return null;
+    return num.toFixed(2);
+  }
+
+  private setProjectLaborExtrasControls(extras: BmProjectLaborExtras): void {
+    const dailyRate = this.parseNonNegativeMoney(extras?.dailyRate ?? 0) ?? 0;
+    const laborHours = this.parseNonNegativeMoney(extras?.laborHours ?? 0) ?? 0;
+    this.lastSavedLaborExtras = { dailyRate, laborHours };
+    this.projectLaborDailyRateCtrl.setValue(
+      this.formatMoneyInput(dailyRate) ?? '0.00',
+      { emitEvent: false },
+    );
+    this.projectLaborHoursCtrl.setValue(
+      this.formatMoneyInput(laborHours) ?? '0.00',
+      { emitEvent: false },
+    );
+  }
+
+  private loadProjectLaborExtras(projectId: string): void {
+    this.projectsService
+      .getProjectLaborExtras(projectId)
+      .pipe(take(1))
+      .subscribe({
+        next: (res) => {
+          this.setProjectLaborExtrasControls(
+            res?.laborExtras ?? {
+              dailyRate: 0,
+              laborHours: 0,
+              additionalTotal: 0,
+            },
+          );
+        },
+        error: () => {
+          this.setProjectLaborExtrasControls({
+            dailyRate: 0,
+            laborHours: 0,
+            additionalTotal: 0,
+          });
+        },
+      });
+  }
+
+  private saveProjectLaborExtras(dailyRate: number, laborHours: number): void {
+    const projectId = this.editingProject?.projectId;
+    if (!projectId) return;
+
+    const dailyRateChanged =
+      Math.abs(dailyRate - this.lastSavedLaborExtras.dailyRate) >= 0.0001;
+    const laborHoursChanged =
+      Math.abs(laborHours - this.lastSavedLaborExtras.laborHours) >= 0.0001;
+
+    if (
+      !dailyRateChanged
+      && !laborHoursChanged
+    ) {
+      return;
+    }
+
+    this.projectsService
+      .updateProjectLaborExtras(projectId, {
+        daily_rate: dailyRate,
+        labor_hours: laborHours,
+      })
+      .pipe(take(1))
+      .subscribe({
+        next: (res) => {
+          this.setProjectLaborExtrasControls(
+            res?.laborExtras ?? {
+              dailyRate,
+              laborHours,
+              additionalTotal: dailyRate * laborHours,
+            },
+          );
+          this.showProjectLaborToast(
+            this.getProjectLaborExtrasSuccessMessage(
+              dailyRateChanged,
+              laborHoursChanged,
+            ),
+            'success',
+          );
+        },
+        error: () => {
+          this.showProjectLaborToast(
+            'Unable to update labor values. Please try again.',
+            'error',
+          );
+        },
+      });
+  }
+
+  private getProjectLaborExtrasSuccessMessage(
+    dailyRateChanged: boolean,
+    laborHoursChanged: boolean,
+  ): string {
+    if (laborHoursChanged && !dailyRateChanged) {
+      return 'Labor hours updated successfully.';
+    }
+    if (dailyRateChanged && !laborHoursChanged) {
+      return 'Daily rate updated successfully.';
+    }
+    return 'Labor values updated successfully.';
+  }
+
+  private showProjectLaborToast(
+    message: string,
+    tone: 'success' | 'error',
+  ): void {
+    if (this.projectLaborToastHideTimer) {
+      clearTimeout(this.projectLaborToastHideTimer);
+    }
+    if (this.projectLaborToastRemoveTimer) {
+      clearTimeout(this.projectLaborToastRemoveTimer);
+    }
+
+    this.projectLaborToastMessage = message;
+    this.projectLaborToastTone = tone;
+    this.projectLaborToastVisible = true;
+    this.projectLaborToastClosing = false;
+
+    this.projectLaborToastHideTimer = setTimeout(() => {
+      this.projectLaborToastClosing = true;
+    }, 2500);
+
+    this.projectLaborToastRemoveTimer = setTimeout(() => {
+      this.projectLaborToastVisible = false;
+      this.projectLaborToastClosing = false;
+    }, 3000);
   }
 }

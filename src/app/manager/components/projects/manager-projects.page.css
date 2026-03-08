@@ -5,6 +5,11 @@
   --projects-table-columns: 1.4fr 1.2fr 1.1fr 1.2fr 0.9fr minmax(220px, 1.2fr);
 }
 
+.tab-scroll-top-anchor {
+  height: 0;
+  scroll-margin-top: 72px;
+}
+
 .list-header {
   position: sticky;
   top: 0;
@@ -131,7 +136,24 @@
   flex-wrap: wrap;
 }
 
+.labor-actions-row {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
+}
+
 .materials-inline-cost {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: 10px;
+  border: 1px dashed rgb(185 242 237);
+  background: rgb(226 247 248);
+}
+
+.labor-inline-cost {
   display: inline-flex;
   align-items: baseline;
   flex-wrap: wrap;
@@ -145,6 +167,60 @@
 .materials-inline-cost strong {
   font-size: 0.9rem;
   font-weight: 800;
+}
+
+.labor-inline-cost strong {
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.labor-inline-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.labor-inline-field {
+  display: grid;
+  grid-template-columns: minmax(96px, auto) 1fr;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.86rem;
+  color: rgba(15, 23, 42, 0.88);
+  width: 100%;
+}
+
+.labor-inline-field span {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.labor-inline-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #fff;
+  text-align: right;
+  font-size: 0.86rem;
+}
+
+.labor-inline-field input:focus {
+  outline: none;
+  border-color: rgba(16, 224, 199, 0.45);
+  box-shadow: 0 0 0 3px rgba(16, 224, 199, 0.12);
+}
+
+.labor-inline-field input:disabled {
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.78);
+  cursor: not-allowed;
+}
+
+.labor-add-btn {
+  align-self: flex-start;
 }
 
 .warning-banner {
@@ -348,6 +424,31 @@
   align-items: center;
 }
 
+.quote-card-labor {
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.labor-summary-main {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.labor-summary-top {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.labor-summary-extra {
+  font-size: 0.95rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .cost-line {
   display: flex;
   flex-wrap: wrap;
@@ -358,6 +459,10 @@
 .net-note {
   font-size: 0.78rem;
   color: rgba(15, 23, 42, 0.55);
+}
+
+.estimated-value {
+  color: rgba(15, 23, 42, 0.58);
 }
 
 .quote-card strong {
@@ -783,7 +888,7 @@
 }
 .labor-table .thead,
 .labor-table .trow {
-  grid-template-columns: 1.6fr 1.3fr 1.3fr 1fr;
+  grid-template-columns: 1.35fr 1.25fr 1.25fr 1fr 1fr;
 }
 
 .thead {
@@ -1006,7 +1111,7 @@
   }
 
   .table-head.labor-head {
-    grid-template-columns: 1.6fr 1.3fr 1.3fr 1fr;
+    grid-template-columns: 1.35fr 1.25fr 1.25fr 1fr 1fr;
   }
 
   .table {
@@ -1032,7 +1137,7 @@
 
 .labor-table .thead,
 .labor-table .trow {
-  grid-template-columns: 1.6fr 1.3fr 1.3fr 1fr;
+  grid-template-columns: 1.35fr 1.25fr 1.25fr 1fr 1fr;
 }
 
 @media (min-width: 900px) {
@@ -1050,11 +1155,56 @@
     align-items: center;
     justify-content: space-between;
   }
+
+  .labor-actions-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .labor-inline-fields {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+    width: auto;
+  }
+
+  .labor-inline-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    width: auto;
+  }
+
+  .labor-inline-field input {
+    width: 96px;
+  }
 }
 
 @media (max-width: 899px) {
   .list-header {
     margin-top: 0;
+  }
+
+  .labor-inline-cost {
+    width: 100%;
+  }
+
+  .labor-add-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .quote-card-labor {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .labor-summary-extra {
+    align-self: flex-end;
   }
 }
 
@@ -1171,5 +1321,97 @@
 
   .status-modal-actions .btn {
     flex: 1 1 auto;
+  }
+}
+
+.project-labor-toast-wrap {
+  position: fixed;
+  top: 1.1rem;
+  right: 1.1rem;
+  z-index: 120;
+  pointer-events: none;
+}
+
+.project-labor-toast {
+  min-width: 240px;
+  max-width: min(420px, calc(100vw - 2rem));
+  border-radius: 12px;
+  padding: 0.7rem 0.85rem;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.24);
+  border: 1px solid transparent;
+  font-size: 0.87rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.35;
+  word-break: break-word;
+  animation: project-labor-toast-in 220ms ease-out forwards;
+}
+
+.project-labor-toast.success {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.42);
+  color: #065f46;
+}
+
+.project-labor-toast.error {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.34);
+  color: #991b1b;
+}
+
+.project-labor-toast.closing {
+  animation: project-labor-toast-out 220ms ease-in forwards;
+}
+
+@keyframes project-labor-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+  }
+}
+
+@keyframes project-labor-toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) translateX(8px);
+  }
+}
+
+@media (max-width: 899px) {
+  .project-labor-toast-wrap {
+    top: calc(env(safe-area-inset-top) + 4rem);
+    right: 0.75rem;
+    left: 0.75rem;
+    display: flex;
+    justify-content: center;
+  }
+
+  .project-labor-toast {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0.78rem 0.9rem;
+    font-size: 0.9rem;
+    border-width: 1px;
+  }
+
+  .project-labor-toast.success {
+    background: #dcfce7;
+    border-color: #34d399;
+    color: #065f46;
+  }
+
+  .project-labor-toast.error {
+    background: #fee2e2;
+    border-color: #f87171;
+    color: #991b1b;
   }
 }

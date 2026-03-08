@@ -97,6 +97,11 @@
     <ng-container
       *ngIf="editingProject$ | async as project; else createProjectBlock"
     >
+      <div
+        #tabScrollTopAnchor
+        class="tab-scroll-top-anchor"
+        aria-hidden="true"
+      ></div>
       <div class="form-header">
         <nav class="breadcrumb" aria-label="Breadcrumb">
           <a routerLink="/manager/menu">Menu</a>
@@ -177,7 +182,7 @@
                   <path d="M9 5v6h6V5"></path>
                 </svg>
               </span>
-              Save & Close
+              Finish
             </button>
           </div>
         </div>
@@ -231,74 +236,6 @@
             Labor
           </button>
         </div>
-
-        <div
-          class="form-header-actions-row materials-actions-row"
-          *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
-        >
-          <div class="materials-inline-cost">
-            <strong>Materials Cost $</strong>
-            <span class="net-note"
-              >(Net Cost $ {{ ((netMaterialsCost$ | async) || 0) | number:
-              '1.2-2' }})</span
-            >
-            <strong
-              >{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong
-            >
-          </div>
-          <button
-            class="btn primary"
-            type="button"
-            (click)="openMaterialCreate()"
-          >
-            <span class="btn-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 5v14"></path>
-                <path d="M5 12h14"></path>
-              </svg>
-            </span>
-            Add Material
-          </button>
-        </div>
-
-        <div
-          class="table-head materials-head"
-          *ngIf="(tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list'"
-          aria-hidden="true"
-        >
-          <div>Material</div>
-          <div>Quantity</div>
-          <div>Unit Cost</div>
-          <div>Coverage ratio</div>
-          <div>Material Cost</div>
-          <div class="actions-col">Actions</div>
-        </div>
-
-        <div
-          class="form-header-actions-row"
-          *ngIf="(tab$ | async) === 'labor' && (laborViewMode$ | async) === 'list'"
-        >
-          <button class="btn primary" type="button" (click)="openLaborCreate()">
-            <span class="btn-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M12 5v14"></path>
-                <path d="M5 12h14"></path>
-              </svg>
-            </span>
-            Add Labor
-          </button>
-        </div>
-
-        <div
-          class="table-head labor-head"
-          *ngIf="(tab$ | async) === 'labor' && (laborViewMode$ | async) === 'list'"
-          aria-hidden="true"
-        >
-          <div>Labor</div>
-          <div>Unit Cost - Unit Type</div>
-          <div>Productivity - Productivity unit</div>
-          <div class="actions-col">Actions</div>
-        </div>
       </div>
 
       <ng-container *ngIf="(tab$ | async) === 'details'">
@@ -318,16 +255,22 @@
                   }}</strong
                 >
               </div>
-              <div class="quote-card quote-card-wide">
-                <div class="cost-line">
-                  <strong>Labor Cost $</strong>
+              <div class="quote-card quote-card-wide quote-card-labor">
+                <div class="labor-summary-main">
+                  <div class="labor-summary-top">
+                    <strong>Labor Cost $</strong>
+                    <strong class="estimated-value"
+                      >{{ ((laborCost$ | async) || 0) | number: '1.2-2'
+                      }}</strong
+                    >
+                  </div>
                   <span class="net-note"
                     >(Net Cost $ {{ ((netLaborCost$ | async) || 0) | number:
                     '1.2-2' }})</span
                   >
                 </div>
-                <strong
-                  >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
+                <strong class="labor-summary-extra"
+                  >{{ projectLaborAdditionalTotalLabel }}</strong
                 >
               </div>
             </div>
@@ -616,6 +559,48 @@
         </div>
 
         <ng-container *ngIf="project">
+          <div
+            class="form-header-actions-row materials-actions-row"
+            *ngIf="(materialsViewMode$ | async) === 'list'"
+          >
+            <div class="materials-inline-cost">
+              <strong>Materials Cost $</strong>
+              <span class="net-note"
+                >(Net Cost $ {{ ((netMaterialsCost$ | async) || 0) | number:
+                '1.2-2' }})</span
+              >
+              <strong
+                >{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong
+              >
+            </div>
+            <button
+              class="btn primary"
+              type="button"
+              (click)="openMaterialCreate()"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 5v14"></path>
+                  <path d="M5 12h14"></path>
+                </svg>
+              </span>
+              Add Material
+            </button>
+          </div>
+
+          <div
+            class="table-head materials-head"
+            *ngIf="(materialsViewMode$ | async) === 'list'"
+            aria-hidden="true"
+          >
+            <div>Material</div>
+            <div>Quantity</div>
+            <div>Unit Cost</div>
+            <div>Coverage ratio</div>
+            <div>Material Cost</div>
+            <div class="actions-col">Actions</div>
+          </div>
+
           <ng-container *ngIf="(materialsError$ | async) as err">
             <div class="error" *ngIf="!isErrorDismissed(err)">
               <span>{{ formatErrorMessage(err) }}</span>
@@ -968,6 +953,79 @@
         </div>
 
         <ng-container *ngIf="project">
+          <div
+            class="form-header-actions-row labor-actions-row"
+            *ngIf="(laborViewMode$ | async) === 'list'"
+          >
+            <div class="labor-inline-cost">
+              <strong>Labor Cost $</strong>
+              <span class="net-note"
+                >(Net Cost $ {{ ((netLaborCost$ | async) || 0) | number: '1.2-2'
+                }})</span
+              >
+              <strong class="estimated-value"
+                >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
+              >
+            </div>
+            <div class="labor-inline-fields">
+              <label class="labor-inline-field">
+                <span>Daily Rate:</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputmode="decimal"
+                  [formControl]="projectLaborDailyRateCtrl"
+                  (blur)="onProjectLaborDailyRateBlur()"
+                />
+              </label>
+              <label class="labor-inline-field">
+                <span>Labor Hours:</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputmode="decimal"
+                  [formControl]="projectLaborHoursCtrl"
+                  (blur)="onProjectLaborHoursBlur()"
+                />
+              </label>
+              <label class="labor-inline-field">
+                <span>Total:</span>
+                <input
+                  type="text"
+                  [value]="projectLaborAdditionalTotalLabel"
+                  disabled
+                />
+              </label>
+            </div>
+            <button
+              class="btn primary labor-add-btn"
+              type="button"
+              (click)="openLaborCreate()"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 5v14"></path>
+                  <path d="M5 12h14"></path>
+                </svg>
+              </span>
+              Add Labor
+            </button>
+          </div>
+
+          <div
+            class="table-head labor-head"
+            *ngIf="(laborViewMode$ | async) === 'list'"
+            aria-hidden="true"
+          >
+            <div>Labor</div>
+            <div>Unit Cost</div>
+            <div>Productivity</div>
+            <div>Labor Cost</div>
+            <div class="actions-col">Actions</div>
+          </div>
+
           <ng-container *ngIf="(laborError$ | async) as err">
             <div class="error" *ngIf="!isErrorDismissed(err)">
               <span>{{ formatErrorMessage(err) }}</span>
@@ -1112,8 +1170,9 @@
             <div class="table labor-table" *ngIf="(labor$ | async) as labor">
               <div class="thead">
                 <div>Labor</div>
-                <div>Unit Cost - Unit Type</div>
-                <div>Productivity - Productivity unit</div>
+                <div>Unit Cost</div>
+                <div>Productivity</div>
+                <div>Labor Cost</div>
                 <div class="actions-col">Actions</div>
               </div>
 
@@ -1126,6 +1185,12 @@
                 <div class="cell muted">
                   {{ formatProductivityUnitLabel(l.unitProductivity,
                   l.productivityUnit) }}
+                </div>
+                <div class="cell muted">
+                  <div>{{ formatLaborCostLabel(l) }}</div>
+                  <div class="cell-subtle">
+                    Net Cost $ {{ formatLaborNetCostLabel(l) }}
+                  </div>
                 </div>
                 <div class="cell actions-col">
                   <button
@@ -1178,6 +1243,12 @@
                     {{ formatProductivityUnitLabel(l.unitProductivity,
                     l.productivityUnit) }}
                   </div>
+                  <div>
+                    <span>Labor Cost:</span> {{ formatLaborCostLabel(l) }}
+                  </div>
+                  <div>
+                    <span>Net Cost:</span> {{ formatLaborNetCostLabel(l) }}
+                  </div>
                 </div>
                 <div class="card-actions">
                   <button
@@ -1221,6 +1292,11 @@
     </ng-container>
 
     <ng-template #createProjectBlock>
+      <div
+        #tabScrollTopAnchor
+        class="tab-scroll-top-anchor"
+        aria-hidden="true"
+      ></div>
       <div class="form-header">
         <nav class="breadcrumb" aria-label="Breadcrumb">
           <a routerLink="/manager/menu">Menu</a>
@@ -1274,7 +1350,7 @@
                   <path d="M9 5v6h6V5"></path>
                 </svg>
               </span>
-              Save & Close
+              Finish
             </button>
           </div>
         </div>
@@ -1365,7 +1441,7 @@
                   '1.2-2' }})</span
                 >
               </div>
-              <strong
+              <strong class="estimated-value"
                 >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
               >
             </div>
@@ -1883,6 +1959,21 @@
           {{ statusModalConfirmLabel }}
         </button>
       </div>
+    </div>
+  </div>
+
+  <div
+    class="project-labor-toast-wrap"
+    *ngIf="projectLaborToastVisible"
+    aria-live="polite"
+  >
+    <div
+      class="project-labor-toast"
+      [class.success]="projectLaborToastTone === 'success'"
+      [class.error]="projectLaborToastTone === 'error'"
+      [class.closing]="projectLaborToastClosing"
+    >
+      {{ projectLaborToastMessage }}
     </div>
   </div>
 </div>

@@ -145,7 +145,7 @@
                   <path d="M9 5v6h6V5"></path>
                 </svg>
               </span>
-              Save & Close
+              Finish
             </button>
           </div>
         </div>
@@ -548,7 +548,11 @@
     </div>
   </div>
 
-  <div class="daily-rate-toast-wrap" *ngIf="dailyRateToastVisible" aria-live="polite">
+  <div
+    class="daily-rate-toast-wrap"
+    *ngIf="dailyRateToastVisible"
+    aria-live="polite"
+  >
     <div
       class="daily-rate-toast"
       [class.success]="dailyRateToastTone === 'success'"

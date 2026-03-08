@@ -135,7 +135,7 @@
                     <path d="M9 5v6h6V5"></path>
                   </svg>
                 </span>
-                Save & Close
+                Finish
               </button>
             </div>
           </div>
@@ -740,9 +740,8 @@
                     {{ getMaterialName(sm.materialId) }}
                   </div>
                   <div class="cell muted">
-                    {{
-                      (sm.quantity ?? getMaterialQuantity(sm.materialId)) ?? '—'
-                    }}
+                    {{ (sm.quantity ?? getMaterialQuantity(sm.materialId)) ??
+                    '—' }}
                   </div>
                   <div class="cell muted">
                     {{ (sm.unit ?? getMaterialUnit(sm.materialId)) || '—' }}
@@ -750,18 +749,12 @@
                   <div class="cell muted">{{ sm.supplierSku || '—' }}</div>
                   <div class="cell muted">{{ sm.leadTimeDays ?? '—' }}</div>
                   <div class="cell muted">
-                    {{
-                      sm.unitCost === null || sm.unitCost === undefined
-                        ? '—'
-                        : (sm.unitCost | number : '1.2-2')
-                    }}
+                    {{ sm.unitCost === null || sm.unitCost === undefined ? '—' :
+                    (sm.unitCost | number : '1.2-2') }}
                   </div>
                   <div class="cell muted">
-                    {{
-                      sm.sellCost === null || sm.sellCost === undefined
-                        ? '—'
-                        : (sm.sellCost | number : '1.2-2')
-                    }}
+                    {{ sm.sellCost === null || sm.sellCost === undefined ? '—' :
+                    (sm.sellCost | number : '1.2-2') }}
                   </div>
                   <div class="cell actions-col">
                     <button
@@ -807,10 +800,8 @@
                   <div class="meta">
                     <div>
                       <span>Quantity:</span>
-                      {{
-                        (sm.quantity ?? getMaterialQuantity(sm.materialId)) ??
-                          '—'
-                      }}
+                      {{ (sm.quantity ?? getMaterialQuantity(sm.materialId)) ??
+                      '—' }}
                     </div>
                     <div>
                       <span>Unit:</span>
@@ -821,19 +812,13 @@
                     </div>
                     <div>
                       <span>Unit Cost:</span>
-                      {{
-                        sm.unitCost === null || sm.unitCost === undefined
-                          ? '—'
-                          : (sm.unitCost | number : '1.2-2')
-                      }}
+                      {{ sm.unitCost === null || sm.unitCost === undefined ? '—'
+                      : (sm.unitCost | number : '1.2-2') }}
                     </div>
                     <div>
                       <span>Sell Cost:</span>
-                      {{
-                        sm.sellCost === null || sm.sellCost === undefined
-                          ? '—'
-                          : (sm.sellCost | number : '1.2-2')
-                      }}
+                      {{ sm.sellCost === null || sm.sellCost === undefined ? '—'
+                      : (sm.sellCost | number : '1.2-2') }}
                     </div>
                   </div>
                   <div class="card-actions">
