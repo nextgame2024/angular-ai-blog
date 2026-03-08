@@ -22,6 +22,8 @@ import { ManagerLaborActions } from '../../store/labor/manager.actions';
 import {
   selectManagerEditingLabor,
   selectManagerLabor,
+  selectManagerLaborDailyRate,
+  selectManagerLaborDailyRateSaving,
   selectManagerLaborError,
   selectManagerLaborLoading,
   selectManagerLaborPage,
@@ -42,10 +44,15 @@ import { ManagerSelectComponent } from '../shared/manager-select/manager-select.
 })
 export class ManagerLaborPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  private currentDailyRate = 0;
+  private dailyRateToastHideTimer: ReturnType<typeof setTimeout> | null = null;
+  private dailyRateToastRemoveTimer: ReturnType<typeof setTimeout> | null = null;
 
   loading$ = this.store.select(selectManagerLaborLoading);
   error$ = this.store.select(selectManagerLaborError);
   laborRaw$ = this.store.select(selectManagerLabor);
+  dailyRate$ = this.store.select(selectManagerLaborDailyRate);
+  dailyRateSaving$ = this.store.select(selectManagerLaborDailyRateSaving);
   total$ = this.store.select(selectManagerLaborTotal);
   viewMode$ = this.store.select(selectManagerLaborViewMode);
   editingLabor$ = this.store.select(selectManagerEditingLabor);
@@ -53,6 +60,7 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
 
   searchQuery$ = this.store.select(selectManagerLaborSearchQuery);
   searchCtrl: FormControl<string>;
+  dailyRateCtrl: FormControl<string>;
   filteredLabor$!: Observable<BmLabor[]>;
   canLoadMore$!: Observable<boolean>;
 
@@ -72,6 +80,10 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
   confirmModalTone: 'info' | 'warning' | 'danger' = 'info';
   private confirmModalConfirmAction: (() => void) | null = null;
   private confirmModalCancelAction: (() => void) | null = null;
+  dailyRateToastVisible = false;
+  dailyRateToastClosing = false;
+  dailyRateToastTone: 'success' | 'error' = 'success';
+  dailyRateToastMessage = '';
 
   statusOptions = [
     { value: 'active', label: 'active' },
@@ -105,6 +117,7 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
     private actions$: Actions,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
+    this.dailyRateCtrl = this.fb.control('0.00', { nonNullable: true });
 
     this.filteredLabor$ = combineLatest([
       this.laborRaw$,
@@ -149,10 +162,32 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
           this.closeForm();
         }
       });
+
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerLaborActions.updateDailyRateSuccess,
+          ManagerLaborActions.updateDailyRateFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (action.type === ManagerLaborActions.updateDailyRateSuccess.type) {
+          this.showDailyRateToast('Daily rate updated successfully.', 'success');
+          return;
+        }
+
+        const failure = action as ReturnType<typeof ManagerLaborActions.updateDailyRateFailure>;
+        this.showDailyRateToast(
+          failure?.error || 'Unable to update daily rate.',
+          'error',
+        );
+      });
   }
 
   ngOnInit(): void {
     this.store.dispatch(ManagerLaborActions.loadLabor({ page: 1 }));
+    this.store.dispatch(ManagerLaborActions.loadDailyRate());
 
     this.searchQuery$.pipe(takeUntil(this.destroy$)).subscribe((query) => {
       if (this.searchCtrl.value !== (query || '')) {
@@ -172,6 +207,27 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
           ManagerLaborActions.setLaborSearchQuery({ query: query || '' }),
         ),
       );
+
+    this.dailyRate$.pipe(takeUntil(this.destroy$)).subscribe((dailyRate) => {
+      const normalized = this.normalizeDailyRate(dailyRate) ?? 0;
+      this.currentDailyRate = normalized;
+      this.dailyRateCtrl.setValue(this.formatMoneyInput(normalized) ?? '0.00', {
+        emitEvent: false,
+      });
+    });
+
+    this.dailyRateCtrl.valueChanges
+      .pipe(
+        debounceTime(600),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((value) => {
+        const nextRate = this.normalizeDailyRate(value);
+        if (nextRate === null) return;
+        if (Math.abs(nextRate - this.currentDailyRate) < 0.0001) return;
+        this.store.dispatch(ManagerLaborActions.updateDailyRate({ dailyRate: nextRate }));
+      });
 
     this.viewMode$
       .pipe(takeUntil(this.destroy$))
@@ -200,6 +256,8 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.infiniteObserver?.disconnect();
+    if (this.dailyRateToastHideTimer) clearTimeout(this.dailyRateToastHideTimer);
+    if (this.dailyRateToastRemoveTimer) clearTimeout(this.dailyRateToastRemoveTimer);
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -392,5 +450,41 @@ export class ManagerLaborPageComponent implements OnInit, OnDestroy {
     const control = this.laborForm.controls[controlName];
     const formatted = this.formatMoneyInput(control.value);
     control.setValue(formatted, { emitEvent: false });
+  }
+
+  onDailyRateBlur(): void {
+    const normalized = this.normalizeDailyRate(this.dailyRateCtrl.value);
+    this.dailyRateCtrl.setValue(this.formatMoneyInput(normalized ?? 0) ?? '0.00', {
+      emitEvent: false,
+    });
+  }
+
+  private normalizeDailyRate(value: string | number | null | undefined): number | null {
+    if (value === null || value === undefined || value === '') return 0;
+    const num = Number(value);
+    if (!Number.isFinite(num) || num < 0) return null;
+    return Math.round(num * 100) / 100;
+  }
+
+  private showDailyRateToast(
+    message: string,
+    tone: 'success' | 'error',
+  ): void {
+    if (this.dailyRateToastHideTimer) clearTimeout(this.dailyRateToastHideTimer);
+    if (this.dailyRateToastRemoveTimer) clearTimeout(this.dailyRateToastRemoveTimer);
+
+    this.dailyRateToastMessage = message;
+    this.dailyRateToastTone = tone;
+    this.dailyRateToastVisible = true;
+    this.dailyRateToastClosing = false;
+
+    this.dailyRateToastHideTimer = setTimeout(() => {
+      this.dailyRateToastClosing = true;
+    }, 2500);
+
+    this.dailyRateToastRemoveTimer = setTimeout(() => {
+      this.dailyRateToastVisible = false;
+      this.dailyRateToastClosing = false;
+    }, 3000);
   }
 }

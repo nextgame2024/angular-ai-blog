@@ -41,6 +41,31 @@ export class ManagerLaborEffects {
     ),
   );
 
+  loadDailyRate$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(ManagerLaborActions.loadDailyRate),
+      switchMap(() =>
+        this.api.getDailyRate().pipe(
+          map((res) =>
+            ManagerLaborActions.loadDailyRateSuccess({
+              dailyRate: Number(res?.dailyRate ?? 0),
+            }),
+          ),
+          catchError((err) =>
+            of(
+              ManagerLaborActions.loadDailyRateFailure({
+                error:
+                  err?.error?.error ||
+                  err?.message ||
+                  'Failed to load daily rate',
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
   saveLabor$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerLaborActions.saveLabor),
@@ -87,6 +112,31 @@ export class ManagerLaborEffects {
                   err?.error?.error ||
                   err?.message ||
                   'Failed to remove labor',
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  updateDailyRate$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(ManagerLaborActions.updateDailyRate),
+      switchMap(({ dailyRate }) =>
+        this.api.updateDailyRate(dailyRate).pipe(
+          map((res) =>
+            ManagerLaborActions.updateDailyRateSuccess({
+              dailyRate: Number(res?.dailyRate ?? dailyRate),
+            }),
+          ),
+          catchError((err) =>
+            of(
+              ManagerLaborActions.updateDailyRateFailure({
+                error:
+                  err?.error?.error ||
+                  err?.message ||
+                  'Failed to update daily rate',
               }),
             ),
           ),

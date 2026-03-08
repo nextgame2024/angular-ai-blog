@@ -13,6 +13,9 @@ export interface ManagerLaborState {
   laborTotal: number;
   laborViewMode: LaborViewMode;
   editingLaborId: string | null;
+  dailyRate: number;
+  dailyRateSaving: boolean;
+  dailyRateError: string | null;
 }
 
 export const initialManagerLaborState: ManagerLaborState = {
@@ -26,4 +29,7 @@ export const initialManagerLaborState: ManagerLaborState = {
   laborTotal: 0,
   laborViewMode: 'list',
   editingLaborId: null,
+  dailyRate: 0,
+  dailyRateSaving: false,
+  dailyRateError: null,
 };

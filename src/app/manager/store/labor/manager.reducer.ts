@@ -43,6 +43,22 @@ export const managerLaborReducer = createReducer(
     laborError: error,
   })),
 
+  on(ManagerLaborActions.loadDailyRate, (state) => ({
+    ...state,
+    dailyRateError: null,
+  })),
+
+  on(ManagerLaborActions.loadDailyRateSuccess, (state, { dailyRate }) => ({
+    ...state,
+    dailyRate,
+    dailyRateError: null,
+  })),
+
+  on(ManagerLaborActions.loadDailyRateFailure, (state, { error }) => ({
+    ...state,
+    dailyRateError: error,
+  })),
+
   on(ManagerLaborActions.openLaborCreate, (state) => ({
     ...state,
     laborViewMode: 'form' as const,
@@ -114,5 +130,24 @@ export const managerLaborReducer = createReducer(
     ...state,
     laborLoading: false,
     laborError: error,
+  })),
+
+  on(ManagerLaborActions.updateDailyRate, (state) => ({
+    ...state,
+    dailyRateSaving: true,
+    dailyRateError: null,
+  })),
+
+  on(ManagerLaborActions.updateDailyRateSuccess, (state, { dailyRate }) => ({
+    ...state,
+    dailyRateSaving: false,
+    dailyRate,
+    dailyRateError: null,
+  })),
+
+  on(ManagerLaborActions.updateDailyRateFailure, (state, { error }) => ({
+    ...state,
+    dailyRateSaving: false,
+    dailyRateError: error,
   })),
 );

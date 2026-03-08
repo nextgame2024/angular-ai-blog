@@ -39,6 +39,18 @@ export const selectManagerLaborViewMode = createSelector(
   selectManagerLaborState,
   (s) => s.laborViewMode,
 );
+export const selectManagerLaborDailyRate = createSelector(
+  selectManagerLaborState,
+  (s) => s.dailyRate,
+);
+export const selectManagerLaborDailyRateSaving = createSelector(
+  selectManagerLaborState,
+  (s) => s.dailyRateSaving,
+);
+export const selectManagerLaborDailyRateError = createSelector(
+  selectManagerLaborState,
+  (s) => s.dailyRateError,
+);
 
 export const selectManagerEditingLabor = createSelector(
   selectManagerLaborState,

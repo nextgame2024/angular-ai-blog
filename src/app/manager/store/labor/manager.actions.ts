@@ -10,6 +10,10 @@ export const ManagerLaborActions = createActionGroup({
     'Load Labor Success': props<{ result: PagedResult<BmLabor> }>(),
     'Load Labor Failure': props<{ error: string }>(),
 
+    'Load Daily Rate': emptyProps(),
+    'Load Daily Rate Success': props<{ dailyRate: number }>(),
+    'Load Daily Rate Failure': props<{ error: string }>(),
+
     'Open Labor Create': emptyProps(),
     'Open Labor Edit': props<{ laborId: string }>(),
     'Close Labor Form': emptyProps(),
@@ -24,5 +28,9 @@ export const ManagerLaborActions = createActionGroup({
       action: 'archived' | 'deleted';
     }>(),
     'Remove Labor Failure': props<{ error: string }>(),
+
+    'Update Daily Rate': props<{ dailyRate: number }>(),
+    'Update Daily Rate Success': props<{ dailyRate: number }>(),
+    'Update Daily Rate Failure': props<{ error: string }>(),
   },
 });

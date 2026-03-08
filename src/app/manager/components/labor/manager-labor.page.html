@@ -53,6 +53,20 @@
           </svg>
         </button>
       </label>
+
+      <label class="daily-rate-field">
+        <span class="daily-rate-label">Daily Rate:</span>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          inputmode="decimal"
+          [formControl]="dailyRateCtrl"
+          placeholder="0.00"
+          aria-label="Daily rate"
+          (blur)="onDailyRateBlur()"
+        />
+      </label>
     </div>
 
     <div class="table-head" aria-hidden="true">
@@ -531,6 +545,17 @@
           {{ confirmModalConfirmLabel }}
         </button>
       </div>
+    </div>
+  </div>
+
+  <div class="daily-rate-toast-wrap" *ngIf="dailyRateToastVisible" aria-live="polite">
+    <div
+      class="daily-rate-toast"
+      [class.success]="dailyRateToastTone === 'success'"
+      [class.error]="dailyRateToastTone === 'error'"
+      [class.closing]="dailyRateToastClosing"
+    >
+      {{ dailyRateToastMessage }}
     </div>
   </div>
 </div>

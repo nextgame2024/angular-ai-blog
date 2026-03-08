@@ -56,4 +56,14 @@ export class ManagerLaborService {
       `${this.laborBase}/${laborId}`,
     );
   }
+
+  getDailyRate(): Observable<{ dailyRate: number }> {
+    return this.http.get<{ dailyRate: number }>(`${this.laborBase}/daily-rate`);
+  }
+
+  updateDailyRate(dailyRate: number): Observable<{ dailyRate: number }> {
+    return this.http.put<{ dailyRate: number }>(`${this.laborBase}/daily-rate`, {
+      dailyRate,
+    });
+  }
 }
