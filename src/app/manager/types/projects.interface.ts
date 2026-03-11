@@ -78,6 +78,16 @@ export interface BmProjectLaborExtras {
   dailyRateSource?: 'project' | 'global' | string;
 }
 
+export interface BmProjectSurcharge {
+  surchargeId: string;
+  projectId: string;
+  type: string;
+  name: string;
+  cost: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
 export interface ListProjectsResponse {
   projects: BmProject[];
   page: number;

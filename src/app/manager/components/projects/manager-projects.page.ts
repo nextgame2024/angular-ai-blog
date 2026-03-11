@@ -65,6 +65,7 @@ import type {
   BmProjectLaborExtras,
   BmProjectLabor,
   BmProjectMaterial,
+  BmProjectSurcharge,
 } from '../../types/projects.interface';
 import type { BmPricingProfile } from '../../types/pricing.interface';
 import { ProjectFormTab } from '../../store/projects/manager.state';
@@ -125,6 +126,15 @@ export class ManagerProjectsPageComponent
   laborError$ = this.store.select(selectManagerProjectLaborError);
   laborViewMode$ = this.store.select(selectManagerProjectLaborViewMode);
   editingLabor$ = this.store.select(selectManagerEditingProjectLabor);
+  surcharges: BmProjectSurcharge[] = [];
+  surchargesLoading = false;
+  surchargeAddLoading = false;
+  surchargeDeletingId: string | null = null;
+  surchargesError: string | null = null;
+  surchargeTypeOptions: { value: string; label: string }[] = [
+    { value: 'transportation', label: 'Transportation' },
+    { value: 'other', label: 'Other' },
+  ];
 
   searchCtrl: FormControl<string>;
   canLoadMore$!: Observable<boolean>;
@@ -305,6 +315,21 @@ export class ManagerProjectsPageComponent
     unit_cost_override: new FormControl<number | null>(null),
     sell_cost_override: new FormControl<number | null>(null),
     notes: new FormControl<string>('', { nonNullable: true }),
+  });
+
+  projectSurchargeForm = this.fb.group({
+    type: new FormControl<string>('', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
+    name: new FormControl<string>('', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
+    cost: new FormControl<string>('', {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
   });
 
   editingProject: BmProject | null = null;
@@ -647,6 +672,7 @@ export class ManagerProjectsPageComponent
     this.editingProject$.pipe(takeUntil(this.destroy$)).subscribe((project) => {
       this.editingProject = project ?? null;
       if (project) {
+        this.resetProjectSurchargeForm();
         if (this.laborExtrasProjectId !== project.projectId) {
           this.laborExtrasProjectId = project.projectId;
           this.loadProjectLaborExtras(project.projectId);
@@ -706,6 +732,7 @@ export class ManagerProjectsPageComponent
             projectId: project.projectId,
           }),
         );
+        this.loadProjectSurcharges(project.projectId);
         this.previewMaterials$.next([]);
         this.previewLabor$.next([]);
       } else {
@@ -744,6 +771,12 @@ export class ManagerProjectsPageComponent
         this.suppressStatusUpdate = false;
         this.previewMaterials$.next([]);
         this.previewLabor$.next([]);
+        this.surcharges = [];
+        this.surchargesError = null;
+        this.surchargesLoading = false;
+        this.surchargeAddLoading = false;
+        this.surchargeDeletingId = null;
+        this.resetProjectSurchargeForm();
       }
     });
 
@@ -866,18 +899,36 @@ export class ManagerProjectsPageComponent
     this.projectForm.controls.client_is_new.setValue(false, { emitEvent: false });
     this.applyClientSelectionValidators();
     this.syncClientDetailsControls();
+    this.surcharges = [];
+    this.surchargesError = null;
+    this.surchargesLoading = false;
+    this.surchargeAddLoading = false;
+    this.surchargeDeletingId = null;
+    this.resetProjectSurchargeForm();
     this.store.dispatch(ManagerProjectsActions.openProjectCreate());
   }
 
   openEdit(project: BmProject): void {
     this.allowClientChangeOnEdit = false;
     this.projectForm.controls.client_is_new.setValue(false, { emitEvent: false });
+    this.surcharges = [];
+    this.surchargesError = null;
+    this.surchargesLoading = false;
+    this.surchargeAddLoading = false;
+    this.surchargeDeletingId = null;
+    this.resetProjectSurchargeForm();
     this.store.dispatch(
       ManagerProjectsActions.openProjectEdit({ projectId: project.projectId }),
     );
   }
 
   closeForm(): void {
+    this.surcharges = [];
+    this.surchargesError = null;
+    this.surchargesLoading = false;
+    this.surchargeAddLoading = false;
+    this.surchargeDeletingId = null;
+    this.resetProjectSurchargeForm();
     this.store.dispatch(ManagerProjectsActions.closeProjectForm());
   }
 
@@ -2491,6 +2542,10 @@ export class ManagerProjectsPageComponent
       );
     }
 
+    if (tab === 'surcharges' && project) {
+      this.loadProjectSurcharges(project.projectId);
+    }
+
     this.scrollToTopOnTabChange();
   }
 
@@ -2846,6 +2901,138 @@ export class ManagerProjectsPageComponent
     });
   }
 
+  addProjectSurcharge(project: BmProject): void {
+    if (this.surchargeAddLoading || !!this.surchargeDeletingId) return;
+
+    if (this.projectSurchargeForm.invalid) {
+      this.projectSurchargeForm.markAllAsTouched();
+      return;
+    }
+
+    const raw = this.projectSurchargeForm.getRawValue();
+    const name = (raw.name || '').trim();
+    const cost = this.parseNonNegativeMoney(raw.cost);
+    if (!name || cost === null) {
+      this.projectSurchargeForm.markAllAsTouched();
+      return;
+    }
+
+    this.surchargeAddLoading = true;
+    this.surchargesError = null;
+
+    this.projectsService
+      .addProjectSurcharge(project.projectId, {
+        type: raw.type,
+        name,
+        cost,
+      })
+      .pipe(take(1))
+      .subscribe({
+        next: (res) => {
+          const created = res?.projectSurcharge;
+          this.surchargeAddLoading = false;
+          if (!created?.surchargeId) {
+            this.loadProjectSurcharges(project.projectId);
+            return;
+          }
+
+          const idx = this.surcharges.findIndex(
+            (item) => item.surchargeId === created.surchargeId,
+          );
+          const normalized = {
+            ...created,
+            cost: this.parseNonNegativeMoney(created.cost) ?? 0,
+          };
+          if (idx >= 0) {
+            const next = [...this.surcharges];
+            next[idx] = normalized;
+            this.surcharges = next;
+          } else {
+            this.surcharges = [...this.surcharges, normalized];
+          }
+          this.projectSurchargeForm.patchValue(
+            {
+              type: '',
+              name: '',
+              cost: '',
+            },
+            { emitEvent: false },
+          );
+          this.projectSurchargeForm.markAsPristine();
+          this.projectSurchargeForm.markAsUntouched();
+        },
+        error: (err) => {
+          this.surchargeAddLoading = false;
+          this.surchargesError =
+            err?.error?.error || err?.message || 'Failed to add surcharge';
+        },
+      });
+  }
+
+  removeProjectSurcharge(project: BmProject, surcharge: BmProjectSurcharge): void {
+    if (this.surchargeAddLoading || !!this.surchargeDeletingId) return;
+
+    this.openStatusConfirmModal({
+      title: 'Delete Surcharge?',
+      message:
+        'Are you sure you want to delete this surcharge? This action cannot be undone.',
+      tone: 'danger',
+      confirmLabel: 'Delete',
+      onConfirm: () => {
+        this.surchargeDeletingId = surcharge.surchargeId;
+        this.surchargesError = null;
+        this.projectsService
+          .removeProjectSurcharge(project.projectId, surcharge.surchargeId)
+          .pipe(take(1))
+          .subscribe({
+            next: () => {
+              this.surchargeDeletingId = null;
+              this.surcharges = this.surcharges.filter(
+                (item) => item.surchargeId !== surcharge.surchargeId,
+              );
+            },
+            error: (err) => {
+              this.surchargeDeletingId = null;
+              this.surchargesError =
+                err?.error?.error || err?.message || 'Failed to delete surcharge';
+            },
+          });
+      },
+    });
+  }
+
+  onSurchargeCostBlur(): void {
+    const value = this.parseNonNegativeMoney(this.projectSurchargeForm.controls.cost.value);
+    if (value === null) return;
+    this.projectSurchargeForm.controls.cost.setValue(
+      this.formatMoneyInput(value) ?? '',
+      { emitEvent: false },
+    );
+  }
+
+  isSurchargeControlInvalid(
+    controlName: 'type' | 'name' | 'cost',
+  ): boolean {
+    const control = this.projectSurchargeForm.controls[controlName];
+    return control.touched && control.invalid;
+  }
+
+  formatSurchargeTypeLabel(type: string | null | undefined): string {
+    const value = (type || '').toString().trim().toLowerCase();
+    const match = this.surchargeTypeOptions.find((item) => item.value === value);
+    if (match) return match.label;
+    if (!value) return '—';
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  get isSurchargesBusy(): boolean {
+    return (
+      this.surchargesLoading
+      || this.surchargeAddLoading
+      || !!this.surchargeDeletingId
+    );
+  }
+
   trackByProject(_: number, item: BmProject): string {
     return item.projectId;
   }
@@ -2856,6 +3043,10 @@ export class ManagerProjectsPageComponent
 
   trackByLabor(_: number, item: BmProjectLabor): string {
     return item.laborId;
+  }
+
+  trackBySurcharge(_: number, item: BmProjectSurcharge): string {
+    return item.surchargeId;
   }
 
   private loadSelectOptions(): void {
@@ -2968,6 +3159,44 @@ export class ManagerProjectsPageComponent
             });
           }
         }
+      });
+  }
+
+  private resetProjectSurchargeForm(): void {
+    this.projectSurchargeForm.reset(
+      {
+        type: '',
+        name: '',
+        cost: '',
+      },
+      { emitEvent: false },
+    );
+    this.projectSurchargeForm.markAsPristine();
+    this.projectSurchargeForm.markAsUntouched();
+  }
+
+  private loadProjectSurcharges(projectId: string): void {
+    this.surchargesLoading = true;
+    this.surchargeAddLoading = false;
+    this.surchargeDeletingId = null;
+    this.surchargesError = null;
+    this.projectsService
+      .listProjectSurcharges(projectId)
+      .pipe(take(1))
+      .subscribe({
+        next: (res) => {
+          this.surchargesLoading = false;
+          this.surcharges = (res?.surcharges ?? []).map((item) => ({
+            ...item,
+            cost: this.parseNonNegativeMoney(item.cost) ?? 0,
+          }));
+        },
+        error: (err) => {
+          this.surchargesLoading = false;
+          this.surcharges = [];
+          this.surchargesError =
+            err?.error?.error || err?.message || 'Failed to load surcharges';
+        },
       });
   }
 

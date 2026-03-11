@@ -235,6 +235,22 @@
             </span>
             Labor
           </button>
+
+          <button
+            type="button"
+            class="tab"
+            [class.active]="(tab$ | async) === 'surcharges'"
+            (click)="setTab('surcharges', project)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 6h12"></path>
+                <path d="M6 12h12"></path>
+                <path d="M6 18h12"></path>
+              </svg>
+            </span>
+            Surcharges
+          </button>
         </div>
       </div>
 
@@ -1289,6 +1305,216 @@
           </ng-container>
         </ng-container>
       </ng-container>
+
+      <ng-container *ngIf="(tab$ | async) === 'surcharges'">
+        <div
+          class="warning-banner"
+          *ngIf="!project && !isWarningDismissed('project-surcharges-tabs')"
+        >
+          <span class="warning-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 3 2.75 19.5h18.5L12 3Z"></path>
+              <path d="M12 8v6"></path>
+              <path d="M12 17h.01"></path>
+            </svg>
+          </span>
+          Save the project first to enable the Surcharges tab.
+          <button
+            type="button"
+            class="warning-dismiss"
+            aria-label="Dismiss notice"
+            (click)="dismissWarning('project-surcharges-tabs')"
+          >
+            x
+          </button>
+        </div>
+
+        <ng-container *ngIf="project">
+          <section class="card surcharges-card">
+            <form class="surcharge-form-row" [formGroup]="projectSurchargeForm">
+              <label>
+                <span>Type *</span>
+                <select
+                  formControlName="type"
+                  [class.ng-invalid]="isSurchargeControlInvalid('type')"
+                  [class.ng-touched]="isSurchargeControlInvalid('type')"
+                >
+                  <option value="">Select type</option>
+                  <option
+                    *ngFor="let option of surchargeTypeOptions"
+                    [value]="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+              </label>
+
+              <label>
+                <span>Name *</span>
+                <input
+                  formControlName="name"
+                  [class.ng-invalid]="isSurchargeControlInvalid('name')"
+                  [class.ng-touched]="isSurchargeControlInvalid('name')"
+                  placeholder="Surcharge name"
+                  autocomplete="off"
+                />
+              </label>
+
+              <label>
+                <span>Cost *</span>
+                <input
+                  formControlName="cost"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  inputmode="decimal"
+                  [class.ng-invalid]="isSurchargeControlInvalid('cost')"
+                  [class.ng-touched]="isSurchargeControlInvalid('cost')"
+                  placeholder="0.00"
+                  (blur)="onSurchargeCostBlur()"
+                />
+              </label>
+
+              <button
+                class="btn primary surcharge-add-btn"
+                type="button"
+                (click)="addProjectSurcharge(project)"
+                [disabled]="surchargesLoading || surchargeAddLoading || !!surchargeDeletingId"
+              >
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M12 5v14"></path>
+                    <path d="M5 12h14"></path>
+                  </svg>
+                </span>
+                {{ surchargeAddLoading ? 'Loading...' : 'Add' }}
+              </button>
+            </form>
+
+            <ng-container *ngIf="surchargesError as err">
+              <div class="error" *ngIf="!isErrorDismissed(err)">
+                <span>{{ formatErrorMessage(err) }}</span>
+                <button
+                  type="button"
+                  class="error-dismiss"
+                  aria-label="Dismiss error"
+                  (click)="dismissError(err)"
+                >
+                  x
+                </button>
+              </div>
+            </ng-container>
+
+            <div
+              class="screen-loader"
+              *ngIf="isSurchargesBusy"
+              aria-live="polite"
+              aria-busy="true"
+            >
+              <div class="loader-card">
+                <div class="loader-ring" aria-hidden="true"></div>
+                <div class="loader-bar" aria-hidden="true"></div>
+                <div class="loader-text">Loading...</div>
+              </div>
+            </div>
+
+            <div class="table-head surcharges-head" *ngIf="surcharges.length" aria-hidden="true">
+              <div>Type</div>
+              <div>Name</div>
+              <div>Cost</div>
+              <div class="actions-col">Actions</div>
+            </div>
+
+            <div class="table surcharges-table" *ngIf="surcharges.length">
+              <div class="thead">
+                <div>Type</div>
+                <div>Name</div>
+                <div>Cost</div>
+                <div class="actions-col">Actions</div>
+              </div>
+
+              <div
+                class="trow"
+                *ngFor="let surcharge of surcharges; trackBy: trackBySurcharge"
+              >
+                <div class="cell muted">
+                  {{ formatSurchargeTypeLabel(surcharge.type) }}
+                </div>
+                <div class="cell strong">{{ surcharge.name }}</div>
+                <div class="cell muted">{{ surcharge.cost | number: '1.2-2' }}</div>
+                <div class="cell actions-col">
+                  <button
+                    class="btn small danger"
+                    type="button"
+                    [disabled]="surchargesLoading || surchargeAddLoading || !!surchargeDeletingId"
+                    (click)="removeProjectSurcharge(project, surcharge)"
+                  >
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 8h16"></path>
+                        <path d="M6 8v10h12V8"></path>
+                        <path d="M10 12h4"></path>
+                        <path d="M9 4h6l1 2H8l1-2Z"></path>
+                      </svg>
+                    </span>
+                    {{
+                      surchargeDeletingId === surcharge.surchargeId
+                        ? 'Loading...'
+                        : 'Delete'
+                    }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="cards" *ngIf="surcharges.length">
+              <article
+                class="project-card"
+                *ngFor="let surcharge of surcharges; trackBy: trackBySurcharge"
+              >
+                <div class="row">
+                  <div class="name">{{ surcharge.name }}</div>
+                  <div class="muted">
+                    {{ surcharge.cost | number: '1.2-2' }}
+                  </div>
+                </div>
+                <div class="meta">
+                  <div>
+                    <span>Type:</span>
+                    {{ formatSurchargeTypeLabel(surcharge.type) }}
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button
+                    class="btn small danger"
+                    type="button"
+                    [disabled]="surchargesLoading || surchargeAddLoading || !!surchargeDeletingId"
+                    (click)="removeProjectSurcharge(project, surcharge)"
+                  >
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 8h16"></path>
+                        <path d="M6 8v10h12V8"></path>
+                        <path d="M10 12h4"></path>
+                        <path d="M9 4h6l1 2H8l1-2Z"></path>
+                      </svg>
+                    </span>
+                    {{
+                      surchargeDeletingId === surcharge.surchargeId
+                        ? 'Loading...'
+                        : 'Delete'
+                    }}
+                  </button>
+                </div>
+              </article>
+            </div>
+
+            <div class="empty" *ngIf="!surcharges.length && !surchargesLoading">
+              No surcharges yet. Add one using the form above.
+            </div>
+          </section>
+        </ng-container>
+      </ng-container>
     </ng-container>
 
     <ng-template #createProjectBlock>
@@ -1393,6 +1619,17 @@
             </span>
             Labor
           </button>
+
+          <button type="button" class="tab disabled">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 6h12"></path>
+                <path d="M6 12h12"></path>
+                <path d="M6 18h12"></path>
+              </svg>
+            </span>
+            Surcharges
+          </button>
         </div>
 
         <div
@@ -1406,7 +1643,8 @@
               <path d="M12 17h.01"></path>
             </svg>
           </span>
-          Save the project first to enable the Materials and Labor tabs.
+          Save the project first to enable the Materials, Labor and Surcharges
+          tabs.
           <button
             type="button"
             class="warning-dismiss"

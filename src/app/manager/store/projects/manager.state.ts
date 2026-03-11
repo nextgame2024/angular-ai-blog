@@ -5,7 +5,7 @@ import type {
 } from '../../types/projects.interface';
 
 export type ProjectsViewMode = 'list' | 'form';
-export type ProjectFormTab = 'details' | 'materials' | 'labor';
+export type ProjectFormTab = 'details' | 'materials' | 'labor' | 'surcharges';
 export type ProjectMaterialsViewMode = 'list' | 'form';
 export type ProjectLaborViewMode = 'list' | 'form';
 

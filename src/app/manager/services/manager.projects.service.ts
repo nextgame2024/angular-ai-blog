@@ -9,6 +9,7 @@ import type {
   BmProjectLabor,
   BmProjectLaborExtras,
   BmProjectMaterial,
+  BmProjectSurcharge,
   ListProjectsResponse,
   PagedResult,
 } from '../types/projects.interface';
@@ -146,6 +147,31 @@ export class ManagerProjectsService {
   removeProjectLabor(projectId: string, laborId: string): Observable<void> {
     return this.http.delete<void>(
       `${this.projectsBase}/${projectId}/labor/${laborId}`,
+    );
+  }
+
+  // Project surcharges
+  listProjectSurcharges(
+    projectId: string,
+  ): Observable<{ surcharges: BmProjectSurcharge[] }> {
+    return this.http.get<{ surcharges: BmProjectSurcharge[] }>(
+      `${this.projectsBase}/${projectId}/surcharges`,
+    );
+  }
+
+  addProjectSurcharge(
+    projectId: string,
+    payload: any,
+  ): Observable<{ projectSurcharge: BmProjectSurcharge }> {
+    return this.http.post<{ projectSurcharge: BmProjectSurcharge }>(
+      `${this.projectsBase}/${projectId}/surcharges`,
+      { projectSurcharge: payload },
+    );
+  }
+
+  removeProjectSurcharge(projectId: string, surchargeId: string): Observable<void> {
+    return this.http.delete<void>(
+      `${this.projectsBase}/${projectId}/surcharges/${surchargeId}`,
     );
   }
 
