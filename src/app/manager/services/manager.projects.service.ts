@@ -10,6 +10,7 @@ import type {
   BmProjectLaborExtras,
   BmProjectMaterial,
   BmProjectSurcharge,
+  BmProjectSurchargeTransportation,
   ListProjectsResponse,
   PagedResult,
 } from '../types/projects.interface';
@@ -172,6 +173,14 @@ export class ManagerProjectsService {
   removeProjectSurcharge(projectId: string, surchargeId: string): Observable<void> {
     return this.http.delete<void>(
       `${this.projectsBase}/${projectId}/surcharges/${surchargeId}`,
+    );
+  }
+
+  getProjectSurchargeTransportationTime(
+    projectId: string,
+  ): Observable<{ transportation: BmProjectSurchargeTransportation }> {
+    return this.http.get<{ transportation: BmProjectSurchargeTransportation }>(
+      `${this.projectsBase}/${projectId}/surcharges/transportation-time`,
     );
   }
 

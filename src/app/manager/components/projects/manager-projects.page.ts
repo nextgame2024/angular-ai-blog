@@ -66,6 +66,7 @@ import type {
   BmProjectLabor,
   BmProjectMaterial,
   BmProjectSurcharge,
+  BmProjectSurchargeTransportation,
 } from '../../types/projects.interface';
 import type { BmPricingProfile } from '../../types/pricing.interface';
 import { ProjectFormTab } from '../../store/projects/manager.state';
@@ -131,7 +132,10 @@ export class ManagerProjectsPageComponent
   surchargeAddLoading = false;
   surchargeDeletingId: string | null = null;
   surchargesError: string | null = null;
-  surchargeTypeOptions: { value: string; label: string }[] = [
+  transportationEstimateLoading = false;
+  transportationEstimateError: string | null = null;
+  transportationEstimate: BmProjectSurchargeTransportation | null = null;
+  surchargeTypeOptions: ManagerSelectOption[] = [
     { value: 'transportation', label: 'Transportation' },
     { value: 'other', label: 'Other' },
   ];
@@ -353,6 +357,7 @@ export class ManagerProjectsPageComponent
   private lastProjectId: string | null = null;
   private allowClientChangeOnEdit = false;
   private laborExtrasProjectId: string | null = null;
+  private transportationEstimateProjectId: string | null = null;
   private lastSavedLaborExtras: { dailyRate: number; laborHours: number } = {
     dailyRate: 0,
     laborHours: 0,
@@ -669,10 +674,28 @@ export class ManagerProjectsPageComponent
         this.clientActiveIndex = -1;
       });
 
+    this.projectSurchargeForm.controls.type.valueChanges
+      .pipe(
+        startWith(this.projectSurchargeForm.controls.type.value),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((type) => {
+        if (this.normalizeSurchargeType(type) !== 'transportation') return;
+        this.dismissedWarnings.delete('project-surcharges-transportation-time');
+        const projectId = this.editingProject?.projectId;
+        if (!projectId) return;
+        this.loadTransportationEstimate(projectId);
+      });
+
     this.editingProject$.pipe(takeUntil(this.destroy$)).subscribe((project) => {
       this.editingProject = project ?? null;
       if (project) {
         this.resetProjectSurchargeForm();
+        this.transportationEstimateProjectId = null;
+        this.transportationEstimate = null;
+        this.transportationEstimateError = null;
+        this.transportationEstimateLoading = false;
         if (this.laborExtrasProjectId !== project.projectId) {
           this.laborExtrasProjectId = project.projectId;
           this.loadProjectLaborExtras(project.projectId);
@@ -776,6 +799,10 @@ export class ManagerProjectsPageComponent
         this.surchargesLoading = false;
         this.surchargeAddLoading = false;
         this.surchargeDeletingId = null;
+        this.transportationEstimateProjectId = null;
+        this.transportationEstimate = null;
+        this.transportationEstimateError = null;
+        this.transportationEstimateLoading = false;
         this.resetProjectSurchargeForm();
       }
     });
@@ -904,6 +931,10 @@ export class ManagerProjectsPageComponent
     this.surchargesLoading = false;
     this.surchargeAddLoading = false;
     this.surchargeDeletingId = null;
+    this.transportationEstimateProjectId = null;
+    this.transportationEstimate = null;
+    this.transportationEstimateError = null;
+    this.transportationEstimateLoading = false;
     this.resetProjectSurchargeForm();
     this.store.dispatch(ManagerProjectsActions.openProjectCreate());
   }
@@ -916,6 +947,10 @@ export class ManagerProjectsPageComponent
     this.surchargesLoading = false;
     this.surchargeAddLoading = false;
     this.surchargeDeletingId = null;
+    this.transportationEstimateProjectId = null;
+    this.transportationEstimate = null;
+    this.transportationEstimateError = null;
+    this.transportationEstimateLoading = false;
     this.resetProjectSurchargeForm();
     this.store.dispatch(
       ManagerProjectsActions.openProjectEdit({ projectId: project.projectId }),
@@ -928,6 +963,10 @@ export class ManagerProjectsPageComponent
     this.surchargesLoading = false;
     this.surchargeAddLoading = false;
     this.surchargeDeletingId = null;
+    this.transportationEstimateProjectId = null;
+    this.transportationEstimate = null;
+    this.transportationEstimateError = null;
+    this.transportationEstimateLoading = false;
     this.resetProjectSurchargeForm();
     this.store.dispatch(ManagerProjectsActions.closeProjectForm());
   }
@@ -2950,6 +2989,7 @@ export class ManagerProjectsPageComponent
           } else {
             this.surcharges = [...this.surcharges, normalized];
           }
+          this.ensureSurchargeTypeSelection();
           this.projectSurchargeForm.patchValue(
             {
               type: '',
@@ -2960,6 +3000,9 @@ export class ManagerProjectsPageComponent
           );
           this.projectSurchargeForm.markAsPristine();
           this.projectSurchargeForm.markAsUntouched();
+          if (this.normalizeSurchargeType(normalized.type) === 'transportation') {
+            this.loadTransportationEstimate(project.projectId, true);
+          }
         },
         error: (err) => {
           this.surchargeAddLoading = false;
@@ -2987,9 +3030,17 @@ export class ManagerProjectsPageComponent
           .subscribe({
             next: () => {
               this.surchargeDeletingId = null;
+              const deletedType = this.normalizeSurchargeType(surcharge.type);
               this.surcharges = this.surcharges.filter(
                 (item) => item.surchargeId !== surcharge.surchargeId,
               );
+              this.ensureSurchargeTypeSelection();
+              if (deletedType === 'transportation') {
+                this.transportationEstimate = null;
+                this.transportationEstimateError = null;
+                this.transportationEstimateLoading = false;
+                this.transportationEstimateProjectId = null;
+              }
             },
             error: (err) => {
               this.surchargeDeletingId = null;
@@ -3018,11 +3069,31 @@ export class ManagerProjectsPageComponent
   }
 
   formatSurchargeTypeLabel(type: string | null | undefined): string {
-    const value = (type || '').toString().trim().toLowerCase();
+    const value = this.normalizeSurchargeType(type);
     const match = this.surchargeTypeOptions.find((item) => item.value === value);
     if (match) return match.label;
     if (!value) return '—';
     return value.charAt(0).toUpperCase() + value.slice(1);
+  }
+
+  get availableSurchargeTypeOptions(): ManagerSelectOption[] {
+    if (!this.hasTransportationSurcharge) return this.surchargeTypeOptions;
+    return this.surchargeTypeOptions.filter(
+      (item) => item.value !== 'transportation',
+    );
+  }
+
+  get isTransportationTypeSelected(): boolean {
+    return (
+      this.normalizeSurchargeType(this.projectSurchargeForm.controls.type.value)
+      === 'transportation'
+    );
+  }
+
+  get hasTransportationSurcharge(): boolean {
+    return this.surcharges.some(
+      (item) => this.normalizeSurchargeType(item.type) === 'transportation',
+    );
   }
 
   get isSurchargesBusy(): boolean {
@@ -3190,14 +3261,65 @@ export class ManagerProjectsPageComponent
             ...item,
             cost: this.parseNonNegativeMoney(item.cost) ?? 0,
           }));
+          this.ensureSurchargeTypeSelection();
         },
         error: (err) => {
           this.surchargesLoading = false;
           this.surcharges = [];
           this.surchargesError =
             err?.error?.error || err?.message || 'Failed to load surcharges';
+          this.ensureSurchargeTypeSelection();
         },
       });
+  }
+
+  private loadTransportationEstimate(projectId: string, force = false): void {
+    if (!projectId) return;
+    if (
+      !force
+      && this.transportationEstimateProjectId === projectId
+      && this.transportationEstimate
+      && !this.transportationEstimateError
+    ) {
+      return;
+    }
+
+    this.transportationEstimateLoading = true;
+    this.transportationEstimateError = null;
+    this.projectsService
+      .getProjectSurchargeTransportationTime(projectId)
+      .pipe(take(1))
+      .subscribe({
+        next: (res) => {
+          this.transportationEstimateLoading = false;
+          this.transportationEstimateProjectId = projectId;
+          this.transportationEstimate = res?.transportation ?? null;
+        },
+        error: (err) => {
+          this.transportationEstimateLoading = false;
+          this.transportationEstimateProjectId = null;
+          this.transportationEstimate = null;
+          this.transportationEstimateError =
+            err?.error?.error
+            || err?.message
+            || 'Unable to calculate transportation time';
+        },
+      });
+  }
+
+  private ensureSurchargeTypeSelection(): void {
+    const currentType = this.normalizeSurchargeType(
+      this.projectSurchargeForm.controls.type.value,
+    );
+    if (!currentType) return;
+    const available = this.availableSurchargeTypeOptions.map((item) => item.value);
+    if (!available.includes(currentType)) {
+      this.projectSurchargeForm.controls.type.setValue('', { emitEvent: false });
+    }
+  }
+
+  private normalizeSurchargeType(value: unknown): string {
+    return String(value || '').trim().toLowerCase();
   }
 
   private setupInfiniteScroll(): void {

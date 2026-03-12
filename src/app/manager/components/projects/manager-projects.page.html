@@ -1331,22 +1331,52 @@
 
         <ng-container *ngIf="project">
           <section class="card surcharges-card">
+            <div
+              class="warning-banner"
+              *ngIf="isTransportationTypeSelected && !isWarningDismissed('project-surcharges-transportation-time')"
+            >
+              <span class="warning-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 3 2.75 19.5h18.5L12 3Z"></path>
+                  <path d="M12 8v6"></path>
+                  <path d="M12 17h.01"></path>
+                </svg>
+              </span>
+              <ng-container *ngIf="transportationEstimateLoading">
+                Calculating transportation time...
+              </ng-container>
+              <ng-container
+                *ngIf="!transportationEstimateLoading && transportationEstimate as estimate"
+              >
+                Transportation time between the company "{{ estimate.companyAddress
+                }}" and the client "{{ estimate.clientAddress }}" is calculated
+                as "{{ estimate.formattedTime }}".
+              </ng-container>
+              <ng-container
+                *ngIf="!transportationEstimateLoading && !transportationEstimate && transportationEstimateError"
+              >
+                {{ transportationEstimateError }}
+              </ng-container>
+              <button
+                type="button"
+                class="warning-dismiss"
+                aria-label="Dismiss notice"
+                (click)="dismissWarning('project-surcharges-transportation-time')"
+              >
+                x
+              </button>
+            </div>
+
             <form class="surcharge-form-row" [formGroup]="projectSurchargeForm">
               <label>
                 <span>Type *</span>
-                <select
+                <app-manager-select
                   formControlName="type"
+                  [options]="availableSurchargeTypeOptions"
+                  placeholder="Select type"
                   [class.ng-invalid]="isSurchargeControlInvalid('type')"
                   [class.ng-touched]="isSurchargeControlInvalid('type')"
-                >
-                  <option value="">Select type</option>
-                  <option
-                    *ngFor="let option of surchargeTypeOptions"
-                    [value]="option.value"
-                  >
-                    {{ option.label }}
-                  </option>
-                </select>
+                ></app-manager-select>
               </label>
 
               <label>

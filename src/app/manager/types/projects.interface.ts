@@ -88,6 +88,13 @@ export interface BmProjectSurcharge {
   updatedAt?: string | null;
 }
 
+export interface BmProjectSurchargeTransportation {
+  companyAddress: string;
+  clientAddress: string;
+  durationMinutes: number;
+  formattedTime: string;
+}
+
 export interface ListProjectsResponse {
   projects: BmProject[];
   page: number;
