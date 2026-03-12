@@ -1,6 +1,6 @@
 <div class="manager-shell">
   <!-- Map layer -->
-  <div class="map-container">
+  <div class="map-container" #mapContainerRef>
     <ng-container *ngIf="mapsLoaded; else mapsFallback">
       <google-map
         height="100%"
@@ -11,42 +11,80 @@
       >
         <map-marker
           *ngFor="let marker of projectMarkers; trackBy: trackByProjectMarker"
-          #markerRef="mapMarker"
           [position]="marker.position"
           [icon]="marker.icon"
-          (mapMouseover)="openProjectInfo(markerRef, marker.project)"
-          (mapMouseout)="closeProjectInfo()"
+          (mapClick)="openProjectInfo(marker.project)"
         ></map-marker>
 
-        <map-info-window [options]="{ disableAutoPan: true }">
-          <div class="map-info" *ngIf="activeProject">
-            <img
-              class="map-info-photo"
-              [src]="streetViewPhotoUrl(activeProject)"
-              alt="Property photo preview"
-              loading="lazy"
-            />
-            <div class="map-info-title">{{ activeProject.projectName }}</div>
-            <div class="map-info-row">
-              <span>Client</span>
-              <span>{{ activeProject.clientName || '—' }}</span>
-            </div>
-            <div class="map-info-row">
-              <span>Address</span>
-              <span>{{ activeProject.clientAddress || '—' }}</span>
-            </div>
-            <div class="map-info-row">
-              <span>Type</span>
-              <span>{{ activeProject.projectTypeName || '—' }}</span>
-            </div>
-            <div class="map-info-row">
-              <span>Status</span>
-              <span>{{ formatStatus(activeProject.status) }}</span>
-            </div>
-          </div>
-        </map-info-window>
+        <map-marker
+          *ngIf="companyMarker"
+          [position]="companyMarker.position"
+          [icon]="companyMarker.icon"
+          [title]="'Company'"
+        ></map-marker>
+
+        <map-directions-renderer
+          *ngIf="routeDirections"
+          [directions]="routeDirections"
+          [options]="directionsRendererOptions"
+        ></map-directions-renderer>
       </google-map>
     </ng-container>
+
+    <div
+      #mapInfoPanelRef
+      class="map-floating-info"
+      [class.dragging]="isDraggingInfoPanel"
+      *ngIf="activeProject"
+      [style.left.px]="infoPanelPosition.x"
+      [style.top.px]="infoPanelPosition.y"
+    >
+      <div class="map-floating-info-bar" (pointerdown)="onInfoPanelPointerDown($event)">
+        <span>Project details</span>
+        <button
+          type="button"
+          class="map-info-close"
+          aria-label="Close project details"
+          (click)="closeProjectInfo()"
+        >
+          x
+        </button>
+      </div>
+
+      <div class="map-info">
+        <img
+          class="map-info-photo"
+          [src]="streetViewPhotoUrl(activeProject)"
+          alt="Property photo preview"
+          loading="lazy"
+        />
+        <div class="map-info-title">{{ activeProject.projectName }}</div>
+        <div class="map-info-row">
+          <span>Client</span>
+          <span>{{ activeProject.clientName || '—' }}</span>
+        </div>
+        <div class="map-info-row">
+          <span>Address</span>
+          <span>{{ activeProject.clientAddress || '—' }}</span>
+        </div>
+        <div class="map-info-row">
+          <span>Type</span>
+          <span>{{ activeProject.projectTypeName || '—' }}</span>
+        </div>
+        <div class="map-info-row">
+          <span>Status</span>
+          <span>{{ formatStatus(activeProject.status) }}</span>
+        </div>
+        <div class="map-info-row">
+          <span>Transportation</span>
+          <span *ngIf="routeLoading">Calculating...</span>
+          <span *ngIf="!routeLoading">{{ activeProjectTravelTime || '—' }}</span>
+        </div>
+        <div class="map-info-note" *ngIf="routeError">
+          {{ routeError }}
+        </div>
+      </div>
+    </div>
 
     <ng-template #mapsFallback>
       <div class="maps-fallback">

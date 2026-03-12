@@ -1,17 +1,14 @@
 import { CommonModule } from '@angular/common';
 import {
   Component,
+  ElementRef,
   HostListener,
   OnDestroy,
   OnInit,
   ViewChild,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import {
-  GoogleMapsModule,
-  MapInfoWindow,
-  MapMarker,
-} from '@angular/google-maps';
+import { GoogleMapsModule } from '@angular/google-maps';
 import {
   ActivatedRoute,
   NavigationEnd,
@@ -23,6 +20,7 @@ import { Subject, filter } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 import { GoogleMapsLoaderService } from '../../townplanner/services/google-maps-loader.service';
+import { ManagerCompanyService } from '../services/manager.company.service';
 import { ManagerActions } from '../store/manager.actions';
 import { selectManagerSearchQuery } from '../store/manager.selectors';
 import { ManagerProjectsActions } from '../store/projects/manager.actions';
@@ -60,8 +58,13 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     Promise<google.maps.LatLngLiteral | null>
   >();
   private mapsApiKey: string | null = null;
+  private directionsService: google.maps.DirectionsService | null = null;
+  private companyAddress: string | null = null;
+  isDraggingInfoPanel = false;
+  private infoPanelDragOffset = { x: 0, y: 0 };
 
-  @ViewChild(MapInfoWindow) infoWindow?: MapInfoWindow;
+  @ViewChild('mapContainerRef') mapContainerRef?: ElementRef<HTMLElement>;
+  @ViewChild('mapInfoPanelRef') mapInfoPanelRef?: ElementRef<HTMLElement>;
 
   mapsLoaded = false;
   mapsError: string | null = null;
@@ -111,7 +114,24 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     position: google.maps.LatLngLiteral;
     icon: google.maps.Icon;
   }> = [];
+  companyMarker:
+    | { position: google.maps.LatLngLiteral; icon: google.maps.Icon }
+    | null = null;
   activeProject: BmProject | null = null;
+  infoPanelPosition = { x: 24, y: 120 };
+  routeDirections: google.maps.DirectionsResult | null = null;
+  routeLoading = false;
+  routeError: string | null = null;
+  activeProjectTravelTime: string | null = null;
+  directionsRendererOptions: google.maps.DirectionsRendererOptions = {
+    suppressMarkers: true,
+    preserveViewport: true,
+    polylineOptions: {
+      strokeColor: '#ef4444',
+      strokeOpacity: 0.9,
+      strokeWeight: 5.5,
+    },
+  };
 
   private readonly allowedStatuses = new Set([
     'to_do',
@@ -141,6 +161,7 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   constructor(
     private store: Store,
     private mapsLoader: GoogleMapsLoaderService,
+    private companyService: ManagerCompanyService,
     private router: Router,
     private route: ActivatedRoute,
   ) {}
@@ -152,6 +173,8 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
       .getApiKey()
       .then((k) => (this.mapsApiKey = k))
       .catch(() => (this.mapsApiKey = null));
+
+    this.loadCompanyAddress();
 
     this.mapsLoader
       .load()
@@ -249,6 +272,19 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   @HostListener('window:resize')
   onResize(): void {
     this.updateIsMobile();
+    this.clampInfoPanelPosition();
+  }
+
+  @HostListener('window:pointermove', ['$event'])
+  onWindowPointerMove(event: PointerEvent): void {
+    if (!this.isDraggingInfoPanel) return;
+    this.moveInfoPanel(event.clientX, event.clientY);
+    event.preventDefault();
+  }
+
+  @HostListener('window:pointerup')
+  onWindowPointerUp(): void {
+    this.isDraggingInfoPanel = false;
   }
 
   togglePanelCollapsed(): void {
@@ -266,14 +302,22 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   trackByProjectMarker = (_: number, marker: { project: BmProject }) =>
     marker.project.projectId;
 
-  openProjectInfo(marker: MapMarker, project: BmProject): void {
+  openProjectInfo(project: BmProject): void {
     this.activeProject = project;
-    this.infoWindow?.open(marker);
+    this.routeError = null;
+    this.activeProjectTravelTime = null;
+    this.routeDirections = null;
+    this.setDefaultInfoPanelPosition();
+    this.drawCompanyToClientRoute(project);
   }
 
   closeProjectInfo(): void {
-    this.infoWindow?.close();
     this.activeProject = null;
+    this.routeLoading = false;
+    this.routeError = null;
+    this.activeProjectTravelTime = null;
+    this.routeDirections = null;
+    this.isDraggingInfoPanel = false;
   }
 
   formatStatus(status?: string | null): string {
@@ -314,6 +358,12 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     this.geocoder = new google.maps.Geocoder();
   }
 
+  private ensureDirectionsService(): void {
+    if (this.directionsService) return;
+    if (typeof google === 'undefined' || !google.maps?.DirectionsService) return;
+    this.directionsService = new google.maps.DirectionsService();
+  }
+
   private async refreshMapMarkers(): Promise<void> {
     if (!this.mapsLoaded) return;
     this.ensureGeocoder();
@@ -342,6 +392,11 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
       }),
     );
 
+    const companyAddress = (this.companyAddress || '').trim();
+    const companyPosition = companyAddress
+      ? await this.geocodeAddress(companyAddress)
+      : null;
+
     if (token !== this.mapRefreshToken) return;
     this.projectMarkers = markers.filter(
       (
@@ -352,6 +407,21 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
         icon: google.maps.Icon;
       } => Boolean(marker),
     );
+    this.companyMarker = companyPosition
+      ? {
+          position: companyPosition,
+          icon: this.buildCompanyMarkerIcon(),
+        }
+      : null;
+
+    if (
+      this.activeProject
+      && !this.projectMarkers.some(
+        (marker) => marker.project.projectId === this.activeProject?.projectId,
+      )
+    ) {
+      this.closeProjectInfo();
+    }
   }
 
   private matchesSearch(project: BmProject, query: string): boolean {
@@ -385,6 +455,22 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     };
   }
 
+  private buildCompanyMarkerIcon(): google.maps.Icon {
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 24 32">` +
+      `<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#111827" fill-opacity="0.34" transform="translate(0 2)"/>` +
+      `<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#111827"/>` +
+      `<rect x="8.6" y="6.7" width="6.8" height="5.6" rx="0.8" fill="#ffffff"/>` +
+      `<path d="M10 7.8v3.4M12 7.8v3.4M14 7.8v3.4M9 9.5h6" stroke="#111827" stroke-width="0.8"/>` +
+      `</svg>`;
+    const url = this.svgToDataUrl(svg);
+    return {
+      url,
+      scaledSize: new google.maps.Size(34, 44),
+      anchor: new google.maps.Point(17, 42),
+    };
+  }
+
   private svgToDataUrl(svg: string): string {
     const encoded = window.btoa(unescape(encodeURIComponent(svg)));
     return `data:image/svg+xml;base64,${encoded}`;
@@ -401,6 +487,140 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     this.store.dispatch(
       ManagerProjectsActions.loadProjects({ page: this.projectsPage + 1 }),
     );
+  }
+
+  private drawCompanyToClientRoute(project: BmProject): void {
+    const origin = (this.companyAddress || '').trim();
+    const destination = (project.clientAddress || '').trim();
+
+    if (!origin || !destination) {
+      this.routeDirections = null;
+      this.activeProjectTravelTime = null;
+      this.routeLoading = false;
+      this.routeError = !origin
+        ? 'Company address is missing.'
+        : 'Client address is missing.';
+      return;
+    }
+
+    this.ensureDirectionsService();
+    if (!this.directionsService) {
+      this.routeDirections = null;
+      this.activeProjectTravelTime = null;
+      this.routeLoading = false;
+      this.routeError = 'Route service is unavailable.';
+      return;
+    }
+
+    this.routeLoading = true;
+    this.routeError = null;
+    this.activeProjectTravelTime = null;
+    this.routeDirections = null;
+
+    const requestedProjectId = project.projectId;
+    this.directionsService.route(
+      {
+        origin,
+        destination,
+        travelMode: google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (this.activeProject?.projectId !== requestedProjectId) return;
+
+        this.routeLoading = false;
+        if (status === google.maps.DirectionsStatus.OK && result) {
+          this.routeDirections = result;
+          const leg = result.routes?.[0]?.legs?.[0];
+          this.activeProjectTravelTime = leg?.duration?.text || null;
+          if (!this.activeProjectTravelTime) {
+            this.routeError = 'Travel time not available for this route.';
+          }
+          return;
+        }
+
+        this.routeDirections = null;
+        this.activeProjectTravelTime = null;
+        this.routeError = 'Unable to calculate route right now.';
+      },
+    );
+  }
+
+  onInfoPanelPointerDown(event: PointerEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('button')) return;
+    if (!this.activeProject) return;
+
+    const containerEl = this.mapContainerRef?.nativeElement;
+    const panelEl = this.mapInfoPanelRef?.nativeElement;
+    if (!containerEl || !panelEl) return;
+
+    const panelRect = panelEl.getBoundingClientRect();
+    this.infoPanelDragOffset = {
+      x: event.clientX - panelRect.left,
+      y: event.clientY - panelRect.top,
+    };
+    this.isDraggingInfoPanel = true;
+    event.preventDefault();
+  }
+
+  private moveInfoPanel(clientX: number, clientY: number): void {
+    const containerEl = this.mapContainerRef?.nativeElement;
+    const panelEl = this.mapInfoPanelRef?.nativeElement;
+    if (!containerEl || !panelEl) return;
+
+    const containerRect = containerEl.getBoundingClientRect();
+    const panelWidth = panelEl.offsetWidth || 380;
+    const panelHeight = panelEl.offsetHeight || 260;
+    const edge = 8;
+
+    const maxX = Math.max(edge, containerRect.width - panelWidth - edge);
+    const maxY = Math.max(edge, containerRect.height - panelHeight - edge);
+
+    const rawX = clientX - containerRect.left - this.infoPanelDragOffset.x;
+    const rawY = clientY - containerRect.top - this.infoPanelDragOffset.y;
+
+    this.infoPanelPosition = {
+      x: Math.min(Math.max(rawX, edge), maxX),
+      y: Math.min(Math.max(rawY, edge), maxY),
+    };
+  }
+
+  private setDefaultInfoPanelPosition(): void {
+    const containerEl = this.mapContainerRef?.nativeElement;
+    if (!containerEl) {
+      this.infoPanelPosition = { x: 24, y: 120 };
+      return;
+    }
+
+    const cardWidth = this.isMobile
+      ? Math.min(containerEl.clientWidth - 24, 340)
+      : 420;
+    const edge = 8;
+    const maxX = Math.max(edge, containerEl.clientWidth - cardWidth - edge);
+    const x = Math.min(
+      Math.max((containerEl.clientWidth - cardWidth) / 2, edge),
+      maxX,
+    );
+    this.infoPanelPosition = {
+      x: Math.round(x),
+      y: this.isMobile ? 96 : 110,
+    };
+  }
+
+  private clampInfoPanelPosition(): void {
+    if (!this.activeProject) return;
+    const containerEl = this.mapContainerRef?.nativeElement;
+    const panelEl = this.mapInfoPanelRef?.nativeElement;
+    if (!containerEl || !panelEl) return;
+
+    const edge = 8;
+    const maxX = Math.max(edge, containerEl.clientWidth - panelEl.offsetWidth - edge);
+    const maxY = Math.max(edge, containerEl.clientHeight - panelEl.offsetHeight - edge);
+
+    this.infoPanelPosition = {
+      x: Math.min(Math.max(this.infoPanelPosition.x, edge), maxX),
+      y: Math.min(Math.max(this.infoPanelPosition.y, edge), maxY),
+    };
   }
 
   private countVisibleProjects(): number {
@@ -443,6 +663,23 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     this.geocodeInFlight.delete(address);
     if (result) this.geocodeCache.set(address, result);
     return result;
+  }
+
+  private loadCompanyAddress(): void {
+    this.companyService
+      .listCompanies({ page: 1, limit: 1 })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          const address = String(res?.items?.[0]?.address || '').trim();
+          this.companyAddress = address || null;
+          this.refreshMapMarkers();
+        },
+        error: () => {
+          this.companyAddress = null;
+          this.refreshMapMarkers();
+        },
+      });
   }
 
   private syncRouteUIState(): void {

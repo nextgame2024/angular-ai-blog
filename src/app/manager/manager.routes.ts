@@ -69,6 +69,7 @@ export const MANAGER_ROUTES: Route[] = [
     providers: [
       ManagerService,
       ManagerProjectsService,
+      ManagerCompanyService,
       provideEffects(ManagerEffects),
       provideEffects(ManagerProjectsEffects),
       provideState(MANAGER_FEATURE_KEY, managerReducer),
