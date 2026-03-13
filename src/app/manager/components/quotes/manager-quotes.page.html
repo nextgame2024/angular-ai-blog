@@ -291,14 +291,20 @@
                 </div>
                 <strong>{{ formatMoney(totalMaterialsCost) }}</strong>
               </div>
-              <div class="quote-card quote-card-wide">
-                <div class="cost-line">
-                  <strong>Labor Cost $</strong>
+              <div class="quote-card quote-card-wide quote-card-labor">
+                <div class="labor-summary-main">
+                  <div class="labor-summary-top">
+                    <strong>Labor Cost $</strong>
+                    <strong>{{ formatMoney(totalLaborCost) }}</strong>
+                  </div>
                   <span class="net-note"
                     >(Net Cost $ {{ formatMoney(netLaborCost) }})</span
                   >
+                  <div class="labor-summary-secondary">
+                    <span>Surcharges $</span>
+                    <strong>{{ formatMoney(surchargeTotal) }}</strong>
+                  </div>
                 </div>
-                <strong>{{ formatMoney(totalLaborCost) }}</strong>
               </div>
             </div>
             <div class="quote-summary-column totals-summary">

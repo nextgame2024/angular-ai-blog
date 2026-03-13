@@ -3,13 +3,18 @@ import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/co
 import { FormBuilder, FormControl, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { BehaviorSubject, Subject, forkJoin } from 'rxjs';
-import { debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
+import { BehaviorSubject, Subject, forkJoin, of } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 
 import { ManagerDocumentsService } from '../../services/manager.documents.service';
 import { ManagerProjectsService } from '../../services/manager.projects.service';
 import type { BmDocument } from '../../types/documents.interface';
-import type { BmProject, BmProjectLabor, BmProjectMaterial } from '../../types/projects.interface';
+import type {
+  BmProject,
+  BmProjectLabor,
+  BmProjectMaterial,
+  BmProjectSurcharge,
+} from '../../types/projects.interface';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -49,6 +54,7 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
   netLaborCost = 0;
   totalMaterialsCost = 0;
   totalLaborCost = 0;
+  surchargeTotal = 0;
   subtotal = 0;
   gstRate = 0;
   gstRatePercent = 0;
@@ -180,20 +186,32 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
     this.selectedMaterial = null;
     this.laborViewMode = 'list';
     this.selectedLabor = null;
+    this.surchargeTotal = 0;
     this.detailLoading = true;
 
     forkJoin({
+      document: this.documentsService.recalcDocumentTotals(doc.documentId).pipe(
+        catchError(() => of({ document: doc })),
+      ),
       project: this.projectsService.getProject(doc.projectId),
       materials: this.projectsService.listProjectMaterials(doc.projectId),
       labor: this.projectsService.listProjectLabor(doc.projectId),
+      surcharges: this.projectsService.listProjectSurcharges(doc.projectId).pipe(
+        catchError(() => of({ surcharges: [] as BmProjectSurcharge[] })),
+      ),
     })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {
           this.detailLoading = false;
+          this.selectedQuote = res.document?.document ?? doc;
+          this.replaceQuote(this.selectedQuote);
           this.selectedProject = res.project?.project ?? null;
           this.projectMaterials = res.materials?.materials ?? [];
           this.projectLabor = res.labor?.labor ?? [];
+          this.surchargeTotal = this.calculateSurchargeTotal(
+            res.surcharges?.surcharges,
+          );
           this.patchProjectForm();
           this.calculateTotals();
         },
@@ -217,6 +235,7 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
     this.netLaborCost = 0;
     this.totalMaterialsCost = 0;
     this.totalLaborCost = 0;
+    this.surchargeTotal = 0;
     this.subtotal = 0;
     this.gstRate = 0;
     this.gstRatePercent = 0;
@@ -314,7 +333,7 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
     this.totalLaborCost = Number(this.selectedQuote?.laborTotal ?? 0);
     this.subtotal = Number(
       this.selectedQuote?.subtotal ??
-        this.totalMaterialsCost + this.totalLaborCost,
+        this.totalMaterialsCost + this.totalLaborCost + this.surchargeTotal,
     );
     const totalAmount = Number(this.selectedQuote?.totalAmount ?? 0);
     const docGst = Number(this.selectedQuote?.gst ?? 0);
@@ -323,6 +342,24 @@ export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
     this.gstRate = this.subtotal > 0 ? this.gstAmount / this.subtotal : 0;
     this.gstRatePercent = this.gstRate * 100;
     this.grandTotal = totalAmount || this.subtotal + this.gstAmount;
+  }
+
+  private calculateSurchargeTotal(
+    surcharges: BmProjectSurcharge[] | null | undefined,
+  ): number {
+    return (surcharges ?? []).reduce(
+      (sum, surcharge) => sum + Number(surcharge?.cost ?? 0),
+      0,
+    );
+  }
+
+  private replaceQuote(document: BmDocument | null): void {
+    if (!document?.documentId) return;
+    this.filteredQuotes$.next(
+      this.filteredQuotes$.value.map((item) =>
+        item.documentId === document.documentId ? document : item,
+      ),
+    );
   }
 
   private calculateNetMaterialsCost(

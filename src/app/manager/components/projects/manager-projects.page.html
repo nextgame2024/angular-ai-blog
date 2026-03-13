@@ -286,7 +286,17 @@
                   >
                 </div>
                 <strong class="labor-summary-extra"
-                  >{{ projectLaborAdditionalTotalLabel }}</strong
+                  >{{ ((laborQuoteTotal$ | async) || 0) | number: '1.2-2'
+                  }}</strong
+                >
+              </div>
+              <div class="quote-card quote-card-wide">
+                <div class="cost-line">
+                  <strong>Surcharges $</strong>
+                </div>
+                <strong
+                  >{{ ((surchargesTotal$ | async) || 0) | number: '1.2-2'
+                  }}</strong
                 >
               </div>
             </div>
@@ -1330,6 +1340,16 @@
         </div>
 
         <ng-container *ngIf="project">
+          <div class="form-header-actions-row surcharges-actions-row">
+            <div class="materials-inline-cost">
+              <strong>Surcharges $</strong>
+              <strong
+                >{{ ((surchargesTotal$ | async) || 0) | number: '1.2-2'
+                }}</strong
+              >
+            </div>
+          </div>
+
           <section class="card surcharges-card">
             <div
               class="warning-banner"
@@ -1701,16 +1721,30 @@
                 >{{ ((materialsCost$ | async) || 0) | number: '1.2-2' }}</strong
               >
             </div>
-            <div class="quote-card quote-card-wide">
-              <div class="cost-line">
-                <span>Labor Cost $</span>
+            <div class="quote-card quote-card-wide quote-card-labor">
+              <div class="labor-summary-main">
+                <div class="labor-summary-top">
+                  <span>Labor Cost $</span>
+                  <span class="estimated-value"
+                    >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</span
+                  >
+                </div>
                 <span class="net-note"
                   >(Net Cost $ {{ ((netLaborCost$ | async) || 0) | number:
                   '1.2-2' }})</span
                 >
               </div>
-              <strong class="estimated-value"
-                >{{ ((laborCost$ | async) || 0) | number: '1.2-2' }}</strong
+              <strong class="labor-summary-extra"
+                >{{ ((laborQuoteTotal$ | async) || 0) | number: '1.2-2'
+                }}</strong
+              >
+            </div>
+            <div class="quote-card quote-card-wide">
+              <div class="cost-line">
+                <span>Surcharges $</span>
+              </div>
+              <strong
+                >{{ ((surchargesTotal$ | async) || 0) | number: '1.2-2' }}</strong
               >
             </div>
           </div>

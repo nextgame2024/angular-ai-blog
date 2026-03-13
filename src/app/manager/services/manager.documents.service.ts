@@ -35,4 +35,13 @@ export class ManagerDocumentsService {
       `${this.apiBase}/bm/documents/${documentId}`,
     );
   }
+
+  recalcDocumentTotals(
+    documentId: string,
+  ): Observable<{ document: BmDocument }> {
+    return this.http.post<{ document: BmDocument }>(
+      `${this.apiBase}/bm/documents/${documentId}/recalculate`,
+      {},
+    );
+  }
 }

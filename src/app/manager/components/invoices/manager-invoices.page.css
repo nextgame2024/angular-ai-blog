@@ -323,6 +323,35 @@
   align-items: center;
 }
 
+.quote-card-labor {
+  align-items: stretch;
+}
+
+.labor-summary-main {
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.labor-summary-top,
+.labor-summary-secondary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.labor-summary-secondary {
+  font-size: 0.8rem;
+  color: rgba(15, 23, 42, 0.62);
+}
+
+.labor-summary-secondary strong {
+  font-size: 0.82rem;
+}
+
 .cost-line {
   display: flex;
   flex-wrap: wrap;

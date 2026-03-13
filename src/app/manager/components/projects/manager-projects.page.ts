@@ -144,6 +144,7 @@ export class ManagerProjectsPageComponent
   canLoadMore$!: Observable<boolean>;
   materialsCost$!: Observable<number>;
   laborCost$!: Observable<number>;
+  laborQuoteTotal$!: Observable<number>;
   netMaterialsCost$!: Observable<number>;
   netLaborCost$!: Observable<number>;
   subtotal$!: Observable<number>;
@@ -153,6 +154,7 @@ export class ManagerProjectsPageComponent
   grandTotal$!: Observable<number>;
   private previewMaterials$ = new BehaviorSubject<BmProjectMaterial[]>([]);
   private previewLabor$ = new BehaviorSubject<BmProjectLabor[]>([]);
+  surchargesTotal$ = new BehaviorSubject<number>(0);
 
   statusOptions: ManagerSelectOption[] = [
     { value: 'to_do', label: 'To do' },
@@ -527,6 +529,21 @@ export class ManagerProjectsPageComponent
       }),
     );
 
+    this.laborQuoteTotal$ = combineLatest([
+      this.projectLaborDailyRateCtrl.valueChanges.pipe(
+        startWith(this.projectLaborDailyRateCtrl.value),
+      ),
+      this.projectLaborHoursCtrl.valueChanges.pipe(
+        startWith(this.projectLaborHoursCtrl.value),
+      ),
+    ]).pipe(
+      map(([dailyRateRaw, laborHoursRaw]) => {
+        const dailyRate = this.parseNonNegativeMoney(dailyRateRaw) ?? 0;
+        const laborHours = this.parseNonNegativeMoney(laborHoursRaw) ?? 0;
+        return Math.round(dailyRate * laborHours * 100) / 100;
+      }),
+    );
+
     this.gstRate$ = combineLatest([
       pricingProfileId$,
       this.editingProject$,
@@ -546,8 +563,15 @@ export class ManagerProjectsPageComponent
       map((rate) => Number(rate) * 100),
     );
 
-    this.subtotal$ = combineLatest([this.materialsCost$, this.laborCost$]).pipe(
-      map(([materialsTotal, laborTotal]) => materialsTotal + laborTotal),
+    this.subtotal$ = combineLatest([
+      this.materialsCost$,
+      this.laborQuoteTotal$,
+      this.surchargesTotal$,
+    ]).pipe(
+      map(
+        ([materialsTotal, laborTotal, surchargeTotal]) =>
+          materialsTotal + laborTotal + surchargeTotal,
+      ),
     );
 
     this.gstAmount$ = combineLatest([this.subtotal$, this.gstRate$]).pipe(
@@ -794,7 +818,7 @@ export class ManagerProjectsPageComponent
         this.suppressStatusUpdate = false;
         this.previewMaterials$.next([]);
         this.previewLabor$.next([]);
-        this.surcharges = [];
+        this.setSurcharges([]);
         this.surchargesError = null;
         this.surchargesLoading = false;
         this.surchargeAddLoading = false;
@@ -926,7 +950,7 @@ export class ManagerProjectsPageComponent
     this.projectForm.controls.client_is_new.setValue(false, { emitEvent: false });
     this.applyClientSelectionValidators();
     this.syncClientDetailsControls();
-    this.surcharges = [];
+    this.setSurcharges([]);
     this.surchargesError = null;
     this.surchargesLoading = false;
     this.surchargeAddLoading = false;
@@ -942,7 +966,7 @@ export class ManagerProjectsPageComponent
   openEdit(project: BmProject): void {
     this.allowClientChangeOnEdit = false;
     this.projectForm.controls.client_is_new.setValue(false, { emitEvent: false });
-    this.surcharges = [];
+    this.setSurcharges([]);
     this.surchargesError = null;
     this.surchargesLoading = false;
     this.surchargeAddLoading = false;
@@ -958,7 +982,7 @@ export class ManagerProjectsPageComponent
   }
 
   closeForm(): void {
-    this.surcharges = [];
+    this.setSurcharges([]);
     this.surchargesError = null;
     this.surchargesLoading = false;
     this.surchargeAddLoading = false;
@@ -2985,9 +3009,9 @@ export class ManagerProjectsPageComponent
           if (idx >= 0) {
             const next = [...this.surcharges];
             next[idx] = normalized;
-            this.surcharges = next;
+            this.setSurcharges(next);
           } else {
-            this.surcharges = [...this.surcharges, normalized];
+            this.setSurcharges([...this.surcharges, normalized]);
           }
           this.ensureSurchargeTypeSelection();
           this.projectSurchargeForm.patchValue(
@@ -3031,8 +3055,10 @@ export class ManagerProjectsPageComponent
             next: () => {
               this.surchargeDeletingId = null;
               const deletedType = this.normalizeSurchargeType(surcharge.type);
-              this.surcharges = this.surcharges.filter(
-                (item) => item.surchargeId !== surcharge.surchargeId,
+              this.setSurcharges(
+                this.surcharges.filter(
+                  (item) => item.surchargeId !== surcharge.surchargeId,
+                ),
               );
               this.ensureSurchargeTypeSelection();
               if (deletedType === 'transportation') {
@@ -3257,15 +3283,17 @@ export class ManagerProjectsPageComponent
       .subscribe({
         next: (res) => {
           this.surchargesLoading = false;
-          this.surcharges = (res?.surcharges ?? []).map((item) => ({
-            ...item,
-            cost: this.parseNonNegativeMoney(item.cost) ?? 0,
-          }));
+          this.setSurcharges(
+            (res?.surcharges ?? []).map((item) => ({
+              ...item,
+              cost: this.parseNonNegativeMoney(item.cost) ?? 0,
+            })),
+          );
           this.ensureSurchargeTypeSelection();
         },
         error: (err) => {
           this.surchargesLoading = false;
-          this.surcharges = [];
+          this.setSurcharges([]);
           this.surchargesError =
             err?.error?.error || err?.message || 'Failed to load surcharges';
           this.ensureSurchargeTypeSelection();
@@ -3320,6 +3348,15 @@ export class ManagerProjectsPageComponent
 
   private normalizeSurchargeType(value: unknown): string {
     return String(value || '').trim().toLowerCase();
+  }
+
+  private setSurcharges(surcharges: BmProjectSurcharge[]): void {
+    this.surcharges = surcharges;
+    const total = surcharges.reduce(
+      (sum, item) => sum + (this.parseNonNegativeMoney(item.cost) ?? 0),
+      0,
+    );
+    this.surchargesTotal$.next(Math.round(total * 100) / 100);
   }
 
   private setupInfiniteScroll(): void {
@@ -3532,11 +3569,11 @@ export class ManagerProjectsPageComponent
     this.lastSavedLaborExtras = { dailyRate, laborHours };
     this.projectLaborDailyRateCtrl.setValue(
       this.formatMoneyInput(dailyRate) ?? '0.00',
-      { emitEvent: false },
+      { emitEvent: true },
     );
     this.projectLaborHoursCtrl.setValue(
       this.formatMoneyInput(laborHours) ?? '0.00',
-      { emitEvent: false },
+      { emitEvent: true },
     );
   }
 
