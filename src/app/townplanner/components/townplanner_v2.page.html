@@ -232,13 +232,17 @@
 
       <div class="tp2-panel-body">
         <ng-container *ngIf="selected$ | async as selected; else emptyState">
-          <img
-            class="tp2-property-photo"
-            [src]="streetViewPhotoUrl(selected)"
-            alt="Property photo preview"
-            (error)="onPhotoError($event)"
-            loading="lazy"
-          />
+          <div class="tp2-property-photo" #propertyStreetViewRef>
+            <div class="tp2-property-photo-fallback" *ngIf="photoLoading">
+              Loading preview...
+            </div>
+            <div
+              class="tp2-property-photo-fallback"
+              *ngIf="!photoLoading && !photoReady"
+            >
+              No preview available
+            </div>
+          </div>
 
           <div class="tp2-panel-text">
             {{ selected.address || selected.formattedAddress || 'Selected

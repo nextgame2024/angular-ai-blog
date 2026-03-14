@@ -451,11 +451,23 @@
 
 .tp2-property-photo {
   width: 100%;
+  position: relative;
+  display: block;
   border-radius: 14px;
   aspect-ratio: 16 / 9;
-  object-fit: cover;
+  overflow: hidden;
   background: rgba(226, 232, 240, 0.7);
   border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.tp2-property-photo-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #334155;
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 .tp2-panel-text {

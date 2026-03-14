@@ -530,11 +530,15 @@ export class ManagerProjectsPageComponent
     );
 
     this.laborQuoteTotal$ = combineLatest([
-      this.projectLaborDailyRateCtrl.valueChanges.pipe(
-        startWith(this.projectLaborDailyRateCtrl.value),
+      defer(() =>
+        this.projectLaborDailyRateCtrl.valueChanges.pipe(
+          startWith(this.projectLaborDailyRateCtrl.value),
+        ),
       ),
-      this.projectLaborHoursCtrl.valueChanges.pipe(
-        startWith(this.projectLaborHoursCtrl.value),
+      defer(() =>
+        this.projectLaborHoursCtrl.valueChanges.pipe(
+          startWith(this.projectLaborHoursCtrl.value),
+        ),
       ),
     ]).pipe(
       map(([dailyRateRaw, laborHoursRaw]) => {

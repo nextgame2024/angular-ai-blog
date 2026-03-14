@@ -29,7 +29,10 @@ export class GoogleMapsLoaderService {
     if (window.google?.maps) return Promise.resolve();
 
     if (!this.loadPromise) {
-      this.loadPromise = this.loadInternal();
+      this.loadPromise = this.loadInternal().catch((err) => {
+        this.loadPromise = null;
+        throw err;
+      });
     }
     return this.loadPromise;
   }
@@ -42,10 +45,15 @@ export class GoogleMapsLoaderService {
     if (this.apiKey) return Promise.resolve(this.apiKey);
 
     if (!this.apiKeyPromise) {
-      this.apiKeyPromise = this.resolveApiKey().then((k) => {
-        this.apiKey = k;
-        return k;
-      });
+      this.apiKeyPromise = this.resolveApiKey()
+        .then((k) => {
+          this.apiKey = k;
+          return k;
+        })
+        .catch((err) => {
+          this.apiKeyPromise = null;
+          throw err;
+        });
     }
 
     return this.apiKeyPromise;
@@ -85,18 +93,26 @@ export class GoogleMapsLoaderService {
       );
 
       const keyFromRuntime = (cfg?.googleMapsApiKey || '').trim();
-      if (keyFromRuntime) return keyFromRuntime;
+      if (this.isValidGoogleMapsKey(keyFromRuntime)) return keyFromRuntime;
     } catch {
       // If 404 or parsing error, ignore and fallback
     }
 
     // 2) optional fallback (if you decide to put a dev key in env files)
     const keyFromEnv = ((environment as any).googleMapsApiKey || '').trim();
-    if (keyFromEnv) return keyFromEnv;
+    if (this.isValidGoogleMapsKey(keyFromEnv)) return keyFromEnv;
 
     throw new Error(
       'Google Maps API key not found. Ensure assets/runtime-config.json exists and contains googleMapsApiKey.'
     );
+  }
+
+  private isValidGoogleMapsKey(value: string | null | undefined): boolean {
+    const key = String(value || '').trim();
+    if (!key) return false;
+    if (key === '__GOOGLE_MAPS_API_KEY__') return false;
+    if (key.toLowerCase() === 'dummy') return false;
+    return /^AIza[0-9A-Za-z_-]{20,}$/.test(key);
   }
 
   private injectScript(apiKey: string): Promise<void> {

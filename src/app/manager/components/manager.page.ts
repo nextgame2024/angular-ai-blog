@@ -16,11 +16,12 @@ import {
   RouterModule,
 } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Subject, filter } from 'rxjs';
+import { Subject, filter, firstValueFrom } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
 import { GoogleMapsLoaderService } from '../../townplanner/services/google-maps-loader.service';
 import { ManagerCompanyService } from '../services/manager.company.service';
+import { ManagerProjectsService } from '../services/manager.projects.service';
 import { ManagerActions } from '../store/manager.actions';
 import { selectManagerSearchQuery } from '../store/manager.selectors';
 import { ManagerProjectsActions } from '../store/projects/manager.actions';
@@ -57,14 +58,17 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     string,
     Promise<google.maps.LatLngLiteral | null>
   >();
-  private mapsApiKey: string | null = null;
-  private directionsService: google.maps.DirectionsService | null = null;
+  private streetViewService: google.maps.StreetViewService | null = null;
+  private streetViewPanorama: google.maps.StreetViewPanorama | null = null;
+  private streetViewRequestToken = 0;
   private companyAddress: string | null = null;
   isDraggingInfoPanel = false;
   private infoPanelDragOffset = { x: 0, y: 0 };
 
   @ViewChild('mapContainerRef') mapContainerRef?: ElementRef<HTMLElement>;
   @ViewChild('mapInfoPanelRef') mapInfoPanelRef?: ElementRef<HTMLElement>;
+  @ViewChild('streetViewPreviewRef')
+  streetViewPreviewRef?: ElementRef<HTMLElement>;
 
   mapsLoaded = false;
   mapsError: string | null = null;
@@ -119,18 +123,17 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     | null = null;
   activeProject: BmProject | null = null;
   infoPanelPosition = { x: 24, y: 120 };
-  routeDirections: google.maps.DirectionsResult | null = null;
+  routePath: google.maps.LatLngLiteral[] = [];
   routeLoading = false;
   routeError: string | null = null;
   activeProjectTravelTime: string | null = null;
-  directionsRendererOptions: google.maps.DirectionsRendererOptions = {
-    suppressMarkers: true,
-    preserveViewport: true,
-    polylineOptions: {
-      strokeColor: '#ef4444',
-      strokeOpacity: 0.9,
-      strokeWeight: 5.5,
-    },
+  streetViewLoading = false;
+  streetViewReady = false;
+  routePolylineOptions: google.maps.PolylineOptions = {
+    geodesic: false,
+    strokeColor: '#ef4444',
+    strokeOpacity: 0.9,
+    strokeWeight: 5.5,
   };
 
   private readonly allowedStatuses = new Set([
@@ -147,32 +150,18 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     quote_approved: '#0cf41c',
     invoice_process: '#f125dd',
   };
-  private readonly photoFallbackSrc =
-    'data:image/svg+xml;charset=utf-8,' +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360">
-        <rect width="100%" height="100%" fill="#e2e8f0"/>
-        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#334155" font-family="Arial" font-size="22">
-          No preview available
-        </text>
-      </svg>`,
-    );
 
   constructor(
     private store: Store,
     private mapsLoader: GoogleMapsLoaderService,
     private companyService: ManagerCompanyService,
+    private projectsService: ManagerProjectsService,
     private router: Router,
     private route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
     this.updateIsMobile();
-
-    this.mapsLoader
-      .getApiKey()
-      .then((k) => (this.mapsApiKey = k))
-      .catch(() => (this.mapsApiKey = null));
 
     this.loadCompanyAddress();
 
@@ -306,9 +295,12 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     this.activeProject = project;
     this.routeError = null;
     this.activeProjectTravelTime = null;
-    this.routeDirections = null;
+    this.routePath = [];
+    this.streetViewLoading = false;
+    this.streetViewReady = false;
     this.setDefaultInfoPanelPosition();
-    this.drawCompanyToClientRoute(project);
+    void this.renderStreetViewPreview(project);
+    void this.drawCompanyToClientRoute(project);
   }
 
   closeProjectInfo(): void {
@@ -316,7 +308,13 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     this.routeLoading = false;
     this.routeError = null;
     this.activeProjectTravelTime = null;
-    this.routeDirections = null;
+    this.routePath = [];
+    this.streetViewLoading = false;
+    this.streetViewReady = false;
+    this.streetViewRequestToken += 1;
+    if (this.streetViewPanorama) {
+      this.streetViewPanorama.setVisible(false);
+    }
     this.isDraggingInfoPanel = false;
   }
 
@@ -345,23 +343,118 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  streetViewPhotoUrl(project: BmProject | null): string {
-    if (!project?.clientAddress || !this.mapsApiKey)
-      return this.photoFallbackSrc;
-    const addr = encodeURIComponent(project.clientAddress);
-    return `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${addr}&fov=70&pitch=0&key=${this.mapsApiKey}`;
-  }
-
   private ensureGeocoder(): void {
     if (this.geocoder) return;
     if (typeof google === 'undefined' || !google.maps?.Geocoder) return;
     this.geocoder = new google.maps.Geocoder();
   }
 
-  private ensureDirectionsService(): void {
-    if (this.directionsService) return;
-    if (typeof google === 'undefined' || !google.maps?.DirectionsService) return;
-    this.directionsService = new google.maps.DirectionsService();
+  private ensureStreetViewService(): void {
+    if (this.streetViewService) return;
+    if (typeof google === 'undefined' || !google.maps?.StreetViewService) return;
+    this.streetViewService = new google.maps.StreetViewService();
+  }
+
+  private async waitForStreetViewHost(): Promise<HTMLElement | null> {
+    for (let i = 0; i < 8; i += 1) {
+      const host = this.streetViewPreviewRef?.nativeElement || null;
+      if (host) return host;
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+    return this.streetViewPreviewRef?.nativeElement || null;
+  }
+
+  private async renderStreetViewPreview(project: BmProject): Promise<void> {
+    const requestedProjectId = project.projectId;
+    const requestToken = ++this.streetViewRequestToken;
+    const destination = (project.clientAddress || '').trim();
+
+    this.streetViewLoading = true;
+    this.streetViewReady = false;
+    if (this.streetViewPanorama) {
+      this.streetViewPanorama.setVisible(false);
+    }
+
+    if (!destination) {
+      this.streetViewLoading = false;
+      return;
+    }
+
+    this.ensureGeocoder();
+    const destinationPos = await this.geocodeAddress(destination);
+    if (
+      this.activeProject?.projectId !== requestedProjectId
+      || requestToken !== this.streetViewRequestToken
+    ) {
+      return;
+    }
+    if (!destinationPos) {
+      this.streetViewLoading = false;
+      return;
+    }
+
+    const host = await this.waitForStreetViewHost();
+    if (
+      this.activeProject?.projectId !== requestedProjectId
+      || requestToken !== this.streetViewRequestToken
+    ) {
+      return;
+    }
+    if (!host) {
+      this.streetViewLoading = false;
+      return;
+    }
+
+    this.ensureStreetViewService();
+    if (
+      !this.streetViewService
+      || typeof google === 'undefined'
+      || !google.maps?.StreetViewPanorama
+    ) {
+      this.streetViewLoading = false;
+      return;
+    }
+
+    const panoramaData = await this.findStreetViewPanorama(destinationPos);
+    if (
+      this.activeProject?.projectId !== requestedProjectId
+      || requestToken !== this.streetViewRequestToken
+    ) {
+      return;
+    }
+
+    if (!panoramaData?.location) {
+      this.streetViewReady = false;
+      this.streetViewLoading = false;
+      return;
+    }
+
+    const pano = panoramaData.location.pano || null;
+    const panoramaPosition =
+      this.toLatLngLiteral(panoramaData.location.latLng) || destinationPos;
+    const heading = this.computeHeading(panoramaPosition, destinationPos);
+
+    this.streetViewPanorama = new google.maps.StreetViewPanorama(host, {
+      position: panoramaPosition,
+      disableDefaultUI: true,
+      clickToGo: false,
+      linksControl: false,
+      panControl: false,
+      motionTracking: false,
+      motionTrackingControl: false,
+      fullscreenControl: false,
+      addressControl: false,
+      showRoadLabels: false,
+      zoomControl: false,
+      pov: { heading, pitch: 2 },
+      zoom: 1,
+    });
+    if (pano) {
+      this.streetViewPanorama.setPano(pano);
+    }
+    this.streetViewPanorama.setVisible(true);
+    this.streetViewReady = true;
+    this.streetViewLoading = false;
   }
 
   private async refreshMapMarkers(): Promise<void> {
@@ -489,12 +582,12 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     );
   }
 
-  private drawCompanyToClientRoute(project: BmProject): void {
+  private async drawCompanyToClientRoute(project: BmProject): Promise<void> {
     const origin = (this.companyAddress || '').trim();
     const destination = (project.clientAddress || '').trim();
 
     if (!origin || !destination) {
-      this.routeDirections = null;
+      this.routePath = [];
       this.activeProjectTravelTime = null;
       this.routeLoading = false;
       this.routeError = !origin
@@ -503,46 +596,156 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.ensureDirectionsService();
-    if (!this.directionsService) {
-      this.routeDirections = null;
-      this.activeProjectTravelTime = null;
-      this.routeLoading = false;
-      this.routeError = 'Route service is unavailable.';
-      return;
-    }
-
     this.routeLoading = true;
     this.routeError = null;
     this.activeProjectTravelTime = null;
-    this.routeDirections = null;
+    this.routePath = [];
 
     const requestedProjectId = project.projectId;
-    this.directionsService.route(
-      {
-        origin,
-        destination,
-        travelMode: google.maps.TravelMode.DRIVING,
-      },
-      (result, status) => {
+    let originPos: google.maps.LatLngLiteral | null = null;
+    let destinationPos: google.maps.LatLngLiteral | null = null;
+
+    try {
+      [originPos, destinationPos] = await Promise.all([
+        this.geocodeAddress(origin),
+        this.geocodeAddress(destination),
+      ]);
+      if (this.activeProject?.projectId !== requestedProjectId) return;
+    } catch {
+      if (this.activeProject?.projectId !== requestedProjectId) return;
+      originPos = null;
+      destinationPos = null;
+    }
+
+    try {
+      const routeResponse = await firstValueFrom(
+        this.projectsService.getProjectSurchargeTransportationRoute(
+          requestedProjectId,
+        ),
+      );
+      if (this.activeProject?.projectId !== requestedProjectId) return;
+
+      const encodedPolyline = String(
+        routeResponse?.transportationRoute?.encodedPolyline || '',
+      ).trim();
+      const routePath = encodedPolyline
+        ? this.decodeEncodedPolyline(encodedPolyline)
+        : [];
+
+      if (routePath.length > 1) {
+        this.routePath = routePath;
+      } else {
+        this.routePath = [];
+        this.routeError = 'Unable to draw driving route on map right now.';
+      }
+
+      const formattedRouteTime = String(
+        routeResponse?.transportationRoute?.formattedTime || '',
+      ).trim();
+      if (formattedRouteTime) {
+        this.activeProjectTravelTime = formattedRouteTime;
+      }
+    } catch (err: any) {
+      if (this.activeProject?.projectId !== requestedProjectId) return;
+      this.routePath = [];
+      this.routeError = this.normalizeRouteErrorMessage(this.getErrorMessage(
+        err,
+        'Unable to draw driving route on map right now.',
+      ));
+    }
+
+    if (!this.activeProjectTravelTime) {
+      try {
+        const response = await firstValueFrom(
+          this.projectsService.getProjectSurchargeTransportationTime(
+            requestedProjectId,
+          ),
+        );
         if (this.activeProject?.projectId !== requestedProjectId) return;
 
-        this.routeLoading = false;
-        if (status === google.maps.DirectionsStatus.OK && result) {
-          this.routeDirections = result;
-          const leg = result.routes?.[0]?.legs?.[0];
-          this.activeProjectTravelTime = leg?.duration?.text || null;
-          if (!this.activeProjectTravelTime) {
-            this.routeError = 'Travel time not available for this route.';
-          }
-          return;
+        const formattedTime = String(
+          response?.transportation?.formattedTime || '',
+        ).trim();
+        this.activeProjectTravelTime = formattedTime || null;
+        if (!this.activeProjectTravelTime && !this.routeError) {
+          this.routeError = 'Travel time not available for this route.';
         }
+      } catch (err: any) {
+        if (this.activeProject?.projectId !== requestedProjectId) return;
+        const fallbackMinutes = this.estimateTravelMinutes(
+          originPos,
+          destinationPos,
+        );
+        if (fallbackMinutes !== null) {
+          this.activeProjectTravelTime = `~ ${this.formatDurationMinutes(
+            fallbackMinutes,
+          )}`;
+          if (!this.routeError) {
+            this.routeError =
+              'Live travel time unavailable. Showing estimated time.';
+          }
+        } else {
+          this.activeProjectTravelTime = null;
+          if (!this.routeError) {
+            this.routeError = this.normalizeRouteErrorMessage(
+              this.getErrorMessage(
+                err,
+                'Unable to calculate route right now.',
+              ),
+            );
+          }
+        }
+      }
+    }
 
-        this.routeDirections = null;
-        this.activeProjectTravelTime = null;
-        this.routeError = 'Unable to calculate route right now.';
-      },
-    );
+    if (this.activeProject?.projectId === requestedProjectId) {
+      this.routeLoading = false;
+    }
+  }
+
+  private estimateTravelMinutes(
+    origin: google.maps.LatLngLiteral | null,
+    destination: google.maps.LatLngLiteral | null,
+  ): number | null {
+    if (!origin || !destination) return null;
+
+    const km = this.haversineDistanceKm(origin, destination);
+    if (!Number.isFinite(km) || km <= 0) return null;
+
+    // Fallback estimate for when live routing APIs are unavailable.
+    const avgCitySpeedKmH = 45;
+    return Math.max(1, Math.round((km / avgCitySpeedKmH) * 60));
+  }
+
+  private haversineDistanceKm(
+    a: google.maps.LatLngLiteral,
+    b: google.maps.LatLngLiteral,
+  ): number {
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const lat1 = toRad(a.lat);
+    const lat2 = toRad(b.lat);
+
+    const sinLat = Math.sin(dLat / 2);
+    const sinLng = Math.sin(dLng / 2);
+    const h =
+      sinLat * sinLat
+      + Math.cos(lat1) * Math.cos(lat2) * sinLng * sinLng;
+    const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+    return 6371 * c;
+  }
+
+  private formatDurationMinutes(totalMinutesRaw: number): string {
+    const totalMinutes = Math.max(0, Math.round(Number(totalMinutesRaw) || 0));
+    if (totalMinutes < 60) {
+      return `${totalMinutes} minute${totalMinutes === 1 ? '' : 's'}`;
+    }
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const hoursLabel = `${hours} hour${hours === 1 ? '' : 's'}`;
+    if (!minutes) return hoursLabel;
+    return `${hoursLabel} ${minutes} minute${minutes === 1 ? '' : 's'}`;
   }
 
   onInfoPanelPointerDown(event: PointerEvent): void {
@@ -663,6 +866,143 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     this.geocodeInFlight.delete(address);
     if (result) this.geocodeCache.set(address, result);
     return result;
+  }
+
+  private async findStreetViewPanorama(
+    position: google.maps.LatLngLiteral,
+  ): Promise<google.maps.StreetViewPanoramaData | null> {
+    const radii = [40, 80, 140, 220];
+    for (const radius of radii) {
+      const data = await this.requestStreetViewPanorama(position, radius);
+      if (data) return data;
+    }
+    return null;
+  }
+
+  private requestStreetViewPanorama(
+    position: google.maps.LatLngLiteral,
+    radius: number,
+  ): Promise<google.maps.StreetViewPanoramaData | null> {
+    if (
+      !this.streetViewService
+      || typeof google === 'undefined'
+      || !google.maps?.StreetViewStatus
+    ) {
+      return Promise.resolve(null);
+    }
+
+    return new Promise((resolve) => {
+      this.streetViewService?.getPanorama(
+        {
+          location: position,
+          radius,
+          source: google.maps.StreetViewSource.OUTDOOR,
+          preference: google.maps.StreetViewPreference.NEAREST,
+        },
+        (data, status) => {
+          if (status !== google.maps.StreetViewStatus.OK || !data?.location) {
+            resolve(null);
+            return;
+          }
+          resolve(data);
+        },
+      );
+    });
+  }
+
+  private toLatLngLiteral(
+    value: google.maps.LatLng | google.maps.LatLngLiteral | null | undefined,
+  ): google.maps.LatLngLiteral | null {
+    if (!value) return null;
+    if (typeof (value as google.maps.LatLng).lat === 'function') {
+      const latLng = value as google.maps.LatLng;
+      return { lat: latLng.lat(), lng: latLng.lng() };
+    }
+
+    const literal = value as google.maps.LatLngLiteral;
+    if (!Number.isFinite(literal.lat) || !Number.isFinite(literal.lng)) {
+      return null;
+    }
+    return { lat: literal.lat, lng: literal.lng };
+  }
+
+  private computeHeading(
+    from: google.maps.LatLngLiteral,
+    to: google.maps.LatLngLiteral,
+  ): number {
+    if (from.lat === to.lat && from.lng === to.lng) return 0;
+
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const toDeg = (rad: number) => (rad * 180) / Math.PI;
+    const lat1 = toRad(from.lat);
+    const lat2 = toRad(to.lat);
+    const dLng = toRad(to.lng - from.lng);
+
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x =
+      Math.cos(lat1) * Math.sin(lat2)
+      - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+    const heading = toDeg(Math.atan2(y, x));
+    return (heading + 360) % 360;
+  }
+
+  private decodeEncodedPolyline(encoded: string): google.maps.LatLngLiteral[] {
+    const path: google.maps.LatLngLiteral[] = [];
+    let index = 0;
+    let lat = 0;
+    let lng = 0;
+
+    while (index < encoded.length) {
+      let shift = 0;
+      let result = 0;
+      let byte = 0;
+
+      do {
+        if (index >= encoded.length) return path;
+        byte = encoded.charCodeAt(index++) - 63;
+        result |= (byte & 0x1f) << shift;
+        shift += 5;
+      } while (byte >= 0x20);
+
+      const dLat = result & 1 ? ~(result >> 1) : result >> 1;
+      lat += dLat;
+
+      shift = 0;
+      result = 0;
+
+      do {
+        if (index >= encoded.length) return path;
+        byte = encoded.charCodeAt(index++) - 63;
+        result |= (byte & 0x1f) << shift;
+        shift += 5;
+      } while (byte >= 0x20);
+
+      const dLng = result & 1 ? ~(result >> 1) : result >> 1;
+      lng += dLng;
+
+      path.push({ lat: lat / 1e5, lng: lng / 1e5 });
+    }
+
+    return path;
+  }
+
+  private getErrorMessage(err: any, fallback: string): string {
+    return String(
+      err?.error?.error || err?.error?.message || err?.message || fallback,
+    ).trim() || fallback;
+  }
+
+  private normalizeRouteErrorMessage(message: string): string {
+    const lower = String(message || '').toLowerCase();
+    if (
+      lower.includes('are blocked')
+      || lower.includes('api not activated')
+      || lower.includes('not authorized to use this service or api')
+      || lower.includes('google maps distance matrix api is not authorized')
+    ) {
+      return 'Unable to draw driving route right now due Google Maps API restrictions.';
+    }
+    return message;
   }
 
   private loadCompanyAddress(): void {

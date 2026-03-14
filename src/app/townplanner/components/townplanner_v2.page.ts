@@ -1,5 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  ViewChild,
+} from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { GoogleMapsModule } from '@angular/google-maps';
 import { Store } from '@ngrx/store';
@@ -61,18 +68,9 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
 
   mapsLoaded = false;
   mapsError: string | null = null;
-  private mapsApiKey: string | null = null;
-
-  private readonly photoFallbackSrc =
-    'data:image/svg+xml;charset=utf-8,' +
-    encodeURIComponent(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360">
-        <rect width="100%" height="100%" fill="#e2e8f0"/>
-        <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#334155" font-family="Arial" font-size="22">
-          No preview available
-        </text>
-      </svg>`
-    );
+  private streetViewService: google.maps.StreetViewService | null = null;
+  private streetViewPanorama: google.maps.StreetViewPanorama | null = null;
+  private streetViewRequestToken = 0;
 
   isMobile = false;
   panelCollapsed = false;
@@ -98,6 +96,11 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   activeIndex = -1;
 
   private sessionToken: string | null = null;
+  @ViewChild('propertyStreetViewRef')
+  propertyStreetViewRef?: ElementRef<HTMLElement>;
+
+  photoLoading = false;
+  photoReady = false;
 
   mapCenter: google.maps.LatLngLiteral = { lat: -27.4698, lng: 153.0251 };
   mapZoom = 11;
@@ -141,13 +144,13 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
     this.updateIsMobile();
 
     this.mapsLoader
-      .getApiKey()
-      .then((k) => (this.mapsApiKey = k))
-      .catch(() => (this.mapsApiKey = null));
-
-    this.mapsLoader
       .load()
-      .then(() => (this.mapsLoaded = true))
+      .then(() => {
+        this.mapsLoaded = true;
+        if (this.markerPosition) {
+          void this.renderPropertyPreview(this.markerPosition);
+        }
+      })
       .catch((e) => {
         this.mapsLoaded = false;
         this.mapsError = e?.message || 'Google Maps failed to load';
@@ -188,6 +191,7 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
       if (!selected) {
         this.markerPosition = null;
         this.clearMapLayers();
+        this.resetPropertyPreview();
         return;
       }
 
@@ -198,8 +202,10 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
         this.markerPosition = { lat, lng };
         this.mapCenter = { lat, lng };
         this.mapZoom = 18;
+        void this.renderPropertyPreview({ lat, lng });
       } else {
         this.markerPosition = null;
+        this.resetPropertyPreview();
       }
 
       const planning: TownPlannerV2PlanningPayload | null =
@@ -878,37 +884,186 @@ export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
     return { ...base, strokeColor: '#94a3b8' };
   }
 
-  streetViewPhotoUrl(selected: any): string {
-    const explicit = (selected as any)?.photoUrl;
-    if (typeof explicit === 'string' && explicit.trim()) return explicit;
-
-    const lat = (selected as any)?.lat;
-    const lng = (selected as any)?.lng;
-
-    if (
-      typeof lat !== 'number' ||
-      typeof lng !== 'number' ||
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lng) ||
-      !this.mapsApiKey
-    ) {
-      return this.photoFallbackSrc;
-    }
-
-    const loc = encodeURIComponent(`${lat},${lng}`);
-    const key = encodeURIComponent(this.mapsApiKey);
-    return `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${loc}&fov=80&pitch=0&key=${key}`;
+  private ensureStreetViewService(): void {
+    if (this.streetViewService) return;
+    if (typeof google === 'undefined' || !google.maps?.StreetViewService) return;
+    this.streetViewService = new google.maps.StreetViewService();
   }
 
-  onPhotoError(ev: Event): void {
-    const img = ev.target as HTMLImageElement | null;
-    if (!img) return;
+  private async waitForPropertyPhotoHost(): Promise<HTMLElement | null> {
+    for (let i = 0; i < 8; i += 1) {
+      const host = this.propertyStreetViewRef?.nativeElement || null;
+      if (host) return host;
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+    return this.propertyStreetViewRef?.nativeElement || null;
+  }
 
-    if (img.src === this.photoFallbackSrc) return;
-    img.src = this.photoFallbackSrc;
+  private resetPropertyPreview(): void {
+    this.photoLoading = false;
+    this.photoReady = false;
+    this.streetViewRequestToken += 1;
+    if (this.streetViewPanorama) {
+      this.streetViewPanorama.setVisible(false);
+    }
+  }
+
+  private async renderPropertyPreview(position: {
+    lat: number;
+    lng: number;
+  }): Promise<void> {
+    if (
+      !Number.isFinite(position.lat)
+      || !Number.isFinite(position.lng)
+      || !this.mapsLoaded
+    ) {
+      this.resetPropertyPreview();
+      return;
+    }
+
+    const destination = {
+      lat: Number(position.lat),
+      lng: Number(position.lng),
+    };
+    const requestToken = ++this.streetViewRequestToken;
+    this.photoLoading = true;
+    this.photoReady = false;
+    if (this.streetViewPanorama) {
+      this.streetViewPanorama.setVisible(false);
+    }
+
+    const host = await this.waitForPropertyPhotoHost();
+    if (requestToken !== this.streetViewRequestToken) return;
+    if (!host) {
+      this.photoLoading = false;
+      return;
+    }
+
+    this.ensureStreetViewService();
+    if (
+      !this.streetViewService
+      || typeof google === 'undefined'
+      || !google.maps?.StreetViewPanorama
+    ) {
+      this.photoLoading = false;
+      return;
+    }
+
+    const panoramaData = await this.findStreetViewPanorama(destination);
+    if (requestToken !== this.streetViewRequestToken) return;
+    if (!panoramaData?.location) {
+      this.photoReady = false;
+      this.photoLoading = false;
+      return;
+    }
+
+    const panoramaPosition =
+      this.toLatLngLiteral(panoramaData.location.latLng) || destination;
+    const heading = this.computeHeading(panoramaPosition, destination);
+
+    this.streetViewPanorama = new google.maps.StreetViewPanorama(host, {
+      position: panoramaPosition,
+      disableDefaultUI: true,
+      clickToGo: false,
+      linksControl: false,
+      panControl: false,
+      motionTracking: false,
+      motionTrackingControl: false,
+      fullscreenControl: false,
+      addressControl: false,
+      showRoadLabels: false,
+      zoomControl: false,
+      pov: { heading, pitch: 2 },
+      zoom: 1,
+    });
+    if (panoramaData.location.pano) {
+      this.streetViewPanorama.setPano(panoramaData.location.pano);
+    }
+    this.streetViewPanorama.setVisible(true);
+    this.photoReady = true;
+    this.photoLoading = false;
+  }
+
+  private async findStreetViewPanorama(
+    position: google.maps.LatLngLiteral,
+  ): Promise<google.maps.StreetViewPanoramaData | null> {
+    const radii = [40, 80, 140, 220];
+    for (const radius of radii) {
+      const data = await this.requestStreetViewPanorama(position, radius);
+      if (data) return data;
+    }
+    return null;
+  }
+
+  private requestStreetViewPanorama(
+    position: google.maps.LatLngLiteral,
+    radius: number,
+  ): Promise<google.maps.StreetViewPanoramaData | null> {
+    if (
+      !this.streetViewService
+      || typeof google === 'undefined'
+      || !google.maps?.StreetViewStatus
+    ) {
+      return Promise.resolve(null);
+    }
+
+    return new Promise((resolve) => {
+      this.streetViewService?.getPanorama(
+        {
+          location: position,
+          radius,
+          source: google.maps.StreetViewSource.OUTDOOR,
+          preference: google.maps.StreetViewPreference.NEAREST,
+        },
+        (data, status) => {
+          if (status !== google.maps.StreetViewStatus.OK || !data?.location) {
+            resolve(null);
+            return;
+          }
+          resolve(data);
+        },
+      );
+    });
+  }
+
+  private toLatLngLiteral(
+    value: google.maps.LatLng | google.maps.LatLngLiteral | null | undefined,
+  ): google.maps.LatLngLiteral | null {
+    if (!value) return null;
+    if (typeof (value as google.maps.LatLng).lat === 'function') {
+      const latLng = value as google.maps.LatLng;
+      return { lat: latLng.lat(), lng: latLng.lng() };
+    }
+
+    const literal = value as google.maps.LatLngLiteral;
+    if (!Number.isFinite(literal.lat) || !Number.isFinite(literal.lng)) {
+      return null;
+    }
+    return { lat: literal.lat, lng: literal.lng };
+  }
+
+  private computeHeading(
+    from: google.maps.LatLngLiteral,
+    to: google.maps.LatLngLiteral,
+  ): number {
+    if (from.lat === to.lat && from.lng === to.lng) return 0;
+
+    const toRad = (deg: number) => (deg * Math.PI) / 180;
+    const toDeg = (rad: number) => (rad * 180) / Math.PI;
+    const lat1 = toRad(from.lat);
+    const lat2 = toRad(to.lat);
+    const dLng = toRad(to.lng - from.lng);
+
+    const y = Math.sin(dLng) * Math.cos(lat2);
+    const x =
+      Math.cos(lat1) * Math.sin(lat2)
+      - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+    const heading = toDeg(Math.atan2(y, x));
+    return (heading + 360) % 360;
   }
 
   ngOnDestroy(): void {
+    this.resetPropertyPreview();
     this.destroy$.next();
     this.destroy$.complete();
   }

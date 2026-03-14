@@ -11,6 +11,7 @@ import type {
   BmProjectMaterial,
   BmProjectSurcharge,
   BmProjectSurchargeTransportation,
+  BmProjectSurchargeTransportationRoute,
   ListProjectsResponse,
   PagedResult,
 } from '../types/projects.interface';
@@ -182,6 +183,14 @@ export class ManagerProjectsService {
     return this.http.get<{ transportation: BmProjectSurchargeTransportation }>(
       `${this.projectsBase}/${projectId}/surcharges/transportation-time`,
     );
+  }
+
+  getProjectSurchargeTransportationRoute(
+    projectId: string,
+  ): Observable<{ transportationRoute: BmProjectSurchargeTransportationRoute }> {
+    return this.http.get<{
+      transportationRoute: BmProjectSurchargeTransportationRoute;
+    }>(`${this.projectsBase}/${projectId}/surcharges/transportation-route`);
   }
 
   getProjectLaborExtras(

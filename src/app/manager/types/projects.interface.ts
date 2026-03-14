@@ -95,6 +95,15 @@ export interface BmProjectSurchargeTransportation {
   formattedTime: string;
 }
 
+export interface BmProjectSurchargeTransportationRoute {
+  companyAddress: string;
+  clientAddress: string;
+  durationMinutes: number;
+  formattedTime: string;
+  distanceMeters?: number | null;
+  encodedPolyline: string;
+}
+
 export interface ListProjectsResponse {
   projects: BmProject[];
   page: number;

@@ -23,11 +23,11 @@
           [title]="'Company'"
         ></map-marker>
 
-        <map-directions-renderer
-          *ngIf="routeDirections"
-          [directions]="routeDirections"
-          [options]="directionsRendererOptions"
-        ></map-directions-renderer>
+        <map-polyline
+          *ngIf="routePath.length > 1"
+          [path]="routePath"
+          [options]="routePolylineOptions"
+        ></map-polyline>
       </google-map>
     </ng-container>
 
@@ -52,12 +52,17 @@
       </div>
 
       <div class="map-info">
-        <img
-          class="map-info-photo"
-          [src]="streetViewPhotoUrl(activeProject)"
-          alt="Property photo preview"
-          loading="lazy"
-        />
+        <div class="map-info-photo" #streetViewPreviewRef>
+          <div class="map-info-photo-fallback" *ngIf="streetViewLoading">
+            Loading preview...
+          </div>
+          <div
+            class="map-info-photo-fallback"
+            *ngIf="!streetViewLoading && !streetViewReady"
+          >
+            No preview available
+          </div>
+        </div>
         <div class="map-info-title">{{ activeProject.projectName }}</div>
         <div class="map-info-row">
           <span>Client</span>
