@@ -10,7 +10,13 @@
     <div class="users-toolbar">
       <div class="title">
         <h3>Users</h3>
-        <p class="sub">Manage staff users in your company.</p>
+        <p class="sub">
+          {{
+            isSuperAdmin
+              ? 'Manage staff users across companies.'
+              : 'Manage staff users in your company.'
+          }}
+        </p>
       </div>
 
       <div class="actions">
@@ -55,10 +61,11 @@
       </label>
     </div>
 
-    <div class="table-head" aria-hidden="true">
+    <div class="table-head" [class.superadmin-cols]="isSuperAdmin" aria-hidden="true">
       <div>Name</div>
       <div>Username</div>
       <div>Email</div>
+      <div *ngIf="isSuperAdmin">Company</div>
       <div>Type</div>
       <div>Status</div>
       <div class="actions-col">Actions</div>
@@ -138,6 +145,24 @@
 
       <section class="card">
         <form class="form" [formGroup]="userForm" autocomplete="off">
+          <label class="company-picker" *ngIf="isSuperAdmin">
+            <span>Company *</span>
+            <app-manager-select
+              formControlName="companyId"
+              [options]="companyOptions"
+              placeholder="Select company"
+            ></app-manager-select>
+            <small
+              class="error-text"
+              *ngIf="
+                userForm.controls.companyId.invalid &&
+                userForm.controls.companyId.touched
+              "
+            >
+              Company is required.
+            </small>
+          </label>
+
           <div class="avatar-grid">
             <div class="avatar-stack">
               <img
@@ -334,6 +359,24 @@
 
       <section class="card">
         <form class="form" [formGroup]="userForm" autocomplete="off">
+          <label class="company-picker" *ngIf="isSuperAdmin">
+            <span>Company *</span>
+            <app-manager-select
+              formControlName="companyId"
+              [options]="companyOptions"
+              placeholder="Select company"
+            ></app-manager-select>
+            <small
+              class="error-text"
+              *ngIf="
+                userForm.controls.companyId.invalid &&
+                userForm.controls.companyId.touched
+              "
+            >
+              Company is required.
+            </small>
+          </label>
+
           <div class="avatar-grid">
             <div class="avatar-stack">
               <img
@@ -493,19 +536,27 @@
       <ng-container *ngIf="filteredUsers$ | async as users">
         <!-- Desktop table -->
         <div class="table" *ngIf="users.length">
-          <div class="thead">
+          <div class="thead" [class.superadmin-cols]="isSuperAdmin">
             <div>Name</div>
             <div>Username</div>
             <div>Email</div>
+            <div *ngIf="isSuperAdmin">Company</div>
             <div>Type</div>
             <div>Status</div>
             <div class="actions-col">Actions</div>
           </div>
 
-          <div class="trow" *ngFor="let u of users; trackBy: trackByUser">
+          <div
+            class="trow"
+            [class.superadmin-cols]="isSuperAdmin"
+            *ngFor="let u of users; trackBy: trackByUser"
+          >
             <div class="cell strong">{{ u.name || '—' }}</div>
             <div class="cell muted">{{ u.username }}</div>
             <div class="cell muted">{{ u.email || '—' }}</div>
+            <div class="cell muted" *ngIf="isSuperAdmin">
+              {{ u.companyName || '—' }}
+            </div>
             <div class="cell muted">{{ u.type || '—' }}</div>
             <div class="cell">
               <span class="badge" [class.archived]="u.status === 'archived'">
@@ -561,6 +612,9 @@
             <div class="meta">
               <div><span>Username:</span> {{ u.username }}</div>
               <div><span>Email:</span> {{ u.email || '—' }}</div>
+              <div *ngIf="isSuperAdmin">
+                <span>Company:</span> {{ u.companyName || '—' }}
+              </div>
               <div><span>Type:</span> {{ u.type || '—' }}</div>
               <div><span>Mobile:</span> {{ u.cel || '—' }}</div>
             </div>

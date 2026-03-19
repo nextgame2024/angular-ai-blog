@@ -35,7 +35,13 @@ import {
 import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
 import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
 import { AvatarUploadService } from '../../../settings/components/settings/services/avatar-upload.service';
-import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
+import {
+  ManagerSelectComponent,
+  type ManagerSelectOption,
+} from '../shared/manager-select/manager-select.component';
+import { selectCurrentUser } from '../../../auth/store/reducers';
+import type { CurrentUserInterface } from '../../../shared/types/currentUser.interface';
+import { ManagerCompanyService } from '../../services/manager.company.service';
 
 import type { BmUser } from '../../services/manager.service';
 
@@ -48,6 +54,7 @@ import type { BmUser } from '../../services/manager.service';
 })
 export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  private readonly superAdminId = 'c2dad143-077c-4082-92f0-47805601db3b';
 
   loading$ = this.store.select(selectManagerUsersLoading);
   error$ = this.store.select(selectManagerUsersError);
@@ -69,6 +76,9 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   private isLoading = false;
   private closeAfterSave = false;
   dismissedErrors = new Set<string>();
+  currentUser: CurrentUserInterface | null = null;
+  isSuperAdmin = false;
+  companyOptions: ManagerSelectOption[] = [];
 
   @ViewChild('usersList') usersListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
@@ -98,6 +108,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   uploadError: string | null = null;
 
   userForm = this.fb.group({
+    companyId: [''],
     username: ['', [Validators.required, Validators.maxLength(80)]],
     email: [
       '',
@@ -119,6 +130,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private townPlanner: TownPlannerV2Service,
     private avatarUpload: AvatarUploadService,
+    private companyApi: ManagerCompanyService,
     private actions$: Actions,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
@@ -135,6 +147,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
             u.username?.toLowerCase().includes(q) ||
             u.name?.toLowerCase().includes(q) ||
             u.email?.toLowerCase().includes(q) ||
+            u.companyName?.toLowerCase().includes(q) ||
             u.type?.toLowerCase().includes(q) ||
             u.status?.toLowerCase().includes(q)
           );
@@ -177,6 +190,19 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.store.dispatch(ManagerActions.loadUsers({ page: 1 }));
 
+    this.store
+      .select(selectCurrentUser)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((user) => {
+        const wasSuperAdmin = this.isSuperAdmin;
+        this.currentUser = user ?? null;
+        this.isSuperAdmin = user?.id === this.superAdminId;
+        this.syncCompanyControlRules();
+        if (this.isSuperAdmin && !wasSuperAdmin) {
+          this.loadCompaniesForSuperAdmin();
+        }
+      });
+
     this.searchQuery$.pipe(takeUntil(this.destroy$)).subscribe((query) => {
       if (this.searchCtrl.value !== (query || '')) {
         this.searchCtrl.setValue(query || '', { emitEvent: false });
@@ -215,6 +241,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         address: u.address ?? '',
         cel: u.cel ?? '',
         tel: u.tel ?? '',
+        companyId: u.companyId ?? '',
         type: u.type ?? 'employee',
         status: u.status ?? 'active',
         image: u.image ?? '',
@@ -250,7 +277,11 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
 
   openCreate(): void {
     this.resetAvatarState();
+    const defaultCompanyId = this.isSuperAdmin
+      ? (this.companyOptions[0]?.value ?? '')
+      : '';
     this.userForm.reset({
+      companyId: defaultCompanyId,
       username: '',
       email: '',
       password: '',
@@ -272,6 +303,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     this.userForm.controls.password.updateValueAndValidity({
       emitEvent: false,
     });
+    this.syncCompanyControlRules();
 
     this.store.dispatch(ManagerActions.openUserCreate());
   }
@@ -294,9 +326,17 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
 
     if (!payload.password) delete payload.password;
 
-    // Never send company_id from UI
-    delete payload.company_id;
-    delete payload.companyId;
+    if (this.isSuperAdmin) {
+      payload.companyId = String(payload.companyId || '').trim();
+      if (!payload.companyId) {
+        this.userForm.controls.companyId.markAsTouched();
+        return;
+      }
+    } else {
+      // Non-super admins are always scoped to their own company by backend.
+      delete payload.company_id;
+      delete payload.companyId;
+    }
 
     this.store.dispatch(ManagerActions.saveUser({ payload }));
   }
@@ -515,5 +555,40 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     const cryptoObj = globalThis.crypto as Crypto | undefined;
     if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
     return Math.random().toString(36).slice(2);
+  }
+
+  private syncCompanyControlRules(): void {
+    const ctrl = this.userForm.controls.companyId;
+    if (this.isSuperAdmin) {
+      ctrl.setValidators([Validators.required]);
+    } else {
+      ctrl.clearValidators();
+      ctrl.setValue('', { emitEvent: false });
+    }
+    ctrl.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private loadCompaniesForSuperAdmin(): void {
+    this.companyApi
+      .listCompanies({ page: 1, limit: 100 })
+      .pipe(take(1))
+      .subscribe({
+        next: ({ items }) => {
+          this.companyOptions = (items || []).map((company) => ({
+            value: company.companyId,
+            label: company.companyName || company.companyId,
+          }));
+          if (
+            this.isSuperAdmin &&
+            !this.userForm.controls.companyId.value &&
+            this.companyOptions.length
+          ) {
+            this.userForm.controls.companyId.setValue(this.companyOptions[0].value);
+          }
+        },
+        error: () => {
+          this.companyOptions = [];
+        },
+      });
   }
 }

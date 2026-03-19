@@ -374,6 +374,10 @@
   font-size: 0.9rem;
 }
 
+.company-picker {
+  max-width: 420px;
+}
+
 .form input,
 .form textarea,
 .form select {
@@ -585,6 +589,11 @@
   align-items: center;
 }
 
+.thead.superadmin-cols,
+.trow.superadmin-cols {
+  grid-template-columns: 1.05fr 1.15fr 1.45fr 1.2fr 0.8fr 0.75fr 1.2fr;
+}
+
 .thead {
   padding: 0.7rem 0.75rem;
   font-weight: 800;
@@ -669,6 +678,10 @@
     grid-template-columns: 1.1fr 1.3fr 1.7fr 0.9fr 0.8fr 1.2fr;
     gap: 0.5rem;
     align-items: center;
+  }
+
+  .table-head.superadmin-cols {
+    grid-template-columns: 1.05fr 1.15fr 1.45fr 1.2fr 0.8fr 0.75fr 1.2fr;
   }
 
   .table {

@@ -76,6 +76,7 @@ export interface BmUser {
 
   // IMPORTANT: company_id exists in DB but NOT used in UI
   companyId?: string | null;
+  companyName?: string | null;
 }
 
 export interface ListUsersResponse {
@@ -215,10 +216,10 @@ export class ManagerService {
   }
 
   createUser(payload: any): Observable<BmUser> {
-    // company_id must NOT be sent; backend assigns/filters
+    // Keep camelCase companyId when super admin assigns a user to a company.
     const safe = { ...payload };
     delete safe.company_id;
-    delete safe.companyId;
+    if (!safe.companyId) delete safe.companyId;
     return this.http.post<{ user: BmUser }>(this.usersBase, { user: safe }).pipe(
       map((res) => res.user),
     );
@@ -227,7 +228,7 @@ export class ManagerService {
   updateUser(userId: string, payload: any): Observable<BmUser> {
     const safe = { ...payload };
     delete safe.company_id;
-    delete safe.companyId;
+    if (!safe.companyId) delete safe.companyId;
     const target = userId ? `${this.usersBase}/${userId}` : this.userBase;
     return this.http.put<{ user: BmUser }>(target, { user: safe }).pipe(
       map((res) => res.user),
