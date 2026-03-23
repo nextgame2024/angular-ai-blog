@@ -27,6 +27,19 @@ import {
 
 @Injectable()
 export class TownPlannerV2Effects {
+  private withPdfCacheBuster(pdfUrl: string): string {
+    const raw = String(pdfUrl || '').trim();
+    if (!raw) return raw;
+    try {
+      const u = new URL(raw);
+      u.searchParams.set('openTs', String(Date.now()));
+      return u.toString();
+    } catch {
+      const sep = raw.includes('?') ? '&' : '?';
+      return `${raw}${sep}openTs=${Date.now()}`;
+    }
+  }
+
   private isSelectionValid(selected: any): boolean {
     const lat = (selected as any)?.lat;
     const lng = (selected as any)?.lng;
@@ -376,7 +389,7 @@ export class TownPlannerV2Effects {
         ofType(TownPlannerV2Actions.generateReportReady),
         tap(({ pdfUrl }) => {
           // best effort: open in a new tab
-          window.open(pdfUrl, '_blank', 'noopener');
+          window.open(this.withPdfCacheBuster(pdfUrl), '_blank', 'noopener');
         })
       ),
     { dispatch: false }

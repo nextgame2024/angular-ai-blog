@@ -15,6 +15,7 @@ import { ManagerUsersPageComponent } from './components/users/manager-users.page
 import { ManagerProjectsPageComponent } from './components/projects/manager-projects.page';
 import { ManagerProjectTypesPageComponent } from './components/projectTypes/manager-project-types.page';
 import { ManagerCompanyPageComponent } from './components/company/manager-company.page';
+import { ManagerNavigationLinksPageComponent } from './components/navigationLinks/manager-navigation-links.page';
 import { ManagerMaterialsService } from './services/manager.materials.service';
 import { ManagerLaborService } from './services/manager.labor.service';
 import { ManagerPricingService } from './services/manager.pricing.service';
@@ -23,6 +24,7 @@ import { ManagerProjectsService } from './services/manager.projects.service';
 import { ManagerProjectTypesService } from './services/manager.project.types.service';
 import { ManagerSuppliersService } from './services/manager.suppliers.service';
 import { ManagerCompanyService } from './services/manager.company.service';
+import { NavigationLinksProjectsService } from './services/navigation.links.projects.service';
 import { ManagerService } from './services/manager.service';
 import { ManagerMaterialsEffects } from './store/materials/manager.effects';
 import {
@@ -59,6 +61,11 @@ import {
   MANAGER_COMPANY_FEATURE_KEY,
   managerCompanyReducer,
 } from './store/company/manager.reducer';
+import { ManagerNavigationLinksEffects } from './store/navigationLinks/manager.effects';
+import {
+  MANAGER_NAVIGATION_LINKS_FEATURE_KEY,
+  managerNavigationLinksReducer,
+} from './store/navigationLinks/manager.reducer';
 import { ManagerEffects } from './store/manager.effects';
 import { MANAGER_FEATURE_KEY, managerReducer } from './store/manager.reducer';
 
@@ -133,6 +140,20 @@ export const MANAGER_ROUTES: Route[] = [
           provideState(MANAGER_COMPANY_FEATURE_KEY, managerCompanyReducer),
         ],
         data: { title: 'Company', fullscreen: true },
+      },
+      {
+        path: 'navigation-links',
+        component: ManagerNavigationLinksPageComponent,
+        providers: [
+          NavigationLinksProjectsService,
+          ManagerCompanyService,
+          provideEffects(ManagerNavigationLinksEffects),
+          provideState(
+            MANAGER_NAVIGATION_LINKS_FEATURE_KEY,
+            managerNavigationLinksReducer,
+          ),
+        ],
+        data: { title: 'Navigation links', fullscreen: true },
       },
       {
         path: 'suppliers',

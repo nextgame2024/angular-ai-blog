@@ -153,7 +153,7 @@
       <!-- Hide the menu when fullscreen -->
       <nav class="menu" *ngIf="!panelFullscreen">
         <a
-          *ngFor="let item of menu"
+          *ngFor="let item of visibleMenu"
           [routerLink]="item.route"
           routerLinkActive="active"
           class="menu-item"
@@ -191,6 +191,14 @@
                 <path d="M7 16h4"></path>
                 <path d="M16.5 12h2.5"></path>
                 <path d="M16.5 16h2.5"></path>
+              </svg>
+              <svg *ngSwitchCase="'navigation-links'" viewBox="0 0 24 24">
+                <path d="M4 7h9"></path>
+                <path d="M4 12h9"></path>
+                <path d="M4 17h9"></path>
+                <rect x="14" y="5" width="6" height="4" rx="1"></rect>
+                <rect x="14" y="10" width="6" height="4" rx="1"></rect>
+                <rect x="14" y="15" width="6" height="4" rx="1"></rect>
               </svg>
               <svg *ngSwitchCase="'suppliers'" viewBox="0 0 24 24">
                 <rect x="3" y="7" width="11" height="8" rx="1.5"></rect>

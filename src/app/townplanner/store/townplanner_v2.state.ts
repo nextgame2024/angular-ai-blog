@@ -20,6 +20,15 @@ export type TownPlannerV2OverlayGeometry = {
   polygon?: GeoJsonGeometry | null;
 };
 
+export type TownPlannerV2StateMappingConsideration = {
+  code?: string | null;
+  sectionTitle?: string | null;
+  subsectionTitle?: string | null;
+  name?: string | null;
+  detail?: string | null;
+  source?: string | null;
+};
+
 export type TownPlannerV2PlanningPayload = {
   zoning?: string | null;
   zoningName?: string | null;
@@ -40,6 +49,8 @@ export type TownPlannerV2PlanningPayload = {
 
   overlayPolygons?: TownPlannerV2OverlayGeometry[] | null;
   overlayPolylines?: TownPlannerV2OverlayGeometry[] | null;
+  stateMappingPolygons?: TownPlannerV2OverlayGeometry[] | null;
+  stateMappingConsiderations?: TownPlannerV2StateMappingConsideration[] | null;
 
   // Human readable overlay list
   overlays?: TownPlannerV2OverlayMeta[] | null;

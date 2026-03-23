@@ -8,24 +8,7 @@
         visible: !!data.currentUser  //#10e0c7 #6e59ff
       }, -->
       <p-menubar
-        [model]="[
-          { label: 'Home', routerLink: '/' },
-          {
-            label: 'Settings',
-            routerLink: '/settings',
-            visible: !!data.currentUser
-          },
-          {
-            label: 'Town planner v2',
-            routerLink: '/townplanner',
-            visible: !!data.currentUser
-          },
-          {
-            label: 'Business manager',
-            routerLink: '/manager',
-            visible: !!data.currentUser
-          }
-        ]"
+        [model]="(menuItems$ | async) || []"
         styleClass="menubar-plain"
       >
         <!-- Brand -->

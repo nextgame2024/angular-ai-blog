@@ -19,8 +19,11 @@ import { Store } from '@ngrx/store';
 import { Subject, filter, firstValueFrom } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
+import { selectCurrentUser } from '../../auth/store/reducers';
+import type { CurrentUserInterface } from '../../shared/types/currentUser.interface';
 import { GoogleMapsLoaderService } from '../../townplanner/services/google-maps-loader.service';
 import { ManagerCompanyService } from '../services/manager.company.service';
+import { NavigationLinksProjectsService } from '../services/navigation.links.projects.service';
 import { ManagerProjectsService } from '../services/manager.projects.service';
 import { ManagerActions } from '../store/manager.actions';
 import { selectManagerSearchQuery } from '../store/manager.selectors';
@@ -34,7 +37,12 @@ import {
 } from '../store/projects/manager.selectors';
 import type { BmProject } from '../types/projects.interface';
 
-type MenuItem = { label: string; route: string; icon: string };
+type MenuItem = {
+  label: string;
+  route: string;
+  icon: string;
+  superAdminOnly?: boolean;
+};
 
 @Component({
   selector: 'app-manager-page',
@@ -61,7 +69,12 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   private streetViewService: google.maps.StreetViewService | null = null;
   private streetViewPanorama: google.maps.StreetViewPanorama | null = null;
   private streetViewRequestToken = 0;
+  private readonly superAdminId = 'c2dad143-077c-4082-92f0-47805601db3b';
   private companyAddress: string | null = null;
+  private activeMenuLabels = new Set<string>();
+  private menuConfigLoaded = false;
+  currentUser: CurrentUserInterface | null = null;
+  isSuperAdmin = false;
   isDraggingInfoPanel = false;
   private infoPanelDragOffset = { x: 0, y: 0 };
 
@@ -94,6 +107,12 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     },
     { label: 'Users', route: '/manager/users', icon: 'users' },
     { label: 'Company', route: '/manager/company', icon: 'company' },
+    {
+      label: 'Navigation links',
+      route: '/manager/navigation-links',
+      icon: 'navigation-links',
+      superAdminOnly: true,
+    },
     { label: 'Suppliers', route: '/manager/suppliers', icon: 'suppliers' },
     { label: 'Materials', route: '/manager/materials', icon: 'materials' },
     { label: 'Labor costs', route: '/manager/labor', icon: 'labor' },
@@ -155,6 +174,7 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     private store: Store,
     private mapsLoader: GoogleMapsLoaderService,
     private companyService: ManagerCompanyService,
+    private navigationLinksApi: NavigationLinksProjectsService,
     private projectsService: ManagerProjectsService,
     private router: Router,
     private route: ActivatedRoute,
@@ -164,6 +184,14 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     this.updateIsMobile();
 
     this.loadCompanyAddress();
+    this.store
+      .select(selectCurrentUser)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((user) => {
+        this.currentUser = user ?? null;
+        this.isSuperAdmin = user?.id === this.superAdminId;
+        void this.loadActiveMenuLinks();
+      });
 
     this.mapsLoader
       .load()
@@ -253,6 +281,22 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     this.syncRouteUIState();
   }
 
+  get visibleMenu(): MenuItem[] {
+    if (!this.currentUser) return [];
+
+    const baseItems = this.menu.filter(
+      (item) => !item.superAdminOnly || this.isSuperAdmin,
+    );
+
+    if (!this.menuConfigLoaded) {
+      return baseItems.filter((item) => item.superAdminOnly);
+    }
+
+    return baseItems.filter(
+      (item) => item.superAdminOnly || this.activeMenuLabels.has(item.label),
+    );
+  }
+
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
@@ -286,6 +330,33 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
 
   goBackToMenu(): void {
     this.router.navigateByUrl('/manager/menu');
+  }
+
+  private async loadActiveMenuLinks(): Promise<void> {
+    if (!this.currentUser) {
+      this.menuConfigLoaded = false;
+      this.activeMenuLabels.clear();
+      return;
+    }
+
+    try {
+      const links = await firstValueFrom(
+        this.navigationLinksApi.listActiveNavigationLinks({
+          navigationType: 'menu',
+        }),
+      );
+
+      this.activeMenuLabels.clear();
+      for (const label of (links || [])
+        .map((link) => link.navigationLabel)
+        .filter((label): label is string => !!label)) {
+        this.activeMenuLabels.add(label);
+      }
+    } catch {
+      this.activeMenuLabels.clear();
+    } finally {
+      this.menuConfigLoaded = true;
+    }
   }
 
   trackByProjectMarker = (_: number, marker: { project: BmProject }) =>
