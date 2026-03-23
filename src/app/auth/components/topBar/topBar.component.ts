@@ -37,7 +37,7 @@ export class TopBarComponent {
   menuItems$ = this.store.select(selectCurrentUser).pipe(
     switchMap((currentUser) => {
       const isSuperAdmin = currentUser?.id === this.superAdminId;
-      const baseItems = this.buildHeaderItems(!!currentUser, isSuperAdmin);
+      const baseItems = this.buildHeaderItems(!!currentUser);
 
       if (!currentUser) return of(baseItems);
 
@@ -51,19 +51,11 @@ export class TopBarComponent {
                 .filter((label): label is string => !!label),
             );
 
-            return baseItems.filter((item) => {
-              if (!item.label) return true;
-              if (isSuperAdmin && item.label === 'Navigation links') return true;
-              return allowedLabels.has(item.label);
-            });
+            return baseItems.filter((item) =>
+              item.label ? allowedLabels.has(item.label) : true,
+            );
           }),
-          catchError(() =>
-            of(
-              baseItems.filter(
-                (item) => isSuperAdmin && item.label === 'Navigation links',
-              ),
-            ),
-          ),
+          catchError(() => of([])),
         );
     }),
   );
@@ -94,8 +86,8 @@ export class TopBarComponent {
     img.src = 'assets/sophiaAi-logo.svg';
   }
 
-  private buildHeaderItems(isLoggedIn: boolean, isSuperAdmin: boolean): MenuItem[] {
-    const items: MenuItem[] = [
+  private buildHeaderItems(isLoggedIn: boolean): MenuItem[] {
+    return [
       { label: 'Home', routerLink: '/' },
       { label: 'Town planner', routerLink: '/townplanner', visible: isLoggedIn },
       {
@@ -105,15 +97,5 @@ export class TopBarComponent {
       },
       { label: 'Settings', routerLink: '/settings', visible: isLoggedIn },
     ];
-
-    if (isSuperAdmin) {
-      items.splice(3, 0, {
-        label: 'Navigation links',
-        routerLink: '/manager/navigation-links',
-        visible: true,
-      });
-    }
-
-    return items;
   }
 }

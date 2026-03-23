@@ -46,7 +46,6 @@ export const HEADER_NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = [
   { value: 'Home', label: 'Home' },
   { value: 'Town planner', label: 'Town planner' },
   { value: 'Business manager', label: 'Business manager' },
-  { value: 'Navigation links', label: 'Navigation links' },
   { value: 'Settings', label: 'Settings' },
 ];
 
