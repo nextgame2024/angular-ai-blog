@@ -528,14 +528,25 @@
               </label>
             </div>
 
-            <label>
-              <span>Description</span>
-              <textarea
-                formControlName="description"
-                rows="3"
-                placeholder="Project description"
-              ></textarea>
-            </label>
+            <div class="grid-2">
+              <label>
+                <span>Description</span>
+                <textarea
+                  formControlName="description"
+                  rows="5"
+                  placeholder="Project description"
+                ></textarea>
+              </label>
+
+              <label>
+                <span>Scope and Conditions</span>
+                <textarea
+                  formControlName="scope_and_conditions"
+                  rows="5"
+                  placeholder="Scope and conditions"
+                ></textarea>
+              </label>
+            </div>
           </form>
 
           <div class="card-actions right-actions">
@@ -1368,9 +1379,10 @@
               <ng-container
                 *ngIf="!transportationEstimateLoading && transportationEstimate as estimate"
               >
-                Transportation time between the company "{{ estimate.companyAddress
-                }}" and the client "{{ estimate.clientAddress }}" is calculated
-                as "{{ estimate.formattedTime }}".
+                Transportation time between the company "{{
+                estimate.companyAddress }}" and the client "{{
+                estimate.clientAddress }}" is calculated as "{{
+                estimate.formattedTime }}".
               </ng-container>
               <ng-container
                 *ngIf="!transportationEstimateLoading && !transportationEstimate && transportationEstimateError"
@@ -1468,7 +1480,11 @@
               </div>
             </div>
 
-            <div class="table-head surcharges-head" *ngIf="surcharges.length" aria-hidden="true">
+            <div
+              class="table-head surcharges-head"
+              *ngIf="surcharges.length"
+              aria-hidden="true"
+            >
               <div>Type</div>
               <div>Name</div>
               <div>Cost</div>
@@ -1491,7 +1507,9 @@
                   {{ formatSurchargeTypeLabel(surcharge.type) }}
                 </div>
                 <div class="cell strong">{{ surcharge.name }}</div>
-                <div class="cell muted">{{ surcharge.cost | number: '1.2-2' }}</div>
+                <div class="cell muted">
+                  {{ surcharge.cost | number: '1.2-2' }}
+                </div>
                 <div class="cell actions-col">
                   <button
                     class="btn small danger"
@@ -1507,11 +1525,8 @@
                         <path d="M9 4h6l1 2H8l1-2Z"></path>
                       </svg>
                     </span>
-                    {{
-                      surchargeDeletingId === surcharge.surchargeId
-                        ? 'Loading...'
-                        : 'Delete'
-                    }}
+                    {{ surchargeDeletingId === surcharge.surchargeId ?
+                    'Loading...' : 'Delete' }}
                   </button>
                 </div>
               </div>
@@ -1549,11 +1564,8 @@
                         <path d="M9 4h6l1 2H8l1-2Z"></path>
                       </svg>
                     </span>
-                    {{
-                      surchargeDeletingId === surcharge.surchargeId
-                        ? 'Loading...'
-                        : 'Delete'
-                    }}
+                    {{ surchargeDeletingId === surcharge.surchargeId ?
+                    'Loading...' : 'Delete' }}
                   </button>
                 </div>
               </article>
@@ -1744,7 +1756,8 @@
                 <span>Surcharges $</span>
               </div>
               <strong
-                >{{ ((surchargesTotal$ | async) || 0) | number: '1.2-2' }}</strong
+                >{{ ((surchargesTotal$ | async) || 0) | number: '1.2-2'
+                }}</strong
               >
             </div>
           </div>
@@ -1976,14 +1989,25 @@
             </label>
           </div>
 
-          <label>
-            <span>Description</span>
-            <textarea
-              formControlName="description"
-              rows="3"
-              placeholder="Project description"
-            ></textarea>
-          </label>
+          <div class="grid-2">
+            <label>
+              <span>Description</span>
+              <textarea
+                formControlName="description"
+                rows="5"
+                placeholder="Project description"
+              ></textarea>
+            </label>
+
+            <label>
+              <span>Scope and Conditions</span>
+              <textarea
+                formControlName="scope_and_conditions"
+                rows="5"
+                placeholder="Scope and conditions"
+              ></textarea>
+            </label>
+          </div>
         </form>
 
         <div class="card-actions right-actions">

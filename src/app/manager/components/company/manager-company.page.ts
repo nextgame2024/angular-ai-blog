@@ -102,8 +102,12 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     address: [''],
     email: ['', [Validators.email]],
     phone: [''],
-    tel: [''],
+    website: [''],
     cel: [''],
+    bank: [''],
+    account_name: [''],
+    bsb_number: [''],
+    account_number: [''],
     status: ['active', [Validators.required]],
     logo_url: [''],
   });
@@ -194,6 +198,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
       .subscribe((user) => {
         this.currentUser = user ?? null;
         this.isSuperAdmin = user?.id === this.superAdminId;
+        this.syncStatusControl();
         if (this.isSuperAdmin) {
           this.store.dispatch(ManagerCompanyActions.closeCompanyForm());
           this.store.dispatch(ManagerCompanyActions.loadCompanies({ page: 1 }));
@@ -240,8 +245,12 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
         address: c.address ?? '',
         email: c.email ?? '',
         phone: c.phone ?? '',
-        tel: c.tel ?? '',
+        website: c.website ?? '',
         cel: c.cel ?? '',
+        bank: c.bank ?? '',
+        account_name: c.accountName ?? '',
+        bsb_number: c.bsbNumber ?? '',
+        account_number: c.accountNumber ?? '',
         status: c.status ?? 'active',
         logo_url: c.logoUrl ?? '',
       });
@@ -295,8 +304,12 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
       address: '',
       email: '',
       phone: '',
-      tel: '',
+      website: '',
       cel: '',
+      bank: '',
+      account_name: '',
+      bsb_number: '',
+      account_number: '',
       status: 'active',
       logo_url: '',
     });
@@ -327,6 +340,9 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     delete payload.companyId;
     delete payload.owner_user_id;
     delete payload.ownerUserId;
+    if (!this.isSuperAdmin) {
+      delete payload.status;
+    }
 
     this.store.dispatch(ManagerCompanyActions.saveCompany({ payload }));
   }
@@ -546,6 +562,18 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     );
 
     this.infiniteObserver.observe(sentinel);
+  }
+
+  private syncStatusControl(): void {
+    const statusControl = this.companyForm.get('status');
+    if (!statusControl) return;
+
+    if (this.isSuperAdmin) {
+      statusControl.enable({ emitEvent: false });
+      return;
+    }
+
+    statusControl.disable({ emitEvent: false });
   }
 
   private tryLoadMore(): void {

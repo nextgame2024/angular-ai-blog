@@ -596,6 +596,7 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
       project.clientAddress,
       project.projectTypeName,
       project.description,
+      project.scopeAndConditions,
     ]
       .filter(Boolean)
       .join(' ')

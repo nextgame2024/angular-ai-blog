@@ -82,6 +82,12 @@ import { environment } from '../../../../environments/environment';
 import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
 import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
 
+const DEFAULT_SCOPE_AND_CONDITIONS = `Design Specification
+Metallic epoxy design as approved via email, including agreed colour palette, description, and reference photos on previous quote. (sample board to be presented by photos before installation).
+
+Terms
+By accepting this invoice, the client confirms approval of the pre-installation guidelines, quotation, and Sunshine Resin's terms and conditions.`;
+
 @Component({
   selector: 'app-manager-projects-page',
   standalone: true,
@@ -283,6 +289,9 @@ export class ManagerProjectsPageComponent
       validators: [Validators.required, Validators.min(0)],
     }),
     description: new FormControl<string>('', { nonNullable: true }),
+    scope_and_conditions: new FormControl<string>(DEFAULT_SCOPE_AND_CONDITIONS, {
+      nonNullable: true,
+    }),
     status: new FormControl<string>('to_do', { nonNullable: true }),
     cost_in_quote: new FormControl<boolean>(false, { nonNullable: true }),
     default_pricing: new FormControl<boolean>(false, { nonNullable: true }),
@@ -744,10 +753,12 @@ export class ManagerProjectsPageComponent
             project_name: project.projectName,
             meters_required: Number(project.metersRequired ?? 0),
             description: project.description ?? '',
-          status: project.status ?? 'to_do',
-          cost_in_quote: project.costInQuote ?? false,
-          default_pricing: project.defaultPricing ?? false,
-          pricing_profile_id: project.pricingProfileId ?? null,
+            scope_and_conditions:
+              project.scopeAndConditions ?? DEFAULT_SCOPE_AND_CONDITIONS,
+            status: project.status ?? 'to_do',
+            cost_in_quote: project.costInQuote ?? false,
+            default_pricing: project.defaultPricing ?? false,
+            pricing_profile_id: project.pricingProfileId ?? null,
           });
           this.useDefaultPricing = project.defaultPricing ?? false;
           this.defaultPricing$.next(this.useDefaultPricing);
@@ -806,6 +817,7 @@ export class ManagerProjectsPageComponent
           project_name: '',
           meters_required: 0,
           description: '',
+          scope_and_conditions: DEFAULT_SCOPE_AND_CONDITIONS,
           status: 'to_do',
           cost_in_quote: false,
           default_pricing: false,
@@ -1218,6 +1230,7 @@ export class ManagerProjectsPageComponent
       project_name: raw.project_name,
       meters_required: raw.meters_required,
       description: raw.description,
+      scope_and_conditions: raw.scope_and_conditions,
       status: raw.status,
       cost_in_quote: raw.cost_in_quote,
       default_pricing: this.useDefaultPricing,

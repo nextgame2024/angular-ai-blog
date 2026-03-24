@@ -418,7 +418,6 @@
 
 .address-label {
   position: relative;
-  grid-column: 1 / -1;
 }
 
 .address-field {

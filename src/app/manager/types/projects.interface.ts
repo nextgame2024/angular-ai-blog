@@ -21,6 +21,7 @@ export interface BmProject {
   projectName: string;
   metersRequired?: number | null;
   description?: string | null;
+  scopeAndConditions?: string | null;
 
   status?: ProjectStatus | null;
   statusBeforeHold?: ProjectStatus | null;

@@ -262,28 +262,56 @@
               </label>
 
               <label>
+                <span>Cel</span>
+                <input formControlName="cel" placeholder="Cel" />
+              </label>
+
+              <label>
                 <span>Phone</span>
                 <input formControlName="phone" placeholder="Phone" />
               </label>
 
               <label>
-                <span>Tel</span>
-                <input formControlName="tel" placeholder="Tel" />
+                <span>Website</span>
+                <input formControlName="website" placeholder="Website" />
               </label>
 
               <label>
-                <span>Cel</span>
-                <input formControlName="cel" placeholder="Cel" />
-              </label>
-
-              <label class="span-2">
                 <span>Status</span>
                 <app-manager-select
                   formControlName="status"
                   [options]="statusOptions"
                   placeholder="Select status"
+                  [disabled]="!isSuperAdmin"
                 ></app-manager-select>
               </label>
+
+              <label>
+                <span>Bank</span>
+                <input formControlName="bank" placeholder="Bank" />
+              </label>
+
+              <label>
+                <span>Account Name</span>
+                <input
+                  formControlName="account_name"
+                  placeholder="Account name"
+                />
+              </label>
+
+              <label>
+                <span>BSB Number</span>
+                <input formControlName="bsb_number" placeholder="BSB number" />
+              </label>
+
+              <label>
+                <span>Account Number</span>
+                <input
+                  formControlName="account_number"
+                  placeholder="Account number"
+                />
+              </label>
+
             </div>
           </div>
         </form>
@@ -440,28 +468,56 @@
                 </label>
 
                 <label>
+                  <span>Cel</span>
+                  <input formControlName="cel" placeholder="Cel" />
+                </label>
+
+                <label>
                   <span>Phone</span>
                   <input formControlName="phone" placeholder="Phone" />
                 </label>
 
                 <label>
-                  <span>Tel</span>
-                  <input formControlName="tel" placeholder="Tel" />
+                  <span>Website</span>
+                  <input formControlName="website" placeholder="Website" />
                 </label>
 
                 <label>
-                  <span>Cel</span>
-                  <input formControlName="cel" placeholder="Cel" />
-                </label>
-
-                <label class="span-2">
                   <span>Status</span>
                   <app-manager-select
                     formControlName="status"
                     [options]="statusOptions"
                     placeholder="Select status"
+                    [disabled]="!isSuperAdmin"
                   ></app-manager-select>
                 </label>
+
+                <label>
+                  <span>Bank</span>
+                  <input formControlName="bank" placeholder="Bank" />
+                </label>
+
+                <label>
+                  <span>Account Name</span>
+                  <input
+                    formControlName="account_name"
+                    placeholder="Account name"
+                  />
+                </label>
+
+                <label>
+                  <span>BSB Number</span>
+                  <input formControlName="bsb_number" placeholder="BSB number" />
+                </label>
+
+                <label>
+                  <span>Account Number</span>
+                  <input
+                    formControlName="account_number"
+                    placeholder="Account number"
+                  />
+                </label>
+
               </div>
             </div>
           </form>

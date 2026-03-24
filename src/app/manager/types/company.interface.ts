@@ -13,8 +13,12 @@ export interface BmCompany {
   address?: string | null;
   email?: string | null;
   phone?: string | null;
-  tel?: string | null;
+  website?: string | null;
   cel?: string | null;
+  bank?: string | null;
+  accountName?: string | null;
+  bsbNumber?: string | null;
+  accountNumber?: string | null;
   logoUrl?: string | null;
 }
 
