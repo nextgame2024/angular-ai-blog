@@ -47,7 +47,7 @@
             <!-- Auth/Profile -->
             <ng-container *ngIf="data.currentUser as user; else loggedOut">
               <a
-                [routerLink]="['/profiles', user.username]"
+                routerLink="/settings"
                 class="flex items-center pl-1"
               >
                 <p-avatar

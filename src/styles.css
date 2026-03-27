@@ -15,3 +15,360 @@ body {
 .logo-font {
   font-family: "Titillium Web", sans-serif;
 }
+
+/* =========================
+   Manager Dark Theme Fixes
+========================= */
+html.dark .manager-shell {
+  background: #020712;
+  color: #e2e8f0;
+}
+
+html.dark .manager-shell .maps-fallback {
+  background: linear-gradient(180deg, #0b1220, #020712);
+  color: #e2e8f0;
+}
+
+html.dark .manager-shell .search-inner {
+  background: rgba(2, 6, 23, 0.8);
+  border-color: rgba(71, 85, 105, 0.5);
+  box-shadow: 0 12px 28px rgba(2, 6, 23, 0.45);
+}
+
+html.dark .manager-shell .search-inner,
+html.dark .manager-shell .search-inner input,
+html.dark .manager-shell .search-inner .icon {
+  color: #e2e8f0;
+}
+
+html.dark .manager-shell .search-inner input::placeholder {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+html.dark .manager-shell .right-panel {
+  background: rgba(2, 6, 23, 0.82);
+  border-color: rgba(71, 85, 105, 0.45);
+  box-shadow: 0 14px 36px rgba(2, 6, 23, 0.5);
+}
+
+html.dark .manager-shell .panel-header {
+  border-bottom-color: rgba(71, 85, 105, 0.45);
+}
+
+html.dark .manager-shell .panel-header h2 {
+  color: #e2e8f0;
+}
+
+html.dark .manager-shell .panel-toggle {
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+}
+
+html.dark .manager-shell .menu-item {
+  background: rgba(15, 23, 42, 0.76);
+  border: 1px solid rgba(71, 85, 105, 0.4);
+  color: #e2e8f0;
+}
+
+html.dark .manager-shell .menu-item.active {
+  background: rgba(99, 102, 241, 0.24);
+  border-color: rgba(129, 140, 248, 0.55);
+}
+
+html.dark .manager-shell .menu-icon {
+  color: #8b7dff;
+}
+
+html.dark .manager-shell .map-floating-info {
+  background: rgba(2, 6, 23, 0.95);
+  border-color: rgba(71, 85, 105, 0.45);
+}
+
+html.dark .manager-shell .map-floating-info-bar {
+  background: rgba(15, 23, 42, 0.95);
+  border-bottom-color: rgba(71, 85, 105, 0.45);
+}
+
+html.dark .manager-shell .map-floating-info-bar span,
+html.dark .manager-shell .map-info,
+html.dark .manager-shell .map-info-title,
+html.dark .manager-shell .map-info-close {
+  color: #e2e8f0;
+}
+
+html.dark .manager-shell .map-info-row span:first-child,
+html.dark .manager-shell .map-info-photo-fallback {
+  color: rgba(148, 163, 184, 0.9);
+}
+
+html.dark .manager-shell .map-info-close {
+  background: rgba(51, 65, 85, 0.8);
+}
+
+html.dark .manager-shell .content :is(
+  .clients-shell,
+  .materials-shell,
+  .projects-shell,
+  .pricing-shell,
+  .labor-shell,
+  .company-shell,
+  .suppliers-shell,
+  .users-shell
+) {
+  color: #e2e8f0;
+}
+
+html.dark .manager-shell .content :is(.list-header, .form-header) {
+  background: rgba(2, 6, 23, 0.82) !important;
+  border-bottom-color: rgba(71, 85, 105, 0.45) !important;
+}
+
+html.dark .manager-shell .content :is(.breadcrumb, .breadcrumb a) {
+  color: rgba(148, 163, 184, 0.95) !important;
+}
+
+html.dark .manager-shell .content :is(
+  .title h3,
+  .form-header h3,
+  .card-header,
+  .table-head,
+  .thead,
+  .strong
+) {
+  color: #e2e8f0 !important;
+}
+
+html.dark .manager-shell .content :is(
+  .sub,
+  .subtle,
+  .hint,
+  .soft-hint,
+  .muted,
+  .meta,
+  .meta span
+) {
+  color: rgba(148, 163, 184, 0.92) !important;
+}
+
+html.dark .manager-shell .content :is(
+  .table-head,
+  .thead,
+  .table,
+  .card,
+  .client-card,
+  .contact-card
+) {
+  background: rgba(2, 6, 23, 0.7) !important;
+  border-color: rgba(71, 85, 105, 0.45) !important;
+}
+
+html.dark .manager-shell .content :is(.trow, .row, .cell) {
+  border-color: rgba(71, 85, 105, 0.28) !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .manager-shell .content :is(
+  .search-field,
+  .form input,
+  .form textarea,
+  .form select,
+  .address-field input
+) {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(71, 85, 105, 0.5) !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .manager-shell .content :is(
+  .search-field input,
+  .form input::placeholder,
+  .form textarea::placeholder,
+  .search-field input::placeholder
+) {
+  color: rgba(148, 163, 184, 0.88) !important;
+}
+
+html.dark .manager-shell .content :is(.icon-btn, .error-dismiss, .warning-dismiss) {
+  background: rgba(30, 41, 59, 0.85) !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark .manager-shell .content :is(.btn) {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border-color: rgba(100, 116, 139, 0.5) !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .manager-shell .content :is(.btn.primary) {
+  background: rgba(13, 148, 136, 0.2) !important;
+  border-color: rgba(45, 212, 191, 0.5) !important;
+  color: #5eead4 !important;
+}
+
+html.dark .manager-shell .content :is(.btn.secondary) {
+  background: rgba(79, 70, 229, 0.22) !important;
+  border-color: rgba(129, 140, 248, 0.5) !important;
+  color: #c4b5fd !important;
+}
+
+html.dark .manager-shell .content :is(.btn.danger) {
+  background: rgba(127, 29, 29, 0.28) !important;
+  border-color: rgba(248, 113, 113, 0.45) !important;
+  color: #fda4af !important;
+}
+
+html.dark .manager-shell .content :is(.badge) {
+  border-color: rgba(100, 116, 139, 0.55) !important;
+}
+
+html.dark .manager-shell .content :is(.error) {
+  background: rgba(127, 29, 29, 0.24) !important;
+  border-color: rgba(248, 113, 113, 0.45) !important;
+  color: #fecaca !important;
+}
+
+html.dark .manager-shell .content :is(.screen-loader) {
+  background: rgba(2, 6, 23, 0.7) !important;
+}
+
+html.dark .manager-shell .content :is(.loader-card) {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(71, 85, 105, 0.5) !important;
+  box-shadow: 0 18px 40px rgba(2, 6, 23, 0.55) !important;
+}
+
+html.dark .manager-shell .content :is(.loader-text) {
+  color: rgba(226, 232, 240, 0.92) !important;
+}
+
+html.dark .manager-shell .content :is(.loader-bar) {
+  background: rgba(71, 85, 105, 0.55) !important;
+}
+
+html.dark .manager-shell .content :is(.address-suggestions, .select-menu) {
+  background: #0b1220 !important;
+  border-color: rgba(71, 85, 105, 0.5) !important;
+}
+
+html.dark .manager-shell .content :is(.address-suggestion, .select-option) {
+  color: #cbd5e1 !important;
+}
+
+html.dark .manager-shell .content :is(.address-suggestion:hover, .address-suggestion.is-active) {
+  background: rgba(45, 212, 191, 0.2) !important;
+  color: #5eead4 !important;
+}
+
+html.dark app-manager-select .select-trigger {
+  background: rgba(15, 23, 42, 0.92) !important;
+  border-color: rgba(71, 85, 105, 0.5) !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark app-manager-select .value.placeholder,
+html.dark app-manager-select .chevron svg {
+  color: rgba(148, 163, 184, 0.9) !important;
+  stroke: rgba(148, 163, 184, 0.9) !important;
+}
+
+html.dark .manager-shell .content {
+  color: #e2e8f0;
+}
+
+html.dark .manager-shell .content :is(
+  .tabs,
+  .form-tabs,
+  .tab-content,
+  .table-wrap,
+  .cards,
+  .list,
+  .items-list,
+  .contacts-list,
+  .materials-list,
+  .pricing-list,
+  .labor-list
+) {
+  background: rgba(2, 6, 23, 0.62) !important;
+  border-color: rgba(71, 85, 105, 0.45) !important;
+}
+
+html.dark .manager-shell .content :is(.tab, .seg, .pill, .chip) {
+  background: rgba(30, 41, 59, 0.7) !important;
+  border-color: rgba(71, 85, 105, 0.5) !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark .manager-shell .content :is(.tab.active, .seg.active, .pill.active) {
+  background: rgba(99, 102, 241, 0.24) !important;
+  border-color: rgba(129, 140, 248, 0.5) !important;
+  color: #e2e8f0 !important;
+}
+
+html.dark .manager-shell .content :is(
+  .empty,
+  .empty-title,
+  .empty-text,
+  .empty .title,
+  .empty .sub
+) {
+  color: rgba(148, 163, 184, 0.95) !important;
+}
+
+html.dark .manager-shell .content :is(
+  .btn-icon svg,
+  .btn-icon svg path,
+  .icon-btn svg,
+  .icon-btn svg path,
+  .search-icon svg,
+  .search-icon svg path,
+  .menu-icon svg,
+  .menu-icon svg path
+) {
+  stroke: currentColor !important;
+}
+
+html.dark .manager-shell .content :is(
+  .select-menu,
+  .dropdown-panel,
+  .autocomplete-panel
+) {
+  background: #0b1220 !important;
+  border-color: rgba(71, 85, 105, 0.5) !important;
+}
+
+html.dark .manager-shell .content :is(
+  .select-option,
+  .dropdown-option,
+  .autocomplete-option
+) {
+  color: #cbd5e1 !important;
+}
+
+html.dark .manager-shell .content :is(
+  .select-option:hover,
+  .select-option.active,
+  .dropdown-option:hover,
+  .dropdown-option.active,
+  .autocomplete-option:hover,
+  .autocomplete-option.active
+) {
+  background: rgba(45, 212, 191, 0.2) !important;
+  color: #5eead4 !important;
+}
+
+html.dark .manager-shell .content .screen-loader {
+  background: rgba(2, 6, 23, 0.76) !important;
+}
+
+html.dark .manager-shell .content .loader-card {
+  background: rgba(15, 23, 42, 0.95) !important;
+  border-color: rgba(71, 85, 105, 0.55) !important;
+}
+
+html.dark .manager-shell .content .loader-bar {
+  background: rgba(71, 85, 105, 0.55) !important;
+}
+
+html.dark .manager-shell .content .loader-text {
+  color: rgba(226, 232, 240, 0.94) !important;
+}
