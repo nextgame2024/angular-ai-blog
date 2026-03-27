@@ -529,22 +529,22 @@
             </div>
 
             <div class="grid-2">
-              <label>
+              <label class="rich-editor-field">
                 <span>Description</span>
-                <textarea
+                <app-manager-rich-text-editor
                   formControlName="description"
-                  rows="7"
                   placeholder="Project description"
-                ></textarea>
+                  [minHeight]="180"
+                ></app-manager-rich-text-editor>
               </label>
 
-              <label>
+              <label class="rich-editor-field">
                 <span>Scope and Conditions</span>
-                <textarea
+                <app-manager-rich-text-editor
                   formControlName="scope_and_conditions"
-                  rows="7"
                   placeholder="Scope and conditions"
-                ></textarea>
+                  [minHeight]="180"
+                ></app-manager-rich-text-editor>
               </label>
             </div>
           </form>
@@ -1990,22 +1990,22 @@
           </div>
 
           <div class="grid-2">
-            <label>
+            <label class="rich-editor-field">
               <span>Description</span>
-              <textarea
+              <app-manager-rich-text-editor
                 formControlName="description"
-                rows="7"
                 placeholder="Project description"
-              ></textarea>
+                [minHeight]="180"
+              ></app-manager-rich-text-editor>
             </label>
 
-            <label>
+            <label class="rich-editor-field">
               <span>Scope and Conditions</span>
-              <textarea
+              <app-manager-rich-text-editor
                 formControlName="scope_and_conditions"
-                rows="7"
                 placeholder="Scope and conditions"
-              ></textarea>
+                [minHeight]="180"
+              ></app-manager-rich-text-editor>
             </label>
           </div>
         </form>

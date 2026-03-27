@@ -78,6 +78,7 @@ import { ManagerPricingService } from '../../services/manager.pricing.service';
 import { ManagerProjectTypesService } from '../../services/manager.project.types.service';
 import type { ManagerSelectOption } from '../shared/manager-select/manager-select.component';
 import { ManagerProjectsService } from '../../services/manager.projects.service';
+import { ManagerRichTextEditorComponent } from '../shared/manager-rich-text-editor/manager-rich-text-editor.component';
 import { environment } from '../../../../environments/environment';
 import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
 import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
@@ -96,6 +97,7 @@ By accepting this invoice, the client confirms approval of the pre-installation 
     ReactiveFormsModule,
     RouterModule,
     ManagerSelectComponent,
+    ManagerRichTextEditorComponent,
   ],
   templateUrl: './manager-projects.page.html',
   styleUrls: ['./manager-projects.page.css'],

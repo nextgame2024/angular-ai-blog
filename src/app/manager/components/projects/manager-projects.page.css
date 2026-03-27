@@ -158,6 +158,12 @@
   background: rgb(226 247 248);
 }
 
+:host-context(html.dark) .materials-inline-cost {
+  border-color: rgba(45, 212, 191, 0.46);
+  background: rgba(15, 23, 42, 0.92);
+  color: #e2e8f0;
+}
+
 .labor-inline-cost {
   display: inline-flex;
   align-items: baseline;
@@ -167,6 +173,12 @@
   border-radius: 10px;
   border: 1px dashed rgb(185 242 237);
   background: rgb(226 247 248);
+}
+
+:host-context(html.dark) .labor-inline-cost {
+  border-color: rgba(45, 212, 191, 0.46);
+  background: rgba(15, 23, 42, 0.92);
+  color: #e2e8f0;
 }
 
 .materials-inline-cost strong {
@@ -196,6 +208,10 @@
   width: 100%;
 }
 
+:host-context(html.dark) .labor-inline-field {
+  color: rgba(226, 232, 240, 0.95);
+}
+
 .labor-inline-field span {
   font-weight: 700;
   white-space: nowrap;
@@ -212,6 +228,12 @@
   font-size: 0.86rem;
 }
 
+:host-context(html.dark) .labor-inline-field input {
+  border-color: rgba(71, 85, 105, 0.56);
+  background: rgba(15, 23, 42, 0.95);
+  color: #e2e8f0;
+}
+
 .labor-inline-field input:focus {
   outline: none;
   border-color: rgba(16, 224, 199, 0.45);
@@ -222,6 +244,11 @@
   background: rgba(15, 23, 42, 0.06);
   color: rgba(15, 23, 42, 0.78);
   cursor: not-allowed;
+}
+
+:host-context(html.dark) .labor-inline-field input:disabled {
+  background: rgba(30, 41, 59, 0.74);
+  color: rgba(148, 163, 184, 0.95);
 }
 
 .labor-add-btn {
@@ -245,6 +272,10 @@
   font-size: 0.9rem;
 }
 
+:host-context(html.dark) .surcharge-form-row label {
+  color: #e2e8f0;
+}
+
 .surcharge-form-row input,
 .surcharge-form-row select {
   padding: 0.65rem 0.7rem;
@@ -252,6 +283,17 @@
   border: 1px solid rgba(15, 23, 42, 0.12);
   background: #fff;
   outline: none;
+}
+
+:host-context(html.dark) .surcharge-form-row input,
+:host-context(html.dark) .surcharge-form-row select {
+  border-color: rgba(71, 85, 105, 0.56);
+  background: rgba(15, 23, 42, 0.95);
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .surcharge-form-row input::placeholder {
+  color: rgba(148, 163, 184, 0.9);
 }
 
 .surcharge-form-row input.ng-invalid.ng-touched,
@@ -507,9 +549,40 @@
   color: rgba(15, 23, 42, 0.58);
 }
 
+:host-context(html.dark) .net-note {
+  color: rgba(148, 163, 184, 0.95);
+}
+
+:host-context(html.dark) .estimated-value {
+  color: rgba(148, 163, 184, 0.9);
+}
+
 .quote-card strong {
   font-size: 0.85rem;
   font-weight: 800;
+}
+
+:host-context(html.dark) .quote-summary {
+  background: rgba(2, 6, 23, 0.82);
+  border-bottom-color: rgba(71, 85, 105, 0.45);
+}
+
+:host-context(html.dark) .quote-card {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(71, 85, 105, 0.52);
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .quote-card strong {
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .quote-card .net-note {
+  color: rgba(148, 163, 184, 0.95);
+}
+
+:host-context(html.dark) .quote-card .estimated-value {
+  color: rgba(148, 163, 184, 0.9);
 }
 
 .toggle-stack {
@@ -620,6 +693,37 @@
 .toggle button.active {
   background: rgba(16, 224, 199, 0.18);
   color: #0f172a;
+}
+
+:host-context(html.dark) .toggle-field {
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .toggle {
+  border-color: rgba(71, 85, 105, 0.55);
+  background: rgba(2, 6, 23, 0.72);
+}
+
+:host-context(html.dark) .toggle button {
+  color: rgba(148, 163, 184, 0.95);
+}
+
+:host-context(html.dark) .toggle button.active {
+  background: rgba(45, 212, 191, 0.28);
+  color: #5eead4;
+}
+
+:host-context(html.dark) .toggle button:not(.active):hover {
+  background: rgba(30, 41, 59, 0.75);
+  color: #cbd5e1;
+}
+
+.rich-editor-field {
+  align-content: start;
+}
+
+.rich-editor-field app-manager-rich-text-editor {
+  display: block;
 }
 
 .address-label {

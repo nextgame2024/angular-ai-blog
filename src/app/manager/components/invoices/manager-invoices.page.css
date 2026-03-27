@@ -369,6 +369,44 @@
   font-weight: 800;
 }
 
+:host-context(html.dark) .quote-summary {
+  background: rgba(2, 6, 23, 0.82);
+  border-bottom-color: rgba(71, 85, 105, 0.45);
+}
+
+:host-context(html.dark) .quote-card {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(71, 85, 105, 0.52);
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .quote-card strong {
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .net-note,
+:host-context(html.dark) .labor-summary-secondary {
+  color: rgba(148, 163, 184, 0.95);
+}
+
+:host-context(html.dark) .labor-summary-secondary strong {
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .toggle {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: rgba(71, 85, 105, 0.52);
+}
+
+:host-context(html.dark) .toggle button {
+  color: rgba(226, 232, 240, 0.92);
+}
+
+:host-context(html.dark) .toggle button.active {
+  background: rgba(45, 212, 191, 0.28);
+  color: #e2e8f0;
+}
+
 .toggle-stack {
   display: flex;
   flex-wrap: wrap;

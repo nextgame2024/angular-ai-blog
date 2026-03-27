@@ -1,0 +1,150 @@
+<div class="rte" [class.disabled]="disabled">
+  <div class="toolbar" role="toolbar" aria-label="Formatting">
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyCommand('bold')"
+      aria-label="Bold"
+    >
+      <strong>B</strong>
+    </button>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyCommand('italic')"
+      aria-label="Italic"
+    >
+      <em>I</em>
+    </button>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyCommand('underline')"
+      aria-label="Underline"
+    >
+      <u>U</u>
+    </button>
+    <span class="sep" aria-hidden="true"></span>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyAlignment('justifyLeft')"
+      aria-label="Align left"
+    >
+      Left
+    </button>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyAlignment('justifyCenter')"
+      aria-label="Align center"
+    >
+      Center
+    </button>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyAlignment('justifyRight')"
+      aria-label="Align right"
+    >
+      Right
+    </button>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyAlignment('justifyFull')"
+      aria-label="Justify"
+    >
+      Justify
+    </button>
+    <span class="sep" aria-hidden="true"></span>
+    <label class="font-size-wrap" aria-label="Font size">
+      <span>Size</span>
+      <select
+        class="tool tool-select"
+        [disabled]="disabled"
+        [value]="selectedFontSize"
+        (change)="onFontSizeChange($event)"
+      >
+        <option *ngFor="let size of fontSizes" [value]="size.value">
+          {{ size.label }}
+        </option>
+      </select>
+    </label>
+    <span class="sep" aria-hidden="true"></span>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyCommand('outdent')"
+      aria-label="Decrease indent"
+    >
+      Outdent
+    </button>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyCommand('indent')"
+      aria-label="Increase indent"
+    >
+      Indent
+    </button>
+    <span class="sep" aria-hidden="true"></span>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyCommand('insertUnorderedList')"
+      aria-label="Bullet list"
+    >
+      • List
+    </button>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="applyCommand('insertOrderedList')"
+      aria-label="Numbered list"
+    >
+      1. List
+    </button>
+    <span class="sep" aria-hidden="true"></span>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="insertLink()"
+      aria-label="Insert link"
+    >
+      Link
+    </button>
+    <button
+      type="button"
+      class="tool"
+      [disabled]="disabled"
+      (click)="clearFormatting()"
+      aria-label="Clear formatting"
+    >
+      Clear
+    </button>
+  </div>
+
+  <div
+    #editor
+    class="editor"
+    [class.is-empty]="isEmpty"
+    [attr.data-placeholder]="placeholder"
+    [style.min-height.px]="minHeight"
+    [attr.contenteditable]="!disabled"
+    (input)="onInput()"
+    (blur)="onBlur()"
+  ></div>
+</div>

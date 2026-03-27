@@ -107,6 +107,20 @@
   box-shadow: 0 0 0 3px rgba(16, 224, 199, 0.15);
 }
 
+:host-context(html.dark) .daily-rate-label {
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .daily-rate-field input {
+  background: rgba(15, 23, 42, 0.92);
+  border-color: rgba(71, 85, 105, 0.5);
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .daily-rate-field input::placeholder {
+  color: rgba(148, 163, 184, 0.88);
+}
+
 .search-field input {
   border: 0;
   outline: none;
