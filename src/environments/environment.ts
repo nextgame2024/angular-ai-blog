@@ -8,4 +8,5 @@ export const environment = {
   logoUrl:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophiaAi-logo.svg',
   googleMapsApiKey: '',
+  registerCompanyId: '81c2f065-aceb-4043-add5-b11271d21fb3',
 };

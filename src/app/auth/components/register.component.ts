@@ -8,6 +8,7 @@ import { CommonModule } from '@angular/common';
 import { combineLatest } from 'rxjs';
 import { BackendErrorMessages } from '../../shared/components/backendErrorMessages.component';
 import { RegisterRequestInterface } from './../types/registerRequest.interface';
+import { environment } from 'src/environments/environment';
 
 /* PrimeNG */
 import { CardModule } from 'primeng/card';
@@ -53,7 +54,12 @@ export class RegisterComponent {
 
   onSubmit() {
     if (this.form.invalid) return;
-    const request: RegisterRequestInterface = { user: this.form.getRawValue() };
+    const request: RegisterRequestInterface = {
+      user: {
+        ...this.form.getRawValue(),
+        companyId: environment.registerCompanyId,
+      },
+    };
     this.store.dispatch(authActions.register({ request }));
   }
 }
