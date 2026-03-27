@@ -129,6 +129,8 @@ export class ManagerClientsPageComponent
 
   clientForm = this.fb.group({
     client_name: ['', [Validators.required, Validators.maxLength(120)]],
+    owner_name: ['', [Validators.maxLength(120)]],
+    abn: ['', [Validators.maxLength(32)]],
     address: [''],
     email: ['', [Validators.email]],
     cel: [''],
@@ -264,6 +266,8 @@ export class ManagerClientsPageComponent
         if (!c) return;
         this.clientForm.patchValue({
           client_name: c.clientName ?? '',
+          owner_name: c.ownerName ?? '',
+          abn: c.abn ?? '',
           address: c.address ?? '',
           email: c.email ?? '',
           cel: c.cel ?? '',
@@ -360,6 +364,8 @@ export class ManagerClientsPageComponent
   openCreate(): void {
     this.clientForm.reset({
       client_name: '',
+      owner_name: '',
+      abn: '',
       address: '',
       email: '',
       cel: '',

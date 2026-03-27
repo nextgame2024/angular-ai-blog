@@ -18,6 +18,8 @@ export interface BmClient {
   userId?: string;
 
   clientName: string;
+  ownerName?: string | null;
+  abn?: string | null;
   address?: string | null;
   email?: string | null;
   cel?: string | null;

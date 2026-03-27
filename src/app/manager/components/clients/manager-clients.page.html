@@ -238,9 +238,24 @@
         <section *ngIf="(tab$ | async) === 'details'" class="card">
           <form class="form" [formGroup]="clientForm">
             <label>
-              <span>Name *</span>
-              <input formControlName="client_name" placeholder="Client name" />
+              <span>Company Name *</span>
+              <input
+                formControlName="client_name"
+                placeholder="Company name"
+              />
             </label>
+
+            <div class="grid-2">
+              <label>
+                <span>Owner Name</span>
+                <input formControlName="owner_name" placeholder="Owner name" />
+              </label>
+
+              <label>
+                <span>ABN</span>
+                <input formControlName="abn" placeholder="ABN" />
+              </label>
+            </div>
 
             <label class="address-label">
               <span>Address</span>
@@ -641,9 +656,24 @@
 
           <form class="form" [formGroup]="clientForm">
             <label>
-              <span>Name *</span>
-              <input formControlName="client_name" placeholder="Client name" />
+              <span>Company Name *</span>
+              <input
+                formControlName="client_name"
+                placeholder="Company name"
+              />
             </label>
+
+            <div class="grid-2">
+              <label>
+                <span>Owner Name</span>
+                <input formControlName="owner_name" placeholder="Owner name" />
+              </label>
+
+              <label>
+                <span>ABN</span>
+                <input formControlName="abn" placeholder="ABN" />
+              </label>
+            </div>
 
             <label class="address-label">
               <span>Address</span>
