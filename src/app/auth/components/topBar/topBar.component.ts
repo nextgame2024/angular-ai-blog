@@ -3,7 +3,8 @@ import { combineLatest, catchError, map, of, switchMap } from 'rxjs';
 import { Store } from '@ngrx/store';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { selectCurrentUser } from '../../store/reducers';
+import { HttpClient } from '@angular/common/http';
+import { selectCurrentUser, selectIsLoading } from '../../store/reducers';
 import { NavigationLinksProjectsService } from 'src/app/manager/services/navigation.links.projects.service';
 import type { MenuItem } from 'primeng/api';
 
@@ -33,12 +34,19 @@ export class TopBarComponent {
 
   data$ = combineLatest({
     currentUser: this.store.select(selectCurrentUser),
-  });
+    isAuthLoading: this.store.select(selectIsLoading),
+  }).pipe(
+    map(({ currentUser, isAuthLoading }) => ({
+      currentUser,
+      isAuthResolved: currentUser !== undefined && !isAuthLoading,
+    })),
+  );
   menuItems$ = this.store.select(selectCurrentUser).pipe(
     switchMap((currentUser) => {
       const isSuperAdmin = currentUser?.id === this.superAdminId;
       const baseItems = this.buildHeaderItems(!!currentUser);
 
+      if (currentUser === undefined) return of([]);
       if (!currentUser) return of(baseItems);
 
       return this.navigationLinksApi
@@ -63,12 +71,35 @@ export class TopBarComponent {
   defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
 
-  logo = environment.apiUrl;
+  defaultLogo = environment.logoUrl || 'assets/sophiaAi-logo.svg';
+  companyLogo$ = combineLatest([
+    this.store.select(selectCurrentUser),
+    this.store.select(selectIsLoading),
+  ]).pipe(
+    switchMap(([currentUser, isAuthLoading]) => {
+      if (currentUser === undefined || isAuthLoading) return of(null);
+
+      const companyId =
+        (currentUser as { companyId?: string | null } | null)?.companyId ||
+        null;
+      if (!currentUser || !companyId) return of(this.defaultLogo);
+
+      return this.http
+        .get<{ company?: { logoUrl?: string | null } }>(
+          `${environment.apiUrl}/bm/company/${companyId}`,
+        )
+        .pipe(
+          map((res) => res?.company?.logoUrl || this.defaultLogo),
+          catchError(() => of(this.defaultLogo)),
+        );
+    }),
+  );
 
   isDark$ = this.theme.mode$.pipe(map((m) => m !== 'dark'));
 
   constructor(
     private store: Store,
+    private http: HttpClient,
     private theme: ThemeService,
     private navigationLinksApi: NavigationLinksProjectsService,
   ) {}
@@ -83,7 +114,7 @@ export class TopBarComponent {
 
   onLogoError(ev: Event) {
     const img = ev.target as HTMLImageElement;
-    img.src = 'assets/sophiaAi-logo.svg';
+    img.src = this.defaultLogo;
   }
 
   private buildHeaderItems(isLoggedIn: boolean): MenuItem[] {

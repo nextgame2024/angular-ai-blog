@@ -1,5 +1,5 @@
 <ng-container *ngIf="data$ | async as data">
-  <div>
+  <div *ngIf="data.isAuthResolved">
     <div class="container mx-auto px-4">
       <!-- { label: 'Teams', routerLink: '/teams' },
       {
@@ -18,13 +18,15 @@
             class="flex items-center gap-1 md:gap-2"
             aria-label="sophiaAi home"
           >
-            <img
-              [src]="logo"
-              alt="sophiaAi"
-              class="h-[3.25rem] w-auto select-none"
-              draggable="false"
-              (error)="onLogoError($event)"
-            />
+            <ng-container *ngIf="companyLogo$ | async as companyLogo">
+              <img
+                [src]="companyLogo"
+                alt="Company logo"
+                class="h-[3.25rem] w-auto select-none"
+                draggable="false"
+                (error)="onLogoError($event)"
+              />
+            </ng-container>
             <span class="sr-only">sophiaAi</span>
           </a>
         </ng-template>
