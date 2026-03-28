@@ -2,12 +2,16 @@
   <!-- Hero -->
   <section class="hero" id="top">
     <video
+      #heroVideo
       class="hero-video"
       [attr.src]="introVideo"
       autoplay
-      muted
-      loop
+      [muted]="isMuted"
       playsinline
+      preload="metadata"
+      (play)="onVideoPlay()"
+      (pause)="onVideoPause()"
+      (ended)="onVideoPause()"
     ></video>
     <div class="hero-overlay"></div>
     <div class="hero-content">
@@ -37,6 +41,47 @@
           <span class="stat-label">scalable workflows</span>
         </div>
       </div>
+    </div>
+
+    <div class="hero-controls">
+      <button
+        class="control-btn"
+        (click)="playVideo()"
+        [disabled]="isPlaying"
+        aria-label="Play"
+        title="Play"
+      >
+        <i class="pi pi-play"></i>
+      </button>
+      <button
+        class="control-btn"
+        (click)="pauseVideo()"
+        [disabled]="!isPlaying"
+        aria-label="Pause"
+        title="Pause"
+      >
+        <i class="pi pi-pause"></i>
+      </button>
+      <button
+        class="control-btn"
+        (click)="stopVideo()"
+        aria-label="Stop"
+        title="Stop"
+      >
+        <i class="pi pi-stop"></i>
+      </button>
+      <button
+        class="control-btn"
+        (click)="toggleMute()"
+        [attr.aria-pressed]="!isMuted"
+        [attr.aria-label]="isMuted ? 'Unmute' : 'Mute'"
+        [title]="isMuted ? 'Unmute' : 'Mute'"
+      >
+        <i
+          class="pi"
+          [ngClass]="isMuted ? 'pi-volume-off' : 'pi-volume-up'"
+        ></i>
+      </button>
     </div>
   </section>
 

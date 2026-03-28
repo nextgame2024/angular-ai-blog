@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, ElementRef, ViewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { environment } from 'src/environments/environment';
@@ -14,6 +14,11 @@ import { environment } from 'src/environments/environment';
 export class LandingComponent {
   introVideo = environment.introVideo;
   submitState: 'idle' | 'sent' = 'idle';
+  isMuted = false;
+  isPlaying = false;
+
+  @ViewChild('heroVideo', { static: false })
+  videoRef?: ElementRef<HTMLVideoElement>;
 
   contactForm = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(80)]],
@@ -23,6 +28,36 @@ export class LandingComponent {
   });
 
   constructor(private fb: FormBuilder) {}
+
+  onVideoPlay(): void {
+    this.isPlaying = true;
+  }
+
+  onVideoPause(): void {
+    this.isPlaying = false;
+  }
+
+  playVideo(): void {
+    this.videoRef?.nativeElement.play().catch(() => {});
+  }
+
+  pauseVideo(): void {
+    this.videoRef?.nativeElement.pause();
+  }
+
+  stopVideo(): void {
+    const v = this.videoRef?.nativeElement;
+    if (!v) return;
+    v.pause();
+    v.currentTime = 0;
+  }
+
+  toggleMute(): void {
+    const v = this.videoRef?.nativeElement;
+    if (!v) return;
+    this.isMuted = !this.isMuted;
+    v.muted = this.isMuted;
+  }
 
   submitContact(): void {
     if (this.contactForm.invalid) {
