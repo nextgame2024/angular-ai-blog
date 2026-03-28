@@ -15,6 +15,7 @@ import { ButtonModule } from 'primeng/button';
 import { environment } from 'src/environments/environment';
 // Theme
 import { ThemeService } from 'src/app/shared/services/theme.service';
+import { CompanyBrandingService } from 'src/app/shared/services/company-branding.service';
 
 @Component({
   selector: 'mc-topbar',
@@ -75,14 +76,19 @@ export class TopBarComponent {
   companyLogo$ = combineLatest([
     this.store.select(selectCurrentUser),
     this.store.select(selectIsLoading),
+    this.branding.companyBranding$,
   ]).pipe(
-    switchMap(([currentUser, isAuthLoading]) => {
+    switchMap(([currentUser, isAuthLoading, branding]) => {
       if (currentUser === undefined || isAuthLoading) return of(null);
 
       const companyId =
         (currentUser as { companyId?: string | null } | null)?.companyId ||
         null;
       if (!currentUser || !companyId) return of(this.defaultLogo);
+
+      if (branding?.companyId === companyId && branding.logoUrl) {
+        return of(branding.logoUrl);
+      }
 
       return this.http
         .get<{ company?: { logoUrl?: string | null } }>(
@@ -102,6 +108,7 @@ export class TopBarComponent {
     private http: HttpClient,
     private theme: ThemeService,
     private navigationLinksApi: NavigationLinksProjectsService,
+    private branding: CompanyBrandingService,
   ) {}
 
   getUserImage(image: string | null | undefined): string {

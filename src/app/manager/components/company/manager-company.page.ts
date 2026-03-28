@@ -39,6 +39,7 @@ import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townp
 import { selectCurrentUser } from '../../../auth/store/reducers';
 import type { CurrentUserInterface } from '../../../shared/types/currentUser.interface';
 import { AvatarUploadService } from '../../../settings/components/settings/services/avatar-upload.service';
+import { CompanyBrandingService } from '../../../shared/services/company-branding.service';
 
 @Component({
   selector: 'app-manager-company-page',
@@ -118,6 +119,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     private actions$: Actions,
     private townPlanner: TownPlannerV2Service,
     private avatarUpload: AvatarUploadService,
+    private branding: CompanyBrandingService,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
@@ -171,6 +173,16 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
       )
       .subscribe((action) => {
         if (action.type === ManagerCompanyActions.saveCompanySuccess.type) {
+          const currentCompanyId = this.currentUser?.companyId ?? null;
+          if (
+            currentCompanyId &&
+            action.company.companyId === currentCompanyId
+          ) {
+            this.branding.setCompanyLogo(
+              action.company.companyId,
+              action.company.logoUrl ?? null,
+            );
+          }
           if (!this.isSuperAdmin) {
             this.store.dispatch(
               ManagerCompanyActions.openCompanyEdit({

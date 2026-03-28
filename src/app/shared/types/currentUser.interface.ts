@@ -12,6 +12,8 @@ export interface CurrentUserInterface {
   contacts?: any;
   type?: string | null;
   status?: string | null;
+  companyId?: string | null;
+  companyName?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
