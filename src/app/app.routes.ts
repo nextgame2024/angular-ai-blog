@@ -2,6 +2,14 @@ import { Route } from '@angular/router';
 
 export const appRoutes: Route[] = [
   {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('./landing/landing.component').then(
+        (m) => m.LandingComponent
+      ),
+  },
+  {
     path: 'register',
     loadChildren: () =>
       import('src/app/auth/auth.routes').then((m) => m.registerRoutes),
@@ -12,7 +20,7 @@ export const appRoutes: Route[] = [
       import('src/app/auth/auth.routes').then((m) => m.loginRoutes),
   },
   {
-    path: '',
+    path: 'globalFeed',
     loadChildren: () =>
       import('src/app/globalFeed/globalFeed.routes').then((m) => m.routes),
   },

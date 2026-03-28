@@ -1,0 +1,236 @@
+<main class="landing">
+  <!-- Hero -->
+  <section class="hero" id="top">
+    <video
+      class="hero-video"
+      [attr.src]="introVideo"
+      autoplay
+      muted
+      loop
+      playsinline
+    ></video>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <p class="hero-eyebrow">SophiaAi</p>
+      <h1>
+        AI that redesigns how your business operates, plans, and scales.
+      </h1>
+      <p class="hero-subtitle">
+        From intelligent planning to full business orchestration, we build
+        systems that remove complexity and multiply momentum.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#business-manager">Business Manager</a>
+        <a class="btn btn-ghost" href="#town-planner">Town Planner</a>
+      </div>
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-value">24/7</span>
+          <span class="stat-label">AI operations</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">60%</span>
+          <span class="stat-label">faster decisions</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value">∞</span>
+          <span class="stat-label">scalable workflows</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Products -->
+  <section class="section section-products" id="services">
+    <div class="section-header">
+      <p class="section-eyebrow">Products & Services</p>
+      <h2>One platform. Three power lanes.</h2>
+      <p>
+        SophiaAi blends business intelligence, planning intelligence, and custom
+        AI systems to build unstoppable companies.
+      </p>
+    </div>
+
+    <div class="product-grid">
+      <article class="product-card" id="business-manager">
+        <div class="product-tag">Business Manager</div>
+        <h3>Run your company like a connected machine.</h3>
+        <p>
+          Manage projects, pricing, invoicing, suppliers, and performance in one
+          seamless command center.
+        </p>
+        <div class="feature-list">
+          <span>Projects, quotes, and invoices in one flow</span>
+          <span>Clients, suppliers, and contacts synced</span>
+          <span>Pricing profiles and margin control</span>
+          <span>PDF automation for quotes and invoices</span>
+          <span>Team access, roles, and permissions</span>
+          <span>Company profile + brand assets management</span>
+        </div>
+      </article>
+
+      <article class="product-card" id="town-planner">
+        <div class="product-tag">Town Planner</div>
+        <h3>Instant clarity on any property, every time.</h3>
+        <p>
+          Explore zoning, overlays, and planning constraints with AI-assisted
+          insights, street previews, and report automation.
+        </p>
+        <div class="feature-list">
+          <span>Smart address search + live map layers</span>
+          <span>Zoning, overlays, and boundary detection</span>
+          <span>Auto-generated planning reports (PDF)</span>
+          <span>Street view preview + parcel highlight</span>
+          <span>Legend overlays and planning insights</span>
+          <span>Client-ready exports in minutes</span>
+        </div>
+      </article>
+
+      <article class="product-card" id="ai-integration">
+        <div class="product-tag">AI Integration Process</div>
+        <h3>Build the AI backbone of your company.</h3>
+        <p>
+          We map your workflows, build intelligent tools, and manage the full
+          integration lifecycle.
+        </p>
+        <div class="feature-list">
+          <span>Discovery workshops + process mapping</span>
+          <span>Custom AI apps and automation</span>
+          <span>Data pipelines and knowledge bases</span>
+          <span>Software development + system integration</span>
+          <span>Operational governance + monitoring</span>
+          <span>Continuous optimization and support</span>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- Team -->
+  <section class="section section-team" id="team">
+    <div class="section-header">
+      <p class="section-eyebrow">Our Team</p>
+      <h2>Specialists who turn vision into systems.</h2>
+      <p>
+        We combine strategy, design, planning intelligence, and engineering to
+        deliver an AI-first advantage.
+      </p>
+    </div>
+
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="avatar avatar-s">S</div>
+        <div class="team-name">SophiaAi</div>
+        <div class="team-role">Creative Mastermind</div>
+      </div>
+      <div class="team-card">
+        <div class="avatar avatar-jp">JP</div>
+        <div class="team-name">Jorge Pineda</div>
+        <div class="team-role">Marketing Manager</div>
+      </div>
+      <div class="team-card">
+        <div class="avatar avatar-nm">NM</div>
+        <div class="team-name">Nell Mitchell</div>
+        <div class="team-role">Senior Town Planner Consultant</div>
+      </div>
+      <div class="team-card">
+        <div class="avatar avatar-jc">JC</div>
+        <div class="team-name">Jose Corredor</div>
+        <div class="team-role">Software Engineer</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Contact -->
+  <section class="section section-contact" id="contact">
+    <div class="contact-shell">
+      <div class="contact-copy">
+        <p class="section-eyebrow">Let’s build your AI advantage</p>
+        <h2>Tell us where you want to go. We’ll architect the system.</h2>
+        <p>
+          Send a quick brief and we’ll reply with a tailored plan for your next
+          leap in productivity, automation, and growth.
+        </p>
+        <div class="contact-highlights">
+          <div>
+            <strong>Fast response</strong>
+            <span>We reply within 24 hours.</span>
+          </div>
+          <div>
+            <strong>Strategic first</strong>
+            <span>We map the AI roadmap before we build.</span>
+          </div>
+          <div>
+            <strong>Human-led AI</strong>
+            <span>Your team stays in control of the system.</span>
+          </div>
+        </div>
+      </div>
+
+      <form class="contact-form" [formGroup]="contactForm" (ngSubmit)="submitContact()">
+        <div class="field">
+          <label>Name</label>
+          <input type="text" formControlName="name" placeholder="Your name" />
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" formControlName="email" placeholder="you@company.com" />
+        </div>
+        <div class="field">
+          <label>Company</label>
+          <input type="text" formControlName="company" placeholder="Business name (optional)" />
+        </div>
+        <div class="field">
+          <label>Message</label>
+          <textarea
+            formControlName="message"
+            rows="5"
+            placeholder="Tell us what you want to automate or build."
+          ></textarea>
+        </div>
+        <button class="btn btn-primary" type="submit">Send message</button>
+        <p class="form-note" *ngIf="submitState === 'sent'">
+          Thanks! Your email client will open to send the message.
+        </p>
+      </form>
+    </div>
+  </section>
+
+  <!-- Social -->
+  <section class="section section-social">
+    <div class="social-card">
+      <div>
+        <h3>Follow SophiaAi</h3>
+        <p>Insights, launches, and behind-the-scenes AI builds.</p>
+      </div>
+      <div class="social-icons">
+        <a href="https://www.instagram.com" target="_blank" rel="noopener">
+          <span class="sr-only">Instagram</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zm5 5.5a4.5 4.5 0 1 0 0 9 4.5 4.5 0 0 0 0-9zm6-1.75a1.1 1.1 0 1 0 0 2.2 1.1 1.1 0 0 0 0-2.2z"
+              fill="currentColor"
+            />
+          </svg>
+        </a>
+        <a href="https://www.facebook.com" target="_blank" rel="noopener">
+          <span class="sr-only">Facebook</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M13.5 8.5V6.8c0-1 .7-1.3 1.2-1.3H16V3h-2.2C11.8 3 11 4.4 11 6.4v2.1H9v2.9h2V21h3.5v-9.6H17l.4-2.9h-2.9z"
+              fill="currentColor"
+            />
+          </svg>
+        </a>
+        <a href="https://www.tiktok.com" target="_blank" rel="noopener">
+          <span class="sr-only">TikTok</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="M15 3c.4 1.9 1.8 3.4 3.7 3.7v2.7c-1.4-.1-2.7-.6-3.7-1.4v6.4a5.2 5.2 0 1 1-4.4-5.1v2.9a2.3 2.3 0 1 0 1.5 2.2V3H15z"
+              fill="currentColor"
+            />
+          </svg>
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
