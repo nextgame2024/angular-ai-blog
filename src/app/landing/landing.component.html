@@ -16,9 +16,7 @@
     <div class="hero-overlay"></div>
     <div class="hero-content">
       <p class="hero-eyebrow">SophiaAi</p>
-      <h1>
-        AI that redesigns how your business operates, plans, and scales.
-      </h1>
+      <h1>AI that redesigns how your business operates, plans, and scales.</h1>
       <p class="hero-subtitle">
         From intelligent planning to full business orchestration, we build
         systems that remove complexity and multiply momentum.
@@ -228,7 +226,7 @@
             src="assets/team/sophiaAi.png"
             alt="SophiaAi"
             loading="lazy"
-            onerror="this.style.display='none'"
+            onerror="this.style.display = 'none'"
           />
           <span class="avatar-fallback">S</span>
         </div>
@@ -238,14 +236,14 @@
       <div class="team-card">
         <div class="avatar avatar-photo">
           <img
-            src="assets/team/jorge.png"
-            alt="Jorge Pineda"
+            src="assets/team/alejandro.png"
+            alt="Alejandro Pineda"
             loading="lazy"
-            onerror="this.style.display='none'"
+            onerror="this.style.display = 'none'"
           />
-          <span class="avatar-fallback">JP</span>
+          <span class="avatar-fallback">AP</span>
         </div>
-        <div class="team-name">Jorge Pineda</div>
+        <div class="team-name">Alejandro Pineda</div>
         <div class="team-role">Marketing Manager</div>
       </div>
       <div class="team-card">
@@ -254,7 +252,7 @@
             src="assets/team/nell.png"
             alt="Nell Mitchell"
             loading="lazy"
-            onerror="this.style.display='none'"
+            onerror="this.style.display = 'none'"
           />
           <span class="avatar-fallback">NM</span>
         </div>
@@ -267,7 +265,7 @@
             src="assets/team/jose.png"
             alt="Jose Corredor"
             loading="lazy"
-            onerror="this.style.display='none'"
+            onerror="this.style.display = 'none'"
           />
           <span class="avatar-fallback">JC</span>
         </div>
@@ -303,18 +301,30 @@
         </div>
       </div>
 
-      <form class="contact-form" [formGroup]="contactForm" (ngSubmit)="submitContact()">
+      <form
+        class="contact-form"
+        [formGroup]="contactForm"
+        (ngSubmit)="submitContact()"
+      >
         <div class="field">
           <label>Name</label>
           <input type="text" formControlName="name" placeholder="Your name" />
         </div>
         <div class="field">
           <label>Email</label>
-          <input type="email" formControlName="email" placeholder="you@company.com" />
+          <input
+            type="email"
+            formControlName="email"
+            placeholder="you@company.com"
+          />
         </div>
         <div class="field">
           <label>Company</label>
-          <input type="text" formControlName="company" placeholder="Business name (optional)" />
+          <input
+            type="text"
+            formControlName="company"
+            placeholder="Business name (optional)"
+          />
         </div>
         <div class="field">
           <label>Message</label>
@@ -331,5 +341,4 @@
       </form>
     </div>
   </section>
-
 </main>
