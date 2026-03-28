@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
 
 :host {
   display: block;
@@ -11,12 +11,17 @@
   --card: #ffffff;
   --stroke: rgba(15, 23, 42, 0.12);
   --shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
-  font-family: 'Manrope', sans-serif;
+  font-family: "Manrope", sans-serif;
   color: var(--ink);
 }
 
 .landing {
-  background: radial-gradient(circle at top, #ffffff 0%, #f2f6fb 45%, #edf2f7 100%);
+  background: radial-gradient(
+    circle at top,
+    #ffffff 0%,
+    #f2f6fb 45%,
+    #edf2f7 100%
+  );
 }
 
 .section {
@@ -38,7 +43,7 @@
 }
 
 .section-header h2 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: clamp(28px, 3.4vw, 42px);
   margin: 0 0 12px;
 }
@@ -70,7 +75,11 @@
 .hero-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(120deg, rgba(5, 15, 26, 0.75), rgba(2, 8, 18, 0.35));
+  background: linear-gradient(
+    120deg,
+    rgba(5, 15, 26, 0.75),
+    rgba(2, 8, 18, 0.35)
+  );
 }
 
 .hero-content {
@@ -81,7 +90,7 @@
 }
 
 .hero-eyebrow {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 14px;
   letter-spacing: 0.4em;
   text-transform: uppercase;
@@ -90,7 +99,7 @@
 }
 
 .hero h1 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: clamp(34px, 5vw, 60px);
   line-height: 1.05;
   margin: 0 0 18px;
@@ -119,7 +128,9 @@
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .btn:hover {
@@ -159,7 +170,9 @@
   background: rgba(255, 255, 255, 0.12);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: transform 0.2s ease, background 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease;
 }
 
 .hero-social a:hover {
@@ -217,7 +230,7 @@
 }
 
 .stat-value {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 22px;
   font-weight: 700;
   display: block;
@@ -247,6 +260,40 @@
   box-shadow: var(--shadow);
   display: grid;
   gap: 14px;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.product-card::before {
+  content: "";
+  position: absolute;
+  inset: -40% 40% auto auto;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(
+    circle,
+    rgba(14, 165, 164, 0.25),
+    transparent 70%
+  );
+  opacity: 0.6;
+  transform: translate3d(0, 0, 0);
+  animation: floatGlow 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.product-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 30px 60px rgba(15, 23, 42, 0.2);
+}
+
+.product-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .product-tag {
@@ -257,8 +304,29 @@
   color: var(--accent-deep);
 }
 
+.product-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(
+    135deg,
+    rgba(14, 165, 164, 0.2),
+    rgba(245, 158, 11, 0.2)
+  );
+  color: var(--accent-deep);
+  border: 1px solid rgba(14, 165, 164, 0.35);
+  animation: iconPulse 3.6s ease-in-out infinite;
+}
+
+.product-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
 .product-card h3 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: 22px;
   margin: 0;
 }
@@ -276,10 +344,34 @@
 }
 
 .feature-list span::before {
-  content: '•';
+  content: "•";
   margin-right: 8px;
   color: var(--accent);
   font-weight: 700;
+}
+
+@keyframes floatGlow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translate3d(-16px, 10px, 0);
+    opacity: 0.8;
+  }
+}
+
+@keyframes iconPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(14, 165, 164, 0.2);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 0 10px rgba(14, 165, 164, 0);
+  }
 }
 
 /* Team */
@@ -300,35 +392,81 @@
   border: 1px solid var(--stroke);
   box-shadow: var(--shadow);
   text-align: center;
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 .avatar {
-  width: 72px;
-  height: 72px;
+  width: 170px;
+  height: 170px;
   border-radius: 50%;
   margin: 0 auto 14px;
   display: grid;
   place-items: center;
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-weight: 700;
   font-size: 22px;
   color: #0b1220;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid rgba(14, 165, 164, 0.35);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.18);
+  background: linear-gradient(
+    135deg,
+    rgba(14, 165, 164, 0.2),
+    rgba(245, 158, 11, 0.2)
+  );
+  transition:
+    transform 0.35s ease,
+    box-shadow 0.35s ease;
 }
 
-.avatar-s {
-  background: linear-gradient(135deg, #7ef7e4, #facc15);
+.avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 6%;
+  transform: scale(1.45);
+  transform-origin: 50% 10%;
+  z-index: 2;
 }
 
-.avatar-jp {
-  background: linear-gradient(135deg, #c4b5fd, #fda4af);
+.avatar-fallback {
+  position: relative;
+  z-index: 1;
 }
 
-.avatar-nm {
-  background: linear-gradient(135deg, #93c5fd, #67e8f9);
+.avatar::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 90deg,
+    rgba(14, 165, 164, 0),
+    rgba(14, 165, 164, 0.6),
+    rgba(14, 165, 164, 0),
+    rgba(245, 158, 11, 0.6),
+    rgba(14, 165, 164, 0)
+  );
+  opacity: 0;
+  z-index: 0;
+  filter: blur(6px);
 }
 
-.avatar-jc {
-  background: linear-gradient(135deg, #fcd34d, #f97316);
+.avatar::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  z-index: 3;
+  pointer-events: none;
 }
 
 .team-name {
@@ -339,6 +477,32 @@
 .team-role {
   color: var(--muted);
   font-size: 14px;
+}
+
+@media (hover: hover) {
+  .team-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 24px 50px rgba(15, 23, 42, 0.22);
+  }
+
+  .team-card:hover .avatar {
+    transform: translateY(-6px) scale(1.05);
+    box-shadow: 0 18px 34px rgba(14, 165, 164, 0.35);
+  }
+
+  .team-card:hover .avatar::before {
+    opacity: 1;
+    animation: avatarSpin 3s linear infinite;
+  }
+}
+
+@keyframes avatarSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Contact */
@@ -354,7 +518,7 @@
 }
 
 .contact-copy h2 {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: "Space Grotesk", sans-serif;
   font-size: clamp(26px, 3.4vw, 40px);
   margin: 0 0 14px;
 }
@@ -408,7 +572,7 @@
   border-radius: 12px;
   padding: 10px 12px;
   color: var(--ink);
-  font-family: 'Manrope', sans-serif;
+  font-family: "Manrope", sans-serif;
 }
 
 .contact-form input::placeholder,
@@ -465,6 +629,19 @@
   .contact-form {
     padding: 22px;
   }
+
+  .product-card {
+    padding: 20px;
+  }
+
+  .product-top {
+    flex-direction: row;
+  }
+
+  .avatar {
+    width: 154px;
+    height: 154px;
+  }
 }
 
 /* Dark mode */
@@ -478,7 +655,12 @@
 }
 
 :host-context(html.dark) .landing {
-  background: radial-gradient(circle at top, #0f172a 0%, #0b1220 55%, #05070d 100%);
+  background: radial-gradient(
+    circle at top,
+    #0f172a 0%,
+    #0b1220 55%,
+    #05070d 100%
+  );
 }
 
 :host-context(html.dark) .section-products,
@@ -492,6 +674,29 @@
 :host-context(html.dark) .contact-highlights div {
   background: #0f172a;
   border-color: rgba(148, 163, 184, 0.2);
+}
+
+:host-context(html.dark) .avatar {
+  border-color: rgba(94, 234, 212, 0.35);
+  box-shadow: 0 16px 32px rgba(2, 6, 23, 0.55);
+}
+
+:host-context(html.dark) .avatar::after {
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+:host-context(html.dark) .product-card::before {
+  background: radial-gradient(circle, rgba(94, 234, 212, 0.2), transparent 70%);
+}
+
+:host-context(html.dark) .product-icon {
+  background: linear-gradient(
+    135deg,
+    rgba(94, 234, 212, 0.15),
+    rgba(251, 191, 36, 0.15)
+  );
+  border-color: rgba(94, 234, 212, 0.35);
+  color: #7ef7e4;
 }
 
 :host-context(html.dark) .feature-list,
