@@ -791,6 +791,17 @@
   gap: 6px;
 }
 
+.contact-form .field.has-error input,
+.contact-form .field.has-error textarea {
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.12);
+}
+
+.field-error {
+  font-size: 12px;
+  color: #ef4444;
+}
+
 .contact-form label {
   font-size: 12px;
   text-transform: uppercase;
@@ -817,10 +828,51 @@
   justify-self: start;
 }
 
+.contact-form .btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .form-note {
   font-size: 12px;
   color: rgba(15, 23, 42, 0.6);
   margin: 0;
+}
+
+.toast {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--ink);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  animation: toast-in 200ms ease-out;
+}
+
+.toast.success {
+  background: rgba(16, 224, 199, 0.18);
+  border-color: rgba(16, 224, 199, 0.45);
+  color: #0f172a;
+}
+
+.toast.error {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #991b1b;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Utility */
@@ -1030,6 +1082,16 @@
   color: #e2e8f0;
 }
 
+:host-context(html.dark) .contact-form .field.has-error input,
+:host-context(html.dark) .contact-form .field.has-error textarea {
+  border-color: rgba(248, 113, 113, 0.8);
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.2);
+}
+
+:host-context(html.dark) .field-error {
+  color: rgba(248, 113, 113, 0.9);
+}
+
 :host-context(html.dark) .contact-form input::placeholder,
 :host-context(html.dark) .contact-form textarea::placeholder {
   color: rgba(226, 232, 240, 0.5);
@@ -1037,4 +1099,22 @@
 
 :host-context(html.dark) .form-note {
   color: rgba(226, 232, 240, 0.7);
+}
+
+:host-context(html.dark) .toast {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(148, 163, 184, 0.3);
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .toast.success {
+  background: rgba(16, 224, 199, 0.18);
+  border-color: rgba(16, 224, 199, 0.4);
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .toast.error {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fecaca;
 }

@@ -305,18 +305,25 @@
         class="contact-form"
         [formGroup]="contactForm"
         (ngSubmit)="submitContact()"
+        novalidate
       >
-        <div class="field">
+        <div class="field" [class.has-error]="isInvalid('name')">
           <label>Name</label>
           <input type="text" formControlName="name" placeholder="Your name" />
+          <span class="field-error" *ngIf="isInvalid('name')">
+            Name is required.
+          </span>
         </div>
-        <div class="field">
+        <div class="field" [class.has-error]="!!getEmailError()">
           <label>Email</label>
           <input
             type="email"
             formControlName="email"
             placeholder="you@company.com"
           />
+          <span class="field-error" *ngIf="getEmailError()">
+            {{ getEmailError() }}
+          </span>
         </div>
         <div class="field">
           <label>Company</label>
@@ -326,18 +333,23 @@
             placeholder="Business name (optional)"
           />
         </div>
-        <div class="field">
+        <div class="field" [class.has-error]="isInvalid('message')">
           <label>Message</label>
           <textarea
             formControlName="message"
             rows="5"
             placeholder="Tell us what you want to automate or build."
           ></textarea>
+          <span class="field-error" *ngIf="isInvalid('message')">
+            Message is required.
+          </span>
         </div>
-        <button class="btn btn-primary" type="submit">Send message</button>
-        <p class="form-note" *ngIf="submitState === 'sent'">
-          Thanks! Your email client will open to send the message.
-        </p>
+        <button class="btn btn-primary" type="submit" [disabled]="submitState === 'sending'">
+          {{ submitState === 'sending' ? 'Sending...' : 'Send message' }}
+        </button>
+        <div class="toast" *ngIf="toast" [class.success]="toast.type === 'success'" [class.error]="toast.type === 'error'">
+          {{ toast.message }}
+        </div>
       </form>
     </div>
   </section>

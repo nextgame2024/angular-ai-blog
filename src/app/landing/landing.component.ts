@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, ViewChild } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 import { environment } from 'src/environments/environment';
 
 @Component({
@@ -13,9 +15,11 @@ import { environment } from 'src/environments/environment';
 })
 export class LandingComponent {
   introVideo = environment.introVideo;
-  submitState: 'idle' | 'sent' = 'idle';
+  submitState: 'idle' | 'sending' = 'idle';
   isMuted = false;
   isPlaying = false;
+  toast: { type: 'success' | 'error'; message: string } | null = null;
+  private toastTimer?: number;
 
   @ViewChild('heroVideo', { static: false })
   videoRef?: ElementRef<HTMLVideoElement>;
@@ -27,7 +31,10 @@ export class LandingComponent {
     message: ['', [Validators.required, Validators.maxLength(1200)]],
   });
 
-  constructor(private fb: FormBuilder) {}
+  constructor(
+    private fb: FormBuilder,
+    private http: HttpClient,
+  ) {}
 
   onVideoPlay(): void {
     this.isPlaying = true;
@@ -59,6 +66,27 @@ export class LandingComponent {
     v.muted = this.isMuted;
   }
 
+  isInvalid(controlName: 'name' | 'email' | 'message'): boolean {
+    const control = this.contactForm.get(controlName);
+    return !!(control && control.touched && control.invalid);
+  }
+
+  getEmailError(): string | null {
+    const control = this.contactForm.get('email');
+    if (!control || !control.touched) return null;
+    if (control.hasError('required')) return 'Email is required.';
+    if (control.hasError('email')) return 'Enter a valid email address.';
+    return null;
+  }
+
+  private showToast(type: 'success' | 'error', message: string): void {
+    this.toast = { type, message };
+    if (this.toastTimer) window.clearTimeout(this.toastTimer);
+    this.toastTimer = window.setTimeout(() => {
+      this.toast = null;
+    }, 4000);
+  }
+
   submitContact(): void {
     if (this.contactForm.invalid) {
       this.contactForm.markAllAsTouched();
@@ -66,21 +94,32 @@ export class LandingComponent {
     }
 
     const { name, email, company, message } = this.contactForm.getRawValue();
-    const subject = encodeURIComponent(
-      `SophiaAi inquiry from ${name || 'Client'}`,
-    );
-    const body = encodeURIComponent(
-      [
-        `Name: ${name}`,
-        `Email: ${email}`,
-        `Company: ${company || '-'}`,
-        '',
-        message,
-      ].join('\n'),
-    );
+    this.submitState = 'sending';
 
-    window.location.href = `mailto:jlcm66@gmail.com?subject=${subject}&body=${body}`;
-    this.submitState = 'sent';
-    this.contactForm.reset();
+    this.http
+      .post(`${environment.apiUrl}/contact`, {
+        name,
+        email,
+        company,
+        message,
+      })
+      .pipe(finalize(() => (this.submitState = 'idle')))
+      .subscribe({
+        next: () => {
+          this.showToast('success', "Thanks! We'll reply within 24 hours.");
+          this.contactForm.reset({
+            name: '',
+            email: '',
+            company: '',
+            message: '',
+          });
+        },
+        error: (err) => {
+          const msg =
+            err?.error?.error ||
+            'Something went wrong. Please try again.';
+          this.showToast('error', msg);
+        },
+      });
   }
 }
