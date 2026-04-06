@@ -4,6 +4,7 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  OnInit,
   ViewChild,
 } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
@@ -19,8 +20,9 @@ import { environment } from 'src/environments/environment';
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.css'],
 })
-export class LandingComponent implements AfterViewInit, OnDestroy {
-  introVideo = environment.bannerVideo;
+export class LandingComponent implements AfterViewInit, OnInit, OnDestroy {
+  private readonly mobileMaxWidth = 680;
+  videoSrc = environment.bannerVideo;
   submitState: 'idle' | 'sending' = 'idle';
   isMuted = false;
   isPlaying = false;
@@ -45,6 +47,10 @@ export class LandingComponent implements AfterViewInit, OnDestroy {
     private fb: FormBuilder,
     private http: HttpClient,
   ) {}
+
+  ngOnInit(): void {
+    this.updateVideoSource();
+  }
 
   ngAfterViewInit(): void {
     this.measureHeader();
@@ -120,6 +126,28 @@ export class LandingComponent implements AfterViewInit, OnDestroy {
     this.heroReveal = remaining <= this.revealThresholdSeconds;
   }
 
+  private updateVideoSource(): void {
+    const isMobile = window.matchMedia(
+      `(max-width: ${this.mobileMaxWidth}px)`
+    ).matches;
+    const nextSrc =
+      isMobile && environment.bannerVideoMobile
+        ? environment.bannerVideoMobile
+        : environment.bannerVideo;
+    if (nextSrc === this.videoSrc) return;
+    this.heroReveal = false;
+    this.videoSrc = nextSrc;
+    const v = this.videoRef?.nativeElement;
+    if (!v) return;
+    const wasPlaying = !v.paused && !v.ended;
+    v.pause();
+    v.currentTime = 0;
+    v.load();
+    if (wasPlaying) {
+      v.play().catch(() => {});
+    }
+  }
+
   private measureHeader(): void {
     const menubars = Array.from(
       document.querySelectorAll<HTMLElement>('.p-menubar, header, mc-topbar')
@@ -138,7 +166,10 @@ export class LandingComponent implements AfterViewInit, OnDestroy {
     this.headerObserver.observe(menubar);
   }
 
-  private onWindowResize = (): void => this.measureHeader();
+  private onWindowResize = (): void => {
+    this.measureHeader();
+    this.updateVideoSource();
+  };
 
   isInvalid(controlName: 'name' | 'email' | 'message'): boolean {
     const control = this.contactForm.get(controlName);

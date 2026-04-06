@@ -5,6 +5,8 @@ export const environment = {
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia.mp4',
   bannerVideo:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bannerVideoMobile:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/mobileBanner.mp4',
   defaultAvatar:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png',
   logoUrl:
