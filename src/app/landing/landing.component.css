@@ -57,8 +57,12 @@
 /* Hero */
 .hero {
   position: relative;
-  min-height: calc(100vh - var(--header-h, 0px));
-  min-height: calc(100svh - var(--header-h, 0px));
+  height: calc(100vh - var(--header-h, 64px));
+  height: calc(100svh - var(--header-h, 64px));
+  min-height: calc(100vh - var(--header-h, 64px));
+  min-height: calc(100svh - var(--header-h, 64px));
+  max-height: calc(100vh - var(--header-h, 64px));
+  max-height: calc(100svh - var(--header-h, 64px));
   display: grid;
   align-items: center;
   overflow: hidden;
@@ -71,7 +75,10 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center bottom;
+  object-position: 50% 50%;
+  transform: translateY(0%) scale(1);
+  transform-origin: 50% 50%;
+  will-change: transform;
 }
 
 .hero-overlay {

@@ -4,7 +4,7 @@
     class="hero"
     id="top"
     [class.hero-reveal]="heroReveal"
-    [style.--header-h.px]="headerH"
+    [style.--header-h.px]="headerH || null"
   >
     <video
       #heroVideo
