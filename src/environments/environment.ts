@@ -3,6 +3,8 @@ export const environment = {
   limit: 9,
   introVideo:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia.mp4',
+  bannerVideo:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_townplanning.mp4',
   defaultAvatar:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png',
   logoUrl:

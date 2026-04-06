@@ -1,0 +1,115 @@
+Prompts for Avatar Images and Short Videos
+Date: 2026-04-04
+
+GLOBAL NOTES
+- Use my avatar reference image as the main character.
+- Keep identity consistent (face, hair, skin tone, signature features).
+- Clean, modern, professional look with natural lighting.
+- Show app UI clearly; avoid tiny illegible text.
+- Leave negative space for a logo or headline.
+
+TOWN PLANNER
+Image Prompts
+TP-IMG-01: My avatar at a modern desk, laptop open to Town Planner map with property boundary, zoning polygon, and overlay legend, holding a tablet with a visible “Generate property report” button, professional office backdrop, 4:5 portrait.
+TP-IMG-02: My avatar on-site in a smart casual blazer, holding a tablet showing a property parcel outline and zoning layers over a map, subtle construction site background, 4:5 portrait.
+TP-IMG-03: My avatar presenting a printed “Property Report” PDF with maps and zoning summary, clean conference room, confident pose, 4:5 portrait.
+TP-IMG-04: My avatar pointing at a large wall display showing flood and transport noise overlays, team meeting vibe, bright modern office, 4:5 portrait.
+TP-IMG-05: My avatar beside a screen showing neighbourhood plan and precinct context around the site, clear map legend, minimal clutter, 4:5 portrait.
+TP-IMG-06: My avatar holding a phone with a street preview and address search bar, a property entrance in soft focus behind, 4:5 portrait.
+TP-IMG-07: My avatar at a table with a laptop showing state mapping layers (SARA, SPP, RPI) and vegetation category, professional planning studio, 4:5 portrait.
+TP-IMG-08: My avatar seated with a clean report cover and a map overlay screenshot, branding space in the top-right, 4:5 portrait.
+TP-IMG-09: My avatar presenting a dashboard-like map with airport, heritage, and character overlays highlighted, sleek UI, 4:5 portrait.
+TP-IMG-10: My avatar standing next to a vertical display of Town Planner map with zoning and flood overlays, confident, 4:5 portrait.
+
+Video 01
+Promo text: Type an address and Town Planner maps the exact parcel, zoning, and key overlays in seconds. No more jumping across portals. Make faster feasibility calls with Brisbane City Plan 2014 mapping in one clean view.
+Video prompt: 20s, 9:16 vertical. Use my avatar as presenter. Scene 1 address search and map pin drop. Scene 2 zoning and parcel outlines animate in. Scene 3 overlay legend appears. Scene 4 avatar nods and CTA “Plan faster with Town Planner.” Use promo text as voiceover.
+
+Video 02
+Promo text: See flood and noise constraints instantly. Town Planner highlights overland flow, creek and river flood areas, plus transport noise corridors so you can flag risks before design starts.
+Video prompt: 20s, 9:16 vertical. My avatar introduces risk screening. Show flood overlays in blue, noise corridor in orange. End with quick checklist and CTA “Know risks early.” Use promo text as voiceover.
+
+Video 03
+Promo text: Generate a property report in minutes. Town Planner compiles zoning, neighbourhood plans, overlays, and development notes into a shareable PDF for clients and decision makers.
+Video prompt: 20s, 9:16 vertical. My avatar clicks “Generate report.” Show progress, then a polished PDF preview with maps and summary. End with “Shareable report link.” Use promo text as voiceover.
+
+Video 04
+Promo text: Integrated government data, one workflow. Town Planner combines Queensland DAMS layers with SARA and SPP mapping, RPI areas, and regulated vegetation categories to surface state triggers early.
+Video prompt: 20s, 9:16 vertical. My avatar gestures to layered map stacks labeled DAMS, SARA, SPP, RPI, Vegetation. Quick zoom on a highlighted corridor. End with “State triggers, simplified.” Use promo text as voiceover.
+
+Video 05
+Promo text: Get the full context, not just a point. Town Planner builds surrounding zoning and overlay geometry so the map reads like the official planning view.
+Video prompt: 20s, 9:16 vertical. My avatar zooms out to reveal merged zoning polygons around the site. Overlays fade in for context. End with “Real-world planning context.” Use promo text as voiceover.
+
+Video 06
+Promo text: From address to street preview. Instantly see the property’s street image, boundary, and zoning to align site reality with planning controls.
+Video prompt: 20s, 9:16 vertical. My avatar points to street preview card, then boundary outline appears on the map. End with “See it before you visit.” Use promo text as voiceover.
+
+Video 07
+Promo text: Airport, heritage, character, transport—Town Planner surfaces overlays that change approvals. Spot height limits, heritage areas, and corridor constraints before you commit.
+Video prompt: 20s, 9:16 vertical. My avatar cycles through overlay badges: Airport height, Heritage, Character, Transport. Map highlights each layer. End with “Avoid approval surprises.” Use promo text as voiceover.
+
+Video 08
+Promo text: Keep teams aligned. Share a report link, track report status, and avoid duplicate work with smart report caching.
+Video prompt: 20s, 9:16 vertical. My avatar sends a report link, status changes from Running to Ready, then PDF opens. End with “Share once, reuse often.” Use promo text as voiceover.
+
+Video 09
+Promo text: Built for planners, developers, and consultants. Cut research time, reduce risk, and move from curiosity to confident next steps.
+Video prompt: 20s, 9:16 vertical. My avatar meets a client, shows the map and report summary. Overlay of time saved ticks up. End with “Decide with confidence.” Use promo text as voiceover.
+
+Video 10
+Promo text: Make every site check a strategic decision. Town Planner turns mapping complexity into clear guidance so projects move forward with fewer surprises.
+Video prompt: 20s, 9:16 vertical. My avatar stands beside a large map display, overlays animate on, then a clean “Ready to proceed” stamp appears. End with “Town Planner by sophiaAi.” Use promo text as voiceover.
+
+BUSINESS MANAGER
+Image Prompts
+BM-IMG-01: My avatar at a clean workstation with Business Manager dashboard on a large monitor, map with project pins and status colors, 4:5 portrait.
+BM-IMG-02: My avatar holding a tablet showing a project list with client names and statuses, modern office background, 4:5 portrait.
+BM-IMG-03: My avatar reviewing a quote PDF on a laptop, visible totals and GST line, tidy desk, 4:5 portrait.
+BM-IMG-04: My avatar in a warehouse aisle with a tablet showing materials inventory and supplier list, 4:5 portrait.
+BM-IMG-05: My avatar at a meeting table presenting a pricing profile screen with rate cards, 4:5 portrait.
+BM-IMG-06: My avatar on-site with a phone showing route and travel time to a project, work trucks softly blurred behind, 4:5 portrait.
+BM-IMG-07: My avatar with a clipboard and a screen showing labor costs and surcharges, construction office vibe, 4:5 portrait.
+BM-IMG-08: My avatar smiling while sending an invoice PDF, clean UI and company branding space, 4:5 portrait.
+BM-IMG-09: My avatar pointing to a wall screen with clients, projects, and project types tiles, collaborative team setting, 4:5 portrait.
+BM-IMG-10: My avatar holding a folder labeled “Invoices & Quotes” while a dashboard shows totals and status pipeline, 4:5 portrait.
+
+Video 01
+Promo text: All your projects on one map. Business Manager pins every job, client, and address, plus travel time from your office so teams know where to go and when.
+Video prompt: 20s, 9:16 vertical. My avatar opens the map view, project pins animate in, travel time badge appears. End with “Always know the next job.” Use promo text as voiceover.
+
+Video 02
+Promo text: Create quotes in minutes. Pull materials, labor, and surcharges from the project, auto-calc totals and GST, and send a clean PDF to the client.
+Video prompt: 20s, 9:16 vertical. My avatar selects a project, quote totals animate, PDF preview opens. End with “Quote faster, win more.” Use promo text as voiceover.
+
+Video 03
+Promo text: Invoices without the scramble. Generate invoices from project data, track status from draft to paid, and keep cash flow visible.
+Video prompt: 20s, 9:16 vertical. My avatar clicks “Create invoice,” status chips move from Draft to Sent to Paid. End with “Get paid on time.” Use promo text as voiceover.
+
+Video 04
+Promo text: Manage clients, company profile, and users in one hub. Everyone works from the same details and branding, every time.
+Video prompt: 20s, 9:16 vertical. My avatar updates company profile, user list appears, then client card opens. End with “One source of truth.” Use promo text as voiceover.
+
+Video 05
+Promo text: Control costs with materials, suppliers, and labor rates. Update once and every project and document stays accurate.
+Video prompt: 20s, 9:16 vertical. My avatar edits a labor rate, materials list updates, then a quote recalculates. End with “Keep pricing accurate.” Use promo text as voiceover.
+
+Video 06
+Promo text: Pricing profiles that scale. Save your common rate cards and apply them to new projects in seconds.
+Video prompt: 20s, 9:16 vertical. My avatar selects a pricing profile, new project form auto-fills. End with “Standardize your pricing.” Use promo text as voiceover.
+
+Video 07
+Promo text: Project types and scopes organized. Standardize how work is quoted so your team produces consistent, professional estimates.
+Video prompt: 20s, 9:16 vertical. My avatar edits project types, then quote template updates. End with “Consistent estimates.” Use promo text as voiceover.
+
+Video 08
+Promo text: Search and filter fast. Find any project, quote, or invoice instantly with smart search and status filters.
+Video prompt: 20s, 9:16 vertical. My avatar types in search, results filter by status and client. End with “Find it in seconds.” Use promo text as voiceover.
+
+Video 09
+Promo text: Transportation costs, built in. Calculate travel time and routes automatically so you can price jobs more accurately.
+Video prompt: 20s, 9:16 vertical. My avatar taps “Transportation,” route line draws on map, time badge appears. End with “Price travel accurately.” Use promo text as voiceover.
+
+Video 10
+Promo text: Less admin, more building. Business Manager ties projects, quotes, and invoices together so you spend time on the work, not paperwork.
+Video prompt: 20s, 9:16 vertical. My avatar moves from project card to quote to invoice in a smooth flow. End with “Run your business in one place.” Use promo text as voiceover.
