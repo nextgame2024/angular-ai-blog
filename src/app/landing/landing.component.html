@@ -1,6 +1,11 @@
 <main class="landing">
   <!-- Hero -->
-  <section class="hero" id="top">
+  <section
+    class="hero"
+    id="top"
+    [class.hero-reveal]="heroReveal"
+    [style.--header-h.px]="headerH"
+  >
     <video
       #heroVideo
       class="hero-video"
@@ -11,10 +16,12 @@
       preload="metadata"
       (play)="onVideoPlay()"
       (pause)="onVideoPause()"
-      (ended)="onVideoPause()"
+      (ended)="onVideoEnded()"
+      (loadedmetadata)="onVideoMeta()"
+      (timeupdate)="onVideoTimeUpdate()"
     ></video>
     <div class="hero-overlay"></div>
-    <div class="hero-content">
+    <div class="hero-content" [attr.aria-hidden]="!heroReveal">
       <p class="hero-eyebrow">SophiaAi</p>
       <h1>AI that redesigns how your business operates, plans, and scales.</h1>
       <p class="hero-subtitle">

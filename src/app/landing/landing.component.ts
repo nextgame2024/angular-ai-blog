@@ -1,5 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import {
+  AfterViewInit,
+  Component,
+  ElementRef,
+  OnDestroy,
+  ViewChild,
+} from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -13,13 +19,17 @@ import { environment } from 'src/environments/environment';
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.css'],
 })
-export class LandingComponent {
+export class LandingComponent implements AfterViewInit, OnDestroy {
   introVideo = environment.bannerVideo;
   submitState: 'idle' | 'sending' = 'idle';
   isMuted = false;
   isPlaying = false;
+  heroReveal = false;
+  headerH = 0;
   toast: { type: 'success' | 'error'; message: string } | null = null;
   private toastTimer?: number;
+  private headerObserver?: ResizeObserver;
+  private readonly revealThresholdSeconds = 2;
 
   @ViewChild('heroVideo', { static: false })
   videoRef?: ElementRef<HTMLVideoElement>;
@@ -36,16 +46,49 @@ export class LandingComponent {
     private http: HttpClient,
   ) {}
 
+  ngAfterViewInit(): void {
+    this.measureHeader();
+    this.observeHeaderResize();
+    window.addEventListener('resize', this.onWindowResize, { passive: true });
+  }
+
+  ngOnDestroy(): void {
+    if (this.toastTimer) window.clearTimeout(this.toastTimer);
+    this.headerObserver?.disconnect();
+    window.removeEventListener('resize', this.onWindowResize);
+  }
+
   onVideoPlay(): void {
     this.isPlaying = true;
+    this.syncHeroReveal();
   }
 
   onVideoPause(): void {
     this.isPlaying = false;
+    this.syncHeroReveal();
+  }
+
+  onVideoEnded(): void {
+    this.isPlaying = false;
+    this.heroReveal = true;
+  }
+
+  onVideoMeta(): void {
+    this.syncHeroReveal();
+  }
+
+  onVideoTimeUpdate(): void {
+    this.syncHeroReveal();
   }
 
   playVideo(): void {
-    this.videoRef?.nativeElement.play().catch(() => {});
+    const v = this.videoRef?.nativeElement;
+    if (!v) return;
+    if (Number.isFinite(v.duration) && (v.ended || v.currentTime >= v.duration - 0.05)) {
+      v.currentTime = 0;
+    }
+    this.syncHeroReveal();
+    v.play().catch(() => {});
   }
 
   pauseVideo(): void {
@@ -57,6 +100,7 @@ export class LandingComponent {
     if (!v) return;
     v.pause();
     v.currentTime = 0;
+    this.syncHeroReveal();
   }
 
   toggleMute(): void {
@@ -65,6 +109,36 @@ export class LandingComponent {
     this.isMuted = !this.isMuted;
     v.muted = this.isMuted;
   }
+
+  private syncHeroReveal(): void {
+    const v = this.videoRef?.nativeElement;
+    if (!v || !Number.isFinite(v.duration) || v.duration <= 0) {
+      this.heroReveal = false;
+      return;
+    }
+    const remaining = v.duration - v.currentTime;
+    this.heroReveal = remaining <= this.revealThresholdSeconds;
+  }
+
+  private measureHeader(): void {
+    const menubars = Array.from(
+      document.querySelectorAll<HTMLElement>('.p-menubar, header, mc-topbar')
+    );
+    if (!menubars.length) return;
+    const newH = Math.max(...menubars.map((el) => el.offsetHeight || 0));
+    if (newH > 0) this.headerH = newH;
+  }
+
+  private observeHeaderResize(): void {
+    const menubar = document.querySelector<HTMLElement>(
+      '.p-menubar, header, mc-topbar'
+    );
+    if (!('ResizeObserver' in window) || !menubar) return;
+    this.headerObserver = new ResizeObserver(() => this.measureHeader());
+    this.headerObserver.observe(menubar);
+  }
+
+  private onWindowResize = (): void => this.measureHeader();
 
   isInvalid(controlName: 'name' | 'email' | 'message'): boolean {
     const control = this.contactForm.get(controlName);
