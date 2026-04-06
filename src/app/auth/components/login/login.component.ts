@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { authActions } from '../../store/actions';
@@ -9,16 +9,16 @@ import {
 } from '../../store/reducers';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../services/auth.service';
-import { combineLatest } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { BackendErrorMessages } from '../../../shared/components/backendErrorMessages.component';
 import { LoginRequestInterface } from '../../types/loginRequest.interface';
+import type { BackendErrorsInterface } from '../../../shared/types/backendErrors.interface';
 
 /* PrimeNG standalone modules */
 import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
-import { FooterComponent } from 'src/app/shared/components/footer/footer.component';
 
 @Component({
   selector: 'mc-login',
@@ -37,26 +37,49 @@ import { FooterComponent } from 'src/app/shared/components/footer/footer.compone
     InputTextModule,
     PasswordModule,
     ButtonModule,
-    FooterComponent,
   ],
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit, OnDestroy {
   form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', Validators.required],
   });
 
   isSubmitting$ = this.store.select(selectIsSubmitting);
-  data$ = combineLatest({
-    isSubmitting$: this.store.select(selectIsSubmitting),
-    backendErrors: this.store.select(selectValidationErrors),
-  });
+  backendErrors: BackendErrorsInterface | null = null;
+  backendErrorsClosing = false;
+  private errorSub?: Subscription;
+  private errorHideTimer?: number;
+  private errorRemoveTimer?: number;
 
   constructor(
     private fb: FormBuilder,
     private store: Store,
     private authService: AuthService
   ) {}
+
+  ngOnInit(): void {
+    this.errorSub = this.store.select(selectValidationErrors).subscribe((errors) => {
+      this.backendErrors = errors || null;
+      this.backendErrorsClosing = false;
+      if (!errors) return;
+      if (this.errorHideTimer) window.clearTimeout(this.errorHideTimer);
+      if (this.errorRemoveTimer) window.clearTimeout(this.errorRemoveTimer);
+      this.errorHideTimer = window.setTimeout(() => {
+        this.backendErrorsClosing = true;
+      }, 5000);
+      this.errorRemoveTimer = window.setTimeout(() => {
+        this.backendErrors = null;
+        this.backendErrorsClosing = false;
+      }, 5600);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.errorSub?.unsubscribe();
+    if (this.errorHideTimer) window.clearTimeout(this.errorHideTimer);
+    if (this.errorRemoveTimer) window.clearTimeout(this.errorRemoveTimer);
+  }
 
   onSubmit() {
     if (this.form.invalid) return;

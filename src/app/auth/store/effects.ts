@@ -93,9 +93,19 @@ export const loginEffect = createEffect(
             return authActions.loginSuccess({ currentUser });
           }),
           catchError((errorResponse: HttpErrorResponse) => {
+            const fallbackMessage =
+              errorResponse?.error?.error ||
+              errorResponse?.error?.message ||
+              errorResponse?.message ||
+              'Email or password is incorrect. Please try again.';
+            const errors =
+              errorResponse?.error?.errors ||
+              ({
+                login: [fallbackMessage],
+              } as const);
             return of(
               authActions.loginFailure({
-                errors: errorResponse.error.errors,
+                errors,
               })
             );
           })
@@ -151,7 +161,7 @@ export const logoutEffect = createEffect(
       ofType(authActions.logout),
       tap(() => {
         persistanceService.set('accessToken', '');
-        router.navigateByUrl('/');
+        router.navigateByUrl('/login');
       })
     );
   },

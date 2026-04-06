@@ -1,72 +1,74 @@
-<ng-container *ngIf="data$ | async as data">
-  <!-- EXACT viewport height minus the navbar. Use svh to avoid iOS URL bar jumps. -->
-  <section class="min-h-[calc(100vh-150px)] flex flex-col">
-    <!-- Main area centers content and can scroll a tiny bit if the keyboard opens -->
-    <main
-      class="flex-1 flex items-center justify-center px-3 sm:px-4 overflow-y-auto"
-    >
-      <!-- Width owner: snug on phones, grows responsibly -->
-      <div class="w-full max-w-[23rem] sm:max-w-md md:max-w-lg">
-        <p-card header="Sign In" styleClass="w-full m-0">
-          <div class="text-center mb-3">
-            <a routerLink="/register" class="text-sm">Need an account?</a>
+<!-- EXACT viewport height minus the navbar. Use svh to avoid iOS URL bar jumps. -->
+<section class="min-h-[calc(100vh-150px)] flex flex-col">
+  <!-- Main area centers content and can scroll a tiny bit if the keyboard opens -->
+  <main
+    class="flex-1 flex items-center justify-center px-3 sm:px-4 overflow-y-auto"
+  >
+    <!-- Width owner: snug on phones, grows responsibly -->
+    <div class="w-full max-w-[23rem] sm:max-w-md md:max-w-lg">
+      <p-card header="Sign In" styleClass="w-full m-0">
+        <div class="text-center mb-3">
+          <a routerLink="/register" class="text-sm">Need an account?</a>
+        </div>
+
+        <div
+          class="login-error"
+          *ngIf="backendErrors"
+          [class.closing]="backendErrorsClosing"
+        >
+          <mc-backend-error-messages
+            [backendErrors]="backendErrors"
+          ></mc-backend-error-messages>
+        </div>
+
+        <form
+          [formGroup]="form"
+          (ngSubmit)="onSubmit()"
+          class="space-y-4 mt-4"
+        >
+          <!-- EMAIL -->
+          <div class="p-inputgroup">
+            <span class="p-inputgroup-addon"
+              ><i class="pi pi-envelope"></i
+            ></span>
+            <input
+              pInputText
+              type="email"
+              formControlName="email"
+              placeholder="Email"
+              class="w-full flex-auto"
+            />
           </div>
 
-          <mc-backend-error-messages
-            *ngIf="data.backendErrors"
-            [backendErrors]="data.backendErrors"
-          >
-          </mc-backend-error-messages>
+          <!-- PASSWORD -->
+          <div class="p-inputgroup">
+            <span class="p-inputgroup-addon"><i class="pi pi-lock"></i></span>
+            <p-password
+              formControlName="password"
+              [feedback]="false"
+              [toggleMask]="true"
+              styleClass="w-full flex-auto block"
+              inputStyleClass="p-inputtext w-full"
+              [inputStyle]="{ width: '100%' }"
+              placeholder="Password"
+            >
+            </p-password>
+          </div>
 
-          <form
-            [formGroup]="form"
-            (ngSubmit)="onSubmit()"
-            class="space-y-4 mt-4"
-          >
-            <!-- EMAIL -->
-            <div class="p-inputgroup">
-              <span class="p-inputgroup-addon"
-                ><i class="pi pi-envelope"></i
-              ></span>
-              <input
-                pInputText
-                type="email"
-                formControlName="email"
-                placeholder="Email"
-                class="w-full flex-auto"
-              />
-            </div>
+          <button
+            pButton
+            type="submit"
+            label="Sign In"
+            class="w-full"
+            [disabled]="form.invalid || (isSubmitting$ | async)"
+          ></button>
+        </form>
+      </p-card>
+    </div>
+  </main>
 
-            <!-- PASSWORD -->
-            <div class="p-inputgroup">
-              <span class="p-inputgroup-addon"><i class="pi pi-lock"></i></span>
-              <p-password
-                formControlName="password"
-                [feedback]="false"
-                [toggleMask]="true"
-                styleClass="w-full flex-auto block"
-                inputStyleClass="p-inputtext w-full"
-                [inputStyle]="{ width: '100%' }"
-                placeholder="Password"
-              >
-              </p-password>
-            </div>
-
-            <button
-              pButton
-              type="submit"
-              label="Sign In"
-              class="w-full"
-              [disabled]="form.invalid || data.isSubmitting$"
-            ></button>
-          </form>
-        </p-card>
-      </div>
-    </main>
-
-    <!-- Footer pinned to bottom via flex + mt-auto -->
-    <!-- <div class="mt-auto">
-      <mc-footer></mc-footer>
-    </div> -->
-  </section>
-</ng-container>
+  <!-- Footer pinned to bottom via flex + mt-auto -->
+  <!-- <div class="mt-auto">
+    <mc-footer></mc-footer>
+  </div> -->
+</section>

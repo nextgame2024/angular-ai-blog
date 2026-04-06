@@ -66,3 +66,12 @@ html {
 :host ::ng-deep footer {
   margin-top: 0 !important;
 }
+
+.login-error {
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.login-error.closing {
+  opacity: 0;
+  transform: translateY(-4px);
+}
