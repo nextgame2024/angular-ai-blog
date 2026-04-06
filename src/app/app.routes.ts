@@ -81,11 +81,6 @@ export const appRoutes: Route[] = [
       ),
   },
   {
-    path: 'teams',
-    loadChildren: () =>
-      import('src/app/teams/teams.routes').then((m) => m.routes),
-  },
-  {
     path: 'townplanner',
     loadChildren: () =>
       import('src/app/townplanner/townplanner.routes').then(
