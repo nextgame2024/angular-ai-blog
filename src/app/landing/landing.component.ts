@@ -14,7 +14,7 @@ import { environment } from 'src/environments/environment';
   styleUrls: ['./landing.component.css'],
 })
 export class LandingComponent {
-  introVideo = environment.introVideo;
+  introVideo = environment.bannerVideo;
   submitState: 'idle' | 'sending' = 'idle';
   isMuted = false;
   isPlaying = false;
@@ -116,8 +116,7 @@ export class LandingComponent {
         },
         error: (err) => {
           const msg =
-            err?.error?.error ||
-            'Something went wrong. Please try again.';
+            err?.error?.error || 'Something went wrong. Please try again.';
           this.showToast('error', msg);
         },
       });
