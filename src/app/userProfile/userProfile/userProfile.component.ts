@@ -27,9 +27,6 @@ import { ButtonModule } from 'primeng/button';
 import { AvatarModule } from 'primeng/avatar';
 import { CardModule } from 'primeng/card';
 
-/* Follow button (standalone) */
-import { FollowButtonComponent } from 'src/app/shared/components/followButton/followButton.component';
-
 @Component({
   selector: 'mc-user-profile',
   templateUrl: './userProfile.component.html',
@@ -43,8 +40,6 @@ import { FollowButtonComponent } from 'src/app/shared/components/followButton/fo
     ButtonModule,
     AvatarModule,
     CardModule,
-    // 👇 Add the follow button here so the element is known
-    FollowButtonComponent,
   ],
 })
 export class UserProfileComponent implements OnInit {

@@ -33,8 +33,6 @@ import * as popularTagsEffects from './app/shared/components/popularTags/store/e
 import * as addToFavoritesEffects from './app/shared/components/addToFavorites/store/effects';
 import { AddToFavoritesService } from './app/shared/components/addToFavorites/services/addToFavorites.service';
 
-import { followFeatureKey, followReducer } from './app/follow/store/reducers';
-import * as followEffects from './app/follow/store/effects';
 
 import { authInterceptor } from './app/shared/services/authInterceptor';
 import {
@@ -70,14 +68,12 @@ bootstrapApplication(AppComponent, {
     provideState(authFeatureKey, authReducer),
     provideState(feedFeatureKey, feedReducer),
     provideState(popularTagsFeatureKey, popularTagsReducer),
-    provideState(followFeatureKey, followReducer),
     provideState(uploadFeatureKey, avatarUploadReducer),
     provideEffects(
       authEffects,
       feedEffects,
       popularTagsEffects,
       addToFavoritesEffects,
-      followEffects,
       uploadEffects.UploadEffects
     ),
     provideStoreDevtools({

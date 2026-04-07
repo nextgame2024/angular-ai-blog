@@ -24,7 +24,7 @@
 
           <div class="ml-auto">
             <a
-              *ngIf="data.isCurrentUserProfile; else followToggle"
+              *ngIf="data.isCurrentUserProfile"
               routerLink="/settings"
               pButton
               icon="pi pi-cog"
@@ -32,14 +32,6 @@
               class="p-button-outlined p-button-secondary p-button-sm"
             >
             </a>
-
-            <ng-template #followToggle>
-              <mc-follow-button
-                [username]="data.userProfile.username"
-                [following]="data.userProfile.following"
-              >
-              </mc-follow-button>
-            </ng-template>
           </div>
         </div>
       </div>

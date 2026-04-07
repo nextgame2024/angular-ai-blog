@@ -15,7 +15,6 @@ import {
   RouterModule,
 } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Actions, ofType } from '@ngrx/effects';
 import { combineLatest, Subject, takeUntil } from 'rxjs';
 
 import { feedActions } from './store/actions';
@@ -27,16 +26,12 @@ import { ErrorMessageComponent } from 'src/app/shared/components/errorMessage/er
 import { LoadingComponent } from '../loading/loading.component';
 import { TagListComponent } from '../tagList/tagList.component';
 import { AddToFavoritesComponent } from '../addToFavorites/addToFavorites.component';
-import { SuggestedAuthorsComponent } from '../suggestedAuthors/suggestedAuthors.component';
 import { ArticleMediaComponent } from '../articleMedia/articleMedia.component';
 
 /* PrimeNG */
 import { CardModule } from 'primeng/card';
 import { AvatarModule } from 'primeng/avatar';
 import { ButtonModule } from 'primeng/button';
-
-/* Follow refresh */
-import { followActions } from 'src/app/follow/store/actions';
 
 /* Helpers */
 import queryString from 'query-string';
@@ -59,7 +54,6 @@ import { IoObserverDirective } from 'src/app/shared/directives/io-observer.direc
     LoadingComponent,
     TagListComponent,
     AddToFavoritesComponent,
-    SuggestedAuthorsComponent,
     ArticleMediaComponent,
 
     // PrimeNG
@@ -72,7 +66,7 @@ import { IoObserverDirective } from 'src/app/shared/directives/io-observer.direc
   ],
 })
 export class FeedComponent implements OnInit, OnChanges, OnDestroy {
-  /** Base API URL the parent passes (e.g. '/api/articles', '/api/articles?tag=foo', or '/api/articles/feed') */
+  /** Base API URL the parent passes (e.g. '/api/articles', '/api/articles?tag=foo') */
   @Input() apiUrl: string = '';
 
   private destroy$ = new Subject<void>();
@@ -107,9 +101,6 @@ export class FeedComponent implements OnInit, OnChanges, OnDestroy {
   /** If the whole window scrolls, keep null; if a scrollable div, set its element here */
   scrollRoot: Element | null = null;
 
-  /** one-shot guard to avoid repeated resets when suggestions emits rapidly */
-  private refreshHandled = false;
-
   // UI helpers
   defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
@@ -121,10 +112,6 @@ export class FeedComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   // ---------- feed mode helpers ----------
-  /** Detect “Your feed” from the API URL (not the router path). */
-  get isYourFeed(): boolean {
-    return /\/articles\/feed(?:\?|$)/.test(this.apiUrl);
-  }
   get isTagFeed(): boolean {
     return this.baseUrl.startsWith('/tag/');
   }
@@ -136,8 +123,7 @@ export class FeedComponent implements OnInit, OnChanges, OnDestroy {
   constructor(
     private store: Store,
     private router: Router,
-    private route: ActivatedRoute,
-    private actions$: Actions
+    private route: ActivatedRoute
   ) {}
 
   // ---------- lifecycle ----------
@@ -149,18 +135,6 @@ export class FeedComponent implements OnInit, OnChanges, OnDestroy {
         this.currentPage = Number(params['page'] || '1');
         this.baseUrl = this.router.url.split('?')[0];
         this.resetAndLoad(this.currentPage);
-      });
-
-    // Refresh “Your feed” after follow/unfollow – but not when empty
-    this.actions$
-      .pipe(
-        ofType(followActions.followSuccess, followActions.unfollowSuccess),
-        takeUntil(this.destroy$)
-      )
-      .subscribe(() => {
-        if (this.isYourFeed && this.totalCount > 0) {
-          this.resetAndLoad(1);
-        }
       });
 
     // Merge each store payload into our page cache
@@ -219,7 +193,6 @@ export class FeedComponent implements OnInit, OnChanges, OnDestroy {
     this.flatArticles = [];
     this.totalCount = 0;
     this.inFlightPage = null;
-    this.refreshHandled = false; // allow a single refresh once items exist
     this.loadPage(anchorPage);
   }
 
@@ -269,14 +242,4 @@ export class FeedComponent implements OnInit, OnChanges, OnDestroy {
   /** Used by *ngFor trackBy to avoid re-mounting DOM when cache updates */
   trackBySlug = (_: number, a: ArticleInterface) => a.slug;
 
-  // Triggered by <mc-suggested-authors> (e.g., after user follows someone)
-  onSuggestionsRefresh(): void {
-    // Avoid loop when Your feed is empty and suggestions emits on init
-    if (!this.isYourFeed) return;
-    if (this.totalCount === 0) return; // nothing to refresh yet
-    if (this.refreshHandled) return; // ignore extra rapid emits
-
-    this.refreshHandled = true;
-    this.resetAndLoad(1);
-  }
 }

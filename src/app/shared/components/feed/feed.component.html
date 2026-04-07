@@ -103,54 +103,28 @@
     *ngIf="!data.isLoading && flatArticles.length === 0"
     class="shadow-sm mb-4"
   >
-    <ng-container *ngIf="isYourFeed; else nonPersonal">
-      <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
-        <p class="font-medium">Your feed is empty</p>
-        <div class="flex items-center gap-2 ml-auto">
-          <a routerLink="/" class="p-button p-button-text p-button-sm"
-            >Browse Global feed</a
-          >
-          <a
-            routerLink="/tag/content-ai"
-            class="p-button p-button-text p-button-sm"
-            >Explore tags</a
-          >
-        </div>
-      </div>
-      <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-        Follow some authors to see their latest posts here.
+    <ng-container *ngIf="isTagFeed; else globalEmpty">
+      <p class="font-medium mb-1">
+        No articles for <span class="font-semibold">#{{ currentTag }}</span>
       </p>
-      <div class="mt-4">
-        <mc-suggested-authors
-          (refreshTrigger)="onSuggestionsRefresh()"
-        ></mc-suggested-authors>
-      </div>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+        Try another tag or check the global feed.
+      </p>
+      <a routerLink="/" class="p-button p-button-text p-button-sm"
+        >Go to Global feed</a
+      >
     </ng-container>
 
-    <ng-template #nonPersonal>
-      <ng-container *ngIf="isTagFeed; else globalEmpty">
-        <p class="font-medium mb-1">
-          No articles for <span class="font-semibold">#{{ currentTag }}</span>
-        </p>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-          Try another tag or check the global feed.
-        </p>
-        <a routerLink="/" class="p-button p-button-text p-button-sm"
-          >Go to Global feed</a
-        >
-      </ng-container>
-
-      <ng-template #globalEmpty>
-        <p class="font-medium mb-1">No articles yet</p>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-          Try filtering by a tag, or check back later.
-        </p>
-        <a
-          routerLink="/tag/content-ai"
-          class="p-button p-button-text p-button-sm"
-          >Explore tags</a
-        >
-      </ng-template>
+    <ng-template #globalEmpty>
+      <p class="font-medium mb-1">No articles yet</p>
+      <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+        Try filtering by a tag, or check back later.
+      </p>
+      <a
+        routerLink="/tag/content-ai"
+        class="p-button p-button-text p-button-sm"
+        >Explore tags</a
+      >
     </ng-template>
   </p-card>
 

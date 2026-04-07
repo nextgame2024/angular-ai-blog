@@ -33,15 +33,6 @@
         </div>
 
         <div class="ml-auto" *ngIf="data.isAuthor">
-          <a
-            [routerLink]="['/articles', data.article.slug, 'edit']"
-            pButton
-            icon="pi pi-pencil"
-            label="Edit"
-            class="p-button-outlined p-button-secondary p-button-sm mr-2"
-          >
-          </a>
-
           <button
             pButton
             type="button"
