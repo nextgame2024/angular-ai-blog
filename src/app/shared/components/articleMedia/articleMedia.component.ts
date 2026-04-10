@@ -1,52 +1,62 @@
 import {
-  AfterViewInit,
   Component,
   ElementRef,
-  Input,
-  OnDestroy,
-  ViewChild,
+  Renderer2,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  viewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AssetInterface } from 'src/app/shared/types/asset.interface';
 
 @Component({
-  selector: 'mc-article-media',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './articleMedia.component.html',
+    selector: 'mc-article-media',
+    imports: [CommonModule],
+    templateUrl: './articleMedia.component.html'
 })
-export class ArticleMediaComponent implements AfterViewInit, OnDestroy {
-  @Input() assets: AssetInterface[] | null | undefined = [];
+export class ArticleMediaComponent {
+  readonly assets$$ = input<AssetInterface[] | null | undefined>([], {
+    alias: 'assets',
+  });
 
-  @ViewChild('videoEl', { static: false })
-  videoRef?: ElementRef<HTMLVideoElement>;
+  readonly videoRef$$ = viewChild<ElementRef<HTMLVideoElement>>('videoEl');
 
   readonly defaultPoster =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
 
-  isMuted = false;
-  isPlaying = false;
-  private io?: IntersectionObserver;
+  readonly isMuted$$ = signal(false);
+  readonly isPlaying$$ = signal(false);
 
-  get video(): AssetInterface | undefined {
-    return (this.assets || []).find((a) => a.type === 'video');
-  }
-  get image(): AssetInterface | undefined {
-    return (this.assets || []).find((a) => a.type === 'image');
-  }
-  get audio(): AssetInterface | undefined {
-    return (this.assets || []).find((a) => a.type === 'audio');
-  }
+  readonly video$$ = computed(() =>
+    (this.assets$$() || []).find((a) => a.type === 'video')
+  );
+  readonly image$$ = computed(() =>
+    (this.assets$$() || []).find((a) => a.type === 'image')
+  );
+  readonly audio$$ = computed(() =>
+    (this.assets$$() || []).find((a) => a.type === 'audio')
+  );
 
-  ngAfterViewInit(): void {
-    const vid = this.videoRef?.nativeElement;
+  private readonly renderer = inject(Renderer2);
+
+  private readonly observerEffect = effect((onCleanup) => {
+    const vid = this.videoRef$$()?.nativeElement;
     if (!vid) return;
 
-    vid.addEventListener('play', () => (this.isPlaying = true));
-    vid.addEventListener('pause', () => (this.isPlaying = false));
-    vid.addEventListener('ended', () => (this.isPlaying = false));
+    const unlistenPlay = this.renderer.listen(vid, 'play', () =>
+      this.isPlaying$$.set(true)
+    );
+    const unlistenPause = this.renderer.listen(vid, 'pause', () =>
+      this.isPlaying$$.set(false)
+    );
+    const unlistenEnded = this.renderer.listen(vid, 'ended', () =>
+      this.isPlaying$$.set(false)
+    );
 
-    this.io = new IntersectionObserver(
+    const io = new IntersectionObserver(
       async ([entry]) => {
         if (!entry) return;
         if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
@@ -57,21 +67,24 @@ export class ArticleMediaComponent implements AfterViewInit, OnDestroy {
       },
       { threshold: [0, 0.6, 1] }
     );
-    this.io.observe(vid);
-  }
+    io.observe(vid);
 
-  ngOnDestroy(): void {
-    this.io?.disconnect();
-  }
+    onCleanup(() => {
+      io.disconnect();
+      unlistenPlay();
+      unlistenPause();
+      unlistenEnded();
+    });
+  });
 
   private async tryAutoplay(vid: HTMLVideoElement) {
     try {
-      vid.muted = this.isMuted;
+      this.renderer.setProperty(vid, 'muted', this.isMuted$$());
       await vid.play();
     } catch {
       if (!vid.muted) {
-        this.isMuted = true;
-        vid.muted = true;
+        this.isMuted$$.set(true);
+        this.renderer.setProperty(vid, 'muted', true);
         try {
           await vid.play();
         } catch {}
@@ -80,28 +93,29 @@ export class ArticleMediaComponent implements AfterViewInit, OnDestroy {
   }
 
   play(): void {
-    this.videoRef?.nativeElement.play().catch(() => {});
+    this.videoRef$$()?.nativeElement.play().catch(() => {});
   }
   pause(): void {
-    this.videoRef?.nativeElement.pause();
+    this.videoRef$$()?.nativeElement.pause();
   }
   stop(): void {
-    const v = this.videoRef?.nativeElement;
+    const v = this.videoRef$$()?.nativeElement;
     if (!v) return;
     v.pause();
-    v.currentTime = 0;
+    this.renderer.setProperty(v, 'currentTime', 0);
   }
   toggleMute(): void {
-    const v = this.videoRef?.nativeElement;
+    const v = this.videoRef$$()?.nativeElement;
     if (!v) return;
-    this.isMuted = !this.isMuted;
-    v.muted = this.isMuted;
+    const nextMuted = !this.isMuted$$();
+    this.isMuted$$.set(nextMuted);
+    this.renderer.setProperty(v, 'muted', nextMuted);
   }
 
   onImageError(evt: Event): void {
-    const img = evt.target as HTMLImageElement | null;
+    const img = evt.target instanceof HTMLImageElement ? evt.target : null;
     if (img && img.src !== this.defaultPoster) {
-      img.src = this.defaultPoster;
+      this.renderer.setAttribute(img, 'src', this.defaultPoster);
     }
   }
 }

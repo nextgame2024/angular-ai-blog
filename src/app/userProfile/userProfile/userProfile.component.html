@@ -1,54 +1,57 @@
-<ng-container *ngIf="data$ | async as data">
-  <div *ngIf="data.userProfile">
+@if (userProfile$$(); as userProfile) {
+  <div>
     <!-- Header -->
     <section class="bg-gray-50 border-b dark:bg-neutral-900/40">
       <div class="container mx-auto px-4 py-8">
         <div class="max-w-9xl mx-auto flex items-center gap-4">
           <p-avatar
-            [image]="getUserImage(data.userProfile.image)"
+            [image]="getUserImage(userProfile.image)"
             shape="circle"
             size="xlarge"
-          >
+            >
           </p-avatar>
-
           <div class="min-w-0">
             <h2 class="text-xl md:text-2xl font-semibold truncate">
-              {{ data.userProfile.username }}
+              {{ userProfile.username }}
             </h2>
             <p
               class="text-gray-600 text-sm md:text-base break-words dark:text-gray-300"
-            >
-              {{ data.userProfile.bio || " " }}
+              >
+              {{ userProfile.bio || " " }}
             </p>
           </div>
-
           <div class="ml-auto">
-            <a
-              *ngIf="data.isCurrentUserProfile"
-              routerLink="/settings"
-              pButton
-              icon="pi pi-cog"
-              label="Edit Profile"
-              class="p-button-outlined p-button-secondary p-button-sm"
-            >
-            </a>
+            @if (isCurrentUserProfile$$()) {
+              <a
+                routerLink="/settings"
+                pButton
+                icon="pi pi-cog"
+                label="Edit Profile"
+                class="p-button-outlined p-button-secondary p-button-sm"
+                >
+              </a>
+            }
           </div>
         </div>
       </div>
     </section>
-
     <!-- Tabs + Feed -->
     <div class="container mx-auto px-4 py-6">
       <div class="max-w-9xl mx-auto">
-        <p-tabMenu
-          [model]="items"
-          [activeItem]="activeItem || items[0]"
-          class="overflow-x-auto whitespace-nowrap text-sm md:text-base mb-4"
-        >
-        </p-tabMenu>
-
-        <mc-feed [apiUrl]="getApiUrl()"></mc-feed>
+        <nav class="flex flex-wrap gap-2 border-b border-gray-200 pb-2 mb-4">
+          @for (item of items$$(); track item.label) {
+            <a
+              [routerLink]="item.routerLink"
+              class="px-3 py-1.5 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
+              [class.border-emerald-500]="activeItem$$()?.label === item.label"
+              [class.text-emerald-600]="activeItem$$()?.label === item.label"
+              >
+              {{ item.label }}
+            </a>
+          }
+        </nav>
+        <mc-feed [apiUrl]="apiUrl$$()"></mc-feed>
       </div>
     </div>
   </div>
-</ng-container>
+}

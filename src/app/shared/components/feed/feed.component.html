@@ -1,147 +1,136 @@
-<ng-container *ngIf="data$ | async as data">
-  <mc-loading *ngIf="data.isLoading && flatArticles.length === 0"></mc-loading>
-  <mc-error-message
-    *ngIf="data.error"
-    [message]="data.error"
-  ></mc-error-message>
-
-  <!-- TOP sentinel for infinite scroll -->
-  <div
-    class="h-1"
-    ioObserve
-    [root]="scrollRoot"
-    rootMargin="400px 0px 0px 0px"
-    (ioIntersect)="maybeLoadPrev()"
-  ></div>
-
-  <!-- GRID: 1 col on mobile, 3 cols on md+ -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    <ng-container *ngFor="let article of flatArticles; trackBy: trackBySlug">
-      <p-card class="shadow-sm no-pad-card">
-        <div class="flex flex-col h-full">
-          <!-- MEDIA: portrait with overlays inside -->
-          <div class="media-wrap media-portrait">
-            <mc-article-media [assets]="article.assets"></mc-article-media>
-
-            <!-- OVERLAY: TOP (author/date/favorites) -->
-            <div class="overlay overlay-top">
-              <div class="flex items-center gap-3 w-full">
+@if (isLoading$$() && flatArticles$$().length === 0) {
+  <mc-loading></mc-loading>
+}
+@if (error$$()) {
+  <mc-error-message [message]="error$$()"></mc-error-message>
+}
+<!-- TOP sentinel for infinite scroll -->
+<div
+  class="h-1"
+  ioObserve
+  [root]="scrollRoot$$()"
+  rootMargin="400px 0px 0px 0px"
+  (ioIntersect)="maybeLoadPrev()"
+></div>
+<!-- GRID: 1 col on mobile, 3 cols on md+ -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  @for (article of flatArticles$$(); track trackBySlug($index, article)) {
+    <p-card class="shadow-sm no-pad-card">
+      <div class="flex flex-col h-full">
+        <!-- MEDIA: portrait with overlays inside -->
+        <div class="media-wrap media-portrait">
+          <mc-article-media [assets]="article.assets"></mc-article-media>
+          <!-- OVERLAY: TOP (author/date/favorites) -->
+          <div class="overlay overlay-top">
+            <div class="flex items-center gap-3 w-full">
+              <a
+                [routerLink]="['/profiles', article.author.username]"
+                class="shrink-0 overlay-click"
+                >
+                <img
+                  class="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover ring-2 ring-white/40"
+                  [src]="article.author.image || defaultAvatar"
+                  [alt]="article.author.username + ' avatar'"
+                  (error)="setFallback($event)"
+                  />
+              </a>
+              <div class="min-w-0">
                 <a
                   [routerLink]="['/profiles', article.author.username]"
-                  class="shrink-0 overlay-click"
-                >
-                  <img
-                    class="w-9 h-9 md:w-10 md:h-10 rounded-full object-cover ring-2 ring-white/40"
-                    [src]="article.author.image || defaultAvatar"
-                    [alt]="article.author.username + ' avatar'"
-                    (error)="setFallback($event)"
-                  />
-                </a>
-                <div class="min-w-0">
-                  <a
-                    [routerLink]="['/profiles', article.author.username]"
-                    class="block font-semibold text-white drop-shadow truncate overlay-click"
+                  class="block font-semibold text-white drop-shadow truncate overlay-click"
                   >
-                    {{ article.author.username }}
-                  </a>
-                  <span class="text-xs text-white/90">
-                    {{ article.createdAt | date : "mediumDate" }}
-                  </span>
-                </div>
-                <div class="ml-auto overlay-click">
-                  <mc-add-to-favorites
-                    [isFavorited]="article.favorited"
-                    [articleSlug]="article.slug"
-                    [favoritesCount]="article.favoritesCount"
-                  ></mc-add-to-favorites>
-                </div>
+                  {{ article.author.username }}
+                </a>
+                <span class="text-xs text-white/90">
+                  {{ article.createdAt | date : "mediumDate" }}
+                </span>
+              </div>
+              <div class="ml-auto overlay-click">
+                <mc-add-to-favorites
+                  [isFavorited]="article.favorited"
+                  [articleSlug]="article.slug"
+                  [favoritesCount]="article.favoritesCount"
+                ></mc-add-to-favorites>
               </div>
             </div>
-
-            <!-- OVERLAY: BOTTOM TEXT (now truly at the very bottom; controls appear above it) -->
-            <div class="overlay overlay-bottom">
+          </div>
+          <!-- OVERLAY: BOTTOM TEXT (now truly at the very bottom; controls appear above it) -->
+          <div class="overlay overlay-bottom">
+            <a
+              [routerLink]="['/articles', article.slug]"
+              class="block overlay-click"
+              >
+              <h2
+                class="text-base md:text-lg font-semibold leading-snug text-white drop-shadow"
+                >
+                {{ article.title }}
+              </h2>
+              <p class="text-white/90 text-sm mt-1 line-clamp-3">
+                {{ article.description }}
+              </p>
+            </a>
+            <div class="mt-2 flex items-center flex-wrap gap-2">
               <a
                 [routerLink]="['/articles', article.slug]"
-                class="block overlay-click"
-              >
-                <h2
-                  class="text-base md:text-lg font-semibold leading-snug text-white drop-shadow"
-                >
-                  {{ article.title }}
-                </h2>
-                <p class="text-white/90 text-sm mt-1 line-clamp-3">
-                  {{ article.description }}
-                </p>
-              </a>
-
-              <div class="mt-2 flex items-center flex-wrap gap-2">
-                <a
-                  [routerLink]="['/articles', article.slug]"
-                  pButton
-                  label="Read more"
-                  class="p-button-sm p-button-rounded p-button-text text-white overlay-click"
-                ></a>
-
-                <!-- tags -->
-                <mc-tag-list
-                  [tags]="article.tagList"
-                  class="tags-inside overlay-click"
-                ></mc-tag-list>
-              </div>
+                pButton
+                label="Read more"
+                class="p-button-sm p-button-rounded p-button-text text-white overlay-click"
+              ></a>
+              <!-- tags -->
+              <mc-tag-list
+                [tags]="article.tagList"
+                class="tags-inside overlay-click"
+              ></mc-tag-list>
             </div>
-
-            <!-- Loader (quick fade) -->
-            <div class="media-skeleton"><div class="spinner"></div></div>
           </div>
+          <!-- Loader (quick fade) -->
+          <div class="media-skeleton"><div class="spinner"></div></div>
         </div>
-      </p-card>
-    </ng-container>
-  </div>
-
-  <!-- Empty state -->
+      </div>
+    </p-card>
+  }
+</div>
+<!-- Empty state -->
+@if (!isLoading$$() && flatArticles$$().length === 0) {
   <p-card
-    *ngIf="!data.isLoading && flatArticles.length === 0"
     class="shadow-sm mb-4"
-  >
-    <ng-container *ngIf="isTagFeed; else globalEmpty">
+    >
+    @if (isTagFeed$$()) {
       <p class="font-medium mb-1">
-        No articles for <span class="font-semibold">#{{ currentTag }}</span>
+        No articles for <span class="font-semibold">#{{ currentTag$$() }}</span>
       </p>
       <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
         Try another tag or check the global feed.
       </p>
       <a routerLink="/" class="p-button p-button-text p-button-sm"
         >Go to Global feed</a
-      >
-    </ng-container>
-
-    <ng-template #globalEmpty>
-      <p class="font-medium mb-1">No articles yet</p>
-      <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
-        Try filtering by a tag, or check back later.
-      </p>
-      <a
-        routerLink="/tag/content-ai"
-        class="p-button p-button-text p-button-sm"
-        >Explore tags</a
-      >
-    </ng-template>
-  </p-card>
-
-  <!-- BOTTOM sentinel + loading more -->
-  <div
-    class="h-1"
-    ioObserve
-    [root]="scrollRoot"
-    rootMargin="0px 0px 600px 0px"
-    (ioIntersect)="maybeLoadNext()"
-  ></div>
-
-  <div
-    *ngIf="data.isLoading && flatArticles.length > 0"
-    class="py-6 text-center text-gray-400 flex items-center justify-center gap-2"
-  >
-    <span class="spinner-sm"></span>
-    <span>Loading more…</span>
-  </div>
-</ng-container>
+        >
+      } @else {
+        <p class="font-medium mb-1">No articles yet</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Try filtering by a tag, or check back later.
+        </p>
+        <a
+          routerLink="/tag/content-ai"
+          class="p-button p-button-text p-button-sm"
+          >Explore tags</a
+          >
+        }
+      </p-card>
+    }
+    <!-- BOTTOM sentinel + loading more -->
+    <div
+      class="h-1"
+      ioObserve
+      [root]="scrollRoot$$()"
+      rootMargin="0px 0px 600px 0px"
+      (ioIntersect)="maybeLoadNext()"
+    ></div>
+    @if (isLoading$$() && flatArticles$$().length > 0) {
+      <div
+        class="py-6 text-center text-gray-400 flex items-center justify-center gap-2"
+        >
+        <span class="spinner-sm"></span>
+        <span>Loading more…</span>
+      </div>
+    }

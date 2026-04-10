@@ -1,53 +1,60 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { articleActions } from '../store/actions';
-import { combineLatest, filter, map } from 'rxjs';
 import {
   selectArticleData,
   selectError,
   selectIsLoading,
 } from '../store/reducers';
 import { selectCurrentUser } from 'src/app/auth/store/reducers';
-import { CurrentUserInterface } from 'src/app/shared/types/currentUser.interface';
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import { LoadingComponent } from 'src/app/shared/components/loading/loading.component';
 import { ErrorMessageComponent } from 'src/app/shared/components/errorMessage/errorMessage.component';
 import { TagListComponent } from 'src/app/shared/components/tagList/tagList.component';
 import { RenderService } from 'src/app/shared/services/render.service';
 import { firstValueFrom } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 /* PrimeNG */
 import { AvatarModule } from 'primeng/avatar';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ConfirmationService } from 'primeng/api';
-import { FooterComponent } from 'src/app/shared/components/footer/footer.component';
 import { ArticleMediaComponent } from 'src/app/shared/components/articleMedia/articleMedia.component';
 
 @Component({
-  selector: 'mc-article',
-  templateUrl: './article.component.html',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterLink,
-    LoadingComponent,
-    ErrorMessageComponent,
-    TagListComponent,
-    AvatarModule,
-    ButtonModule,
-    ConfirmDialogModule,
-    FooterComponent,
-    ArticleMediaComponent,
-  ],
-  providers: [ConfirmationService],
+    selector: 'mc-article',
+    templateUrl: './article.component.html',
+    imports: [
+        CommonModule,
+        RouterLink,
+        LoadingComponent,
+        ErrorMessageComponent,
+        TagListComponent,
+        AvatarModule,
+        ButtonModule,
+        ConfirmDialogModule,
+        ArticleMediaComponent,
+    ],
+    providers: [ConfirmationService]
 })
-export class ArticleComponent implements OnInit {
-  slug = this.route.snapshot.paramMap.get('slug') ?? '';
-  guestEmail = '';
+export class ArticleComponent {
+  private readonly store = inject(Store);
+  private readonly route = inject(ActivatedRoute);
+  private readonly confirmation = inject(ConfirmationService);
+  private readonly render = inject(RenderService);
+  private readonly document = inject(DOCUMENT);
 
-  defaultAvatar =
+  private readonly paramMap$$ = toSignal(this.route.paramMap, {
+    initialValue: this.route.snapshot.paramMap,
+  });
+  readonly slug$$ = computed(() => this.paramMap$$().get('slug') ?? '');
+  private readonly lastSlug$$ = signal<string | null>(null);
+
+  readonly guestEmail$$ = signal('');
+
+  readonly defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
 
   getAuthorImage(
@@ -56,43 +63,38 @@ export class ArticleComponent implements OnInit {
     return article?.author?.image || this.defaultAvatar;
   }
 
-  isAuthor$ = combineLatest({
-    article: this.store.select(selectArticleData),
-    currentUser: this.store
-      .select(selectCurrentUser)
-      .pipe(
-        filter(
-          (currentUser): currentUser is CurrentUserInterface | null =>
-            currentUser !== undefined
-        )
-      ),
-  }).pipe(
-    map(({ article, currentUser }) => {
-      if (!article || !currentUser) return false;
-      return article.author.username === currentUser.username;
-    })
-  );
-
-  data$ = combineLatest({
-    isLoading: this.store.select(selectIsLoading),
-    error: this.store.select(selectError),
-    article: this.store.select(selectArticleData),
-    isAuthor: this.isAuthor$,
+  readonly article$$ = toSignal(this.store.select(selectArticleData), {
+    initialValue: null,
+  });
+  readonly error$$ = toSignal(this.store.select(selectError), {
+    initialValue: null,
+  });
+  readonly isLoading$$ = toSignal(this.store.select(selectIsLoading), {
+    initialValue: false,
+  });
+  readonly currentUser$$ = toSignal(this.store.select(selectCurrentUser), {
+    initialValue: null,
   });
 
-  constructor(
-    private store: Store,
-    private route: ActivatedRoute,
-    private confirmation: ConfirmationService,
-    private render: RenderService
-  ) {}
+  readonly isAuthor$$ = computed(() => {
+    const article = this.article$$();
+    const currentUser = this.currentUser$$();
+    if (!article || !currentUser) return false;
+    return article.author.username === currentUser.username;
+  });
 
-  ngOnInit(): void {
-    this.store.dispatch(articleActions.getArticle({ slug: this.slug }));
-  }
+  private readonly loadEffect = effect(() => {
+    const slug = this.slug$$();
+    if (!slug) return;
+    if (this.lastSlug$$() === slug) return;
+    this.lastSlug$$.set(slug);
+    this.store.dispatch(articleActions.getArticle({ slug }));
+  });
 
   deleteArticle(): void {
-    this.store.dispatch(articleActions.deleteArticle({ slug: this.slug }));
+    const slug = this.slug$$();
+    if (!slug) return;
+    this.store.dispatch(articleActions.deleteArticle({ slug }));
   }
 
   confirmDelete(): void {
@@ -108,66 +110,68 @@ export class ArticleComponent implements OnInit {
     });
   }
 
-  selectedFile: File | null = null;
-  selectedFileName = '';
-  uploadError = '';
-  creatingCheckout = false;
+  readonly selectedFile$$ = signal<File | null>(null);
+  readonly selectedFileName$$ = signal('');
+  readonly uploadError$$ = signal('');
+  readonly creatingCheckout$$ = signal(false);
 
   onFileSelected(evt: Event): void {
-    this.uploadError = '';
-    this.selectedFile = null;
-    this.selectedFileName = '';
+    this.uploadError$$.set('');
+    this.selectedFile$$.set(null);
+    this.selectedFileName$$.set('');
 
-    const input = evt.target as HTMLInputElement;
-    const file = input.files?.[0];
+    const input = evt.target instanceof HTMLInputElement ? evt.target : null;
+    const file = input?.files?.[0];
     if (!file) return;
 
     const isImage = /^image\//.test(file.type);
     const under10MB = file.size <= 10 * 1024 * 1024;
 
     if (!isImage) {
-      this.uploadError = 'Please select an image (JPG, PNG, HEIC).';
+      this.uploadError$$.set('Please select an image (JPG, PNG, HEIC).');
       return;
     }
     if (!under10MB) {
-      this.uploadError = 'File too large (max 10 MB).';
+      this.uploadError$$.set('File too large (max 10 MB).');
       return;
     }
 
-    this.selectedFile = file;
-    this.selectedFileName = file.name;
+    this.selectedFile$$.set(file);
+    this.selectedFileName$$.set(file.name);
   }
 
   async onGenerateRequested(): Promise<void> {
-    if (!this.selectedFile || this.uploadError) return;
+    const selectedFile = this.selectedFile$$();
+    const uploadError = this.uploadError$$();
+    if (!selectedFile || uploadError) return;
 
     // if not logged in, require email
-    const isLoggedIn = !!(await firstValueFrom(this.data$)).article?.author
-      ?.username; // or use your auth selector directly
-    if (!isLoggedIn && !this.guestEmail) {
-      this.uploadError = 'Please enter an email address to receive your video.';
+    const isLoggedIn = !!this.currentUser$$();
+    if (!isLoggedIn && !this.guestEmail$$()) {
+      this.uploadError$$.set(
+        'Please enter an email address to receive your video.'
+      );
       return;
     }
 
-    this.creatingCheckout = true;
+    this.creatingCheckout$$.set(true);
     try {
       const resp = await firstValueFrom(
         this.render.createSession(
-          this.selectedFile.name,
-          this.selectedFile.type,
-          this.slug, // current article slug (already in your component)
-          isLoggedIn ? undefined : this.guestEmail
+          selectedFile.name,
+          selectedFile.type,
+          this.slug$$(), // current article slug
+          isLoggedIn ? undefined : this.guestEmail$$()
         )
       );
       if (!resp?.uploadUrl || !resp?.sessionUrl)
         throw new Error('Invalid server response');
-      await this.render.uploadToS3(resp.uploadUrl, this.selectedFile);
-      window.location.href = resp.sessionUrl;
+      await this.render.uploadToS3(resp.uploadUrl, selectedFile);
+      this.document.defaultView?.location.assign(resp.sessionUrl);
     } catch (e) {
-      console.error(e);
-      this.uploadError = 'Could not start checkout. Please try again.';
+      this.uploadError$$.set('Could not start checkout. Please try again.');
     } finally {
-      this.creatingCheckout = false;
+      this.creatingCheckout$$.set(false);
     }
   }
 }

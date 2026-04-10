@@ -1,37 +1,33 @@
 import { Component } from '@angular/core';
 import { combineLatest, catchError, map, of, switchMap } from 'rxjs';
 import { Store } from '@ngrx/store';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { selectCurrentUser, selectIsLoading } from '../../store/reducers';
 import { NavigationLinksProjectsService } from 'src/app/manager/services/navigation.links.projects.service';
-import type { MenuItem } from 'primeng/api';
-
-// PrimeNG
-import { MenubarModule } from 'primeng/menubar';
-import { AvatarModule } from 'primeng/avatar';
-import { ButtonModule } from 'primeng/button';
 import { environment } from 'src/environments/environment';
 // Theme
 import { ThemeService } from 'src/app/shared/services/theme.service';
 import { CompanyBrandingService } from 'src/app/shared/services/company-branding.service';
 
+type HeaderItem = {
+  label: string;
+  route: string;
+};
+
 @Component({
-  selector: 'mc-topbar',
-  standalone: true,
-  templateUrl: './topBar.component.html',
-  styleUrls: ['./topBar.component.css'],
-  imports: [
-    CommonModule,
-    RouterLink,
-    MenubarModule,
-    AvatarModule,
-    ButtonModule,
-  ],
+    selector: 'mc-topbar',
+    templateUrl: './topBar.component.html',
+    styleUrls: ['./topBar.component.css'],
+    imports: [
+        CommonModule,
+        RouterLink,
+        RouterLinkActive,
+    ]
 })
 export class TopBarComponent {
-  private readonly superAdminId = 'c2dad143-077c-4082-92f0-47805601db3b';
+  isMobileMenuOpen = false;
 
   data$ = combineLatest({
     currentUser: this.store.select(selectCurrentUser),
@@ -44,7 +40,6 @@ export class TopBarComponent {
   );
   menuItems$ = this.store.select(selectCurrentUser).pipe(
     switchMap((currentUser) => {
-      const isSuperAdmin = currentUser?.id === this.superAdminId;
       const baseItems = this.buildHeaderItems(!!currentUser);
 
       if (currentUser === undefined) return of([]);
@@ -60,9 +55,7 @@ export class TopBarComponent {
                 .filter((label): label is string => !!label),
             );
 
-            return baseItems.filter((item) =>
-              item.label ? allowedLabels.has(item.label) : true,
-            );
+            return baseItems.filter((item) => allowedLabels.has(item.label));
           }),
           catchError(() => of([])),
         );
@@ -119,21 +112,27 @@ export class TopBarComponent {
     this.theme.toggle();
   }
 
+  toggleMobileMenu(): void {
+    this.isMobileMenuOpen = !this.isMobileMenuOpen;
+  }
+
+  closeMobileMenu(): void {
+    this.isMobileMenuOpen = false;
+  }
+
   onLogoError(ev: Event) {
     const img = ev.target as HTMLImageElement;
     img.src = this.defaultLogo;
   }
 
-  private buildHeaderItems(isLoggedIn: boolean): MenuItem[] {
-    return [
-      { label: 'Home', routerLink: '/' },
-      { label: 'Town planner', routerLink: '/townplanner', visible: isLoggedIn },
-      {
-        label: 'Business manager',
-        routerLink: '/manager',
-        visible: isLoggedIn,
-      },
-      { label: 'Settings', routerLink: '/settings', visible: isLoggedIn },
-    ];
+  private buildHeaderItems(isLoggedIn: boolean): HeaderItem[] {
+    const items: HeaderItem[] = [{ label: 'Home', route: '/' }];
+    if (!isLoggedIn) return items;
+    items.push(
+      { label: 'Town planner', route: '/townplanner' },
+      { label: 'Business manager', route: '/manager' },
+      { label: 'Settings', route: '/settings' },
+    );
+    return items;
   }
 }

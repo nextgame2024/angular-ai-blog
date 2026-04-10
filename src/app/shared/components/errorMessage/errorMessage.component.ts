@@ -1,10 +1,15 @@
-import { Component, Input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 
 @Component({
   selector: 'mc-error-message',
-  template: '<div>{{message}}</div>',
+  template: '<div>{{ displayMessage$$() }}</div>',
   standalone: true,
 })
 export class ErrorMessageComponent {
-  @Input() message: string = 'Something went wrong';
+  readonly message$$ = input<string | null | undefined>(null, {
+    alias: 'message',
+  });
+  readonly displayMessage$$ = computed(
+    () => this.message$$() || 'Something went wrong',
+  );
 }

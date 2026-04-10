@@ -1,8 +1,9 @@
-<div class="section" *ngIf="title !== 'Business manager'">
-  <h3>{{ title }}</h3>
-
-  <p class="hint">
-    Placeholder for {{ title }}. In the next iteration we will add forms,
-    tables, and API integration.
-  </p>
-</div>
+@if (title !== 'Business manager') {
+  <div class="section">
+    <h3>{{ title }}</h3>
+    <p class="hint">
+      Placeholder for {{ title }}. In the next iteration we will add forms,
+      tables, and API integration.
+    </p>
+  </div>
+}

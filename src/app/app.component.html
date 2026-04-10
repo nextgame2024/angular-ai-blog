@@ -1,5 +1,7 @@
-<mc-topbar></mc-topbar>
-<router-outlet></router-outlet>
-<div class="mt-auto">
+<div class="min-h-screen flex flex-col">
+  <mc-topbar></mc-topbar>
+  <main class="flex-1">
+    <router-outlet></router-outlet>
+  </main>
   <mc-footer></mc-footer>
 </div>

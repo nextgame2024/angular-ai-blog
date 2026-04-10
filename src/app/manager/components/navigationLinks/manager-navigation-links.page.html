@@ -28,19 +28,20 @@
           [formControl]="searchCtrl"
           placeholder="Search by label, type, or company"
           aria-label="Search navigation links"
-        />
-        <button
-          *ngIf="searchCtrl.value"
-          class="icon-btn"
-          type="button"
-          (click)="searchCtrl.setValue('')"
-          aria-label="Clear search"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 6l12 12"></path>
-            <path d="M18 6l-12 12"></path>
-          </svg>
-        </button>
+          />
+        @if (searchCtrl.value) {
+          <button
+            class="icon-btn"
+            type="button"
+            (click)="searchCtrl.setValue('')"
+            aria-label="Clear search"
+            >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 6l12 12"></path>
+              <path d="M18 6l-12 12"></path>
+            </svg>
+          </button>
+        }
       </label>
     </div>
 
@@ -49,15 +50,17 @@
       [formGroup]="navigationLinkForm"
       autocomplete="off"
       (submit)="$event.preventDefault(); saveNavigationLink()"
-    >
-      <label class="inline-field" *ngIf="isSuperAdmin">
-        <span>Company *</span>
-        <app-manager-select
-          formControlName="company_id"
-          [options]="companyOptions"
-          placeholder="Select company"
-        ></app-manager-select>
-      </label>
+      >
+      @if (isSuperAdmin) {
+        <label class="inline-field">
+          <span>Company *</span>
+          <app-manager-select
+            formControlName="company_id"
+            [options]="companyOptions"
+            placeholder="Select company"
+          ></app-manager-select>
+        </label>
+      }
 
       <label class="inline-field">
         <span>Navigation type *</span>
@@ -78,7 +81,7 @@
             [disabled]="labelsLoading"
             [attr.aria-expanded]="labelsDropdownOpen"
             (click)="toggleLabelsDropdown($event)"
-          >
+            >
             <span class="value">{{ selectedLabelsSummary }}</span>
             <span class="chevron" aria-hidden="true">
               <svg viewBox="0 0 20 20">
@@ -87,150 +90,167 @@
             </span>
           </button>
 
-          <div
-            class="labels-multiselect-menu"
-            *ngIf="labelsDropdownOpen"
-            (click)="$event.stopPropagation()"
-          >
-            <div class="labels-multiselect-hint">
-              <span *ngIf="labelsLoading">Loading assigned labels...</span>
-              <span *ngIf="!labelsLoading && selectedLabelsCount === 0"
-                >No labels selected</span
+          @if (labelsDropdownOpen) {
+            <div
+              class="labels-multiselect-menu"
+              (click)="$event.stopPropagation()"
               >
-              <span *ngIf="!labelsLoading && selectedLabelsCount > 0"
-                >{{ selectedLabelsCount }} selected</span
-              >
+              <div class="labels-multiselect-hint">
+                @if (labelsLoading) {
+                  <span>Loading assigned labels...</span>
+                }
+                @if (!labelsLoading && selectedLabelsCount === 0) {
+                  <span
+                    >No labels selected</span
+                    >
+                  }
+                  @if (!labelsLoading && selectedLabelsCount > 0) {
+                    <span
+                      >{{ selectedLabelsCount }} selected</span
+                      >
+                    }
+                  </div>
+                  @for (option of navigationLabelOptions; track trackByLabel($index, option)) {
+                    <button
+                      type="button"
+                      class="labels-multiselect-option"
+                      [disabled]="labelsLoading"
+                      [attr.aria-pressed]="isLabelSelected(option.value)"
+                      (click)="toggleLabel(option.value)"
+                      >
+                      <span
+                        class="check"
+                        [class.checked]="isLabelSelected(option.value)"
+                        aria-hidden="true"
+                        >
+                        <svg viewBox="0 0 20 20">
+                          <path d="M4 10l4 4 8-8"></path>
+                        </svg>
+                      </span>
+                      <span>{{ option.label }}</span>
+                    </button>
+                  }
+                  @if (!labelsLoading && !navigationLabelOptions.length) {
+                    <div
+                      class="labels-multiselect-empty"
+                      >
+                      No labels available for this navigation type.
+                    </div>
+                  }
+                </div>
+              }
             </div>
+          </label>
 
-            <button
-              type="button"
-              class="labels-multiselect-option"
-              *ngFor="let option of navigationLabelOptions; trackBy: trackByLabel"
-              [disabled]="labelsLoading"
-              [attr.aria-pressed]="isLabelSelected(option.value)"
-              (click)="toggleLabel(option.value)"
-            >
-              <span
-                class="check"
-                [class.checked]="isLabelSelected(option.value)"
-                aria-hidden="true"
-              >
-                <svg viewBox="0 0 20 20">
-                  <path d="M4 10l4 4 8-8"></path>
+          <div class="inline-actions">
+            <button class="btn primary" type="submit" [disabled]="labelsLoading">
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 5h11l3 3v11H5z"></path>
+                  <path d="M9 5v6h6V5"></path>
                 </svg>
               </span>
-              <span>{{ option.label }}</span>
+              Save
             </button>
-
-            <div
-              class="labels-multiselect-empty"
-              *ngIf="!labelsLoading && !navigationLabelOptions.length"
-            >
-              No labels available for this navigation type.
-            </div>
           </div>
-        </div>
-      </label>
+        </form>
 
-      <div class="inline-actions">
-        <button class="btn primary" type="submit" [disabled]="labelsLoading">
-          <span class="btn-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <path d="M5 5h11l3 3v11H5z"></path>
-              <path d="M9 5v6h6V5"></path>
-            </svg>
-          </span>
-          Save
-        </button>
-      </div>
-    </form>
-
-    <div class="table-head" aria-hidden="true">
-      <div>Label</div>
-      <div>Type</div>
-      <div>Company</div>
-      <div>Status</div>
-    </div>
-  </div>
-
-  <ng-container *ngIf="(error$ | async) as err">
-    <div class="error" *ngIf="!isErrorDismissed(err)">
-      <span>{{ err }}</span>
-      <button
-        type="button"
-        class="error-dismiss"
-        aria-label="Dismiss error"
-        (click)="dismissError(err)"
-      >
-        x
-      </button>
-    </div>
-  </ng-container>
-
-  <div
-    class="screen-loader"
-    *ngIf="(loading$ | async)"
-    aria-live="polite"
-    aria-busy="true"
-  >
-    <div class="loader-card">
-      <div class="loader-ring" aria-hidden="true"></div>
-      <div class="loader-bar" aria-hidden="true"></div>
-      <div class="loader-text">Loading…</div>
-    </div>
-  </div>
-
-  <section class="list" #navigationLinksList>
-    <ng-container *ngIf="filteredNavigationLinks$ | async as navigationLinks">
-      <div class="table" *ngIf="navigationLinks.length">
-        <div class="thead">
+        <div class="table-head" aria-hidden="true">
           <div>Label</div>
           <div>Type</div>
           <div>Company</div>
           <div>Status</div>
         </div>
+      </div>
 
-        <div
-          class="trow"
-          *ngFor="let item of navigationLinks; trackBy: trackByNavigationLink"
-        >
-          <div class="cell strong">{{ item.navigationLabel }}</div>
-          <div class="cell muted">{{ item.navigationType }}</div>
-          <div class="cell muted">
-            {{ isSuperAdmin ? (item.companyName || item.companyId) : '—' }}
+      @if ((error$ | async); as err) {
+        @if (!isErrorDismissed(err)) {
+          <div class="error">
+            <span>{{ err }}</span>
+            <button
+              type="button"
+              class="error-dismiss"
+              aria-label="Dismiss error"
+              (click)="dismissError(err)"
+              >
+              x
+            </button>
           </div>
-          <div class="cell">
-            <span class="badge" [class.archived]="!item.active">
-              {{ item.active ? 'active' : 'inactive' }}
-            </span>
+        }
+      }
+
+      @if ((loading$ | async)) {
+        <div
+          class="screen-loader"
+          aria-live="polite"
+          aria-busy="true"
+          >
+          <div class="loader-card">
+            <div class="loader-ring" aria-hidden="true"></div>
+            <div class="loader-bar" aria-hidden="true"></div>
+            <div class="loader-text">Loading…</div>
           </div>
         </div>
-      </div>
+      }
 
-      <div class="cards" *ngIf="navigationLinks.length">
-        <article
-          class="material-card"
-          *ngFor="let item of navigationLinks; trackBy: trackByNavigationLink"
-        >
-          <div class="row">
-            <div class="name">{{ item.navigationLabel }}</div>
-            <span class="badge" [class.archived]="!item.active">
-              {{ item.active ? 'active' : 'inactive' }}
-            </span>
-          </div>
-          <div class="meta">
-            <div><span>Type:</span> {{ item.navigationType }}</div>
-            <div *ngIf="isSuperAdmin">
-              <span>Company:</span> {{ item.companyName || item.companyId }}
+      <section class="list" #navigationLinksList>
+        @if (filteredNavigationLinks$ | async; as navigationLinks) {
+          @if (navigationLinks.length) {
+            <div class="table">
+              <div class="thead">
+                <div>Label</div>
+                <div>Type</div>
+                <div>Company</div>
+                <div>Status</div>
+              </div>
+              @for (item of navigationLinks; track trackByNavigationLink($index, item)) {
+                <div
+                  class="trow"
+                  >
+                  <div class="cell strong">{{ item.navigationLabel }}</div>
+                  <div class="cell muted">{{ item.navigationType }}</div>
+                  <div class="cell muted">
+                    {{ isSuperAdmin ? (item.companyName || item.companyId) : '—' }}
+                  </div>
+                  <div class="cell">
+                    <span class="badge" [class.archived]="!item.active">
+                      {{ item.active ? 'active' : 'inactive' }}
+                    </span>
+                  </div>
+                </div>
+              }
             </div>
-          </div>
-        </article>
-      </div>
-
-      <div class="empty" *ngIf="!navigationLinks.length && !(loading$ | async)">
-        No navigation links found.
-      </div>
-      <div class="infinite-sentinel" #infiniteSentinel></div>
-    </ng-container>
-  </section>
-</div>
+          }
+          @if (navigationLinks.length) {
+            <div class="cards">
+              @for (item of navigationLinks; track trackByNavigationLink($index, item)) {
+                <article
+                  class="material-card"
+                  >
+                  <div class="row">
+                    <div class="name">{{ item.navigationLabel }}</div>
+                    <span class="badge" [class.archived]="!item.active">
+                      {{ item.active ? 'active' : 'inactive' }}
+                    </span>
+                  </div>
+                  <div class="meta">
+                    <div><span>Type:</span> {{ item.navigationType }}</div>
+                    @if (isSuperAdmin) {
+                      <div>
+                        <span>Company:</span> {{ item.companyName || item.companyId }}
+                      </div>
+                    }
+                  </div>
+                </article>
+              }
+            </div>
+          }
+          @if (!navigationLinks.length && !(loading$ | async)) {
+            <div class="empty">
+              No navigation links found.
+            </div>
+          }
+          <div class="infinite-sentinel" #infiniteSentinel></div>
+        }
+      </section>
+    </div>

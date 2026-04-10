@@ -5,6 +5,27 @@ import type { BmUser } from '../services/manager.service';
 
 export const MANAGER_FEATURE_KEY = 'manager';
 
+function isUserArchived(user: BmUser): boolean {
+  return (user.status ?? 'active') === 'archived';
+}
+
+function sortUsers(items: BmUser[]): BmUser[] {
+  return [...items].sort((a, b) => {
+    if (isUserArchived(a) !== isUserArchived(b)) return isUserArchived(a) ? 1 : -1;
+
+    const nameA = (a.name || a.username || '').trim().toLowerCase();
+    const nameB = (b.name || b.username || '').trim().toLowerCase();
+    if (nameA !== nameB) return nameA.localeCompare(nameB);
+
+    const createdA = Date.parse(a.createdAt ?? '');
+    const createdB = Date.parse(b.createdAt ?? '');
+    if (Number.isFinite(createdA) && Number.isFinite(createdB)) {
+      return createdB - createdA;
+    }
+    return 0;
+  });
+}
+
 export const managerReducer = createReducer(
   initialManagerState,
 
@@ -287,7 +308,7 @@ export const managerReducer = createReducer(
   on(ManagerActions.loadUsersSuccess, (state, { result }) => ({
     ...state,
     usersLoading: false,
-    users:
+    users: sortUsers(
       result.page > 1
         ? [
             ...state.users,
@@ -296,6 +317,7 @@ export const managerReducer = createReducer(
             ),
           ]
         : (result.items ?? []),
+    ),
     usersPage: result.page,
     usersLimit: result.limit,
     usersTotal: result.total,
@@ -339,13 +361,20 @@ export const managerReducer = createReducer(
     const idx = state.users.findIndex((u: BmUser) => u.id === user.id);
     const next = [...state.users];
 
-    if (idx >= 0) next[idx] = user;
+    if (idx >= 0) {
+      const prev = next[idx];
+      next[idx] = {
+        ...prev,
+        ...user,
+        hasProcesses: user.hasProcesses ?? prev.hasProcesses ?? false,
+      };
+    }
     else next.unshift(user);
 
     return {
       ...state,
       usersLoading: false,
-      users: next,
+      users: sortUsers(next),
       usersViewMode: 'list' as const,
       editingUserId: null,
     };
@@ -357,16 +386,32 @@ export const managerReducer = createReducer(
     usersError: error,
   })),
 
-  // Users - archive
-  on(ManagerActions.archiveUserSuccess, (state, { userId }) => ({
+  // Users - archive/delete
+  on(ManagerActions.archiveUser, (state) => ({
     ...state,
-    users: state.users.map((u: BmUser) =>
-      u.id === userId ? { ...u, status: 'archived' } : u,
-    ),
+    usersLoading: true,
+    usersError: null,
   })),
+
+  on(ManagerActions.archiveUserSuccess, (state, { userId, action }) => {
+    const isDeleted = action === 'deleted';
+    const users = isDeleted
+      ? state.users.filter((u: BmUser) => u.id !== userId)
+      : state.users.map((u: BmUser) =>
+          u.id === userId ? { ...u, status: 'archived' } : u,
+        );
+
+    return {
+      ...state,
+      usersLoading: false,
+      users: sortUsers(users),
+      usersTotal: isDeleted ? Math.max(state.usersTotal - 1, 0) : state.usersTotal,
+    };
+  }),
 
   on(ManagerActions.archiveUserFailure, (state, { error }) => ({
     ...state,
+    usersLoading: false,
     usersError: error,
   })),
 );

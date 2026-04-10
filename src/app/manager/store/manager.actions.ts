@@ -76,7 +76,10 @@ export const ManagerActions = createActionGroup({
     'Save User Failure': props<{ error: string }>(),
 
     'Archive User': props<{ userId: string }>(),
-    'Archive User Success': props<{ userId: string }>(),
+    'Archive User Success': props<{
+      userId: string;
+      action: 'archived' | 'deleted';
+    }>(),
     'Archive User Failure': props<{ error: string }>(),
   },
 });

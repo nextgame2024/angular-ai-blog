@@ -1,67 +1,99 @@
-<ng-container *ngIf="data$ | async as data">
-  <div *ngIf="data.isAuthResolved">
-    <div class="container mx-auto px-4">
-      <p-menubar
-        [model]="(menuItems$ | async) || []"
-        styleClass="menubar-plain"
-      >
-        <!-- Brand -->
-        <ng-template pTemplate="start">
+@if (data$ | async; as data) {
+  @if (data.isAuthResolved) {
+    <header class="topbar">
+      <div class="container mx-auto px-4">
+        <div class="topbar-inner">
           <a
             routerLink="/"
-            class="flex items-center gap-1 md:gap-2"
+            class="brand"
             aria-label="sophiaAi home"
-          >
-            <ng-container *ngIf="companyLogo$ | async as companyLogo">
+            (click)="closeMobileMenu()"
+            >
+            @if (companyLogo$ | async; as companyLogo) {
               <img
                 [src]="companyLogo"
                 alt="Company logo"
-                class="h-[3.25rem] w-auto select-none"
+                class="brand-logo"
                 draggable="false"
                 (error)="onLogoError($event)"
-              />
-            </ng-container>
+                />
+            }
             <span class="sr-only">sophiaAi</span>
           </a>
-        </ng-template>
 
-        <!-- Right -->
-        <ng-template pTemplate="end">
-          <div class="flex items-center gap-1 md:gap-2">
-            <!-- Theme toggle -->
+          <nav class="topbar-nav">
+            @if (menuItems$ | async; as items) {
+              @for (item of items; track item.label) {
+                <a
+                  [routerLink]="item.route"
+                  routerLinkActive="active"
+                  [routerLinkActiveOptions]="item.route === '/' ? { exact: true } : { exact: false }"
+                  class="topbar-link"
+                  (click)="closeMobileMenu()"
+                  >
+                  {{ item.label }}
+                </a>
+              }
+            }
+          </nav>
+
+          <button
+            type="button"
+            class="mobile-menu-btn"
+            (click)="toggleMobileMenu()"
+            [attr.aria-expanded]="isMobileMenuOpen"
+            aria-label="Toggle navigation menu"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16"></path>
+              <path d="M4 12h16"></path>
+              <path d="M4 17h16"></path>
+            </svg>
+          </button>
+
+          <div class="topbar-actions">
             <button
-              pButton
               type="button"
-              class="p-button-text"
-              [icon]="(isDark$ | async) ? 'pi pi-moon' : 'pi pi-sun'"
+              class="icon-btn"
               (click)="toggleTheme()"
               aria-label="Toggle theme"
-            ></button>
-
-            <!-- Auth/Profile -->
-            <ng-container *ngIf="data.currentUser as user; else loggedOut">
-              <a
-                routerLink="/settings"
-                class="flex items-center pl-1"
               >
-                <p-avatar
-                  [image]="getUserImage(user.image)"
-                  shape="circle"
-                  styleClass="mr-2"
-                ></p-avatar>
+              <i class="pi" [ngClass]="(isDark$ | async) ? 'pi-moon' : 'pi-sun'"></i>
+            </button>
+            @if (data.currentUser; as user) {
+              <a routerLink="/settings" class="user-chip">
+                <img
+                  [src]="getUserImage(user.image)"
+                  alt="User avatar"
+                  class="user-avatar"
+                />
                 <span class="hidden sm:inline">{{ user.username }}</span>
               </a>
-            </ng-container>
-
-            <ng-template #loggedOut>
-              <a routerLink="/login" class="p-button p-button-text">Sign in</a>
-              <a routerLink="/register" class="p-button p-button-text"
-                >Sign up</a
-              >
-            </ng-template>
+            } @else {
+              <a routerLink="/login" class="ghost-link">Sign in</a>
+              <a routerLink="/register" class="ghost-link">Sign up</a>
+            }
           </div>
-        </ng-template>
-      </p-menubar>
-    </div>
-  </div>
-</ng-container>
+        </div>
+
+        @if (isMobileMenuOpen) {
+          <nav class="topbar-mobile-nav">
+            @if (menuItems$ | async; as items) {
+              @for (item of items; track item.label) {
+                <a
+                  [routerLink]="item.route"
+                  routerLinkActive="active"
+                  [routerLinkActiveOptions]="item.route === '/' ? { exact: true } : { exact: false }"
+                  class="topbar-mobile-link"
+                  (click)="closeMobileMenu()"
+                  >
+                  {{ item.label }}
+                </a>
+              }
+            }
+          </nav>
+        }
+      </div>
+    </header>
+  }
+}

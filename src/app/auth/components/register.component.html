@@ -1,47 +1,46 @@
-<ng-container *ngIf="data$ | async as data">
+@if (data$ | async; as data) {
   <!-- Center in viewport, nudged ~20px higher -->
   <div
     class="min-h-[calc(100vh-130px)] flex items-center justify-center px-4 -mt-5"
-  >
+    >
     <p-card header="Sign Up" class="w-full max-w-md">
       <div class="text-center mb-3">
         <a routerLink="/login" class="text-sm">Have an account?</a>
       </div>
-
-      <mc-backend-error-messages
-        *ngIf="data.backendErrors"
-        [backendErrors]="data.backendErrors"
-      >
-      </mc-backend-error-messages>
-
+      @if (data.backendErrors) {
+        <mc-backend-error-messages
+          [backendErrors]="data.backendErrors"
+          >
+        </mc-backend-error-messages>
+      }
       <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-4 mt-4">
         <!-- USERNAME -->
-        <div class="p-inputgroup">
-          <span class="p-inputgroup-addon"><i class="pi pi-user"></i></span>
+        <p-inputgroup>
+          <p-inputgroup-addon><i class="pi pi-user"></i></p-inputgroup-addon>
           <input
             pInputText
             type="text"
             formControlName="username"
             placeholder="Username"
             class="w-full flex-auto"
-          />
-        </div>
-
+            />
+        </p-inputgroup>
         <!-- EMAIL -->
-        <div class="p-inputgroup">
-          <span class="p-inputgroup-addon"><i class="pi pi-envelope"></i></span>
+        <p-inputgroup>
+          <p-inputgroup-addon>
+            <i class="pi pi-envelope"></i>
+          </p-inputgroup-addon>
           <input
             pInputText
             type="email"
             formControlName="email"
             placeholder="Email"
             class="w-full flex-auto"
-          />
-        </div>
-
+            />
+        </p-inputgroup>
         <!-- PASSWORD -->
-        <div class="p-inputgroup">
-          <span class="p-inputgroup-addon"><i class="pi pi-lock"></i></span>
+        <p-inputgroup>
+          <p-inputgroup-addon><i class="pi pi-lock"></i></p-inputgroup-addon>
           <p-password
             formControlName="password"
             [feedback]="false"
@@ -50,10 +49,9 @@
             inputStyleClass="p-inputtext w-full"
             [inputStyle]="{ width: '100%' }"
             placeholder="Password"
-          >
+            >
           </p-password>
-        </div>
-
+        </p-inputgroup>
         <!-- SUBMIT -->
         <button
           pButton
@@ -65,4 +63,4 @@
       </form>
     </p-card>
   </div>
-</ng-container>
+}

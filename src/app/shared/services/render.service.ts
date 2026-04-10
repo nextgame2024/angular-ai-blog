@@ -23,6 +23,7 @@ export interface RenderStatusResponse {
   signedUrl?: string; // present when status === 'done'
   expiresAt?: string; // ISO date string when available
   articleId?: string;
+  articleSlug?: string;
 }
 
 @Injectable({ providedIn: 'root' })

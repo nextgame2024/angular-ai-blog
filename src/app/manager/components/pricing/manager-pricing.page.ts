@@ -34,11 +34,10 @@ import type { BmPricingProfile } from '../../types/pricing.interface';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 
 @Component({
-  selector: 'app-manager-pricing-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
-  templateUrl: './manager-pricing.page.html',
-  styleUrls: ['./manager-pricing.page.css'],
+    selector: 'app-manager-pricing-page',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+    templateUrl: './manager-pricing.page.html',
+    styleUrls: ['./manager-pricing.page.css']
 })
 export class ManagerPricingPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
@@ -260,10 +259,12 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
   }
 
   removePricing(p: BmPricingProfile): void {
+    if (this.isDeleteDisabled(p)) return;
+
     const hasProjects = !!p.hasProjects;
     const title = hasProjects ? 'Archive Pricing Profile?' : 'Delete Pricing Profile?';
     const message = hasProjects
-      ? `Are you sure you want to archive "${p.profileName}"?`
+      ? `"${p.profileName}" pricing profile is linked to existing processes, so it cannot be deleted. Would you like to archive it instead?`
       : `Are you sure you want to delete "${p.profileName}"?`;
     this.openConfirmModal({
       title,
@@ -277,6 +278,10 @@ export class ManagerPricingPageComponent implements OnInit, OnDestroy {
           }),
         ),
     });
+  }
+
+  isDeleteDisabled(p: BmPricingProfile): boolean {
+    return (p.status ?? 'active') === 'archived';
   }
 
   private setupInfiniteScroll(): void {

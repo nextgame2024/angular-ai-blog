@@ -57,11 +57,10 @@ interface PropertyOverviewRow {
 }
 
 @Component({
-  selector: 'app-townplanner-v2-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, GoogleMapsModule],
-  templateUrl: './townplanner_v2.page.html',
-  styleUrls: ['./townplanner_v2.page.css'],
+    selector: 'app-townplanner-v2-page',
+    imports: [CommonModule, ReactiveFormsModule, GoogleMapsModule],
+    templateUrl: './townplanner_v2.page.html',
+    styleUrls: ['./townplanner_v2.page.css']
 })
 export class TownPlannerV2PageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();

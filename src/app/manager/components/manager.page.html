@@ -1,102 +1,111 @@
 <div class="manager-shell">
   <!-- Map layer -->
   <div class="map-container" #mapContainerRef>
-    <ng-container *ngIf="mapsLoaded; else mapsFallback">
+    @if (mapsLoaded$$()) {
       <google-map
         height="100%"
         width="100%"
         [center]="mapCenter"
         [zoom]="mapZoom"
         [options]="mapOptions"
-      >
-        <map-marker
-          *ngFor="let marker of projectMarkers; trackBy: trackByProjectMarker"
-          [position]="marker.position"
-          [icon]="marker.icon"
-          (mapClick)="openProjectInfo(marker.project)"
-        ></map-marker>
-
-        <map-marker
-          *ngIf="companyMarker"
-          [position]="companyMarker.position"
-          [icon]="companyMarker.icon"
-          [title]="'Company'"
-        ></map-marker>
-
-        <map-polyline
-          *ngIf="routePath.length > 1"
-          [path]="routePath"
-          [options]="routePolylineOptions"
-        ></map-polyline>
-      </google-map>
-    </ng-container>
-
-    <div
-      #mapInfoPanelRef
-      class="map-floating-info"
-      [class.dragging]="isDraggingInfoPanel"
-      *ngIf="activeProject"
-      [style.left.px]="infoPanelPosition.x"
-      [style.top.px]="infoPanelPosition.y"
-    >
-      <div class="map-floating-info-bar" (pointerdown)="onInfoPanelPointerDown($event)">
-        <span>Project details</span>
-        <button
-          type="button"
-          class="map-info-close"
-          aria-label="Close project details"
-          (click)="closeProjectInfo()"
         >
-          x
-        </button>
-      </div>
-
-      <div class="map-info">
-        <div class="map-info-photo" #streetViewPreviewRef>
-          <div class="map-info-photo-fallback" *ngIf="streetViewLoading">
-            Loading preview...
-          </div>
-          <div
-            class="map-info-photo-fallback"
-            *ngIf="!streetViewLoading && !streetViewReady"
-          >
-            No preview available
-          </div>
-        </div>
-        <div class="map-info-title">{{ activeProject.projectName }}</div>
-        <div class="map-info-row">
-          <span>Client</span>
-          <span>{{ activeProject.clientName || '—' }}</span>
-        </div>
-        <div class="map-info-row">
-          <span>Address</span>
-          <span>{{ activeProject.clientAddress || '—' }}</span>
-        </div>
-        <div class="map-info-row">
-          <span>Type</span>
-          <span>{{ activeProject.projectTypeName || '—' }}</span>
-        </div>
-        <div class="map-info-row">
-          <span>Status</span>
-          <span>{{ formatStatus(activeProject.status) }}</span>
-        </div>
-        <div class="map-info-row">
-          <span>Transportation</span>
-          <span *ngIf="routeLoading">Calculating...</span>
-          <span *ngIf="!routeLoading">{{ activeProjectTravelTime || '—' }}</span>
-        </div>
-        <div class="map-info-note" *ngIf="routeError">
-          {{ routeError }}
-        </div>
-      </div>
-    </div>
-
-    <ng-template #mapsFallback>
+        @for (marker of projectMarkers$$(); track trackByProjectMarker($index, marker)) {
+          <map-marker
+            [position]="marker.position"
+            [icon]="marker.icon"
+            (mapClick)="openProjectInfo(marker.project)"
+          ></map-marker>
+        }
+        @if (companyMarker$$(); as companyMarker) {
+          <map-marker
+            [position]="companyMarker.position"
+            [icon]="companyMarker.icon"
+            [title]="'Company'"
+          ></map-marker>
+        }
+        @if (routePath$$().length > 1) {
+          <map-polyline
+            [path]="routePath$$()"
+            [options]="routePolylineOptions"
+          ></map-polyline>
+        }
+      </google-map>
+    } @else {
       <div class="maps-fallback">
         <p class="title">Map unavailable</p>
-        <p class="msg">{{ mapsError || 'Google Maps is still loading...' }}</p>
+        <p class="msg">{{ mapsError$$() || 'Google Maps is still loading...' }}</p>
       </div>
-    </ng-template>
+    }
+
+    @if (activeProject$$(); as activeProject) {
+      <div
+        #mapInfoPanelRef
+        class="map-floating-info"
+        [class.dragging]="isDraggingInfoPanel$$()"
+        [style.left.px]="infoPanelPosition$$().x"
+        [style.top.px]="infoPanelPosition$$().y"
+        >
+        <div class="map-floating-info-bar" (pointerdown)="onInfoPanelPointerDown($event)">
+          <span>Project details</span>
+          <button
+            type="button"
+            class="map-info-close"
+            aria-label="Close project details"
+            (click)="closeProjectInfo()"
+            >
+            x
+          </button>
+        </div>
+        <div class="map-info">
+          <div class="map-info-photo" #streetViewPreviewRef>
+            @if (streetViewLoading$$()) {
+              <div class="map-info-photo-fallback">
+                Loading preview...
+              </div>
+            }
+            @if (!streetViewLoading$$() && !streetViewReady$$()) {
+              <div
+                class="map-info-photo-fallback"
+                >
+                No preview available
+              </div>
+            }
+          </div>
+          <div class="map-info-title">{{ activeProject.projectName }}</div>
+          <div class="map-info-row">
+            <span>Client</span>
+            <span>{{ activeProject.clientName || '—' }}</span>
+          </div>
+          <div class="map-info-row">
+            <span>Address</span>
+            <span>{{ activeProject.clientAddress || '—' }}</span>
+          </div>
+          <div class="map-info-row">
+            <span>Type</span>
+            <span>{{ activeProject.projectTypeName || '—' }}</span>
+          </div>
+          <div class="map-info-row">
+            <span>Status</span>
+            <span>{{ formatStatus(activeProject.status) }}</span>
+          </div>
+          <div class="map-info-row">
+            <span>Transportation</span>
+            @if (routeLoading$$()) {
+              <span>Calculating...</span>
+            }
+            @if (!routeLoading$$()) {
+              <span>{{ activeProjectTravelTime$$() || '—' }}</span>
+            }
+          </div>
+          @if (routeError$$()) {
+            <div class="map-info-note">
+              {{ routeError$$() }}
+            </div>
+          }
+        </div>
+      </div>
+    }
+
   </div>
 
   <!-- Search bar -->
@@ -108,133 +117,166 @@
         [formControl]="searchCtrl"
         placeholder="Search by project, client, or address"
         aria-label="Search"
-      />
+        />
     </div>
   </div>
 
   <!-- Right panel -->
   <aside
     class="right-panel"
-    [class.mobile]="isMobile"
-    [class.mobile-open]="panelOpenMobile"
-    [class.collapsed]="panelCollapsed && !isMobile"
-    [class.fullscreen]="panelFullscreen"
-  >
+    [class.mobile]="isMobile$$()"
+    [class.mobile-open]="panelOpenMobile$$()"
+    [class.collapsed]="panelCollapsed$$() && !isMobile$$()"
+    [class.fullscreen]="panelFullscreen$$()"
+    >
     <div class="panel-header">
       <div class="panel-title">
         <!-- Back appears in fullscreen mode -->
-        <button
-          *ngIf="panelFullscreen"
-          class="panel-toggle"
-          type="button"
-          (click)="goBackToMenu()"
-          aria-label="Back to menu"
-        >
-          ←
-        </button>
+        @if (panelFullscreen$$()) {
+          <button
+            class="panel-toggle"
+            type="button"
+            (click)="goBackToMenu()"
+            aria-label="Back to menu"
+            >
+            ←
+          </button>
+        }
 
         <!-- Default toggle only when NOT fullscreen -->
-        <button
-          *ngIf="!panelFullscreen"
-          class="panel-toggle"
-          type="button"
-          (click)="isMobile ? togglePanelMobile() : togglePanelCollapsed()"
-          aria-label="Toggle menu panel"
-        >
-          <span *ngIf="!isMobile">‹</span>
-          <span *ngIf="isMobile">{{ panelOpenMobile ? 'Close' : 'Menu' }}</span>
-        </button>
+        @if (!panelFullscreen$$()) {
+          <button
+            class="panel-toggle"
+            type="button"
+            (click)="isMobile$$() ? togglePanelMobile() : togglePanelCollapsed()"
+            aria-label="Toggle menu panel"
+            >
+            @if (!isMobile$$()) {
+              <span>‹</span>
+            }
+            @if (isMobile$$()) {
+              <span>{{ panelOpenMobile$$() ? 'Close' : 'Menu' }}</span>
+            }
+          </button>
+        }
 
-        <h2>{{ panelTitle }}</h2>
+        <h2>{{ panelTitle$$() }}</h2>
       </div>
     </div>
 
-    <div class="panel-body" [class.no-menu]="panelFullscreen">
+    <div class="panel-body" [class.no-menu]="panelFullscreen$$()">
       <!-- Hide the menu when fullscreen -->
-      <nav class="menu" *ngIf="!panelFullscreen">
-        <a
-          *ngFor="let item of visibleMenu"
-          [routerLink]="item.route"
-          routerLinkActive="active"
-          class="menu-item"
-          [attr.aria-label]="item.label"
-        >
-          <span class="menu-icon" aria-hidden="true">
-            <ng-container [ngSwitch]="item.icon">
-              <svg *ngSwitchCase="'clients'" viewBox="0 0 24 24">
-                <circle cx="12" cy="7.75" r="3.25"></circle>
-                <path d="M5 19.5c0-3.04 3.13-5.5 7-5.5s7 2.46 7 5.5"></path>
-              </svg>
-              <svg *ngSwitchCase="'projects'" viewBox="0 0 24 24">
-                <rect x="4" y="7" width="16" height="12" rx="2"></rect>
-                <path d="M9 7V5.75A1.75 1.75 0 0 1 10.75 4h2.5A1.75 1.75 0 0 1 15 5.75V7"></path>
-                <path d="M4 11h16"></path>
-              </svg>
-              <svg *ngSwitchCase="'project-types'" viewBox="0 0 24 24">
-                <rect x="3.5" y="5" width="7.5" height="7.5" rx="1.5"></rect>
-                <rect x="13" y="5" width="7.5" height="7.5" rx="1.5"></rect>
-                <rect x="3.5" y="13.5" width="7.5" height="7.5" rx="1.5"></rect>
-                <path d="M13 16.5h7.5"></path>
-                <path d="M13 20h7.5"></path>
-              </svg>
-              <svg *ngSwitchCase="'users'" viewBox="0 0 24 24">
-                <circle cx="9" cy="8" r="2.75"></circle>
-                <circle cx="16" cy="9" r="2.25"></circle>
-                <path d="M3.5 19.5c0-2.8 2.57-5 5.75-5s5.75 2.2 5.75 5"></path>
-                <path d="M13 19.5c0-2.2 1.8-4 4-4 1.05 0 2.02.33 2.75.9"></path>
-              </svg>
-              <svg *ngSwitchCase="'company'" viewBox="0 0 24 24">
-                <rect x="4" y="4" width="10" height="16" rx="1.5"></rect>
-                <path d="M14 9h6v11H6"></path>
-                <path d="M7 8h4"></path>
-                <path d="M7 12h4"></path>
-                <path d="M7 16h4"></path>
-                <path d="M16.5 12h2.5"></path>
-                <path d="M16.5 16h2.5"></path>
-              </svg>
-              <svg *ngSwitchCase="'navigation-links'" viewBox="0 0 24 24">
-                <path d="M4 7h9"></path>
-                <path d="M4 12h9"></path>
-                <path d="M4 17h9"></path>
-                <rect x="14" y="5" width="6" height="4" rx="1"></rect>
-                <rect x="14" y="10" width="6" height="4" rx="1"></rect>
-                <rect x="14" y="15" width="6" height="4" rx="1"></rect>
-              </svg>
-              <svg *ngSwitchCase="'suppliers'" viewBox="0 0 24 24">
-                <rect x="3" y="7" width="11" height="8" rx="1.5"></rect>
-                <path d="M14 10h3.5l2.5 2.5V15H14"></path>
-                <circle cx="7" cy="17" r="1.5"></circle>
-                <circle cx="17" cy="17" r="1.5"></circle>
-              </svg>
-              <svg *ngSwitchCase="'materials'" viewBox="0 0 24 24">
-                <path d="M12 3.5 5.5 7v10l6.5 3.5 6.5-3.5V7L12 3.5Z"></path>
-                <path d="M5.5 7 12 10.5 18.5 7"></path>
-                <path d="M12 10.5V21"></path>
-              </svg>
-              <svg *ngSwitchCase="'labor'" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="8"></circle>
-                <path d="M12 7v5l3.5 2"></path>
-              </svg>
-              <svg *ngSwitchCase="'pricing'" viewBox="0 0 24 24">
-                <path d="M3.5 12 12 3.5h7.5v7.5L11 19.5 3.5 12Z"></path>
-                <circle cx="16.5" cy="7.5" r="1.2"></circle>
-              </svg>
-              <svg *ngSwitchCase="'quotes'" viewBox="0 0 24 24">
-                <path d="M5 6.5h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z"></path>
-                <path d="M9 11h2"></path>
-                <path d="M13 11h2"></path>
-              </svg>
-              <svg *ngSwitchCase="'invoices'" viewBox="0 0 24 24">
-                <path d="M6 3.5h12v16l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5v-16Z"></path>
-                <path d="M8.5 8h7"></path>
-                <path d="M8.5 11.5h7"></path>
-                <path d="M8.5 15h4.5"></path>
-              </svg>
-            </ng-container>
-          </span>
-          <span class="menu-item-label">{{ item.label }}</span>
-        </a>
-      </nav>
+      @if (!panelFullscreen$$()) {
+        <nav class="menu">
+          @for (item of visibleMenu$$(); track item) {
+            <a
+              [routerLink]="item.route"
+              routerLinkActive="active"
+              class="menu-item"
+              [attr.aria-label]="item.label"
+              >
+              <span class="menu-icon" aria-hidden="true">
+                @switch (item.icon) {
+                  @case ('clients') {
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="12" cy="7.75" r="3.25"></circle>
+                      <path d="M5 19.5c0-3.04 3.13-5.5 7-5.5s7 2.46 7 5.5"></path>
+                    </svg>
+                  }
+                  @case ('projects') {
+                    <svg viewBox="0 0 24 24">
+                      <rect x="4" y="7" width="16" height="12" rx="2"></rect>
+                      <path d="M9 7V5.75A1.75 1.75 0 0 1 10.75 4h2.5A1.75 1.75 0 0 1 15 5.75V7"></path>
+                      <path d="M4 11h16"></path>
+                    </svg>
+                  }
+                  @case ('project-types') {
+                    <svg viewBox="0 0 24 24">
+                      <rect x="3.5" y="5" width="7.5" height="7.5" rx="1.5"></rect>
+                      <rect x="13" y="5" width="7.5" height="7.5" rx="1.5"></rect>
+                      <rect x="3.5" y="13.5" width="7.5" height="7.5" rx="1.5"></rect>
+                      <path d="M13 16.5h7.5"></path>
+                      <path d="M13 20h7.5"></path>
+                    </svg>
+                  }
+                  @case ('users') {
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="9" cy="8" r="2.75"></circle>
+                      <circle cx="16" cy="9" r="2.25"></circle>
+                      <path d="M3.5 19.5c0-2.8 2.57-5 5.75-5s5.75 2.2 5.75 5"></path>
+                      <path d="M13 19.5c0-2.2 1.8-4 4-4 1.05 0 2.02.33 2.75.9"></path>
+                    </svg>
+                  }
+                  @case ('company') {
+                    <svg viewBox="0 0 24 24">
+                      <rect x="4" y="4" width="10" height="16" rx="1.5"></rect>
+                      <path d="M14 9h6v11H6"></path>
+                      <path d="M7 8h4"></path>
+                      <path d="M7 12h4"></path>
+                      <path d="M7 16h4"></path>
+                      <path d="M16.5 12h2.5"></path>
+                      <path d="M16.5 16h2.5"></path>
+                    </svg>
+                  }
+                  @case ('navigation-links') {
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 7h9"></path>
+                      <path d="M4 12h9"></path>
+                      <path d="M4 17h9"></path>
+                      <rect x="14" y="5" width="6" height="4" rx="1"></rect>
+                      <rect x="14" y="10" width="6" height="4" rx="1"></rect>
+                      <rect x="14" y="15" width="6" height="4" rx="1"></rect>
+                    </svg>
+                  }
+                  @case ('suppliers') {
+                    <svg viewBox="0 0 24 24">
+                      <rect x="3" y="7" width="11" height="8" rx="1.5"></rect>
+                      <path d="M14 10h3.5l2.5 2.5V15H14"></path>
+                      <circle cx="7" cy="17" r="1.5"></circle>
+                      <circle cx="17" cy="17" r="1.5"></circle>
+                    </svg>
+                  }
+                  @case ('materials') {
+                    <svg viewBox="0 0 24 24">
+                      <path d="M12 3.5 5.5 7v10l6.5 3.5 6.5-3.5V7L12 3.5Z"></path>
+                      <path d="M5.5 7 12 10.5 18.5 7"></path>
+                      <path d="M12 10.5V21"></path>
+                    </svg>
+                  }
+                  @case ('labor') {
+                    <svg viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="8"></circle>
+                      <path d="M12 7v5l3.5 2"></path>
+                    </svg>
+                  }
+                  @case ('pricing') {
+                    <svg viewBox="0 0 24 24">
+                      <path d="M3.5 12 12 3.5h7.5v7.5L11 19.5 3.5 12Z"></path>
+                      <circle cx="16.5" cy="7.5" r="1.2"></circle>
+                    </svg>
+                  }
+                  @case ('quotes') {
+                    <svg viewBox="0 0 24 24">
+                      <path d="M5 6.5h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2Z"></path>
+                      <path d="M9 11h2"></path>
+                      <path d="M13 11h2"></path>
+                    </svg>
+                  }
+                  @case ('invoices') {
+                    <svg viewBox="0 0 24 24">
+                      <path d="M6 3.5h12v16l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5v-16Z"></path>
+                      <path d="M8.5 8h7"></path>
+                      <path d="M8.5 11.5h7"></path>
+                      <path d="M8.5 15h4.5"></path>
+                    </svg>
+                  }
+                }
+              </span>
+              <span class="menu-item-label">{{ item.label }}</span>
+            </a>
+          }
+        </nav>
+      }
 
       <div class="content">
         <router-outlet></router-outlet>
@@ -243,13 +285,14 @@
   </aside>
 
   <!-- Mobile floating menu button (when closed) -->
-  <button
-    *ngIf="isMobile && !panelOpenMobile && !panelFullscreen"
-    class="mobile-fab"
-    type="button"
-    (click)="togglePanelMobile()"
-    aria-label="Open menu"
-  >
-    Menu
-  </button>
+  @if (isMobile$$() && !panelOpenMobile$$() && !panelFullscreen$$()) {
+    <button
+      class="mobile-fab"
+      type="button"
+      (click)="togglePanelMobile()"
+      aria-label="Open menu"
+      >
+      Menu
+    </button>
+  }
 </div>

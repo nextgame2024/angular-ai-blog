@@ -1,21 +1,24 @@
 import {
   Component,
-  Input,
-  OnChanges,
-  OnDestroy,
-  OnInit,
-  SimpleChanges,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  untracked,
+  Renderer2,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import {
   ActivatedRoute,
-  Params,
   Router,
   RouterLink,
   RouterModule,
+  NavigationEnd,
 } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { combineLatest, Subject, takeUntil } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs/operators';
 
 import { feedActions } from './store/actions';
 import { selectError, selectFeedData, selectIsLoading } from './store/reducers';
@@ -41,146 +44,151 @@ import { ArticleInterface } from 'src/app/shared/types/article.interface';
 import { IoObserverDirective } from 'src/app/shared/directives/io-observer.directive';
 
 @Component({
-  selector: 'mc-feed',
-  templateUrl: './feed.component.html',
-  styleUrls: ['./feed.component.css'],
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterModule,
-    RouterLink,
-
-    ErrorMessageComponent,
-    LoadingComponent,
-    TagListComponent,
-    AddToFavoritesComponent,
-    ArticleMediaComponent,
-
-    // PrimeNG
-    CardModule,
-    AvatarModule,
-    ButtonModule,
-
-    // IntersectionObserver directive for top/bottom sentinels
-    IoObserverDirective,
-  ],
+    selector: 'mc-feed',
+    templateUrl: './feed.component.html',
+    styleUrls: ['./feed.component.css'],
+    imports: [
+        CommonModule,
+        RouterModule,
+        RouterLink,
+        ErrorMessageComponent,
+        LoadingComponent,
+        TagListComponent,
+        AddToFavoritesComponent,
+        ArticleMediaComponent,
+        // PrimeNG
+        CardModule,
+        AvatarModule,
+        ButtonModule,
+        // IntersectionObserver directive for top/bottom sentinels
+        IoObserverDirective,
+    ]
 })
-export class FeedComponent implements OnInit, OnChanges, OnDestroy {
+export class FeedComponent {
   /** Base API URL the parent passes (e.g. '/api/articles', '/api/articles?tag=foo') */
-  @Input() apiUrl: string = '';
+  readonly apiUrl$$ = input('', { alias: 'apiUrl' });
 
-  private destroy$ = new Subject<void>();
+  private readonly store = inject(Store);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly renderer = inject(Renderer2);
 
-  // We still expose loading/error so the page can show spinners/errors,
-  // but the article list itself renders from our local cache (flatArticles).
-  data$ = combineLatest({
-    isLoading: this.store.select(selectIsLoading),
-    error: this.store.select(selectError),
-    feed: this.store.select(selectFeedData),
+  readonly isLoading$$ = toSignal(this.store.select(selectIsLoading), {
+    initialValue: false,
+  });
+  readonly error$$ = toSignal(this.store.select(selectError), {
+    initialValue: null,
+  });
+  private readonly feed$$ = toSignal(this.store.select(selectFeedData), {
+    initialValue: null,
   });
 
+  private readonly queryParams$$ = toSignal(this.route.queryParams, {
+    initialValue: this.route.snapshot.queryParams,
+  });
+
+  private readonly currentUrl$$ = toSignal(
+    this.router.events.pipe(
+      filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd),
+      map(() => this.router.url)
+    ),
+    { initialValue: this.router.url }
+  );
+
   // paging config
-  limit = environment.limit;
-  baseUrl = this.router.url.split('?')[0]; // only used for tag helper text
+  readonly limit = environment.limit;
 
   // Infinite cache: page -> articles[]
-  private pages = new Map<number, ArticleInterface[]>();
+  private readonly pages$$ = signal<Map<number, ArticleInterface[]>>(new Map());
 
   /** Flat merged list for rendering (always the source of truth for the UI) */
-  flatArticles: ArticleInterface[] = [];
+  readonly flatArticles$$ = computed(() => {
+    const pages = this.pages$$();
+    const ordered = Array.from(pages.keys()).sort((a, b) => a - b);
+    const merged: ArticleInterface[] = [];
+    for (const p of ordered) {
+      const chunk = pages.get(p);
+      if (chunk) merged.push(...chunk);
+    }
+    return merged;
+  });
 
   /** Total count from the API */
-  totalCount = 0;
+  readonly totalCount$$ = signal(0);
 
   /** The page we most recently requested, to map the store payload back to its page */
-  private inFlightPage: number | null = null;
+  private readonly inFlightPage$$ = signal<number | null>(null);
 
   /** Anchor page when the URL’s ?page changes */
-  currentPage = 1;
+  readonly currentPage$$ = signal(1);
 
   /** If the whole window scrolls, keep null; if a scrollable div, set its element here */
-  scrollRoot: Element | null = null;
+  readonly scrollRoot$$ = signal<Element | null>(null);
+
+  private readonly lastLoadKey$$ = signal<{ apiUrl: string; page: number } | null>(
+    null
+  );
 
   // UI helpers
-  defaultAvatar =
+  readonly defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
   setFallback(evt: Event) {
-    const img = evt.target as HTMLImageElement | null;
+    const img = evt.target instanceof HTMLImageElement ? evt.target : null;
     if (img && img.src !== this.defaultAvatar) {
-      img.src = this.defaultAvatar;
+      this.renderer.setAttribute(img, 'src', this.defaultAvatar);
     }
   }
 
   // ---------- feed mode helpers ----------
-  get isTagFeed(): boolean {
-    return this.baseUrl.startsWith('/tag/');
-  }
-  get currentTag(): string {
-    const m = this.baseUrl.match(/^\/tag\/(.+)$/);
+  readonly baseUrl$$ = computed(() => this.currentUrl$$().split('?')[0]);
+  readonly isTagFeed$$ = computed(() => this.baseUrl$$().startsWith('/tag/'));
+  readonly currentTag$$ = computed(() => {
+    const m = this.baseUrl$$().match(/^\/tag\/(.+)$/);
     return m ? decodeURIComponent(m[1]) : '';
-  }
+  });
 
-  constructor(
-    private store: Store,
-    private router: Router,
-    private route: ActivatedRoute
-  ) {}
+  private readonly loadEffect = effect(() => {
+    const apiUrl = this.apiUrl$$();
+    if (!apiUrl) return;
+    const params = this.queryParams$$();
+    const pageFromParams = Number(params?.['page'] || '1');
+    const lastLoad = untracked(() => this.lastLoadKey$$());
+    const apiUrlChanged = !lastLoad || lastLoad.apiUrl !== apiUrl;
+    const pageChanged = !lastLoad || lastLoad.page !== pageFromParams;
 
-  // ---------- lifecycle ----------
-  ngOnInit(): void {
-    // Use ?page as an initial anchor ONLY (we keep everything once loaded)
-    this.route.queryParams
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((params: Params) => {
-        this.currentPage = Number(params['page'] || '1');
-        this.baseUrl = this.router.url.split('?')[0];
-        this.resetAndLoad(this.currentPage);
-      });
-
-    // Merge each store payload into our page cache
-    this.store
-      .select(selectFeedData)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((feed) => {
-        if (!feed || this.inFlightPage == null) return;
-
-        this.pages.set(this.inFlightPage, feed.articles as ArticleInterface[]);
-        if (typeof feed.articlesCount === 'number') {
-          this.totalCount = feed.articlesCount;
-        }
-
-        this.rebuildFlatList();
-        this.inFlightPage = null; // request complete
-      });
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    const changed =
-      changes['apiUrl'] &&
-      !changes['apiUrl'].firstChange &&
-      changes['apiUrl'].currentValue !== changes['apiUrl'].previousValue;
-
-    if (changed) {
-      // different feed source (tag/global/your): clear cache and start fresh
-      this.resetAndLoad(1);
+    if (!lastLoad || apiUrlChanged || pageChanged) {
+      const nextPage = apiUrlChanged ? 1 : pageFromParams;
+      this.currentPage$$.set(nextPage);
+      this.lastLoadKey$$.set({ apiUrl, page: nextPage });
+      this.resetAndLoad(nextPage);
     }
-  }
+  });
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
+  private readonly mergeFeedEffect = effect(() => {
+    const feed = this.feed$$();
+    if (!feed) return;
+    const inFlightPage = untracked(() => this.inFlightPage$$());
+    if (inFlightPage == null) return;
+
+    const nextPages = new Map(untracked(() => this.pages$$()));
+    nextPages.set(inFlightPage, feed.articles);
+    this.pages$$.set(nextPages);
+    if (typeof feed.articlesCount === 'number') {
+      this.totalCount$$.set(feed.articlesCount);
+    }
+    this.inFlightPage$$.set(null);
+  });
 
   // ---------- infinite scroll entrypoints (called by IO sentinels) ----------
   maybeLoadNext(): void {
-    if (this.totalCount === 0) return; // short-circuit for empty feeds
-    if (this.loadedCount() >= this.totalCount) return; // nothing more to fetch
+    if (this.totalCount$$() === 0) return; // short-circuit for empty feeds
+    if (this.loadedCount() >= this.totalCount$$()) return; // nothing more to fetch
     const next = (this.maxLoadedPage() ?? 0) + 1;
     this.loadPage(next);
   }
 
   maybeLoadPrev(): void {
-    if (this.totalCount === 0) return;
+    if (this.totalCount$$() === 0) return;
     const min = this.minLoadedPage();
     if (min && min > 1) {
       this.loadPage(min - 1);
@@ -189,21 +197,22 @@ export class FeedComponent implements OnInit, OnChanges, OnDestroy {
 
   // ---------- helpers ----------
   private resetAndLoad(anchorPage: number): void {
-    this.pages.clear();
-    this.flatArticles = [];
-    this.totalCount = 0;
-    this.inFlightPage = null;
+    this.pages$$.set(new Map());
+    this.totalCount$$.set(0);
+    this.inFlightPage$$.set(null);
     this.loadPage(anchorPage);
   }
 
   private loadPage(page: number): void {
-    if (this.pages.has(page)) return; // already cached
-    if (this.inFlightPage !== null) return; // serialize requests
+    const apiUrl = this.apiUrl$$();
+    if (!apiUrl) return;
+    if (this.pages$$().has(page)) return; // already cached
+    if (this.inFlightPage$$() !== null) return; // serialize requests
 
-    this.inFlightPage = page;
+    this.inFlightPage$$.set(page);
 
     const offset = (page - 1) * this.limit;
-    const parsed = queryString.parseUrl(this.apiUrl);
+    const parsed = queryString.parseUrl(apiUrl);
     const url = `${parsed.url}?${queryString.stringify({
       limit: this.limit,
       offset,
@@ -213,33 +222,24 @@ export class FeedComponent implements OnInit, OnChanges, OnDestroy {
     this.store.dispatch(feedActions.getFeed({ url }));
   }
 
-  private rebuildFlatList(): void {
-    const ordered = Array.from(this.pages.keys()).sort((a, b) => a - b);
-    const merged: ArticleInterface[] = [];
-    for (const p of ordered) {
-      const chunk = this.pages.get(p);
-      if (chunk) merged.push(...chunk);
-    }
-    this.flatArticles = merged;
-  }
-
   private loadedCount(): number {
     let n = 0;
-    this.pages.forEach((arr) => (n += arr.length));
+    this.pages$$().forEach((arr) => (n += arr.length));
     return n;
   }
 
   private minLoadedPage(): number | null {
-    if (this.pages.size === 0) return null;
-    return Math.min(...this.pages.keys());
+    const pages = this.pages$$();
+    if (pages.size === 0) return null;
+    return Math.min(...pages.keys());
   }
 
   private maxLoadedPage(): number | null {
-    if (this.pages.size === 0) return null;
-    return Math.max(...this.pages.keys());
+    const pages = this.pages$$();
+    if (pages.size === 0) return null;
+    return Math.max(...pages.keys());
   }
 
   /** Used by *ngFor trackBy to avoid re-mounting DOM when cache updates */
-  trackBySlug = (_: number, a: ArticleInterface) => a.slug;
-
+  readonly trackBySlug = (_: number, a: ArticleInterface) => a.slug;
 }

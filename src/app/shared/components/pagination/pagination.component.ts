@@ -1,15 +1,9 @@
-import { CommonModule } from '@angular/common';
-import {
-  Component,
-  Input,
-  OnChanges,
-  OnInit,
-  SimpleChanges,
-} from '@angular/core';
+
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { Router } from '@angular/router';
 
 /* PrimeNG */
-import { PaginatorModule } from 'primeng/paginator';
+import { PaginatorModule, type PaginatorState } from 'primeng/paginator';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ButtonModule } from 'primeng/button';
 
@@ -17,83 +11,68 @@ import { ButtonModule } from 'primeng/button';
 import { FormsModule } from '@angular/forms';
 
 @Component({
-  selector: 'mc-pagination',
-  templateUrl: './pagination.component.html',
-  standalone: true,
-  imports: [
-    CommonModule,
+    selector: 'mc-pagination',
+    templateUrl: './pagination.component.html',
+    imports: [
     PaginatorModule,
     InputNumberModule,
     ButtonModule,
-    FormsModule,
-  ],
+    FormsModule
+]
 })
-export class PaginationComponent implements OnInit, OnChanges {
-  @Input() total = 0; // total records
-  @Input() limit = 9; // rows per page
-  @Input() currentPage = 1; // 1-based
-  @Input() url = ''; // base route (e.g., '/articles')
+export class PaginationComponent {
+  readonly total$$ = input(0, { alias: 'total' }); // total records
+  readonly limit$$ = input(9, { alias: 'limit' }); // rows per page
+  readonly currentPage$$ = input(1, { alias: 'currentPage' }); // 1-based
+  readonly url$$ = input('', { alias: 'url' }); // base route (e.g., '/articles')
 
   /** Derived state */
-  pagesCount = 1; // total pages
-  first = 0; // 0-based index of first record for p-paginator
-  pageLinkSize = 5; // fewer links (tidier on md screens)
+  readonly pagesCount$$ = computed(() =>
+    Math.max(1, Math.ceil((this.total$$() || 0) / (this.limit$$() || 1)))
+  );
+  readonly first$$ = computed(
+    () => (Math.max(1, this.currentPage$$()) - 1) * this.limit$$()
+  );
+  readonly pageLinkSize$$ = signal(5); // fewer links (tidier on md screens)
 
   /** "Go to page" helper */
-  gotoPage?: number;
+  readonly gotoPage$$ = signal<number | null>(null);
 
-  constructor(private router: Router) {}
+  private readonly router = inject(Router);
 
-  ngOnInit(): void {
-    this.recalc();
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['total'] || changes['limit'] || changes['currentPage']) {
-      this.recalc();
-    }
-  }
-
-  private recalc(): void {
-    this.pagesCount = Math.max(
-      1,
-      Math.ceil((this.total || 0) / (this.limit || 1))
-    );
-    this.first = (Math.max(1, this.currentPage) - 1) * this.limit; // 0-based for paginator
-  }
-
-  onPageChange(e: {
-    first: number;
-    rows: number;
-    page: number;
-    pageCount: number;
-  }) {
+  onPageChange(e: PaginatorState | null | undefined) {
     const page = (e?.page ?? 0) + 1; // paginator gives 0-based
     this.navigateToPage(page);
   }
 
   onGoto() {
-    if (!this.gotoPage) return;
+    const gotoPage = this.gotoPage$$();
+    if (gotoPage == null) return;
     const page = Math.min(
-      Math.max(1, Math.trunc(this.gotoPage)),
-      this.pagesCount
+      Math.max(1, Math.trunc(gotoPage)),
+      this.pagesCount$$()
     );
     this.navigateToPage(page);
   }
 
   prevPage() {
-    if (this.currentPage > 1) this.navigateToPage(this.currentPage - 1);
+    if (this.currentPage$$() > 1)
+      this.navigateToPage(this.currentPage$$() - 1);
   }
 
   nextPage() {
-    if (this.currentPage < this.pagesCount)
-      this.navigateToPage(this.currentPage + 1);
+    if (this.currentPage$$() < this.pagesCount$$())
+      this.navigateToPage(this.currentPage$$() + 1);
   }
 
   navigateToPage(page: number) {
-    this.router.navigate([this.url], {
+    this.router.navigate([this.url$$()], {
       queryParams: { page },
       queryParamsHandling: 'merge',
     });
+  }
+
+  onGotoPageChange(value: number | null): void {
+    this.gotoPage$$.set(value);
   }
 }

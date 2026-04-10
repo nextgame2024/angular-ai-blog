@@ -1,89 +1,70 @@
-import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
-import { Router, NavigationEnd } from '@angular/router';
-import { Store } from '@ngrx/store';
-import { filter } from 'rxjs/operators';
-import { selectCurrentUser } from 'src/app/auth/store/reducers';
 
-/* PrimeNG */
-import { TabMenuModule } from 'primeng/tabmenu';
+import { Component, computed, inject, input } from '@angular/core';
+import {
+  Router,
+  NavigationEnd,
+  RouterLink,
+  Event as RouterEvent,
+} from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter, map } from 'rxjs/operators';
+
 import { MenuItem } from 'primeng/api';
 
 @Component({
-  selector: 'mc-feed-toggler',
-  templateUrl: './feedToggler.component.html',
-  standalone: true,
-  imports: [CommonModule, TabMenuModule],
+    selector: 'mc-feed-toggler',
+    templateUrl: './feedToggler.component.html',
+    imports: [RouterLink]
 })
-export class FeedTogglerComponent implements OnChanges {
-  @Input() tagName?: string;
+export class FeedTogglerComponent {
+  readonly tagName$$ = input<string | undefined>(undefined, { alias: 'tagName' });
 
-  items: MenuItem[] = [];
-  activeItem!: MenuItem; // <-- definite assignment (never undefined)
-  private hasUser = false;
+  private readonly router = inject(Router);
 
-  constructor(private store: Store, private router: Router) {
-    // Initial build so activeItem is set before first render
-    this.rebuildItems();
-    this.setActiveFromUrl();
+  private readonly currentPath$$ = toSignal(
+    this.router.events.pipe(
+      filter((ev: RouterEvent): ev is NavigationEnd => ev instanceof NavigationEnd),
+      map(() => this.router.url)
+    ),
+    { initialValue: this.router.url }
+  );
 
-    // React to auth changes
-    this.store.select(selectCurrentUser).subscribe((u) => {
-      this.hasUser = !!u;
-      this.rebuildItems();
-      this.setActiveFromUrl();
-    });
+  readonly items$$ = computed<MenuItem[]>(() => {
+    const items: MenuItem[] = [
+      {
+        label: 'Gallery',
+        icon: 'pi pi-globe',
+        routerLink: ['/'],
+        routerLinkActiveOptions: { exact: true },
+      },
+    ];
 
-    // React to navigation
-    this.router.events
-      .pipe(filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd))
-      .subscribe(() => this.setActiveFromUrl());
-  }
-
-  ngOnChanges(changes: SimpleChanges): void {
-    if ('tagName' in changes) {
-      this.rebuildItems();
-      this.setActiveFromUrl();
-    }
-  }
-
-  private rebuildItems(): void {
-    const items: MenuItem[] = [];
-
-    // if (this.hasUser) {
-    //   items.push({
-    //     label: 'Your feed',
-    //     icon: 'pi pi-user',
-    //     routerLink: ['/feed'],
-    //     routerLinkActiveOptions: { exact: true },
-    //   });
-    // }
-
-    items.push({
-      label: 'Gallery',
-      icon: 'pi pi-globe',
-      routerLink: ['/'],
-      routerLinkActiveOptions: { exact: true },
-    });
-
-    if (this.tagName) {
+    const tagName = this.tagName$$();
+    if (tagName) {
       items.push({
-        label: `#${this.tagName}`,
+        label: `#${tagName}`,
         icon: 'pi pi-tag',
-        routerLink: ['/tag', this.tagName],
+        routerLink: ['/tag', tagName],
         routerLinkActiveOptions: { exact: true }, // ✅ exact match
       });
     }
 
-    this.items = items;
-  }
+    return items;
+  });
 
-  private setActiveFromUrl(): void {
-    if (!this.items.length) return;
+  readonly activeItem$$ = computed<MenuItem>(() => {
+    const items = this.items$$();
+    const fallback: MenuItem = items[0] ?? {
+      label: 'Gallery',
+      icon: 'pi pi-globe',
+      routerLink: ['/'],
+      routerLinkActiveOptions: { exact: true },
+    };
+    if (!items.length) return fallback;
 
-    const path = this.router.url.split('?')[0];
+    const path = this.currentPath$$().split('?')[0];
 
-    const match = this.items.find((it) => {
+    const match = items.find((it: MenuItem) => {
       const link = Array.isArray(it.routerLink)
         ? it.routerLink.join('/')
         : (it.routerLink as string);
@@ -91,6 +72,6 @@ export class FeedTogglerComponent implements OnChanges {
       return path === normalized || path.startsWith(normalized + '/');
     });
 
-    this.activeItem = match ?? this.items[0]; // always a MenuItem
-  }
+    return match ?? fallback;
+  });
 }

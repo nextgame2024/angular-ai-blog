@@ -1,18 +1,17 @@
 <div class="pricing-shell">
   <!-- LIST HEADER -->
-  <div class="list-header" *ngIf="(viewMode$ | async) === 'list'">
+  @if ((viewMode$ | async) === 'list') {
+  <div class="list-header">
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/manager/menu">Menu</a>
       <span class="sep">/</span>
       <span>Pricing</span>
     </nav>
-
     <div class="pricing-toolbar">
       <div class="title">
         <h3>Pricing</h3>
         <p class="sub">Manage pricing profiles and defaults.</p>
       </div>
-
       <div class="actions">
         <button type="button" class="btn primary" (click)="openCreate()">
           <span class="btn-icon" aria-hidden="true">
@@ -25,7 +24,6 @@
         </button>
       </div>
     </div>
-
     <div class="toolbar-row">
       <label class="search-field">
         <span class="search-icon" aria-hidden="true">
@@ -40,8 +38,8 @@
           placeholder="Search by profile name"
           aria-label="Search pricing profiles"
         />
+        @if (searchCtrl.value) {
         <button
-          *ngIf="searchCtrl.value"
           class="icon-btn"
           type="button"
           (click)="searchCtrl.setValue('')"
@@ -52,9 +50,9 @@
             <path d="M18 6l-12 12"></path>
           </svg>
         </button>
+        }
       </label>
     </div>
-
     <div class="table-head" aria-hidden="true">
       <div>Name</div>
       <div>Material Markup %</div>
@@ -64,386 +62,354 @@
       <div class="actions-col">Actions</div>
     </div>
   </div>
-
-  <ng-container *ngIf="(error$ | async) as err">
-    <div class="error" *ngIf="!isErrorDismissed(err)">
-      <span>{{ err }}</span>
-      <button
-        type="button"
-        class="error-dismiss"
-        aria-label="Dismiss error"
-        (click)="dismissError(err)"
-      >
-        x
-      </button>
-    </div>
-  </ng-container>
-
-  <div
-    class="screen-loader"
-    *ngIf="(loading$ | async)"
-    aria-live="polite"
-    aria-busy="true"
-  >
+  } @if ((error$ | async); as err) { @if (!isErrorDismissed(err)) {
+  <div class="error">
+    <span>{{ err }}</span>
+    <button
+      type="button"
+      class="error-dismiss"
+      aria-label="Dismiss error"
+      (click)="dismissError(err)"
+    >
+      x
+    </button>
+  </div>
+  } } @if ((loading$ | async)) {
+  <div class="screen-loader" aria-live="polite" aria-busy="true">
     <div class="loader-card">
       <div class="loader-ring" aria-hidden="true"></div>
       <div class="loader-bar" aria-hidden="true"></div>
       <div class="loader-text">Loading…</div>
     </div>
   </div>
+  }
 
   <!-- FORM MODE -->
-  <ng-container *ngIf="(viewMode$ | async) === 'form'">
-    <ng-container
-      *ngIf="editingPricing$ | async as pricing; else createPricingBlock"
-    >
-      <div class="form-header">
-        <nav class="breadcrumb" aria-label="Breadcrumb">
-          <a routerLink="/manager/menu">Menu</a>
-          <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()">Pricing</a>
-          <span class="sep">/</span>
-          <span>Edit</span>
-        </nav>
-
-        <div class="form-header-mainrow">
-          <div class="header-main">
-            <h3>Pricing Profile</h3>
-            <p class="sub">Update pricing profile settings.</p>
-          </div>
-          <div class="header-actions">
-            <button class="btn" type="button" (click)="closeForm()">
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M6 6l12 12"></path>
-                  <path d="M18 6l-12 12"></path>
-                </svg>
-              </span>
-              Cancel
-            </button>
-            <button
-              class="btn primary"
-              type="button"
-              (click)="savePricingAndClose()"
-            >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M5 5h11l3 3v11H5z"></path>
-                  <path d="M9 5v6h6V5"></path>
-                </svg>
-              </span>
-              Finish
-            </button>
-          </div>
-        </div>
+  @if ((viewMode$ | async) === 'form') { @if (editingPricing$ | async; as
+  pricing) {
+  <div class="form-header">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <a href="#" (click)="$event.preventDefault(); closeForm()">Pricing</a>
+      <span class="sep">/</span>
+      <span>Edit</span>
+    </nav>
+    <div class="form-header-mainrow">
+      <div class="header-main">
+        <h3>Pricing Profile</h3>
+        <p class="sub">Update pricing profile settings.</p>
       </div>
-
-      <section class="card">
-        <form class="form" [formGroup]="pricingForm" autocomplete="off">
-          <label>
-            <span>Profile Name *</span>
-            <input
-              formControlName="profile_name"
-              placeholder="Profile name"
-              autocomplete="off"
-            />
-          </label>
-
-          <div class="grid-2">
-            <label>
-              <span>Material Markup %</span>
-              <input
-                formControlName="material_markup"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                autocomplete="off"
-                (blur)="formatPercentControl('material_markup')"
-              />
-            </label>
-
-            <label>
-              <span>Labor Markup %</span>
-              <input
-                formControlName="labor_markup"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                autocomplete="off"
-                (blur)="formatPercentControl('labor_markup')"
-              />
-            </label>
-          </div>
-
-          <div class="grid-2">
-            <label>
-              <span>GST Rate %</span>
-              <input
-                formControlName="gst_rate"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="10"
-                autocomplete="off"
-                (blur)="formatPercentControl('gst_rate')"
-              />
-            </label>
-
-            <label>
-              <span>Status</span>
-              <app-manager-select
-                formControlName="status"
-                [options]="statusOptions"
-                placeholder="Select status"
-              ></app-manager-select>
-            </label>
-          </div>
-        </form>
-      </section>
-    </ng-container>
-
-    <ng-template #createPricingBlock>
-      <div class="form-header">
-        <nav class="breadcrumb" aria-label="Breadcrumb">
-          <a routerLink="/manager/menu">Menu</a>
-          <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()">Pricing</a>
-          <span class="sep">/</span>
-          <span>Create</span>
-        </nav>
-
-        <div class="form-header-mainrow">
-          <div class="header-main">
-            <h3>Create Pricing Profile</h3>
-            <p class="sub">Create a new pricing profile.</p>
-          </div>
-          <div class="header-actions">
-            <button class="btn" type="button" (click)="closeForm()">
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M6 6l12 12"></path>
-                  <path d="M18 6l-12 12"></path>
-                </svg>
-              </span>
-              Cancel
-            </button>
-            <button
-              class="btn primary"
-              type="button"
-              (click)="savePricingAndClose()"
-            >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M5 5h11l3 3v11H5z"></path>
-                  <path d="M9 5v6h6V5"></path>
-                </svg>
-              </span>
-              Save
-            </button>
-          </div>
-        </div>
+      <div class="header-actions">
+        <button class="btn" type="button" (click)="closeForm()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12"></path>
+              <path d="M18 6l-12 12"></path>
+            </svg>
+          </span>
+          Cancel
+        </button>
+        <button
+          class="btn primary"
+          type="button"
+          (click)="savePricingAndClose()"
+        >
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 5h11l3 3v11H5z"></path>
+              <path d="M9 5v6h6V5"></path>
+            </svg>
+          </span>
+          Save
+        </button>
       </div>
-
-      <section class="card">
-        <form class="form" [formGroup]="pricingForm" autocomplete="off">
-          <label>
-            <span>Profile Name *</span>
-            <input
-              formControlName="profile_name"
-              placeholder="Profile name"
-              autocomplete="off"
-            />
-          </label>
-
-          <div class="grid-2">
-            <label>
-              <span>Material Markup %</span>
-              <input
-                formControlName="material_markup"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                autocomplete="off"
-                (blur)="formatPercentControl('material_markup')"
-              />
-            </label>
-
-            <label>
-              <span>Labor Markup %</span>
-              <input
-                formControlName="labor_markup"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                autocomplete="off"
-                (blur)="formatPercentControl('labor_markup')"
-              />
-            </label>
-          </div>
-
-          <div class="grid-2">
-            <label>
-              <span>GST Rate %</span>
-              <input
-                formControlName="gst_rate"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="10"
-                autocomplete="off"
-                (blur)="formatPercentControl('gst_rate')"
-              />
-            </label>
-
-            <label>
-              <span>Status</span>
-              <app-manager-select
-                formControlName="status"
-                [options]="statusOptions"
-                placeholder="Select status"
-              ></app-manager-select>
-            </label>
-          </div>
-        </form>
-      </section>
-    </ng-template>
-  </ng-container>
+    </div>
+  </div>
+  <section class="card">
+    <form class="form" [formGroup]="pricingForm" autocomplete="off">
+      <label>
+        <span>Profile Name *</span>
+        <input
+          formControlName="profile_name"
+          placeholder="Profile name"
+          autocomplete="off"
+        />
+      </label>
+      <div class="grid-2">
+        <label>
+          <span>Material Markup %</span>
+          <input
+            formControlName="material_markup"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            autocomplete="off"
+            (blur)="formatPercentControl('material_markup')"
+          />
+        </label>
+        <label>
+          <span>Labor Markup %</span>
+          <input
+            formControlName="labor_markup"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            autocomplete="off"
+            (blur)="formatPercentControl('labor_markup')"
+          />
+        </label>
+      </div>
+      <div class="grid-2">
+        <label>
+          <span>GST Rate %</span>
+          <input
+            formControlName="gst_rate"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="10"
+            autocomplete="off"
+            (blur)="formatPercentControl('gst_rate')"
+          />
+        </label>
+        <label>
+          <span>Status</span>
+          <app-manager-select
+            formControlName="status"
+            [options]="statusOptions"
+            placeholder="Select status"
+          ></app-manager-select>
+        </label>
+      </div>
+    </form>
+  </section>
+  } @else {
+  <div class="form-header">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <a href="#" (click)="$event.preventDefault(); closeForm()">Pricing</a>
+      <span class="sep">/</span>
+      <span>Create</span>
+    </nav>
+    <div class="form-header-mainrow">
+      <div class="header-main">
+        <h3>Create Pricing Profile</h3>
+        <p class="sub">Create a new pricing profile.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn" type="button" (click)="closeForm()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12"></path>
+              <path d="M18 6l-12 12"></path>
+            </svg>
+          </span>
+          Cancel
+        </button>
+        <button
+          class="btn primary"
+          type="button"
+          (click)="savePricingAndClose()"
+        >
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 5h11l3 3v11H5z"></path>
+              <path d="M9 5v6h6V5"></path>
+            </svg>
+          </span>
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+  <section class="card">
+    <form class="form" [formGroup]="pricingForm" autocomplete="off">
+      <label>
+        <span>Profile Name *</span>
+        <input
+          formControlName="profile_name"
+          placeholder="Profile name"
+          autocomplete="off"
+        />
+      </label>
+      <div class="grid-2">
+        <label>
+          <span>Material Markup %</span>
+          <input
+            formControlName="material_markup"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            autocomplete="off"
+            (blur)="formatPercentControl('material_markup')"
+          />
+        </label>
+        <label>
+          <span>Labor Markup %</span>
+          <input
+            formControlName="labor_markup"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="0.00"
+            autocomplete="off"
+            (blur)="formatPercentControl('labor_markup')"
+          />
+        </label>
+      </div>
+      <div class="grid-2">
+        <label>
+          <span>GST Rate %</span>
+          <input
+            formControlName="gst_rate"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="10"
+            autocomplete="off"
+            (blur)="formatPercentControl('gst_rate')"
+          />
+        </label>
+        <label>
+          <span>Status</span>
+          <app-manager-select
+            formControlName="status"
+            [options]="statusOptions"
+            placeholder="Select status"
+          ></app-manager-select>
+        </label>
+      </div>
+    </form>
+  </section>
+  } }
 
   <!-- LIST MODE -->
-  <ng-container *ngIf="(viewMode$ | async) === 'list'">
-    <section class="list" #pricingList>
-      <ng-container *ngIf="filteredPricing$ | async as pricingProfiles">
-        <div class="table" *ngIf="pricingProfiles.length">
-          <div class="thead">
-            <div>Name</div>
-            <div>Material Markup %</div>
-            <div>Labor Markup %</div>
-            <div>GST Rate %</div>
-            <div>Status</div>
-            <div class="actions-col">Actions</div>
-          </div>
-
-          <div
-            class="trow"
-            *ngFor="let p of pricingProfiles; trackBy: trackByPricing"
+  @if ((viewMode$ | async) === 'list') {
+  <section class="list" #pricingList>
+    @if (filteredPricing$ | async; as pricingProfiles) { @if
+    (pricingProfiles.length) {
+    <div class="table">
+      <div class="thead">
+        <div>Name</div>
+        <div>Material Markup %</div>
+        <div>Labor Markup %</div>
+        <div>GST Rate %</div>
+        <div>Status</div>
+        <div class="actions-col">Actions</div>
+      </div>
+      @for (p of pricingProfiles; track trackByPricing($index, p)) {
+      <div class="trow">
+        <div class="cell strong">{{ p.profileName }}</div>
+        <div class="cell muted">{{ formatPercent(p.materialMarkup) }}</div>
+        <div class="cell muted">{{ formatPercent(p.laborMarkup) }}</div>
+        <div class="cell muted">{{ formatPercent(p.gstRate) }}</div>
+        <div class="cell">
+          <span class="badge" [class.archived]="p.status === 'archived'">
+            {{ p.status || 'active' }}
+          </span>
+        </div>
+        <div class="cell actions-col">
+          <button
+            class="btn small secondary"
+            type="button"
+            (click)="openEdit(p)"
           >
-            <div class="cell strong">{{ p.profileName }}</div>
-            <div class="cell muted">{{ formatPercent(p.materialMarkup) }}</div>
-            <div class="cell muted">{{ formatPercent(p.laborMarkup) }}</div>
-            <div class="cell muted">{{ formatPercent(p.gstRate) }}</div>
-            <div class="cell">
-              <span class="badge" [class.archived]="p.status === 'archived'">
-                {{ p.status || 'active' }}
-              </span>
-            </div>
-            <div class="cell actions-col">
-              <button
-                class="btn small secondary"
-                type="button"
-                (click)="openEdit(p)"
-              >
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
-                    <path d="M13 6l4 4"></path>
-                  </svg>
-                </span>
-                Edit
-              </button>
-              <button
-                class="btn small danger"
-                type="button"
-                (click)="removePricing(p)"
-              >
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 8h16"></path>
-                    <path d="M6 8v10h12V8"></path>
-                    <path d="M10 12h4"></path>
-                    <path d="M9 4h6l1 2H8l1-2Z"></path>
-                  </svg>
-                </span>
-                {{ p.hasProjects ? 'Archive' : 'Delete' }}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div class="cards" *ngIf="pricingProfiles.length">
-          <article
-            class="pricing-card"
-            *ngFor="let p of pricingProfiles; trackBy: trackByPricing"
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                <path d="M13 6l4 4"></path>
+              </svg>
+            </span>
+            Edit
+          </button>
+          <button
+            class="btn small danger"
+            type="button"
+            [disabled]="isDeleteDisabled(p)"
+            (click)="removePricing(p)"
           >
-            <div class="row">
-              <div class="name">{{ p.profileName }}</div>
-              <span class="badge" [class.archived]="p.status === 'archived'">
-                {{ p.status || 'active' }}
-              </span>
-            </div>
-            <div class="meta">
-              <div>
-                <span>Material Markup %:</span> {{
-                formatPercent(p.materialMarkup) }}
-              </div>
-              <div>
-                <span>Labor Markup %:</span> {{ formatPercent(p.laborMarkup) }}
-              </div>
-              <div><span>GST Rate %:</span> {{ formatPercent(p.gstRate) }}</div>
-              <div><span>Status:</span> {{ p.status || 'active' }}</div>
-            </div>
-            <div class="card-actions">
-              <button
-                class="btn small secondary"
-                type="button"
-                (click)="openEdit(p)"
-              >
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
-                    <path d="M13 6l4 4"></path>
-                  </svg>
-                </span>
-                Edit
-              </button>
-              <button
-                class="btn small danger"
-                type="button"
-                (click)="removePricing(p)"
-              >
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 8h16"></path>
-                    <path d="M6 8v10h12V8"></path>
-                    <path d="M10 12h4"></path>
-                    <path d="M9 4h6l1 2H8l1-2Z"></path>
-                  </svg>
-                </span>
-                {{ p.hasProjects ? 'Archive' : 'Delete' }}
-              </button>
-            </div>
-          </article>
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 8h16"></path>
+                <path d="M6 8v10h12V8"></path>
+                <path d="M10 12h4"></path>
+                <path d="M9 4h6l1 2H8l1-2Z"></path>
+              </svg>
+            </span>
+            {{ p.hasProjects ? 'Archive' : 'Delete' }}
+          </button>
         </div>
-
-        <div
-          class="empty"
-          *ngIf="!pricingProfiles.length && !(loading$ | async)"
-        >
-          No pricing profiles found.
+      </div>
+      }
+    </div>
+    } @if (pricingProfiles.length) {
+    <div class="cards">
+      @for (p of pricingProfiles; track trackByPricing($index, p)) {
+      <article class="pricing-card">
+        <div class="row">
+          <div class="name">{{ p.profileName }}</div>
+          <span class="badge" [class.archived]="p.status === 'archived'">
+            {{ p.status || 'active' }}
+          </span>
         </div>
-        <div class="infinite-sentinel" #infiniteSentinel></div>
-      </ng-container>
-    </section>
-  </ng-container>
-
-  <div
-    class="status-modal-backdrop"
-    *ngIf="isConfirmModalOpen"
-    (click)="onConfirmModalBackdrop()"
-  >
+        <div class="meta">
+          <div>
+            <span>Material Markup %:</span> {{ formatPercent(p.materialMarkup)
+            }}
+          </div>
+          <div>
+            <span>Labor Markup %:</span> {{ formatPercent(p.laborMarkup) }}
+          </div>
+          <div><span>GST Rate %:</span> {{ formatPercent(p.gstRate) }}</div>
+          <div><span>Status:</span> {{ p.status || 'active' }}</div>
+        </div>
+        <div class="card-actions">
+          <button
+            class="btn small secondary"
+            type="button"
+            (click)="openEdit(p)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                <path d="M13 6l4 4"></path>
+              </svg>
+            </span>
+            Edit
+          </button>
+          <button
+            class="btn small danger"
+            type="button"
+            [disabled]="isDeleteDisabled(p)"
+            (click)="removePricing(p)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 8h16"></path>
+                <path d="M6 8v10h12V8"></path>
+                <path d="M10 12h4"></path>
+                <path d="M9 4h6l1 2H8l1-2Z"></path>
+              </svg>
+            </span>
+            {{ p.hasProjects ? 'Archive' : 'Delete' }}
+          </button>
+        </div>
+      </article>
+      }
+    </div>
+    } @if (!pricingProfiles.length && !(loading$ | async)) {
+    <div class="empty">No pricing profiles found.</div>
+    }
+    <div class="infinite-sentinel" #infiniteSentinel></div>
+    }
+  </section>
+  } @if (isConfirmModalOpen) {
+  <div class="status-modal-backdrop" (click)="onConfirmModalBackdrop()">
     <div
       class="status-modal"
       [class.tone-warning]="confirmModalTone === 'warning'"
@@ -468,14 +434,15 @@
         </div>
       </div>
       <div class="status-modal-actions">
+        @if (confirmModalShowCancel) {
         <button
-          *ngIf="confirmModalShowCancel"
           type="button"
           class="btn secondary"
           (click)="onConfirmModalCancel()"
         >
           {{ confirmModalCancelLabel }}
         </button>
+        }
         <button
           type="button"
           class="btn primary"
@@ -486,4 +453,5 @@
       </div>
     </div>
   </div>
+  }
 </div>

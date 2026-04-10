@@ -5,6 +5,24 @@ import type { BmSupplier, BmSupplierContact, BmSupplierMaterial } from '../../ty
 
 export const MANAGER_SUPPLIERS_FEATURE_KEY = 'managerSuppliers';
 
+const sortSuppliersForList = (items: BmSupplier[]): BmSupplier[] =>
+  [...items].sort((a, b) => {
+    const aArchived = (a.status ?? 'active') === 'archived';
+    const bArchived = (b.status ?? 'active') === 'archived';
+    if (aArchived !== bArchived) return aArchived ? 1 : -1;
+
+    const nameCompare = (a.supplierName ?? '').localeCompare(
+      b.supplierName ?? '',
+      undefined,
+      { numeric: true, sensitivity: 'base' },
+    );
+    if (nameCompare !== 0) return nameCompare;
+
+    const aCreated = a.createdAt ? Date.parse(a.createdAt) : 0;
+    const bCreated = b.createdAt ? Date.parse(b.createdAt) : 0;
+    return bCreated - aCreated;
+  });
+
 export const managerSuppliersReducer = createReducer(
   initialManagerSuppliersState,
 
@@ -23,7 +41,7 @@ export const managerSuppliersReducer = createReducer(
   on(ManagerSuppliersActions.loadSuppliersSuccess, (state, { result }) => ({
     ...state,
     suppliersLoading: false,
-    suppliers:
+    suppliers: sortSuppliersForList(
       result.page > 1
         ? [
             ...state.suppliers,
@@ -35,6 +53,7 @@ export const managerSuppliersReducer = createReducer(
             ),
           ]
         : (result.items ?? []),
+    ),
     suppliersPage: result.page,
     suppliersLimit: result.limit,
     suppliersTotal: result.total,
@@ -61,6 +80,7 @@ export const managerSuppliersReducer = createReducer(
     contactsViewMode: 'list' as const,
     editingContactId: null,
     materials: [],
+    materialsSearchQuery: '',
     materialsLoading: false,
     materialsError: null,
     materialsPage: 1,
@@ -85,6 +105,7 @@ export const managerSuppliersReducer = createReducer(
     contactsViewMode: 'list' as const,
     editingContactId: null,
     materials: [],
+    materialsSearchQuery: '',
     materialsLoading: false,
     materialsError: null,
     materialsPage: 1,
@@ -108,6 +129,7 @@ export const managerSuppliersReducer = createReducer(
     contactsViewMode: 'list' as const,
     editingContactId: null,
     materials: [],
+    materialsSearchQuery: '',
     materialsLoading: false,
     materialsError: null,
     materialsPage: 1,
@@ -134,13 +156,24 @@ export const managerSuppliersReducer = createReducer(
     );
     const next = [...state.suppliers];
 
-    if (idx >= 0) next[idx] = supplier;
-    else next.unshift(supplier);
+    if (idx >= 0) {
+      const previous = next[idx];
+      next[idx] = {
+        ...previous,
+        ...supplier,
+        hasProjects: supplier.hasProjects ?? previous.hasProjects ?? false,
+      };
+    } else {
+      next.unshift({
+        ...supplier,
+        hasProjects: supplier.hasProjects ?? false,
+      });
+    }
 
     return {
       ...state,
       suppliersLoading: false,
-      suppliers: next,
+      suppliers: sortSuppliersForList(next),
       suppliersViewMode: 'form' as const,
       editingSupplierId: supplier.supplierId,
       supplierFormTab: state.editingSupplierId
@@ -164,12 +197,13 @@ export const managerSuppliersReducer = createReducer(
   on(ManagerSuppliersActions.removeSupplierSuccess, (state, { supplierId, action }) => ({
     ...state,
     suppliersLoading: false,
-    suppliers:
+    suppliers: sortSuppliersForList(
       action === 'deleted'
         ? state.suppliers.filter((s) => s.supplierId !== supplierId)
         : state.suppliers.map((s) =>
             s.supplierId === supplierId ? { ...s, status: 'archived' } : s,
           ),
+    ),
     suppliersTotal:
       action === 'deleted'
         ? Math.max(0, state.suppliersTotal - 1)
@@ -281,6 +315,11 @@ export const managerSuppliersReducer = createReducer(
   })),
 
   // Materials
+  on(ManagerSuppliersActions.setSupplierMaterialsSearchQuery, (state, { query }) => ({
+    ...state,
+    materialsSearchQuery: query,
+  })),
+
   on(ManagerSuppliersActions.loadSupplierMaterials, (state, { page }) => ({
     ...state,
     materialsLoading: true,

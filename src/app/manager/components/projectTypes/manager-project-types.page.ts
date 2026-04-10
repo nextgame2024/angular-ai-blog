@@ -61,11 +61,10 @@ import type { BmLabor } from '../../types/labor.interface';
 import type { BmSupplier, BmSupplierMaterial } from '../../types/suppliers.interface';
 
 @Component({
-  selector: 'app-manager-project-types-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
-  templateUrl: './manager-project-types.page.html',
-  styleUrls: ['./manager-project-types.page.css'],
+    selector: 'app-manager-project-types-page',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+    templateUrl: './manager-project-types.page.html',
+    styleUrls: ['./manager-project-types.page.css']
 })
 export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
@@ -453,10 +452,12 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
   }
 
   removeProjectType(pt: BmProjectType): void {
+    if (this.isArchiveActionDisabled(pt)) return;
+
     const hasProjects = !!pt.hasProjects;
     const title = hasProjects ? 'Archive Project Type?' : 'Delete Project Type?';
     const message = hasProjects
-      ? `Are you sure you want to archive "${pt.name}"?`
+      ? `"${pt.name}" project type is linked to existing processes, so it cannot be deleted. Would you like to archive it instead?`
       : `Are you sure you want to delete "${pt.name}"?`;
     this.openConfirmModal({
       title,
@@ -470,6 +471,10 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
           }),
         ),
     });
+  }
+
+  isArchiveActionDisabled(pt: BmProjectType): boolean {
+    return (pt.status ?? 'active') === 'archived';
   }
 
   openMaterialCreate(): void {
@@ -520,7 +525,12 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
     );
   }
 
-  removeProjectTypeMaterial(projectTypeId: string, m: BmProjectTypeMaterial): void {
+  removeProjectTypeMaterial(
+    projectType: BmProjectType,
+    m: BmProjectTypeMaterial,
+  ): void {
+    if (this.isArchiveActionDisabled(projectType)) return;
+
     this.openConfirmModal({
       title: 'Delete Material?',
       message: `Are you sure you want to delete "${m.materialName}"?`,
@@ -529,7 +539,7 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
       onConfirm: () =>
         this.store.dispatch(
           ManagerProjectTypesActions.removeProjectTypeMaterial({
-            projectTypeId,
+            projectTypeId: projectType.projectTypeId,
             materialId: m.materialId,
           }),
         ),
@@ -581,7 +591,12 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
     );
   }
 
-  removeProjectTypeLabor(projectTypeId: string, l: BmProjectTypeLabor): void {
+  removeProjectTypeLabor(
+    projectType: BmProjectType,
+    l: BmProjectTypeLabor,
+  ): void {
+    if (this.isArchiveActionDisabled(projectType)) return;
+
     this.openConfirmModal({
       title: 'Delete Labor?',
       message: `Are you sure you want to delete "${l.laborName}"?`,
@@ -590,7 +605,7 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
       onConfirm: () =>
         this.store.dispatch(
           ManagerProjectTypesActions.removeProjectTypeLabor({
-            projectTypeId,
+            projectTypeId: projectType.projectTypeId,
             laborId: l.laborId,
           }),
         ),

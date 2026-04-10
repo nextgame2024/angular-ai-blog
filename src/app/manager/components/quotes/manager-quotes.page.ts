@@ -18,11 +18,10 @@ import type {
 import { environment } from '../../../../environments/environment';
 
 @Component({
-  selector: 'app-manager-quotes-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  templateUrl: './manager-quotes.page.html',
-  styleUrls: ['./manager-quotes.page.css'],
+    selector: 'app-manager-quotes-page',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule],
+    templateUrl: './manager-quotes.page.html',
+    styleUrls: ['./manager-quotes.page.css']
 })
 export class ManagerQuotesPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();

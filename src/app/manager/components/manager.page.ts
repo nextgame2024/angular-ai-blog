@@ -1,11 +1,12 @@
-import { CommonModule } from '@angular/common';
+
 import {
   Component,
   ElementRef,
-  HostListener,
-  OnDestroy,
-  OnInit,
-  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { GoogleMapsModule } from '@angular/google-maps';
@@ -16,8 +17,9 @@ import {
   RouterModule,
 } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Subject, filter, firstValueFrom } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { firstValueFrom } from 'rxjs';
+import { filter, map } from 'rxjs/operators';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 import { selectCurrentUser } from '../../auth/store/reducers';
 import type { CurrentUserInterface } from '../../shared/types/currentUser.interface';
@@ -45,20 +47,20 @@ type MenuItem = {
 };
 
 @Component({
-  selector: 'app-manager-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, GoogleMapsModule, RouterModule],
-  templateUrl: './manager.page.html',
-  styleUrls: ['./manager.page.css'],
+    selector: 'app-manager-page',
+    imports: [ReactiveFormsModule, GoogleMapsModule, RouterModule],
+    templateUrl: './manager.page.html',
+    styleUrls: ['./manager.page.css']
 })
-export class ManagerPageComponent implements OnInit, OnDestroy {
-  private destroy$ = new Subject<void>();
-  private projectsSnapshot: BmProject[] = [];
-  private searchSnapshot = '';
-  private projectsPage = 1;
-  private projectsLimit = 20;
-  private projectsTotal = 0;
-  private projectsLoading = false;
+export class ManagerPageComponent {
+  private readonly store = inject(Store);
+  private readonly mapsLoader = inject(GoogleMapsLoaderService);
+  private readonly companyService = inject(ManagerCompanyService);
+  private readonly navigationLinksApi = inject(NavigationLinksProjectsService);
+  private readonly projectsService = inject(ManagerProjectsService);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+
   private mapRefreshToken = 0;
   private geocoder: google.maps.Geocoder | null = null;
   private geocodeCache = new Map<string, google.maps.LatLngLiteral>();
@@ -70,34 +72,27 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   private streetViewPanorama: google.maps.StreetViewPanorama | null = null;
   private streetViewRequestToken = 0;
   private readonly superAdminId = 'c2dad143-077c-4082-92f0-47805601db3b';
-  private companyAddress: string | null = null;
-  private activeMenuLabels = new Set<string>();
-  private menuConfigLoaded = false;
-  currentUser: CurrentUserInterface | null = null;
-  isSuperAdmin = false;
-  isDraggingInfoPanel = false;
+  private menuLoadToken = 0;
   private infoPanelDragOffset = { x: 0, y: 0 };
 
-  @ViewChild('mapContainerRef') mapContainerRef?: ElementRef<HTMLElement>;
-  @ViewChild('mapInfoPanelRef') mapInfoPanelRef?: ElementRef<HTMLElement>;
-  @ViewChild('streetViewPreviewRef')
-  streetViewPreviewRef?: ElementRef<HTMLElement>;
+  readonly mapContainerRef$$ = viewChild<ElementRef<HTMLElement>>('mapContainerRef');
+  readonly mapInfoPanelRef$$ = viewChild<ElementRef<HTMLElement>>('mapInfoPanelRef');
+  readonly streetViewPreviewRef$$ =
+    viewChild<ElementRef<HTMLElement>>('streetViewPreviewRef');
 
-  mapsLoaded = false;
-  mapsError: string | null = null;
+  readonly mapsLoaded$$ = signal(false);
+  readonly mapsError$$ = signal<string | null>(null);
 
-  isMobile = false;
-  panelCollapsed = false;
-  panelOpenMobile = true;
-
-  // New: fullscreen panel when inside a section like Clients
-  panelFullscreen = false;
-  panelTitle = 'Business manager';
+  readonly isMobile$$ = signal(false);
+  readonly panelCollapsed$$ = signal(false);
+  readonly panelOpenMobile$$ = signal(true);
+  readonly panelFullscreen$$ = signal(false);
+  readonly panelTitle$$ = signal('Business manager');
 
   // Keep the search field now; autocomplete + geocoding can come later
-  searchCtrl = new FormControl<string>('', { nonNullable: true });
+  readonly searchCtrl = new FormControl<string>('', { nonNullable: true });
 
-  menu: MenuItem[] = [
+  readonly menu: MenuItem[] = [
     { label: 'Clients', route: '/manager/clients', icon: 'clients' },
     { label: 'Projects', route: '/manager/projects', icon: 'projects' },
     {
@@ -121,10 +116,10 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     { label: 'Invoices', route: '/manager/invoices', icon: 'invoices' },
   ];
 
-  mapCenter: google.maps.LatLngLiteral = { lat: -27.4698, lng: 153.0251 };
-  mapZoom = 12;
+  readonly mapCenter: google.maps.LatLngLiteral = { lat: -27.4698, lng: 153.0251 };
+  readonly mapZoom = 12;
 
-  mapOptions: google.maps.MapOptions = {
+  readonly mapOptions: google.maps.MapOptions = {
     clickableIcons: false,
     disableDefaultUI: false,
     fullscreenControl: false,
@@ -132,23 +127,26 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     mapTypeControl: false,
   };
 
-  projectMarkers: Array<{
+  readonly projectMarkers$$ = signal<Array<{
     project: BmProject;
     position: google.maps.LatLngLiteral;
     icon: google.maps.Icon;
-  }> = [];
-  companyMarker:
-    | { position: google.maps.LatLngLiteral; icon: google.maps.Icon }
-    | null = null;
-  activeProject: BmProject | null = null;
-  infoPanelPosition = { x: 24, y: 120 };
-  routePath: google.maps.LatLngLiteral[] = [];
-  routeLoading = false;
-  routeError: string | null = null;
-  activeProjectTravelTime: string | null = null;
-  streetViewLoading = false;
-  streetViewReady = false;
-  routePolylineOptions: google.maps.PolylineOptions = {
+  }>>([]);
+  readonly companyMarker$$ =
+    signal<{ position: google.maps.LatLngLiteral; icon: google.maps.Icon } | null>(
+      null,
+    );
+  readonly activeProject$$ = signal<BmProject | null>(null);
+  readonly infoPanelPosition$$ = signal({ x: 24, y: 120 });
+  readonly routePath$$ = signal<google.maps.LatLngLiteral[]>([]);
+  readonly routeLoading$$ = signal(false);
+  readonly routeError$$ = signal<string | null>(null);
+  readonly activeProjectTravelTime$$ = signal<string | null>(null);
+  readonly streetViewLoading$$ = signal(false);
+  readonly streetViewReady$$ = signal(false);
+  readonly isDraggingInfoPanel$$ = signal(false);
+
+  readonly routePolylineOptions: google.maps.PolylineOptions = {
     geodesic: false,
     strokeColor: '#ef4444',
     strokeOpacity: 0.9,
@@ -170,162 +168,181 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     invoice_process: '#f125dd',
   };
 
-  constructor(
-    private store: Store,
-    private mapsLoader: GoogleMapsLoaderService,
-    private companyService: ManagerCompanyService,
-    private navigationLinksApi: NavigationLinksProjectsService,
-    private projectsService: ManagerProjectsService,
-    private router: Router,
-    private route: ActivatedRoute,
-  ) {}
+  private readonly mapsInit$$ = signal(false);
+  private readonly companyAddressLoaded$$ = signal(false);
 
-  ngOnInit(): void {
-    this.updateIsMobile();
+  private readonly currentUser$$ = toSignal(this.store.select(selectCurrentUser), {
+    initialValue: null,
+  });
+  private readonly isSuperAdmin$$ = computed(
+    () => this.currentUser$$()?.id === this.superAdminId,
+  );
+  private readonly searchQuery$$ = toSignal(
+    this.store.select(selectManagerSearchQuery),
+    { initialValue: '' },
+  );
+  private readonly projects$$ = toSignal(
+    this.store.select(selectManagerProjects),
+    { initialValue: [] as BmProject[] },
+  );
+  private readonly projectsPage$$ = toSignal(
+    this.store.select(selectManagerProjectsPage),
+    { initialValue: 1 },
+  );
+  private readonly projectsLimit$$ = toSignal(
+    this.store.select(selectManagerProjectsLimit),
+    { initialValue: 20 },
+  );
+  private readonly projectsTotal$$ = toSignal(
+    this.store.select(selectManagerProjectsTotal),
+    { initialValue: 0 },
+  );
+  private readonly projectsLoading$$ = toSignal(
+    this.store.select(selectManagerProjectsLoading),
+    { initialValue: false },
+  );
 
-    this.loadCompanyAddress();
-    this.store
-      .select(selectCurrentUser)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((user) => {
-        this.currentUser = user ?? null;
-        this.isSuperAdmin = user?.id === this.superAdminId;
-        void this.loadActiveMenuLinks();
-      });
+  private readonly activeMenuLabels$$ = signal<Set<string>>(new Set());
+  private readonly menuConfigLoaded$$ = signal(false);
+  private readonly companyAddress$$ = signal<string | null>(null);
 
-    this.mapsLoader
-      .load()
-      .then(() => {
-        this.mapsLoaded = true;
-        this.ensureGeocoder();
-        this.refreshMapMarkers();
-      })
-      .catch((e) => {
-        this.mapsLoaded = false;
-        this.mapsError = e?.message || 'Google Maps failed to load';
-      });
-
-    // Keep query in store (pattern consistency + ready for future autocomplete)
-    this.store
-      .select(selectManagerSearchQuery)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((q) => {
-        const next = q || '';
-        this.searchSnapshot = next;
-        this.searchCtrl.setValue(next, { emitEvent: false });
-        this.refreshMapMarkers();
-      });
-
-    this.searchCtrl.valueChanges
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((q) => {
-        const next = q || '';
-        this.store.dispatch(ManagerActions.setSearchQuery({ query: next }));
-        this.store.dispatch(
-          ManagerProjectsActions.setProjectsSearchQuery({ query: next }),
-        );
-        this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
-      });
-
-    this.store
-      .select(selectManagerProjects)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((projects) => {
-        this.projectsSnapshot = projects || [];
-        this.refreshMapMarkers();
-        this.maybeLoadMoreProjectsForMap();
-      });
-
-    this.store
-      .select(selectManagerProjectsPage)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((page) => {
-        this.projectsPage = page || 1;
-        this.maybeLoadMoreProjectsForMap();
-      });
-
-    this.store
-      .select(selectManagerProjectsLimit)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((limit) => {
-        this.projectsLimit = limit || 20;
-      });
-
-    this.store
-      .select(selectManagerProjectsTotal)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((total) => {
-        this.projectsTotal = total || 0;
-        this.maybeLoadMoreProjectsForMap();
-      });
-
-    this.store
-      .select(selectManagerProjectsLoading)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((loading) => {
-        this.projectsLoading = !!loading;
-        this.maybeLoadMoreProjectsForMap();
-      });
-
-    this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
-
-    // Track active child route data (title + fullscreen)
-    this.router.events
-      .pipe(
-        filter((e): e is NavigationEnd => e instanceof NavigationEnd),
-        takeUntil(this.destroy$),
-      )
-      .subscribe(() => this.syncRouteUIState());
-
-    // first load
-    this.syncRouteUIState();
-  }
-
-  get visibleMenu(): MenuItem[] {
-    if (!this.currentUser) return [];
+  readonly visibleMenu$$ = computed<MenuItem[]>(() => {
+    const user = this.currentUser$$();
+    if (!user) return [];
 
     const baseItems = this.menu.filter(
-      (item) => !item.superAdminOnly || this.isSuperAdmin,
+      (item) => !item.superAdminOnly || this.isSuperAdmin$$(),
     );
 
-    if (!this.menuConfigLoaded) {
+    if (!this.menuConfigLoaded$$()) {
       return baseItems.filter((item) => item.superAdminOnly);
     }
 
+    const activeMenuLabels = this.activeMenuLabels$$();
     return baseItems.filter(
-      (item) => item.superAdminOnly || this.activeMenuLabels.has(item.label),
+      (item) => item.superAdminOnly || activeMenuLabels.has(item.label),
     );
-  }
+  });
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
+  private readonly currentPath$$ = toSignal(
+    this.router.events.pipe(
+      filter((e): e is NavigationEnd => e instanceof NavigationEnd),
+      map(() => this.router.url),
+    ),
+    { initialValue: this.router.url },
+  );
 
-  @HostListener('window:resize')
-  onResize(): void {
+  private readonly initEffect = effect((onCleanup) => {
     this.updateIsMobile();
     this.clampInfoPanelPosition();
-  }
+    const onResize = () => {
+      this.updateIsMobile();
+      this.clampInfoPanelPosition();
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!this.isDraggingInfoPanel$$()) return;
+      this.moveInfoPanel(event.clientX, event.clientY);
+      event.preventDefault();
+    };
+    const onPointerUp = () => {
+      this.isDraggingInfoPanel$$.set(false);
+    };
 
-  @HostListener('window:pointermove', ['$event'])
-  onWindowPointerMove(event: PointerEvent): void {
-    if (!this.isDraggingInfoPanel) return;
-    this.moveInfoPanel(event.clientX, event.clientY);
-    event.preventDefault();
-  }
+    window.addEventListener('resize', onResize, { passive: true });
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
 
-  @HostListener('window:pointerup')
-  onWindowPointerUp(): void {
-    this.isDraggingInfoPanel = false;
-  }
+    onCleanup(() => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    });
+  });
+
+  private readonly mapsLoadEffect = effect(() => {
+    if (this.mapsInit$$()) return;
+    this.mapsInit$$.set(true);
+    this.mapsLoader
+      .load()
+      .then(() => {
+        this.mapsLoaded$$.set(true);
+        this.mapsError$$.set(null);
+        this.ensureGeocoder();
+        this.refreshMapMarkers();
+      })
+      .catch((e: unknown) => {
+        this.mapsLoaded$$.set(false);
+        this.mapsError$$.set(
+          e instanceof Error ? e.message : 'Google Maps failed to load',
+        );
+      });
+  });
+
+  private readonly projectsInitEffect = effect(() => {
+    this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
+  });
+
+  private readonly searchQuerySyncEffect = effect(() => {
+    const next = this.searchQuery$$() || '';
+    if (this.searchCtrl.value !== next) {
+      this.searchCtrl.setValue(next, { emitEvent: false });
+    }
+    this.refreshMapMarkers();
+  });
+
+  private readonly searchInputEffect = effect((onCleanup) => {
+    const sub = this.searchCtrl.valueChanges.subscribe((q) => {
+      const next = q || '';
+      this.store.dispatch(ManagerActions.setSearchQuery({ query: next }));
+      this.store.dispatch(
+        ManagerProjectsActions.setProjectsSearchQuery({ query: next }),
+      );
+      this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
+    });
+    onCleanup(() => sub.unsubscribe());
+  });
+
+  private readonly projectsEffect = effect(() => {
+    this.projects$$();
+    this.refreshMapMarkers();
+    this.maybeLoadMoreProjectsForMap();
+  });
+
+  private readonly projectsMetaEffect = effect(() => {
+    this.projectsPage$$();
+    this.projectsLimit$$();
+    this.projectsTotal$$();
+    this.projectsLoading$$();
+    this.maybeLoadMoreProjectsForMap();
+  });
+
+  private readonly currentUserEffect = effect(() => {
+    const user = this.currentUser$$();
+    if (!user) {
+      this.menuConfigLoaded$$.set(false);
+      this.activeMenuLabels$$.set(new Set());
+      return;
+    }
+    void this.loadActiveMenuLinks();
+  });
+
+  private readonly routeEffect = effect(() => {
+    this.currentPath$$();
+    this.syncRouteUIState();
+  });
+
+  private readonly companyAddressEffect = effect(() => {
+    if (this.companyAddressLoaded$$()) return;
+    this.companyAddressLoaded$$.set(true);
+    void this.loadCompanyAddress();
+  });
 
   togglePanelCollapsed(): void {
-    this.panelCollapsed = !this.panelCollapsed;
+    this.panelCollapsed$$.set(!this.panelCollapsed$$());
   }
 
   togglePanelMobile(): void {
-    this.panelOpenMobile = !this.panelOpenMobile;
+    this.panelOpenMobile$$.set(!this.panelOpenMobile$$());
   }
 
   goBackToMenu(): void {
@@ -333,12 +350,15 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   }
 
   private async loadActiveMenuLinks(): Promise<void> {
-    if (!this.currentUser) {
-      this.menuConfigLoaded = false;
-      this.activeMenuLabels.clear();
+    const user = this.currentUser$$();
+    if (!user) {
+      this.menuConfigLoaded$$.set(false);
+      this.activeMenuLabels$$.set(new Set());
       return;
     }
 
+    const requestToken = ++this.menuLoadToken;
+    this.menuConfigLoaded$$.set(false);
     try {
       const links = await firstValueFrom(
         this.navigationLinksApi.listActiveNavigationLinks({
@@ -346,47 +366,49 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
         }),
       );
 
-      this.activeMenuLabels.clear();
-      for (const label of (links || [])
+      if (requestToken !== this.menuLoadToken) return;
+      const labels = (links || [])
         .map((link) => link.navigationLabel)
-        .filter((label): label is string => !!label)) {
-        this.activeMenuLabels.add(label);
-      }
+        .filter((label): label is string => !!label);
+      this.activeMenuLabels$$.set(new Set(labels));
     } catch {
-      this.activeMenuLabels.clear();
+      if (requestToken !== this.menuLoadToken) return;
+      this.activeMenuLabels$$.set(new Set());
     } finally {
-      this.menuConfigLoaded = true;
+      if (requestToken === this.menuLoadToken) {
+        this.menuConfigLoaded$$.set(true);
+      }
     }
   }
 
-  trackByProjectMarker = (_: number, marker: { project: BmProject }) =>
+  readonly trackByProjectMarker = (_: number, marker: { project: BmProject }) =>
     marker.project.projectId;
 
   openProjectInfo(project: BmProject): void {
-    this.activeProject = project;
-    this.routeError = null;
-    this.activeProjectTravelTime = null;
-    this.routePath = [];
-    this.streetViewLoading = false;
-    this.streetViewReady = false;
+    this.activeProject$$.set(project);
+    this.routeError$$.set(null);
+    this.activeProjectTravelTime$$.set(null);
+    this.routePath$$.set([]);
+    this.streetViewLoading$$.set(false);
+    this.streetViewReady$$.set(false);
     this.setDefaultInfoPanelPosition();
     void this.renderStreetViewPreview(project);
     void this.drawCompanyToClientRoute(project);
   }
 
   closeProjectInfo(): void {
-    this.activeProject = null;
-    this.routeLoading = false;
-    this.routeError = null;
-    this.activeProjectTravelTime = null;
-    this.routePath = [];
-    this.streetViewLoading = false;
-    this.streetViewReady = false;
+    this.activeProject$$.set(null);
+    this.routeLoading$$.set(false);
+    this.routeError$$.set(null);
+    this.activeProjectTravelTime$$.set(null);
+    this.routePath$$.set([]);
+    this.streetViewLoading$$.set(false);
+    this.streetViewReady$$.set(false);
     this.streetViewRequestToken += 1;
     if (this.streetViewPanorama) {
       this.streetViewPanorama.setVisible(false);
     }
-    this.isDraggingInfoPanel = false;
+    this.isDraggingInfoPanel$$.set(false);
   }
 
   formatStatus(status?: string | null): string {
@@ -428,11 +450,11 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
 
   private async waitForStreetViewHost(): Promise<HTMLElement | null> {
     for (let i = 0; i < 8; i += 1) {
-      const host = this.streetViewPreviewRef?.nativeElement || null;
+      const host = this.streetViewPreviewRef$$()?.nativeElement || null;
       if (host) return host;
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
-    return this.streetViewPreviewRef?.nativeElement || null;
+    return this.streetViewPreviewRef$$()?.nativeElement || null;
   }
 
   private async renderStreetViewPreview(project: BmProject): Promise<void> {
@@ -440,39 +462,39 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     const requestToken = ++this.streetViewRequestToken;
     const destination = (project.clientAddress || '').trim();
 
-    this.streetViewLoading = true;
-    this.streetViewReady = false;
+    this.streetViewLoading$$.set(true);
+    this.streetViewReady$$.set(false);
     if (this.streetViewPanorama) {
       this.streetViewPanorama.setVisible(false);
     }
 
     if (!destination) {
-      this.streetViewLoading = false;
+      this.streetViewLoading$$.set(false);
       return;
     }
 
     this.ensureGeocoder();
     const destinationPos = await this.geocodeAddress(destination);
     if (
-      this.activeProject?.projectId !== requestedProjectId
+      this.activeProject$$()?.projectId !== requestedProjectId
       || requestToken !== this.streetViewRequestToken
     ) {
       return;
     }
     if (!destinationPos) {
-      this.streetViewLoading = false;
+      this.streetViewLoading$$.set(false);
       return;
     }
 
     const host = await this.waitForStreetViewHost();
     if (
-      this.activeProject?.projectId !== requestedProjectId
+      this.activeProject$$()?.projectId !== requestedProjectId
       || requestToken !== this.streetViewRequestToken
     ) {
       return;
     }
     if (!host) {
-      this.streetViewLoading = false;
+      this.streetViewLoading$$.set(false);
       return;
     }
 
@@ -482,21 +504,21 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
       || typeof google === 'undefined'
       || !google.maps?.StreetViewPanorama
     ) {
-      this.streetViewLoading = false;
+      this.streetViewLoading$$.set(false);
       return;
     }
 
     const panoramaData = await this.findStreetViewPanorama(destinationPos);
     if (
-      this.activeProject?.projectId !== requestedProjectId
+      this.activeProject$$()?.projectId !== requestedProjectId
       || requestToken !== this.streetViewRequestToken
     ) {
       return;
     }
 
     if (!panoramaData?.location) {
-      this.streetViewReady = false;
-      this.streetViewLoading = false;
+      this.streetViewReady$$.set(false);
+      this.streetViewLoading$$.set(false);
       return;
     }
 
@@ -524,18 +546,18 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
       this.streetViewPanorama.setPano(pano);
     }
     this.streetViewPanorama.setVisible(true);
-    this.streetViewReady = true;
-    this.streetViewLoading = false;
+    this.streetViewReady$$.set(true);
+    this.streetViewLoading$$.set(false);
   }
 
   private async refreshMapMarkers(): Promise<void> {
-    if (!this.mapsLoaded) return;
+    if (!this.mapsLoaded$$()) return;
     this.ensureGeocoder();
     if (!this.geocoder) return;
 
     const token = ++this.mapRefreshToken;
-    const query = this.searchSnapshot.trim().toLowerCase();
-    const visible = this.projectsSnapshot.filter(
+    const query = (this.searchQuery$$() || '').trim().toLowerCase();
+    const visible = this.projects$$().filter(
       (project) =>
         this.allowedStatuses.has(project.status || '') &&
         this.matchesSearch(project, query),
@@ -556,13 +578,13 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
       }),
     );
 
-    const companyAddress = (this.companyAddress || '').trim();
+    const companyAddress = (this.companyAddress$$() || '').trim();
     const companyPosition = companyAddress
       ? await this.geocodeAddress(companyAddress)
       : null;
 
     if (token !== this.mapRefreshToken) return;
-    this.projectMarkers = markers.filter(
+    const nextMarkers = markers.filter(
       (
         marker,
       ): marker is {
@@ -571,17 +593,21 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
         icon: google.maps.Icon;
       } => Boolean(marker),
     );
-    this.companyMarker = companyPosition
+    this.projectMarkers$$.set(nextMarkers);
+    this.companyMarker$$.set(
+      companyPosition
       ? {
           position: companyPosition,
           icon: this.buildCompanyMarkerIcon(),
         }
-      : null;
+      : null,
+    );
 
+    const activeProject = this.activeProject$$();
     if (
-      this.activeProject
-      && !this.projectMarkers.some(
-        (marker) => marker.project.projectId === this.activeProject?.projectId,
+      activeProject
+      && !nextMarkers.some(
+        (marker) => marker.project.projectId === activeProject.projectId,
       )
     ) {
       this.closeProjectInfo();
@@ -642,36 +668,38 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   }
 
   private maybeLoadMoreProjectsForMap(): void {
-    if (!this.mapsLoaded) return;
-    if (this.projectsLoading) return;
-    if (this.projectsTotal === 0) return;
-    if (this.projectsSnapshot.length >= this.projectsTotal) return;
+    if (!this.mapsLoaded$$()) return;
+    if (this.projectsLoading$$()) return;
+    if (this.projectsTotal$$() === 0) return;
+    if (this.projects$$().length >= this.projectsTotal$$()) return;
     if (this.countVisibleProjects() >= 50) return;
-    const expectedLoaded = this.projectsPage * this.projectsLimit;
-    if (expectedLoaded >= this.projectsTotal) return;
+    const expectedLoaded = this.projectsPage$$() * this.projectsLimit$$();
+    if (expectedLoaded >= this.projectsTotal$$()) return;
     this.store.dispatch(
-      ManagerProjectsActions.loadProjects({ page: this.projectsPage + 1 }),
+      ManagerProjectsActions.loadProjects({ page: this.projectsPage$$() + 1 }),
     );
   }
 
   private async drawCompanyToClientRoute(project: BmProject): Promise<void> {
-    const origin = (this.companyAddress || '').trim();
+    const origin = (this.companyAddress$$() || '').trim();
     const destination = (project.clientAddress || '').trim();
 
     if (!origin || !destination) {
-      this.routePath = [];
-      this.activeProjectTravelTime = null;
-      this.routeLoading = false;
-      this.routeError = !origin
+      this.routePath$$.set([]);
+      this.activeProjectTravelTime$$.set(null);
+      this.routeLoading$$.set(false);
+      this.routeError$$.set(
+        !origin
         ? 'Company address is missing.'
-        : 'Client address is missing.';
+        : 'Client address is missing.',
+      );
       return;
     }
 
-    this.routeLoading = true;
-    this.routeError = null;
-    this.activeProjectTravelTime = null;
-    this.routePath = [];
+    this.routeLoading$$.set(true);
+    this.routeError$$.set(null);
+    this.activeProjectTravelTime$$.set(null);
+    this.routePath$$.set([]);
 
     const requestedProjectId = project.projectId;
     let originPos: google.maps.LatLngLiteral | null = null;
@@ -682,9 +710,9 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
         this.geocodeAddress(origin),
         this.geocodeAddress(destination),
       ]);
-      if (this.activeProject?.projectId !== requestedProjectId) return;
+      if (this.activeProject$$()?.projectId !== requestedProjectId) return;
     } catch {
-      if (this.activeProject?.projectId !== requestedProjectId) return;
+      if (this.activeProject$$()?.projectId !== requestedProjectId) return;
       originPos = null;
       destinationPos = null;
     }
@@ -695,7 +723,7 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
           requestedProjectId,
         ),
       );
-      if (this.activeProject?.projectId !== requestedProjectId) return;
+      if (this.activeProject$$()?.projectId !== requestedProjectId) return;
 
       const encodedPolyline = String(
         routeResponse?.transportationRoute?.encodedPolyline || '',
@@ -705,64 +733,65 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
         : [];
 
       if (routePath.length > 1) {
-        this.routePath = routePath;
+        this.routePath$$.set(routePath);
       } else {
-        this.routePath = [];
-        this.routeError = 'Unable to draw driving route on map right now.';
+        this.routePath$$.set([]);
+        this.routeError$$.set('Unable to draw driving route on map right now.');
       }
 
       const formattedRouteTime = String(
         routeResponse?.transportationRoute?.formattedTime || '',
       ).trim();
       if (formattedRouteTime) {
-        this.activeProjectTravelTime = formattedRouteTime;
+        this.activeProjectTravelTime$$.set(formattedRouteTime);
       }
-    } catch (err: any) {
-      if (this.activeProject?.projectId !== requestedProjectId) return;
-      this.routePath = [];
-      this.routeError = this.normalizeRouteErrorMessage(this.getErrorMessage(
-        err,
-        'Unable to draw driving route on map right now.',
-      ));
+    } catch (err: unknown) {
+      if (this.activeProject$$()?.projectId !== requestedProjectId) return;
+      this.routePath$$.set([]);
+      this.routeError$$.set(
+        this.normalizeRouteErrorMessage(
+          this.getErrorMessage(err, 'Unable to draw driving route on map right now.'),
+        ),
+      );
     }
 
-    if (!this.activeProjectTravelTime) {
+    if (!this.activeProjectTravelTime$$()) {
       try {
         const response = await firstValueFrom(
           this.projectsService.getProjectSurchargeTransportationTime(
             requestedProjectId,
           ),
         );
-        if (this.activeProject?.projectId !== requestedProjectId) return;
+        if (this.activeProject$$()?.projectId !== requestedProjectId) return;
 
         const formattedTime = String(
           response?.transportation?.formattedTime || '',
         ).trim();
-        this.activeProjectTravelTime = formattedTime || null;
-        if (!this.activeProjectTravelTime && !this.routeError) {
-          this.routeError = 'Travel time not available for this route.';
+        this.activeProjectTravelTime$$.set(formattedTime || null);
+        if (!this.activeProjectTravelTime$$() && !this.routeError$$()) {
+          this.routeError$$.set('Travel time not available for this route.');
         }
-      } catch (err: any) {
-        if (this.activeProject?.projectId !== requestedProjectId) return;
+      } catch (err: unknown) {
+        if (this.activeProject$$()?.projectId !== requestedProjectId) return;
         const fallbackMinutes = this.estimateTravelMinutes(
           originPos,
           destinationPos,
         );
         if (fallbackMinutes !== null) {
-          this.activeProjectTravelTime = `~ ${this.formatDurationMinutes(
-            fallbackMinutes,
-          )}`;
-          if (!this.routeError) {
-            this.routeError =
-              'Live travel time unavailable. Showing estimated time.';
+          this.activeProjectTravelTime$$.set(
+            `~ ${this.formatDurationMinutes(fallbackMinutes)}`,
+          );
+          if (!this.routeError$$()) {
+            this.routeError$$.set(
+              'Live travel time unavailable. Showing estimated time.',
+            );
           }
         } else {
-          this.activeProjectTravelTime = null;
-          if (!this.routeError) {
-            this.routeError = this.normalizeRouteErrorMessage(
-              this.getErrorMessage(
-                err,
-                'Unable to calculate route right now.',
+          this.activeProjectTravelTime$$.set(null);
+          if (!this.routeError$$()) {
+            this.routeError$$.set(
+              this.normalizeRouteErrorMessage(
+                this.getErrorMessage(err, 'Unable to calculate route right now.'),
               ),
             );
           }
@@ -770,8 +799,8 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
       }
     }
 
-    if (this.activeProject?.projectId === requestedProjectId) {
-      this.routeLoading = false;
+    if (this.activeProject$$()?.projectId === requestedProjectId) {
+      this.routeLoading$$.set(false);
     }
   }
 
@@ -823,10 +852,10 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
   onInfoPanelPointerDown(event: PointerEvent): void {
     const target = event.target as HTMLElement | null;
     if (target?.closest('button')) return;
-    if (!this.activeProject) return;
+    if (!this.activeProject$$()) return;
 
-    const containerEl = this.mapContainerRef?.nativeElement;
-    const panelEl = this.mapInfoPanelRef?.nativeElement;
+    const containerEl = this.mapContainerRef$$()?.nativeElement;
+    const panelEl = this.mapInfoPanelRef$$()?.nativeElement;
     if (!containerEl || !panelEl) return;
 
     const panelRect = panelEl.getBoundingClientRect();
@@ -834,13 +863,13 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
       x: event.clientX - panelRect.left,
       y: event.clientY - panelRect.top,
     };
-    this.isDraggingInfoPanel = true;
+    this.isDraggingInfoPanel$$.set(true);
     event.preventDefault();
   }
 
   private moveInfoPanel(clientX: number, clientY: number): void {
-    const containerEl = this.mapContainerRef?.nativeElement;
-    const panelEl = this.mapInfoPanelRef?.nativeElement;
+    const containerEl = this.mapContainerRef$$()?.nativeElement;
+    const panelEl = this.mapInfoPanelRef$$()?.nativeElement;
     if (!containerEl || !panelEl) return;
 
     const containerRect = containerEl.getBoundingClientRect();
@@ -854,20 +883,20 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     const rawX = clientX - containerRect.left - this.infoPanelDragOffset.x;
     const rawY = clientY - containerRect.top - this.infoPanelDragOffset.y;
 
-    this.infoPanelPosition = {
+    this.infoPanelPosition$$.set({
       x: Math.min(Math.max(rawX, edge), maxX),
       y: Math.min(Math.max(rawY, edge), maxY),
-    };
+    });
   }
 
   private setDefaultInfoPanelPosition(): void {
-    const containerEl = this.mapContainerRef?.nativeElement;
+    const containerEl = this.mapContainerRef$$()?.nativeElement;
     if (!containerEl) {
-      this.infoPanelPosition = { x: 24, y: 120 };
+      this.infoPanelPosition$$.set({ x: 24, y: 120 });
       return;
     }
 
-    const cardWidth = this.isMobile
+    const cardWidth = this.isMobile$$()
       ? Math.min(containerEl.clientWidth - 24, 340)
       : 420;
     const edge = 8;
@@ -876,31 +905,32 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
       Math.max((containerEl.clientWidth - cardWidth) / 2, edge),
       maxX,
     );
-    this.infoPanelPosition = {
+    this.infoPanelPosition$$.set({
       x: Math.round(x),
-      y: this.isMobile ? 96 : 110,
-    };
+      y: this.isMobile$$() ? 96 : 110,
+    });
   }
 
   private clampInfoPanelPosition(): void {
-    if (!this.activeProject) return;
-    const containerEl = this.mapContainerRef?.nativeElement;
-    const panelEl = this.mapInfoPanelRef?.nativeElement;
+    if (!this.activeProject$$()) return;
+    const containerEl = this.mapContainerRef$$()?.nativeElement;
+    const panelEl = this.mapInfoPanelRef$$()?.nativeElement;
     if (!containerEl || !panelEl) return;
 
     const edge = 8;
     const maxX = Math.max(edge, containerEl.clientWidth - panelEl.offsetWidth - edge);
     const maxY = Math.max(edge, containerEl.clientHeight - panelEl.offsetHeight - edge);
 
-    this.infoPanelPosition = {
-      x: Math.min(Math.max(this.infoPanelPosition.x, edge), maxX),
-      y: Math.min(Math.max(this.infoPanelPosition.y, edge), maxY),
-    };
+    const current = this.infoPanelPosition$$();
+    this.infoPanelPosition$$.set({
+      x: Math.min(Math.max(current.x, edge), maxX),
+      y: Math.min(Math.max(current.y, edge), maxY),
+    });
   }
 
   private countVisibleProjects(): number {
-    const query = this.searchSnapshot.trim().toLowerCase();
-    return this.projectsSnapshot.filter(
+    const query = (this.searchQuery$$() || '').trim().toLowerCase();
+    return this.projects$$().filter(
       (project) =>
         this.allowedStatuses.has(project.status || '') &&
         this.matchesSearch(project, query),
@@ -1058,10 +1088,17 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     return path;
   }
 
-  private getErrorMessage(err: any, fallback: string): string {
-    return String(
-      err?.error?.error || err?.error?.message || err?.message || fallback,
-    ).trim() || fallback;
+  private getErrorMessage(err: unknown, fallback: string): string {
+    if (!err) return fallback;
+    if (typeof err === 'string') return err.trim() || fallback;
+    if (err instanceof Error) return err.message.trim() || fallback;
+    if (typeof err === 'object') {
+      const typed = err as { error?: { error?: string; message?: string } };
+      const nested = typed.error;
+      const msg = nested?.error || nested?.message;
+      if (typeof msg === 'string' && msg.trim()) return msg.trim();
+    }
+    return fallback;
   }
 
   private normalizeRouteErrorMessage(message: string): string {
@@ -1077,46 +1114,44 @@ export class ManagerPageComponent implements OnInit, OnDestroy {
     return message;
   }
 
-  private loadCompanyAddress(): void {
-    this.companyService
-      .listCompanies({ page: 1, limit: 1 })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (res) => {
-          const address = String(res?.items?.[0]?.address || '').trim();
-          this.companyAddress = address || null;
-          this.refreshMapMarkers();
-        },
-        error: () => {
-          this.companyAddress = null;
-          this.refreshMapMarkers();
-        },
-      });
+  private async loadCompanyAddress(): Promise<void> {
+    try {
+      const res = await firstValueFrom(
+        this.companyService.listCompanies({ page: 1, limit: 1 }),
+      );
+      const address = String(res?.items?.[0]?.address || '').trim();
+      this.companyAddress$$.set(address || null);
+    } catch {
+      this.companyAddress$$.set(null);
+    } finally {
+      this.refreshMapMarkers();
+    }
   }
 
   private syncRouteUIState(): void {
     const child = this.route.firstChild;
     const data = child?.snapshot?.data ?? {};
 
-    this.panelTitle = data['title'] || 'Business manager';
-    this.panelFullscreen = !!data['fullscreen'];
+    this.panelTitle$$.set(data['title'] || 'Business manager');
+    this.panelFullscreen$$.set(!!data['fullscreen']);
 
     // In fullscreen mode, menu is hidden so we keep panel expanded/open.
-    if (this.panelFullscreen) {
-      this.panelCollapsed = false;
-      this.panelOpenMobile = true;
+    if (this.panelFullscreen$$()) {
+      this.panelCollapsed$$.set(false);
+      this.panelOpenMobile$$.set(true);
     }
   }
 
   private updateIsMobile(): void {
-    this.isMobile = window.matchMedia('(max-width: 768px)').matches;
+    const isMobile = window.matchMedia('(max-width: 768px)').matches;
+    this.isMobile$$.set(isMobile);
 
     // Mobile-first behavior: panel acts like a drawer, except when fullscreen.
-    if (this.isMobile) {
-      this.panelCollapsed = false;
-      if (!this.panelFullscreen) this.panelOpenMobile = false;
+    if (isMobile) {
+      this.panelCollapsed$$.set(false);
+      if (!this.panelFullscreen$$()) this.panelOpenMobile$$.set(false);
     } else {
-      this.panelOpenMobile = true;
+      this.panelOpenMobile$$.set(true);
     }
   }
 }

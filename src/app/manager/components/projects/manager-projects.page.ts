@@ -91,7 +91,6 @@ By accepting this invoice, the client confirms approval of the pre-installation 
 
 @Component({
   selector: 'app-manager-projects-page',
-  standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -291,9 +290,12 @@ export class ManagerProjectsPageComponent
       validators: [Validators.required, Validators.min(0)],
     }),
     description: new FormControl<string>('', { nonNullable: true }),
-    scope_and_conditions: new FormControl<string>(DEFAULT_SCOPE_AND_CONDITIONS, {
-      nonNullable: true,
-    }),
+    scope_and_conditions: new FormControl<string>(
+      DEFAULT_SCOPE_AND_CONDITIONS,
+      {
+        nonNullable: true,
+      },
+    ),
     status: new FormControl<string>('to_do', { nonNullable: true }),
     cost_in_quote: new FormControl<boolean>(false, { nonNullable: true }),
     default_pricing: new FormControl<boolean>(false, { nonNullable: true }),
@@ -358,11 +360,15 @@ export class ManagerProjectsPageComponent
   projectLaborToastClosing = false;
   projectLaborToastTone: 'success' | 'error' = 'success';
   projectLaborToastMessage = '';
-  private actionLoading = new Map<string, { quote: boolean; invoice: boolean }>();
+  private actionLoading = new Map<
+    string,
+    { quote: boolean; invoice: boolean }
+  >();
 
   @ViewChild('projectsList') projectsListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
-  @ViewChild('tabScrollTopAnchor') tabScrollTopAnchorRef?: ElementRef<HTMLElement>;
+  @ViewChild('tabScrollTopAnchor')
+  tabScrollTopAnchorRef?: ElementRef<HTMLElement>;
 
   private currentPage = 1;
   private canLoadMore = false;
@@ -375,8 +381,10 @@ export class ManagerProjectsPageComponent
     dailyRate: 0,
     laborHours: 0,
   };
-  private projectLaborToastHideTimer: ReturnType<typeof setTimeout> | null = null;
-  private projectLaborToastRemoveTimer: ReturnType<typeof setTimeout> | null = null;
+  private projectLaborToastHideTimer: ReturnType<typeof setTimeout> | null =
+    null;
+  private projectLaborToastRemoveTimer: ReturnType<typeof setTimeout> | null =
+    null;
 
   constructor(
     private store: Store,
@@ -395,7 +403,9 @@ export class ManagerProjectsPageComponent
     this.supplierSearchCtrl = new FormControl('', { nonNullable: true });
     this.materialSearchCtrl = new FormControl('', { nonNullable: true });
     this.laborSearchCtrl = new FormControl('', { nonNullable: true });
-    this.projectLaborDailyRateCtrl = new FormControl('0.00', { nonNullable: true });
+    this.projectLaborDailyRateCtrl = new FormControl('0.00', {
+      nonNullable: true,
+    });
     this.projectLaborHoursCtrl = new FormControl('0.00', { nonNullable: true });
   }
 
@@ -443,20 +453,20 @@ export class ManagerProjectsPageComponent
           projectTypeId,
           metersRequired,
         ]) => {
-        const effectiveProfileId =
-          profileId || project?.pricingProfileId || null;
-        const effectiveProjectTypeId =
-          projectTypeId || project?.projectTypeId || null;
-        const effectiveMetersRequired =
-          metersRequired ?? project?.metersRequired ?? null;
-        return this.calculateMaterialsCost(
-          project ? materials : preview,
-          useDefault,
-          effectiveProfileId,
-          profiles,
-          effectiveProjectTypeId,
-          effectiveMetersRequired,
-        );
+          const effectiveProfileId =
+            profileId || project?.pricingProfileId || null;
+          const effectiveProjectTypeId =
+            projectTypeId || project?.projectTypeId || null;
+          const effectiveMetersRequired =
+            metersRequired ?? project?.metersRequired ?? null;
+          return this.calculateMaterialsCost(
+            project ? materials : preview,
+            useDefault,
+            effectiveProfileId,
+            profiles,
+            effectiveProjectTypeId,
+            effectiveMetersRequired,
+          );
         },
       ),
     );
@@ -482,20 +492,20 @@ export class ManagerProjectsPageComponent
           projectTypeId,
           metersRequired,
         ]) => {
-        const effectiveProfileId =
-          profileId || project?.pricingProfileId || null;
-        const effectiveProjectTypeId =
-          projectTypeId || project?.projectTypeId || null;
-        const effectiveMetersRequired =
-          metersRequired ?? project?.metersRequired ?? null;
-        return this.calculateLaborCost(
-          project ? labor : preview,
-          useDefault,
-          effectiveProfileId,
-          profiles,
-          effectiveProjectTypeId,
-          effectiveMetersRequired,
-        );
+          const effectiveProfileId =
+            profileId || project?.pricingProfileId || null;
+          const effectiveProjectTypeId =
+            projectTypeId || project?.projectTypeId || null;
+          const effectiveMetersRequired =
+            metersRequired ?? project?.metersRequired ?? null;
+          return this.calculateLaborCost(
+            project ? labor : preview,
+            useDefault,
+            effectiveProfileId,
+            profiles,
+            effectiveProjectTypeId,
+            effectiveMetersRequired,
+          );
         },
       ),
     );
@@ -651,7 +661,6 @@ export class ManagerProjectsPageComponent
       this.isLoading = loading;
       if (!loading) this.isLoadingMore = false;
     });
-
 
     this.page$.pipe(takeUntil(this.destroy$)).subscribe((page) => {
       this.currentPage = page;
@@ -866,9 +875,8 @@ export class ManagerProjectsPageComponent
         this.selectedSupplierId = mat.supplierId ?? null;
         const supplierName =
           mat.supplierName ||
-          this.suppliersCatalog.find(
-            (s) => s.supplierId === mat.supplierId,
-          )?.supplierName ||
+          this.suppliersCatalog.find((s) => s.supplierId === mat.supplierId)
+            ?.supplierName ||
           '';
         this.supplierSearchCtrl.setValue(supplierName, { emitEvent: false });
         this.materialSearchCtrl.setValue(mat.materialName || '', {
@@ -965,7 +973,9 @@ export class ManagerProjectsPageComponent
 
   openCreate(): void {
     this.allowClientChangeOnEdit = false;
-    this.projectForm.controls.client_is_new.setValue(false, { emitEvent: false });
+    this.projectForm.controls.client_is_new.setValue(false, {
+      emitEvent: false,
+    });
     this.applyClientSelectionValidators();
     this.syncClientDetailsControls();
     this.setSurcharges([]);
@@ -983,7 +993,9 @@ export class ManagerProjectsPageComponent
 
   openEdit(project: BmProject): void {
     this.allowClientChangeOnEdit = false;
-    this.projectForm.controls.client_is_new.setValue(false, { emitEvent: false });
+    this.projectForm.controls.client_is_new.setValue(false, {
+      emitEvent: false,
+    });
     this.setSurcharges([]);
     this.surchargesError = null;
     this.surchargesLoading = false;
@@ -1066,7 +1078,9 @@ export class ManagerProjectsPageComponent
   onClientNewToggle(checked: boolean): void {
     if (this.isNewCheckboxDisabled) return;
 
-    this.projectForm.controls.client_is_new.setValue(checked, { emitEvent: false });
+    this.projectForm.controls.client_is_new.setValue(checked, {
+      emitEvent: false,
+    });
     this.clientSearchCtrl.setValue('', { emitEvent: false });
     this.clientSearchCtrl.markAsUntouched();
     this.projectForm.controls.client_id.setValue('');
@@ -1082,7 +1096,9 @@ export class ManagerProjectsPageComponent
   enableClientChangeInEditMode(): void {
     if (!this.isEditingProjectMode) return;
     this.allowClientChangeOnEdit = true;
-    this.projectForm.controls.client_is_new.setValue(false, { emitEvent: false });
+    this.projectForm.controls.client_is_new.setValue(false, {
+      emitEvent: false,
+    });
     this.projectForm.controls.client_id.setValue('');
     this.clientSearchCtrl.setValue('', { emitEvent: false });
     this.clientSearchCtrl.markAsUntouched();
@@ -1103,7 +1119,10 @@ export class ManagerProjectsPageComponent
       this.clientSearchCtrl.markAsTouched();
     }
 
-    if (this.projectForm.invalid || (requiresInlineName && !this.getInlineClientName())) {
+    if (
+      this.projectForm.invalid ||
+      (requiresInlineName && !this.getInlineClientName())
+    ) {
       this.projectForm.markAllAsTouched();
       return;
     }
@@ -1127,7 +1146,9 @@ export class ManagerProjectsPageComponent
           const created = res?.client;
           clientId = (created?.clientId || '').trim();
           if (!clientId) {
-            throw new Error('Failed to create client before saving the project.');
+            throw new Error(
+              'Failed to create client before saving the project.',
+            );
           }
 
           if (created) {
@@ -1141,7 +1162,9 @@ export class ManagerProjectsPageComponent
           }
         }
 
-        this.projectForm.controls.client_id.setValue(clientId, { emitEvent: false });
+        this.projectForm.controls.client_id.setValue(clientId, {
+          emitEvent: false,
+        });
         this.populateInlineClientDetails(clientId, true);
       } else if (this.isEditingProjectMode && !this.allowClientChangeOnEdit) {
         if (!clientId) {
@@ -1152,9 +1175,12 @@ export class ManagerProjectsPageComponent
         );
         if (res?.client) {
           this.upsertClientCatalogEntry(res.client);
-          this.clientSearchCtrl.setValue(res.client.clientName || this.getInlineClientName(), {
-            emitEvent: false,
-          });
+          this.clientSearchCtrl.setValue(
+            res.client.clientName || this.getInlineClientName(),
+            {
+              emitEvent: false,
+            },
+          );
           this.populateInlineClientDetails(clientId, true);
         }
       }
@@ -1183,8 +1209,12 @@ export class ManagerProjectsPageComponent
     const projectId = this.editingProject?.projectId;
     if (!projectId) return true;
 
-    const dailyRate = this.parseNonNegativeMoney(this.projectLaborDailyRateCtrl.value);
-    const laborHours = this.parseNonNegativeMoney(this.projectLaborHoursCtrl.value);
+    const dailyRate = this.parseNonNegativeMoney(
+      this.projectLaborDailyRateCtrl.value,
+    );
+    const laborHours = this.parseNonNegativeMoney(
+      this.projectLaborHoursCtrl.value,
+    );
     if (dailyRate === null || laborHours === null) {
       this.showProjectLaborToast(
         'Please enter valid labor values before saving.',
@@ -1236,10 +1266,15 @@ export class ManagerProjectsPageComponent
       status: raw.status,
       cost_in_quote: raw.cost_in_quote,
       default_pricing: this.useDefaultPricing,
-      pricing_profile_id: this.useDefaultPricing ? null : raw.pricing_profile_id,
+      pricing_profile_id: this.useDefaultPricing
+        ? null
+        : raw.pricing_profile_id,
     };
 
-    if (payload.meters_required !== null && payload.meters_required !== undefined) {
+    if (
+      payload.meters_required !== null &&
+      payload.meters_required !== undefined
+    ) {
       payload.meters_required = this.formatMoney(payload.meters_required);
     }
 
@@ -1265,7 +1300,10 @@ export class ManagerProjectsPageComponent
   }
 
   private needsInlineClientName(): boolean {
-    return this.isCreateNewClientMode || (this.isEditingProjectMode && !this.allowClientChangeOnEdit);
+    return (
+      this.isCreateNewClientMode ||
+      (this.isEditingProjectMode && !this.allowClientChangeOnEdit)
+    );
   }
 
   private applyClientSelectionValidators(): void {
@@ -1349,7 +1387,7 @@ export class ManagerProjectsPageComponent
         client_address:
           match?.address ??
           (this.editingProject?.clientId === clientId
-            ? this.editingProject?.clientAddress ?? ''
+            ? (this.editingProject?.clientAddress ?? '')
             : ''),
         client_email: match?.email ?? '',
         client_cel: match?.cel ?? '',
@@ -1432,15 +1470,19 @@ export class ManagerProjectsPageComponent
   ): string {
     const qtyLabel = this.formatQuantityLabel(quantity);
     if (qtyLabel === '—' && !unit) return '—';
-    return `${qtyLabel === '—' ? '' : qtyLabel}${unit ? ` ${unit}` : ''}`.trim()
-      || '—';
+    return (
+      `${qtyLabel === '—' ? '' : qtyLabel}${unit ? ` ${unit}` : ''}`.trim() ||
+      '—'
+    );
   }
 
   formatCoverageLabel(value?: number | null, unit?: string | null): string {
     const num = this.formatMoney(value);
     if (num === null && !unit) return '—';
-    return `${num === null ? '' : num.toFixed(2)}${unit ? ` ${unit}` : ''}`.trim()
-      || '—';
+    return (
+      `${num === null ? '' : num.toFixed(2)}${unit ? ` ${unit}` : ''}`.trim() ||
+      '—'
+    );
   }
 
   private calculateCostPerUnit(material: {
@@ -1449,7 +1491,8 @@ export class ManagerProjectsPageComponent
   }): number | null {
     const qty = Number(material?.quantity ?? 0);
     const unitCost = Number(material?.unitCostOverride ?? 0);
-    if (!qty || !Number.isFinite(qty) || !Number.isFinite(unitCost)) return null;
+    if (!qty || !Number.isFinite(qty) || !Number.isFinite(unitCost))
+      return null;
     return unitCost / qty;
   }
 
@@ -1463,17 +1506,17 @@ export class ManagerProjectsPageComponent
 
   private getEffectiveProjectTypeId(): string | null {
     return (
-      this.projectForm.controls.project_type_id.value
-      || this.editingProject?.projectTypeId
-      || null
+      this.projectForm.controls.project_type_id.value ||
+      this.editingProject?.projectTypeId ||
+      null
     );
   }
 
   private getEffectiveMetersRequired(): number {
     const meters =
-      this.projectForm.controls.meters_required.value
-      ?? this.editingProject?.metersRequired
-      ?? 0;
+      this.projectForm.controls.meters_required.value ??
+      this.editingProject?.metersRequired ??
+      0;
     const num = Number(meters);
     return Number.isFinite(num) ? num : 0;
   }
@@ -1481,9 +1524,9 @@ export class ManagerProjectsPageComponent
   private getEffectivePricingProfileMarkup(): number {
     if (this.useDefaultPricing) return 0;
     const profileId =
-      this.projectForm.controls.pricing_profile_id.value
-      || this.editingProject?.pricingProfileId
-      || null;
+      this.projectForm.controls.pricing_profile_id.value ||
+      this.editingProject?.pricingProfileId ||
+      null;
     const profile = this.pricingProfiles$
       .getValue()
       .find((p) => p.pricingProfileId === profileId);
@@ -1494,9 +1537,9 @@ export class ManagerProjectsPageComponent
   private getEffectiveLaborPricingProfileMarkup(): number {
     if (this.useDefaultPricing) return 0;
     const profileId =
-      this.projectForm.controls.pricing_profile_id.value
-      || this.editingProject?.pricingProfileId
-      || null;
+      this.projectForm.controls.pricing_profile_id.value ||
+      this.editingProject?.pricingProfileId ||
+      null;
     const profile = this.pricingProfiles$
       .getValue()
       .find((p) => p.pricingProfileId === profileId);
@@ -1515,11 +1558,11 @@ export class ManagerProjectsPageComponent
       const coverage = Number(material?.coverageRatio ?? 0);
       const meters = this.getEffectiveMetersRequired();
       if (
-        costPerUnit === null
-        || !Number.isFinite(coverage)
-        || coverage <= 0
-        || !Number.isFinite(meters)
-        || meters <= 0
+        costPerUnit === null ||
+        !Number.isFinite(coverage) ||
+        coverage <= 0 ||
+        !Number.isFinite(meters) ||
+        meters <= 0
       ) {
         return 0;
       }
@@ -1528,7 +1571,8 @@ export class ManagerProjectsPageComponent
 
     const qty = Number(material?.quantity ?? 1);
     const unitCost = Number(material?.unitCostOverride ?? 0);
-    if (!Number.isFinite(qty) || !Number.isFinite(unitCost) || qty <= 0) return 0;
+    if (!Number.isFinite(qty) || !Number.isFinite(unitCost) || qty <= 0)
+      return 0;
     return unitCost * qty;
   }
 
@@ -1575,8 +1619,10 @@ export class ManagerProjectsPageComponent
   ): string {
     const cost = this.formatMoney(unitCost);
     if (cost === null && !unitType) return '—';
-    return `${cost === null ? '' : cost.toFixed(2)}${unitType ? ` ${unitType}` : ''}`.trim()
-      || '—';
+    return (
+      `${cost === null ? '' : cost.toFixed(2)}${unitType ? ` ${unitType}` : ''}`.trim() ||
+      '—'
+    );
   }
 
   formatProductivityUnitLabel(
@@ -1585,8 +1631,10 @@ export class ManagerProjectsPageComponent
   ): string {
     const prod = this.formatMoney(productivity);
     if (prod === null && !unit) return '—';
-    return `${prod === null ? '' : prod.toFixed(2)}${unit ? ` ${unit}` : ''}`.trim()
-      || '—';
+    return (
+      `${prod === null ? '' : prod.toFixed(2)}${unit ? ` ${unit}` : ''}`.trim() ||
+      '—'
+    );
   }
 
   private calculateLaborNetLineCost(labor: {
@@ -1600,10 +1648,10 @@ export class ManagerProjectsPageComponent
     if (!Number.isFinite(unitCost)) return 0;
 
     if (
-      Number.isFinite(meters)
-      && meters > 0
-      && Number.isFinite(productivity)
-      && productivity > 0
+      Number.isFinite(meters) &&
+      meters > 0 &&
+      Number.isFinite(productivity) &&
+      productivity > 0
     ) {
       return (meters / productivity) * unitCost;
     }
@@ -1681,7 +1729,8 @@ export class ManagerProjectsPageComponent
       this.projectMaterialForm.controls.unit_cost_override.value;
     const qty = Number(qtyRaw ?? 0);
     const unitCost = Number(unitCostRaw ?? 0);
-    if (!qty || !Number.isFinite(qty) || !Number.isFinite(unitCost)) return '0.00';
+    if (!qty || !Number.isFinite(qty) || !Number.isFinite(unitCost))
+      return '0.00';
     return (unitCost / qty).toFixed(2);
   }
 
@@ -1840,7 +1889,8 @@ export class ManagerProjectsPageComponent
   }
 
   onMaterialQueryKeydown(event: KeyboardEvent): void {
-    if (!this.showMaterialSuggestions || !this.materialSuggestions.length) return;
+    if (!this.showMaterialSuggestions || !this.materialSuggestions.length)
+      return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       this.materialActiveIndex = Math.min(
@@ -1901,7 +1951,10 @@ export class ManagerProjectsPageComponent
   formatErrorMessage(message: string | null | undefined): string {
     if (!message) return '';
     const lower = message.toLowerCase();
-    if (lower.includes('meters_required') || lower.includes('meters required')) {
+    if (
+      lower.includes('meters_required') ||
+      lower.includes('meters required')
+    ) {
       return 'Please enter Meters Required.';
     }
     if (lower.includes('invalid input value for enum')) {
@@ -1915,9 +1968,7 @@ export class ManagerProjectsPageComponent
 
   get statusSelectOptions(): ManagerSelectOption[] {
     const current =
-      this.projectForm.controls.status.value ||
-      this.currentStatus ||
-      'to_do';
+      this.projectForm.controls.status.value || this.currentStatus || 'to_do';
     const prevHold = this.statusBeforeHold;
 
     if (current === 'done' || current === 'cancelled') {
@@ -1989,8 +2040,7 @@ export class ManagerProjectsPageComponent
     }
 
     if (nextStatus === 'done' || nextStatus === 'cancelled') {
-      const title =
-        nextStatus === 'done' ? 'Mark As Done?' : 'Cancel Project?';
+      const title = nextStatus === 'done' ? 'Mark As Done?' : 'Cancel Project?';
       this.openStatusConfirmModal({
         title,
         message: 'Once set, this status cannot be changed. Continue?',
@@ -2033,9 +2083,20 @@ export class ManagerProjectsPageComponent
     }
 
     const allowedMap: Record<string, string[]> = {
-      to_do: ['in_progress', 'quote_created', 'quote_approved', 'on_hold', 'cancelled'],
+      to_do: [
+        'in_progress',
+        'quote_created',
+        'quote_approved',
+        'on_hold',
+        'cancelled',
+      ],
       in_progress: ['quote_created', 'quote_approved', 'on_hold', 'cancelled'],
-      quote_created: ['quote_approved', 'invoice_process', 'on_hold', 'cancelled'],
+      quote_created: [
+        'quote_approved',
+        'invoice_process',
+        'on_hold',
+        'cancelled',
+      ],
       quote_approved: ['invoice_process', 'on_hold', 'cancelled'],
       invoice_process: ['done', 'on_hold', 'cancelled'],
     };
@@ -2236,7 +2297,9 @@ export class ManagerProjectsPageComponent
   onClientAddressFocus(): void {
     if (!this.isInlineClientDetailsEditable) return;
     this.clientAddressHasFocus = true;
-    const current = (this.projectForm.controls.client_address.value || '').trim();
+    const current = (
+      this.projectForm.controls.client_address.value || ''
+    ).trim();
     if (current.length >= 3 && this.clientAddressSuggestions.length) {
       this.showClientAddressSuggestions = true;
     }
@@ -2309,7 +2372,10 @@ export class ManagerProjectsPageComponent
         distinctUntilChanged(),
         switchMap((query) => {
           const q = (query || '').toString().trim();
-          if (!this.clientAddressHasFocus || !this.isInlineClientDetailsEditable) {
+          if (
+            !this.clientAddressHasFocus ||
+            !this.isInlineClientDetailsEditable
+          ) {
             this.clientAddressSuggestions = [];
             this.showClientAddressSuggestions = false;
             this.clientAddressActiveIndex = -1;
@@ -2326,14 +2392,18 @@ export class ManagerProjectsPageComponent
             this.clientAddressSessionToken = this.createSessionToken();
           }
 
-          return this.townPlanner.suggestAddresses(q, this.clientAddressSessionToken);
+          return this.townPlanner.suggestAddresses(
+            q,
+            this.clientAddressSessionToken,
+          );
         }),
         takeUntil(this.destroy$),
       )
       .subscribe((suggestions) => {
         this.clientAddressSuggestions = suggestions || [];
         const shouldShow =
-          this.clientAddressHasFocus && this.clientAddressSuggestions.length > 0;
+          this.clientAddressHasFocus &&
+          this.clientAddressSuggestions.length > 0;
         this.showClientAddressSuggestions = shouldShow;
         this.clientAddressActiveIndex = shouldShow ? 0 : -1;
       });
@@ -2389,7 +2459,9 @@ export class ManagerProjectsPageComponent
   onSupplierQueryBlur(): void {
     window.setTimeout(() => {
       if (!this.selectedSupplierId) {
-        const query = (this.supplierSearchCtrl.value || '').trim().toLowerCase();
+        const query = (this.supplierSearchCtrl.value || '')
+          .trim()
+          .toLowerCase();
         if (query.length) {
           const exact = this.suppliersCatalog.find(
             (s) => (s.supplierName || '').toLowerCase() === query,
@@ -2405,7 +2477,8 @@ export class ManagerProjectsPageComponent
   }
 
   onSupplierQueryKeydown(event: KeyboardEvent): void {
-    if (!this.showSupplierSuggestions || !this.supplierSuggestions.length) return;
+    if (!this.showSupplierSuggestions || !this.supplierSuggestions.length)
+      return;
     if (event.key === 'ArrowDown') {
       event.preventDefault();
       this.supplierActiveIndex = Math.min(
@@ -2425,7 +2498,10 @@ export class ManagerProjectsPageComponent
     }
   }
 
-  onSupplierSelect(supplier: { supplierId: string; supplierName: string }): void {
+  onSupplierSelect(supplier: {
+    supplierId: string;
+    supplierName: string;
+  }): void {
     this.selectedSupplierId = supplier.supplierId;
     this.projectMaterialForm.controls.supplier_id.setValue(supplier.supplierId);
     this.supplierSearchCtrl.setValue(supplier.supplierName, {
@@ -2444,7 +2520,9 @@ export class ManagerProjectsPageComponent
     this.projectMaterialForm.controls.coverage_unit.setValue('', {
       emitEvent: false,
     });
-    this.projectMaterialForm.controls.quantity.setValue(1, { emitEvent: false });
+    this.projectMaterialForm.controls.quantity.setValue(1, {
+      emitEvent: false,
+    });
     this.projectMaterialForm.controls.unit_cost_override.setValue(null, {
       emitEvent: false,
     });
@@ -2549,13 +2627,19 @@ export class ManagerProjectsPageComponent
     if (labor.unitType !== null && labor.unitType !== undefined) {
       this.projectLaborForm.controls.unit_type.setValue(labor.unitType ?? '');
     }
-    if (labor.unitProductivity !== null && labor.unitProductivity !== undefined) {
+    if (
+      labor.unitProductivity !== null &&
+      labor.unitProductivity !== undefined
+    ) {
       this.projectLaborForm.controls.unit_productivity.setValue(
         this.formatProductivityDisplay(labor.unitProductivity ?? null),
         { emitEvent: false },
       );
     }
-    if (labor.productivityUnit !== null && labor.productivityUnit !== undefined) {
+    if (
+      labor.productivityUnit !== null &&
+      labor.productivityUnit !== undefined
+    ) {
       this.projectLaborForm.controls.productivity_unit.setValue(
         labor.productivityUnit ?? '',
         { emitEvent: false },
@@ -2597,7 +2681,9 @@ export class ManagerProjectsPageComponent
       confirmLabel: hasProjects ? 'Archive' : 'Delete',
       onConfirm: () =>
         this.store.dispatch(
-          ManagerProjectsActions.removeProject({ projectId: project.projectId }),
+          ManagerProjectsActions.removeProject({
+            projectId: project.projectId,
+          }),
         ),
     });
   }
@@ -2826,7 +2912,9 @@ export class ManagerProjectsPageComponent
     const pdfUrl = project.invoicePdfUrl ?? null;
     if (pdfUrl) {
       const cacheBust = `t=${Date.now()}`;
-      const url = pdfUrl.includes('?') ? `${pdfUrl}&${cacheBust}` : `${pdfUrl}?${cacheBust}`;
+      const url = pdfUrl.includes('?')
+        ? `${pdfUrl}&${cacheBust}`
+        : `${pdfUrl}?${cacheBust}`;
       window.open(url, '_blank', 'noopener');
       this.setActionLoading(project.projectId, 'invoice', false);
     } else {
@@ -3043,7 +3131,9 @@ export class ManagerProjectsPageComponent
           );
           this.projectSurchargeForm.markAsPristine();
           this.projectSurchargeForm.markAsUntouched();
-          if (this.normalizeSurchargeType(normalized.type) === 'transportation') {
+          if (
+            this.normalizeSurchargeType(normalized.type) === 'transportation'
+          ) {
             this.loadTransportationEstimate(project.projectId, true);
           }
         },
@@ -3055,7 +3145,10 @@ export class ManagerProjectsPageComponent
       });
   }
 
-  removeProjectSurcharge(project: BmProject, surcharge: BmProjectSurcharge): void {
+  removeProjectSurcharge(
+    project: BmProject,
+    surcharge: BmProjectSurcharge,
+  ): void {
     if (this.surchargeAddLoading || !!this.surchargeDeletingId) return;
 
     this.openStatusConfirmModal({
@@ -3090,7 +3183,9 @@ export class ManagerProjectsPageComponent
             error: (err) => {
               this.surchargeDeletingId = null;
               this.surchargesError =
-                err?.error?.error || err?.message || 'Failed to delete surcharge';
+                err?.error?.error ||
+                err?.message ||
+                'Failed to delete surcharge';
             },
           });
       },
@@ -3098,7 +3193,9 @@ export class ManagerProjectsPageComponent
   }
 
   onSurchargeCostBlur(): void {
-    const value = this.parseNonNegativeMoney(this.projectSurchargeForm.controls.cost.value);
+    const value = this.parseNonNegativeMoney(
+      this.projectSurchargeForm.controls.cost.value,
+    );
     if (value === null) return;
     this.projectSurchargeForm.controls.cost.setValue(
       this.formatMoneyInput(value) ?? '',
@@ -3106,16 +3203,16 @@ export class ManagerProjectsPageComponent
     );
   }
 
-  isSurchargeControlInvalid(
-    controlName: 'type' | 'name' | 'cost',
-  ): boolean {
+  isSurchargeControlInvalid(controlName: 'type' | 'name' | 'cost'): boolean {
     const control = this.projectSurchargeForm.controls[controlName];
     return control.touched && control.invalid;
   }
 
   formatSurchargeTypeLabel(type: string | null | undefined): string {
     const value = this.normalizeSurchargeType(type);
-    const match = this.surchargeTypeOptions.find((item) => item.value === value);
+    const match = this.surchargeTypeOptions.find(
+      (item) => item.value === value,
+    );
     if (match) return match.label;
     if (!value) return '—';
     return value.charAt(0).toUpperCase() + value.slice(1);
@@ -3130,8 +3227,9 @@ export class ManagerProjectsPageComponent
 
   get isTransportationTypeSelected(): boolean {
     return (
-      this.normalizeSurchargeType(this.projectSurchargeForm.controls.type.value)
-      === 'transportation'
+      this.normalizeSurchargeType(
+        this.projectSurchargeForm.controls.type.value,
+      ) === 'transportation'
     );
   }
 
@@ -3143,9 +3241,9 @@ export class ManagerProjectsPageComponent
 
   get isSurchargesBusy(): boolean {
     return (
-      this.surchargesLoading
-      || this.surchargeAddLoading
-      || !!this.surchargeDeletingId
+      this.surchargesLoading ||
+      this.surchargeAddLoading ||
+      !!this.surchargeDeletingId
     );
   }
 
@@ -3206,7 +3304,11 @@ export class ManagerProjectsPageComponent
           label: p.profileName,
         }));
         const current = this.projectForm.controls.pricing_profile_id.value;
-        if (!current && !this.useDefaultPricing && this.editingProject?.pricingProfileId) {
+        if (
+          !current &&
+          !this.useDefaultPricing &&
+          this.editingProject?.pricingProfileId
+        ) {
           this.projectForm.controls.pricing_profile_id.setValue(
             this.editingProject.pricingProfileId,
             { emitEvent: false },
@@ -3323,10 +3425,10 @@ export class ManagerProjectsPageComponent
   private loadTransportationEstimate(projectId: string, force = false): void {
     if (!projectId) return;
     if (
-      !force
-      && this.transportationEstimateProjectId === projectId
-      && this.transportationEstimate
-      && !this.transportationEstimateError
+      !force &&
+      this.transportationEstimateProjectId === projectId &&
+      this.transportationEstimate &&
+      !this.transportationEstimateError
     ) {
       return;
     }
@@ -3347,9 +3449,9 @@ export class ManagerProjectsPageComponent
           this.transportationEstimateProjectId = null;
           this.transportationEstimate = null;
           this.transportationEstimateError =
-            err?.error?.error
-            || err?.message
-            || 'Unable to calculate transportation time';
+            err?.error?.error ||
+            err?.message ||
+            'Unable to calculate transportation time';
         },
       });
   }
@@ -3359,14 +3461,20 @@ export class ManagerProjectsPageComponent
       this.projectSurchargeForm.controls.type.value,
     );
     if (!currentType) return;
-    const available = this.availableSurchargeTypeOptions.map((item) => item.value);
+    const available = this.availableSurchargeTypeOptions.map(
+      (item) => item.value,
+    );
     if (!available.includes(currentType)) {
-      this.projectSurchargeForm.controls.type.setValue('', { emitEvent: false });
+      this.projectSurchargeForm.controls.type.setValue('', {
+        emitEvent: false,
+      });
     }
   }
 
   private normalizeSurchargeType(value: unknown): string {
-    return String(value || '').trim().toLowerCase();
+    return String(value || '')
+      .trim()
+      .toLowerCase();
   }
 
   private setSurcharges(surcharges: BmProjectSurcharge[]): void {
@@ -3447,7 +3555,9 @@ export class ManagerProjectsPageComponent
       return sum + cost * qty;
     }, 0);
     if (useDefaultPricing) return sellSum;
-    const profile = profiles.find((p) => p.pricingProfileId === pricingProfileId);
+    const profile = profiles.find(
+      (p) => p.pricingProfileId === pricingProfileId,
+    );
     const markup = Number(profile?.materialMarkup ?? 0);
     return net * (1 + markup);
   }
@@ -3503,7 +3613,9 @@ export class ManagerProjectsPageComponent
       return sum + cost * qty;
     }, 0);
     if (useDefaultPricing) return sellSum;
-    const profile = profiles.find((p) => p.pricingProfileId === pricingProfileId);
+    const profile = profiles.find(
+      (p) => p.pricingProfileId === pricingProfileId,
+    );
     const markup = Number(profile?.laborMarkup ?? 0);
     return net * (1 + markup);
   }
@@ -3528,10 +3640,10 @@ export class ManagerProjectsPageComponent
 
       const productivity = Number(l.unitProductivity ?? 0);
       if (
-        Number.isFinite(meters)
-        && meters > 0
-        && Number.isFinite(productivity)
-        && productivity > 0
+        Number.isFinite(meters) &&
+        meters > 0 &&
+        Number.isFinite(productivity) &&
+        productivity > 0
       ) {
         return sum + (meters / productivity) * unitCost;
       }
@@ -3543,25 +3655,33 @@ export class ManagerProjectsPageComponent
   }
 
   get projectLaborAdditionalTotalLabel(): string {
-    const dailyRate = this.parseNonNegativeMoney(this.projectLaborDailyRateCtrl.value) ?? 0;
-    const laborHours = this.parseNonNegativeMoney(this.projectLaborHoursCtrl.value) ?? 0;
+    const dailyRate =
+      this.parseNonNegativeMoney(this.projectLaborDailyRateCtrl.value) ?? 0;
+    const laborHours =
+      this.parseNonNegativeMoney(this.projectLaborHoursCtrl.value) ?? 0;
     return (Math.round(dailyRate * laborHours * 100) / 100).toFixed(2);
   }
 
   onProjectLaborDailyRateBlur(): void {
     const normalized =
       this.parseNonNegativeMoney(this.projectLaborDailyRateCtrl.value) ?? 0;
-    this.projectLaborDailyRateCtrl.setValue(this.formatMoneyInput(normalized) ?? '0.00', {
-      emitEvent: false,
-    });
+    this.projectLaborDailyRateCtrl.setValue(
+      this.formatMoneyInput(normalized) ?? '0.00',
+      {
+        emitEvent: false,
+      },
+    );
   }
 
   onProjectLaborHoursBlur(): void {
     const normalized =
       this.parseNonNegativeMoney(this.projectLaborHoursCtrl.value) ?? 0;
-    this.projectLaborHoursCtrl.setValue(this.formatMoneyInput(normalized) ?? '0.00', {
-      emitEvent: false,
-    });
+    this.projectLaborHoursCtrl.setValue(
+      this.formatMoneyInput(normalized) ?? '0.00',
+      {
+        emitEvent: false,
+      },
+    );
   }
 
   private parseNonNegativeMoney(
@@ -3629,10 +3749,7 @@ export class ManagerProjectsPageComponent
     const laborHoursChanged =
       Math.abs(laborHours - this.lastSavedLaborExtras.laborHours) >= 0.0001;
 
-    if (
-      !dailyRateChanged
-      && !laborHoursChanged
-    ) {
+    if (!dailyRateChanged && !laborHoursChanged) {
       return;
     }
 
@@ -3676,7 +3793,7 @@ export class ManagerProjectsPageComponent
       return 'Labor hours updated successfully.';
     }
     if (dailyRateChanged && !laborHoursChanged) {
-      return 'Daily rate updated successfully.';
+      return 'Hourly rate updated successfully.';
     }
     return 'Labor values updated successfully.';
   }

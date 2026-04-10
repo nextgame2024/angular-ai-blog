@@ -79,8 +79,19 @@ export const managerMaterialsReducer = createReducer(
     );
     const next = [...state.materials];
 
-    if (idx >= 0) next[idx] = material;
-    else next.unshift(material);
+    if (idx >= 0) {
+      const previous = next[idx];
+      next[idx] = {
+        ...previous,
+        ...material,
+        hasProjects: material.hasProjects ?? previous.hasProjects ?? false,
+      };
+    } else {
+      next.unshift({
+        ...material,
+        hasProjects: material.hasProjects ?? false,
+      });
+    }
 
     return {
       ...state,

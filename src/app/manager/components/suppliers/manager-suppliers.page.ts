@@ -43,6 +43,7 @@ import {
   selectManagerSupplierMaterialsError,
   selectManagerSupplierMaterialsLoading,
   selectManagerSupplierMaterialsPage,
+  selectManagerSupplierMaterialsSearchQuery,
   selectManagerSupplierMaterialsTotal,
   selectManagerSupplierMaterialsViewMode,
   selectManagerSuppliers,
@@ -67,11 +68,10 @@ import type {
 import type { SupplierFormTab } from '../../store/suppliers/manager.state';
 
 @Component({
-  selector: 'app-manager-suppliers-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
-  templateUrl: './manager-suppliers.page.html',
-  styleUrls: ['./manager-suppliers.page.css'],
+    selector: 'app-manager-suppliers-page',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+    templateUrl: './manager-suppliers.page.html',
+    styleUrls: ['./manager-suppliers.page.css']
 })
 export class ManagerSuppliersPageComponent
   implements OnInit, OnDestroy, AfterViewInit
@@ -113,8 +113,12 @@ export class ManagerSuppliersPageComponent
   editingMaterial$ = this.store.select(selectManagerEditingSupplierMaterial);
   materialsPage$ = this.store.select(selectManagerSupplierMaterialsPage);
   materialsTotal$ = this.store.select(selectManagerSupplierMaterialsTotal);
+  materialsSearchQuery$ = this.store.select(
+    selectManagerSupplierMaterialsSearchQuery,
+  );
 
   searchCtrl: FormControl<string>;
+  materialsSearchCtrl: FormControl<string>;
   canLoadMore$!: Observable<boolean>;
   contactsCanLoadMore$!: Observable<boolean>;
   materialsCanLoadMore$!: Observable<boolean>;
@@ -136,6 +140,7 @@ export class ManagerSuppliersPageComponent
   private canLoadMoreContacts = false;
   private isLoadingContacts = false;
   private currentMaterialsPage = 1;
+  private currentTabValue: SupplierFormTab = 'details';
   private canLoadMoreMaterials = false;
   private isLoadingMaterials = false;
   dismissedErrors = new Set<string>();
@@ -202,6 +207,7 @@ export class ManagerSuppliersPageComponent
     private actions$: Actions,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
+    this.materialsSearchCtrl = this.fb.control('', { nonNullable: true });
     this.materialSearchCtrl = this.fb.control('', { nonNullable: true });
 
     this.canLoadMore$ = combineLatest([
@@ -314,6 +320,41 @@ export class ManagerSuppliersPageComponent
         ),
       );
 
+    this.materialsSearchQuery$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((query) => {
+        if (this.materialsSearchCtrl.value !== (query || '')) {
+          this.materialsSearchCtrl.setValue(query || '', { emitEvent: false });
+        }
+        if (this.currentTabValue !== 'materials') return;
+        this.store
+          .select(selectManagerEditingSupplier)
+          .pipe(take(1))
+          .subscribe((supplier) => {
+            if (!supplier?.supplierId) return;
+            this.store.dispatch(
+              ManagerSuppliersActions.loadSupplierMaterials({
+                supplierId: supplier.supplierId,
+                page: 1,
+              }),
+            );
+          });
+      });
+
+    this.materialsSearchCtrl.valueChanges
+      .pipe(
+        debounceTime(250),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((query) =>
+        this.store.dispatch(
+          ManagerSuppliersActions.setSupplierMaterialsSearchQuery({
+            query: query || '',
+          }),
+        ),
+      );
+
     this.viewMode$
       .pipe(takeUntil(this.destroy$))
       .subscribe((mode) => {
@@ -323,6 +364,7 @@ export class ManagerSuppliersPageComponent
       });
 
     this.tab$.pipe(takeUntil(this.destroy$)).subscribe((tab) => {
+      this.currentTabValue = tab;
       if (tab === 'contacts') {
         setTimeout(() => this.setupContactsInfiniteScroll(), 0);
       }
@@ -420,6 +462,7 @@ export class ManagerSuppliersPageComponent
   trackBySupplierMaterial = (_: number, m: BmSupplierMaterial) => m.materialId;
 
   openCreate(): void {
+    this.currentTabValue = 'details';
     this.supplierForm.reset({
       supplier_name: '',
       address: '',
@@ -433,10 +476,12 @@ export class ManagerSuppliersPageComponent
   }
 
   openEdit(s: BmSupplier): void {
+    this.currentTabValue = 'details';
     this.store.dispatch(ManagerSuppliersActions.openSupplierEdit({ supplierId: s.supplierId }));
   }
 
   closeForm(): void {
+    this.currentTabValue = 'details';
     this.store.dispatch(ManagerSuppliersActions.closeSupplierForm());
   }
 
@@ -465,10 +510,12 @@ export class ManagerSuppliersPageComponent
   }
 
   removeSupplier(s: BmSupplier): void {
+    if (this.isArchiveActionDisabled(s)) return;
+
     const hasProjects = !!s.hasProjects;
     const title = hasProjects ? 'Archive Supplier?' : 'Delete Supplier?';
     const message = hasProjects
-      ? `Are you sure you want to archive "${s.supplierName}"?`
+      ? `"${s.supplierName}" supplier is linked to existing processes, so it cannot be deleted. Would you like to archive it instead?`
       : `Are you sure you want to delete "${s.supplierName}"?`;
     this.openConfirmModal({
       title,
@@ -482,10 +529,15 @@ export class ManagerSuppliersPageComponent
     });
   }
 
+  isArchiveActionDisabled(s: BmSupplier): boolean {
+    return (s.status ?? 'active') === 'archived';
+  }
+
   // Tabs
   setTab(tab: SupplierFormTab, supplier: BmSupplier | null): void {
     if (tab !== 'details' && !supplier?.supplierId) return;
 
+    this.currentTabValue = tab;
     this.store.dispatch(ManagerSuppliersActions.setSupplierFormTab({ tab }));
 
     if (tab === 'contacts' && supplier?.supplierId) {
@@ -585,8 +637,7 @@ export class ManagerSuppliersPageComponent
     this.store.dispatch(ManagerSuppliersActions.closeSupplierMaterialForm());
   }
 
-  saveSupplierMaterial(supplier: BmSupplier): void {
-    if (!supplier?.supplierId) return;
+  saveSupplierMaterial(): void {
     if (!this.supplierMaterialForm.controls.material_id.value) {
       const match = this.resolveMaterialSelection();
       if (match) {
@@ -610,12 +661,18 @@ export class ManagerSuppliersPageComponent
       payload.sell_cost = this.formatMoney(payload.sell_cost);
     }
 
-    this.store.dispatch(
-      ManagerSuppliersActions.saveSupplierMaterial({
-        supplierId: supplier.supplierId,
-        payload,
-      }),
-    );
+    this.store
+      .select(selectManagerEditingSupplier)
+      .pipe(take(1))
+      .subscribe((supplier) => {
+        if (!supplier?.supplierId) return;
+        this.store.dispatch(
+          ManagerSuppliersActions.saveSupplierMaterial({
+            supplierId: supplier.supplierId,
+            payload,
+          }),
+        );
+      });
   }
 
   removeSupplierMaterial(supplier: BmSupplier, material: BmSupplierMaterial): void {

@@ -33,6 +33,7 @@ export interface ManagerSuppliersState {
   editingContactId: string | null;
 
   materials: BmSupplierMaterial[];
+  materialsSearchQuery: string;
   materialsLoading: boolean;
   materialsError: string | null;
   materialsPage: number;
@@ -66,6 +67,7 @@ export const initialManagerSuppliersState: ManagerSuppliersState = {
   editingContactId: null,
 
   materials: [],
+  materialsSearchQuery: '',
   materialsLoading: false,
   materialsError: null,
   materialsPage: 1,

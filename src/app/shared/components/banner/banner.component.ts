@@ -10,10 +10,9 @@ import { CommonModule } from '@angular/common';
 import { environment } from 'src/environments/environment.development';
 
 @Component({
-  selector: 'mc-banner',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './banner.component.html',
+    selector: 'mc-banner',
+    imports: [CommonModule],
+    templateUrl: './banner.component.html'
 })
 export class BannerComponent implements AfterViewInit, OnDestroy {
   readonly videoSrc = environment.introVideo;

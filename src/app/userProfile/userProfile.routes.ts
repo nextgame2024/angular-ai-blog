@@ -5,6 +5,13 @@ import * as userProfileEffects from './store/effects';
 import { provideEffects } from '@ngrx/effects';
 import { userProfileFeatureKey, userProfileReducer } from './store/reducers';
 import { provideState } from '@ngrx/store';
+import {
+  feedFeatureKey,
+  feedReducer,
+} from '../shared/components/feed/store/reducers';
+import * as feedEffects from '../shared/components/feed/store/effects';
+import * as addToFavoritesEffects from '../shared/components/addToFavorites/store/effects';
+import { AddToFavoritesService } from '../shared/components/addToFavorites/services/addToFavorites.service';
 
 export const routes: Route[] = [
   {
@@ -14,6 +21,9 @@ export const routes: Route[] = [
       UserProfileService,
       provideState(userProfileFeatureKey, userProfileReducer),
       provideEffects(userProfileEffects),
+      provideState(feedFeatureKey, feedReducer),
+      provideEffects(feedEffects, addToFavoritesEffects),
+      AddToFavoritesService,
     ],
   },
 ];

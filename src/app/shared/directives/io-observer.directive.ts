@@ -1,31 +1,34 @@
 import {
   Directive,
   ElementRef,
-  EventEmitter,
-  Input,
   NgZone,
-  OnDestroy,
-  OnInit,
-  Output,
+  effect,
+  inject,
+  input,
+  output,
 } from '@angular/core';
 
 @Directive({
   selector: '[ioObserve]',
   standalone: true,
 })
-export class IoObserverDirective implements OnInit, OnDestroy {
-  @Input() root: Element | null = null;
-  @Input() rootMargin = '0px';
-  @Input() threshold: number | number[] = 0;
-  @Output() ioIntersect = new EventEmitter<IntersectionObserverEntry>();
+export class IoObserverDirective {
+  readonly root$$ = input<Element | null>(null, { alias: 'root' });
+  readonly rootMargin$$ = input('0px', { alias: 'rootMargin' });
+  readonly threshold$$ = input<number | number[]>(0, { alias: 'threshold' });
+  readonly ioIntersect = output<IntersectionObserverEntry>();
 
-  private io?: IntersectionObserver;
+  private readonly el = inject(ElementRef<HTMLElement>);
+  private readonly zone = inject(NgZone);
 
-  constructor(private el: ElementRef<HTMLElement>, private zone: NgZone) {}
+  private readonly observerEffect = effect((onCleanup) => {
+    const root = this.root$$();
+    const rootMargin = this.rootMargin$$();
+    const threshold = this.threshold$$();
+    let io: IntersectionObserver | undefined;
 
-  ngOnInit(): void {
     this.zone.runOutsideAngular(() => {
-      this.io = new IntersectionObserver(
+      io = new IntersectionObserver(
         (entries) => {
           for (const entry of entries) {
             if (entry.isIntersecting) {
@@ -35,16 +38,14 @@ export class IoObserverDirective implements OnInit, OnDestroy {
           }
         },
         {
-          root: this.root,
-          rootMargin: this.rootMargin,
-          threshold: this.threshold,
+          root,
+          rootMargin,
+          threshold,
         }
       );
-      this.io.observe(this.el.nativeElement);
+      io.observe(this.el.nativeElement);
     });
-  }
 
-  ngOnDestroy(): void {
-    this.io?.disconnect();
-  }
+    onCleanup(() => io?.disconnect());
+  });
 }

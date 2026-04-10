@@ -1,21 +1,20 @@
-import { Component, Input } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, input } from '@angular/core';
+
 import { RouterLink } from '@angular/router';
 import { ChipModule } from 'primeng/chip';
 import { PopularTagType } from '../../types/popularTag.type';
 
 @Component({
-  selector: 'mc-tag-list',
-  templateUrl: './tagList.component.html',
-  standalone: true,
-  imports: [CommonModule, RouterLink, ChipModule],
+    selector: 'mc-tag-list',
+    templateUrl: './tagList.component.html',
+    imports: [RouterLink, ChipModule]
 })
 export class TagListComponent {
-  @Input() tags: PopularTagType[] = [];
+  readonly tags$$ = input<PopularTagType[]>([], { alias: 'tags' });
 
   /** If true, each tag routes to /tag/<tag> (or linkBase/<tag>) */
-  @Input() clickable = false;
+  readonly clickable$$ = input(false, { alias: 'clickable' });
 
   /** Change if you want a different base route (defaults to '/tag') */
-  @Input() linkBase = '/tag';
+  readonly linkBase$$ = input('/tag', { alias: 'linkBase' });
 }

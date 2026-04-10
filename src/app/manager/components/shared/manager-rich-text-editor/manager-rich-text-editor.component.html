@@ -6,7 +6,7 @@
       [disabled]="disabled"
       (click)="applyCommand('bold')"
       aria-label="Bold"
-    >
+      >
       <strong>B</strong>
     </button>
     <button
@@ -15,7 +15,7 @@
       [disabled]="disabled"
       (click)="applyCommand('italic')"
       aria-label="Italic"
-    >
+      >
       <em>I</em>
     </button>
     <button
@@ -24,7 +24,7 @@
       [disabled]="disabled"
       (click)="applyCommand('underline')"
       aria-label="Underline"
-    >
+      >
       <u>U</u>
     </button>
     <span class="sep" aria-hidden="true"></span>
@@ -34,7 +34,7 @@
       [disabled]="disabled"
       (click)="applyAlignment('justifyLeft')"
       aria-label="Align left"
-    >
+      >
       Left
     </button>
     <button
@@ -43,7 +43,7 @@
       [disabled]="disabled"
       (click)="applyAlignment('justifyCenter')"
       aria-label="Align center"
-    >
+      >
       Center
     </button>
     <button
@@ -52,7 +52,7 @@
       [disabled]="disabled"
       (click)="applyAlignment('justifyRight')"
       aria-label="Align right"
-    >
+      >
       Right
     </button>
     <button
@@ -61,7 +61,7 @@
       [disabled]="disabled"
       (click)="applyAlignment('justifyFull')"
       aria-label="Justify"
-    >
+      >
       Justify
     </button>
     <span class="sep" aria-hidden="true"></span>
@@ -72,10 +72,12 @@
         [disabled]="disabled"
         [value]="selectedFontSize"
         (change)="onFontSizeChange($event)"
-      >
-        <option *ngFor="let size of fontSizes" [value]="size.value">
-          {{ size.label }}
-        </option>
+        >
+        @for (size of fontSizes; track size) {
+          <option [value]="size.value">
+            {{ size.label }}
+          </option>
+        }
       </select>
     </label>
     <span class="sep" aria-hidden="true"></span>
@@ -85,7 +87,7 @@
       [disabled]="disabled"
       (click)="applyCommand('outdent')"
       aria-label="Decrease indent"
-    >
+      >
       Outdent
     </button>
     <button
@@ -94,7 +96,7 @@
       [disabled]="disabled"
       (click)="applyCommand('indent')"
       aria-label="Increase indent"
-    >
+      >
       Indent
     </button>
     <span class="sep" aria-hidden="true"></span>
@@ -104,7 +106,7 @@
       [disabled]="disabled"
       (click)="applyCommand('insertUnorderedList')"
       aria-label="Bullet list"
-    >
+      >
       • List
     </button>
     <button
@@ -113,7 +115,7 @@
       [disabled]="disabled"
       (click)="applyCommand('insertOrderedList')"
       aria-label="Numbered list"
-    >
+      >
       1. List
     </button>
     <span class="sep" aria-hidden="true"></span>
@@ -123,7 +125,7 @@
       [disabled]="disabled"
       (click)="insertLink()"
       aria-label="Insert link"
-    >
+      >
       Link
     </button>
     <button
@@ -132,7 +134,7 @@
       [disabled]="disabled"
       (click)="clearFormatting()"
       aria-label="Clear formatting"
-    >
+      >
       Clear
     </button>
   </div>

@@ -1,24 +1,20 @@
 <div class="users-shell">
   <!-- LIST HEADER -->
-  <div class="list-header" *ngIf="(viewMode$ | async) === 'list'">
+  @if ((viewMode$ | async) === 'list') {
+  <div class="list-header">
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/manager/menu">Menu</a>
       <span class="sep">/</span>
       <span>Users</span>
     </nav>
-
     <div class="users-toolbar">
       <div class="title">
         <h3>Users</h3>
         <p class="sub">
-          {{
-            isSuperAdmin
-              ? 'Manage staff users across companies.'
-              : 'Manage staff users in your company.'
-          }}
+          {{ isSuperAdmin ? 'Manage staff users across companies.' : 'Manage
+          staff users in your company.' }}
         </p>
       </div>
-
       <div class="actions">
         <button type="button" class="btn primary" (click)="openCreate()">
           <span class="btn-icon" aria-hidden="true">
@@ -31,7 +27,6 @@
         </button>
       </div>
     </div>
-
     <div class="toolbar-row">
       <label class="search-field">
         <span class="search-icon" aria-hidden="true">
@@ -46,8 +41,8 @@
           placeholder="Search by username, name, email, type, status"
           aria-label="Search users"
         />
+        @if (searchCtrl.value) {
         <button
-          *ngIf="searchCtrl.value"
           class="icon-btn"
           type="button"
           (click)="searchCtrl.setValue('')"
@@ -58,605 +53,603 @@
             <path d="M18 6l-12 12"></path>
           </svg>
         </button>
+        }
       </label>
     </div>
-
-    <div class="table-head" [class.superadmin-cols]="isSuperAdmin" aria-hidden="true">
+    <div
+      class="table-head"
+      [class.superadmin-cols]="isSuperAdmin"
+      aria-hidden="true"
+    >
       <div>Name</div>
       <div>Username</div>
       <div>Email</div>
-      <div *ngIf="isSuperAdmin">Company</div>
+      @if (isSuperAdmin) {
+      <div>Company</div>
+      }
       <div>Type</div>
       <div>Status</div>
       <div class="actions-col">Actions</div>
     </div>
   </div>
-
-  <ng-container *ngIf="(error$ | async) as err">
-    <div class="error" *ngIf="!isErrorDismissed(err)">
-      <span>{{ err }}</span>
-      <button
-        type="button"
-        class="error-dismiss"
-        aria-label="Dismiss error"
-        (click)="dismissError(err)"
-      >
-        x
-      </button>
-    </div>
-  </ng-container>
-
-  <div
-    class="screen-loader"
-    *ngIf="(loading$ | async)"
-    aria-live="polite"
-    aria-busy="true"
-  >
+  } @if ((error$ | async); as err) { @if (!isErrorDismissed(err)) {
+  <div class="error">
+    <span>{{ err }}</span>
+    <button
+      type="button"
+      class="error-dismiss"
+      aria-label="Dismiss error"
+      (click)="dismissError(err)"
+    >
+      x
+    </button>
+  </div>
+  } } @if ((loading$ | async)) {
+  <div class="screen-loader" aria-live="polite" aria-busy="true">
     <div class="loader-card">
       <div class="loader-ring" aria-hidden="true"></div>
       <div class="loader-bar" aria-hidden="true"></div>
       <div class="loader-text">Loading…</div>
     </div>
   </div>
+  }
 
   <!-- FORM MODE -->
-  <ng-container *ngIf="(viewMode$ | async) === 'form'">
-    <ng-container *ngIf="editingUser$ | async as user; else createUserBlock">
-      <div class="form-header">
-        <nav class="breadcrumb" aria-label="Breadcrumb">
-          <a routerLink="/manager/menu">Menu</a>
-          <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()">Users</a>
-          <span class="sep">/</span>
-          <span>Edit</span>
-        </nav>
-
-        <div class="form-header-mainrow">
-          <div class="header-main">
-            <h3>User Details</h3>
-            <p class="sub">Update user profile and access metadata.</p>
-          </div>
-          <div class="header-actions">
-            <button class="btn" type="button" (click)="closeForm()">
+  @if ((viewMode$ | async) === 'form') { @if (editingUser$ | async; as user) {
+  <div class="form-header">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <a href="#" (click)="$event.preventDefault(); closeForm()">Users</a>
+      <span class="sep">/</span>
+      <span>Edit</span>
+    </nav>
+    <div class="form-header-mainrow">
+      <div class="header-main">
+        <h3>User Details</h3>
+        <p class="sub">Update user profile and access metadata.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn" type="button" (click)="closeForm()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12"></path>
+              <path d="M18 6l-12 12"></path>
+            </svg>
+          </span>
+          Cancel
+        </button>
+        <button class="btn primary" type="button" (click)="saveUserAndClose()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 5h11l3 3v11H5z"></path>
+              <path d="M9 5v6h6V5"></path>
+            </svg>
+          </span>
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+  <section class="card">
+    <form class="form" [formGroup]="userForm" autocomplete="off">
+      @if (isSuperAdmin) {
+      <label class="company-picker">
+        <span>Company *</span>
+        <app-manager-select
+          formControlName="companyId"
+          [options]="companyOptions"
+          placeholder="Select company"
+        ></app-manager-select>
+        @if ( userForm.controls.companyId.invalid &&
+        userForm.controls.companyId.touched ) {
+        <small class="error-text"> Company is required. </small>
+        }
+      </label>
+      }
+      <div class="avatar-grid">
+        <div class="avatar-stack">
+          <img
+            class="avatar-image"
+            [src]="avatarSrc"
+            alt="Profile picture"
+            referrerpolicy="no-referrer"
+          />
+          <div class="avatar-actions">
+            <label class="upload-button">
+              <input
+                type="file"
+                accept="image/*"
+                (change)="onAvatarSelected($event)"
+                [disabled]="isUploadingAvatar"
+              />
               <span class="btn-icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24">
-                  <path d="M6 6l12 12"></path>
-                  <path d="M18 6l-12 12"></path>
+                  <path d="M12 5v10"></path>
+                  <path d="M8 9l4-4 4 4"></path>
+                  <path d="M5 19h14"></path>
                 </svg>
               </span>
-              Cancel
-            </button>
-            <button
-              class="btn primary"
-              type="button"
-              (click)="saveUserAndClose()"
-            >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M5 5h11l3 3v11H5z"></path>
-                  <path d="M9 5v6h6V5"></path>
-                </svg>
-              </span>
-              Finish
-            </button>
+              Upload
+            </label>
+            <span class="upload-hint">PNG/JPG/WebP, up to 5 MB.</span>
+            @if (uploadError) {
+            <span class="upload-error"> {{ uploadError }} </span>
+            }
           </div>
         </div>
-      </div>
-
-      <section class="card">
-        <form class="form" [formGroup]="userForm" autocomplete="off">
-          <label class="company-picker" *ngIf="isSuperAdmin">
-            <span>Company *</span>
-            <app-manager-select
-              formControlName="companyId"
-              [options]="companyOptions"
-              placeholder="Select company"
-            ></app-manager-select>
-            <small
-              class="error-text"
-              *ngIf="
-                userForm.controls.companyId.invalid &&
-                userForm.controls.companyId.touched
-              "
-            >
-              Company is required.
-            </small>
-          </label>
-
-          <div class="avatar-grid">
-            <div class="avatar-stack">
-              <img
-                class="avatar-image"
-                [src]="avatarSrc"
-                alt="Profile picture"
-                referrerpolicy="no-referrer"
-              />
-              <div class="avatar-actions">
-                <label class="upload-button">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    (change)="onAvatarSelected($event)"
-                    [disabled]="isUploadingAvatar"
-                  />
-                  <span class="btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 5v10"></path>
-                      <path d="M8 9l4-4 4 4"></path>
-                      <path d="M5 19h14"></path>
-                    </svg>
-                  </span>
-                  Upload
-                </label>
-                <span class="upload-hint">PNG/JPG/WebP, up to 5 MB.</span>
-                <span class="upload-error" *ngIf="uploadError">
-                  {{ uploadError }}
-                </span>
-              </div>
-            </div>
-
-            <div class="avatar-fields">
-              <label>
-                <span>Name *</span>
-                <input
-                  formControlName="name"
-                  placeholder="Full name"
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Email *</span>
-                <input
-                  formControlName="email"
-                  placeholder="email@example.com"
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Mobile</span>
-                <input
-                  formControlName="cel"
-                  placeholder="0412..."
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Phone</span>
-                <input
-                  formControlName="tel"
-                  placeholder="07..."
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Username *</span>
-                <input
-                  formControlName="username"
-                  placeholder="username"
-                  name="new-username"
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Password (optional - Min 8 chars if provided)</span>
-                <input
-                  type="password"
-                  formControlName="password"
-                  placeholder="Leave blank to keep current"
-                  name="new-password"
-                  autocomplete="new-password"
-                />
-              </label>
-            </div>
-          </div>
-
-          <label class="address-label">
-            <span>Address</span>
-            <div class="address-field">
-              <input
-                formControlName="address"
-                placeholder="Address"
-                (focus)="onAddressFocus()"
-                (blur)="onAddressBlur()"
-                (keydown)="onAddressKeydown($event)"
-                autocomplete="off"
-              />
-              <div
-                class="address-suggestions"
-                *ngIf="showAddressSuggestions && addressSuggestions.length"
-              >
-                <button
-                  type="button"
-                  class="address-suggestion"
-                  *ngFor="let s of addressSuggestions; let i = index"
-                  [class.is-active]="i === addressActiveIndex"
-                  (mousedown)="onAddressSelect(s)"
-                >
-                  {{ s.description }}
-                </button>
-              </div>
-            </div>
-          </label>
-
-          <div class="grid-2">
-            <label>
-              <span>Type *</span>
-              <app-manager-select
-                formControlName="type"
-                [options]="typeOptions"
-                placeholder="Select type"
-              ></app-manager-select>
-            </label>
-
-            <label>
-              <span>Status</span>
-              <app-manager-select
-                formControlName="status"
-                [options]="statusOptions"
-                placeholder="Select status"
-              ></app-manager-select>
-            </label>
-          </div>
-
+        <div class="avatar-fields">
           <label>
-            <span>Notes</span>
-            <textarea
-              formControlName="bio"
-              rows="3"
-              placeholder="Notes..."
-            ></textarea>
+            <span>Name *</span>
+            <input
+              formControlName="name"
+              placeholder="Full name"
+              autocomplete="off"
+            />
           </label>
-        </form>
-      </section>
-    </ng-container>
-
-    <ng-template #createUserBlock>
-      <div class="form-header">
-        <nav class="breadcrumb" aria-label="Breadcrumb">
-          <a routerLink="/manager/menu">Menu</a>
-          <span class="sep">/</span>
-          <a href="#" (click)="$event.preventDefault(); closeForm()">Users</a>
-          <span class="sep">/</span>
-          <span>Create</span>
-        </nav>
-
-        <div class="form-header-mainrow">
-          <div class="header-main">
-            <h3>Create User</h3>
-            <p class="sub">Create a new user under your company.</p>
-          </div>
-          <div class="header-actions">
-            <button class="btn" type="button" (click)="closeForm()">
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M6 6l12 12"></path>
-                  <path d="M18 6l-12 12"></path>
-                </svg>
-              </span>
-              Cancel
-            </button>
-            <button
-              class="btn primary"
-              type="button"
-              (click)="saveUserAndClose()"
-            >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M5 5h11l3 3v11H5z"></path>
-                  <path d="M9 5v6h6V5"></path>
-                </svg>
-              </span>
-              Save
-            </button>
-          </div>
+          <label>
+            <span>Email *</span>
+            <input
+              formControlName="email"
+              placeholder="email@example.com"
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            <span>Mobile</span>
+            <input
+              formControlName="cel"
+              placeholder="0412..."
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            <span>Phone</span>
+            <input
+              formControlName="tel"
+              placeholder="07..."
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            <span>Username *</span>
+            <input
+              formControlName="username"
+              placeholder="username"
+              name="new-username"
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            <span>Password (optional - Min 8 chars if provided)</span>
+            <input
+              type="password"
+              formControlName="password"
+              placeholder="Leave blank to keep current"
+              name="new-password"
+              autocomplete="new-password"
+            />
+          </label>
         </div>
       </div>
-
-      <section class="card">
-        <form class="form" [formGroup]="userForm" autocomplete="off">
-          <label class="company-picker" *ngIf="isSuperAdmin">
-            <span>Company *</span>
-            <app-manager-select
-              formControlName="companyId"
-              [options]="companyOptions"
-              placeholder="Select company"
-            ></app-manager-select>
-            <small
-              class="error-text"
-              *ngIf="
-                userForm.controls.companyId.invalid &&
-                userForm.controls.companyId.touched
-              "
+      <label class="address-label">
+        <span>Address</span>
+        <div class="address-field">
+          <input
+            formControlName="address"
+            placeholder="Address"
+            (focus)="onAddressFocus()"
+            (blur)="onAddressBlur()"
+            (keydown)="onAddressKeydown($event)"
+            autocomplete="off"
+          />
+          @if (showAddressSuggestions && addressSuggestions.length) {
+          <div class="address-suggestions">
+            @for (s of addressSuggestions; track s; let i = $index) {
+            <button
+              type="button"
+              class="address-suggestion"
+              [class.is-active]="i === addressActiveIndex"
+              (mousedown)="onAddressSelect(s)"
             >
-              Company is required.
-            </small>
-          </label>
-
-          <div class="avatar-grid">
-            <div class="avatar-stack">
-              <img
-                class="avatar-image"
-                [src]="avatarSrc"
-                alt="Profile picture"
-                referrerpolicy="no-referrer"
-              />
-              <div class="avatar-actions">
-                <label class="upload-button">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    (change)="onAvatarSelected($event)"
-                    [disabled]="isUploadingAvatar"
-                  />
-                  <span class="btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 5v10"></path>
-                      <path d="M8 9l4-4 4 4"></path>
-                      <path d="M5 19h14"></path>
-                    </svg>
-                  </span>
-                  Upload
-                </label>
-                <span class="upload-hint">PNG/JPG/WebP, up to 5 MB.</span>
-                <span class="upload-error" *ngIf="uploadError">
-                  {{ uploadError }}
-                </span>
-              </div>
-            </div>
-
-            <div class="avatar-fields">
-              <label>
-                <span>Name *</span>
-                <input
-                  formControlName="name"
-                  placeholder="Full name"
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Email *</span>
-                <input
-                  formControlName="email"
-                  placeholder="email@example.com"
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Mobile</span>
-                <input
-                  formControlName="cel"
-                  placeholder="0412..."
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Phone</span>
-                <input
-                  formControlName="tel"
-                  placeholder="07..."
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Username *</span>
-                <input
-                  formControlName="username"
-                  placeholder="username"
-                  name="new-username"
-                  autocomplete="off"
-                />
-              </label>
-
-              <label>
-                <span>Password * (Min 8 chars)</span>
-                <input
-                  type="password"
-                  formControlName="password"
-                  placeholder="Min 8 chars"
-                  name="new-password"
-                  autocomplete="new-password"
-                />
-              </label>
-            </div>
+              {{ s.description }}
+            </button>
+            }
           </div>
-
-          <label class="address-label">
-            <span>Address</span>
-            <div class="address-field">
+          }
+        </div>
+      </label>
+      <div class="grid-2">
+        <label>
+          <span>Type *</span>
+          <app-manager-select
+            formControlName="type"
+            [options]="typeOptions"
+            placeholder="Select type"
+          ></app-manager-select>
+        </label>
+        <label>
+          <span>Status</span>
+          <app-manager-select
+            formControlName="status"
+            [options]="statusOptions"
+            placeholder="Select status"
+          ></app-manager-select>
+        </label>
+      </div>
+      <label>
+        <span>Notes</span>
+        <textarea
+          formControlName="bio"
+          rows="3"
+          placeholder="Notes..."
+        ></textarea>
+      </label>
+    </form>
+  </section>
+  } @else {
+  <div class="form-header">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <a href="#" (click)="$event.preventDefault(); closeForm()">Users</a>
+      <span class="sep">/</span>
+      <span>Create</span>
+    </nav>
+    <div class="form-header-mainrow">
+      <div class="header-main">
+        <h3>Create User</h3>
+        <p class="sub">Create a new user under your company.</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn" type="button" (click)="closeForm()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12"></path>
+              <path d="M18 6l-12 12"></path>
+            </svg>
+          </span>
+          Cancel
+        </button>
+        <button class="btn primary" type="button" (click)="saveUserAndClose()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 5h11l3 3v11H5z"></path>
+              <path d="M9 5v6h6V5"></path>
+            </svg>
+          </span>
+          Save
+        </button>
+      </div>
+    </div>
+  </div>
+  <section class="card">
+    <form class="form" [formGroup]="userForm" autocomplete="off">
+      @if (isSuperAdmin) {
+      <label class="company-picker">
+        <span>Company *</span>
+        <app-manager-select
+          formControlName="companyId"
+          [options]="companyOptions"
+          placeholder="Select company"
+        ></app-manager-select>
+        @if ( userForm.controls.companyId.invalid &&
+        userForm.controls.companyId.touched ) {
+        <small class="error-text"> Company is required. </small>
+        }
+      </label>
+      }
+      <div class="avatar-grid">
+        <div class="avatar-stack">
+          <img
+            class="avatar-image"
+            [src]="avatarSrc"
+            alt="Profile picture"
+            referrerpolicy="no-referrer"
+          />
+          <div class="avatar-actions">
+            <label class="upload-button">
               <input
-                formControlName="address"
-                placeholder="Address"
-                (focus)="onAddressFocus()"
-                (blur)="onAddressBlur()"
-                (keydown)="onAddressKeydown($event)"
-                autocomplete="off"
+                type="file"
+                accept="image/*"
+                (change)="onAvatarSelected($event)"
+                [disabled]="isUploadingAvatar"
               />
-              <div
-                class="address-suggestions"
-                *ngIf="showAddressSuggestions && addressSuggestions.length"
-              >
-                <button
-                  type="button"
-                  class="address-suggestion"
-                  *ngFor="let s of addressSuggestions; let i = index"
-                  [class.is-active]="i === addressActiveIndex"
-                  (mousedown)="onAddressSelect(s)"
-                >
-                  {{ s.description }}
-                </button>
-              </div>
-            </div>
-          </label>
-
-          <div class="grid-2">
-            <label>
-              <span>Type *</span>
-              <app-manager-select
-                formControlName="type"
-                [options]="typeOptions"
-                placeholder="Select type"
-              ></app-manager-select>
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 5v10"></path>
+                  <path d="M8 9l4-4 4 4"></path>
+                  <path d="M5 19h14"></path>
+                </svg>
+              </span>
+              Upload
             </label>
-
-            <label>
-              <span>Status</span>
-              <app-manager-select
-                formControlName="status"
-                [options]="statusOptions"
-                placeholder="Select status"
-              ></app-manager-select>
-            </label>
+            <span class="upload-hint">PNG/JPG/WebP, up to 5 MB.</span>
+            @if (uploadError) {
+            <span class="upload-error"> {{ uploadError }} </span>
+            }
           </div>
-
+        </div>
+        <div class="avatar-fields">
           <label>
-            <span>Bio</span>
-            <textarea
-              formControlName="bio"
-              rows="3"
-              placeholder="Bio..."
-            ></textarea>
+            <span>Name *</span>
+            <input
+              formControlName="name"
+              placeholder="Full name"
+              autocomplete="off"
+            />
           </label>
-        </form>
-      </section>
-    </ng-template>
-  </ng-container>
+          <label>
+            <span>Email *</span>
+            <input
+              formControlName="email"
+              placeholder="email@example.com"
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            <span>Mobile</span>
+            <input
+              formControlName="cel"
+              placeholder="0412..."
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            <span>Phone</span>
+            <input
+              formControlName="tel"
+              placeholder="07..."
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            <span>Username *</span>
+            <input
+              formControlName="username"
+              placeholder="username"
+              name="new-username"
+              autocomplete="off"
+            />
+          </label>
+          <label>
+            <span>Password * (Min 8 chars)</span>
+            <input
+              type="password"
+              formControlName="password"
+              placeholder="Min 8 chars"
+              name="new-password"
+              autocomplete="new-password"
+            />
+          </label>
+        </div>
+      </div>
+      <label class="address-label">
+        <span>Address</span>
+        <div class="address-field">
+          <input
+            formControlName="address"
+            placeholder="Address"
+            (focus)="onAddressFocus()"
+            (blur)="onAddressBlur()"
+            (keydown)="onAddressKeydown($event)"
+            autocomplete="off"
+          />
+          @if (showAddressSuggestions && addressSuggestions.length) {
+          <div class="address-suggestions">
+            @for (s of addressSuggestions; track s; let i = $index) {
+            <button
+              type="button"
+              class="address-suggestion"
+              [class.is-active]="i === addressActiveIndex"
+              (mousedown)="onAddressSelect(s)"
+            >
+              {{ s.description }}
+            </button>
+            }
+          </div>
+          }
+        </div>
+      </label>
+      <div class="grid-2">
+        <label>
+          <span>Type *</span>
+          <app-manager-select
+            formControlName="type"
+            [options]="typeOptions"
+            placeholder="Select type"
+          ></app-manager-select>
+        </label>
+        <label>
+          <span>Status</span>
+          <app-manager-select
+            formControlName="status"
+            [options]="statusOptions"
+            placeholder="Select status"
+          ></app-manager-select>
+        </label>
+      </div>
+      <label>
+        <span>Bio</span>
+        <textarea
+          formControlName="bio"
+          rows="3"
+          placeholder="Bio..."
+        ></textarea>
+      </label>
+    </form>
+  </section>
+  } }
 
   <!-- LIST MODE -->
-  <ng-container *ngIf="(viewMode$ | async) === 'list'">
-    <section class="list" #usersList>
-      <ng-container *ngIf="filteredUsers$ | async as users">
-        <!-- Desktop table -->
-        <div class="table" *ngIf="users.length">
-          <div class="thead" [class.superadmin-cols]="isSuperAdmin">
-            <div>Name</div>
-            <div>Username</div>
-            <div>Email</div>
-            <div *ngIf="isSuperAdmin">Company</div>
-            <div>Type</div>
-            <div>Status</div>
-            <div class="actions-col">Actions</div>
-          </div>
-
-          <div
-            class="trow"
-            [class.superadmin-cols]="isSuperAdmin"
-            *ngFor="let u of users; trackBy: trackByUser"
+  @if ((viewMode$ | async) === 'list') {
+  <section class="list" #usersList>
+    @if (filteredUsers$ | async; as users) {
+    <!-- Desktop table -->
+    @if (users.length) {
+    <div class="table">
+      <div class="thead" [class.superadmin-cols]="isSuperAdmin">
+        <div>Name</div>
+        <div>Username</div>
+        <div>Email</div>
+        @if (isSuperAdmin) {
+        <div>Company</div>
+        }
+        <div>Type</div>
+        <div>Status</div>
+        <div class="actions-col">Actions</div>
+      </div>
+      @for (u of users; track trackByUser($index, u)) {
+      <div class="trow" [class.superadmin-cols]="isSuperAdmin">
+        <div class="cell strong">{{ u.name || '—' }}</div>
+        <div class="cell muted">{{ u.username }}</div>
+        <div class="cell muted">{{ u.email || '—' }}</div>
+        @if (isSuperAdmin) {
+        <div class="cell muted">{{ u.companyName || '—' }}</div>
+        }
+        <div class="cell muted">{{ u.type || '—' }}</div>
+        <div class="cell">
+          <span class="badge" [class.archived]="u.status === 'archived'">
+            {{ u.status || 'active' }}
+          </span>
+        </div>
+        <div class="cell actions-col">
+          <button
+            class="btn small secondary"
+            type="button"
+            (click)="openEdit(u)"
           >
-            <div class="cell strong">{{ u.name || '—' }}</div>
-            <div class="cell muted">{{ u.username }}</div>
-            <div class="cell muted">{{ u.email || '—' }}</div>
-            <div class="cell muted" *ngIf="isSuperAdmin">
-              {{ u.companyName || '—' }}
-            </div>
-            <div class="cell muted">{{ u.type || '—' }}</div>
-            <div class="cell">
-              <span class="badge" [class.archived]="u.status === 'archived'">
-                {{ u.status || 'active' }}
-              </span>
-            </div>
-            <div class="cell actions-col">
-              <button
-                class="btn small secondary"
-                type="button"
-                (click)="openEdit(u)"
-              >
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
-                    <path d="M13 6l4 4"></path>
-                  </svg>
-                </span>
-                Edit
-              </button>
-              <button
-                class="btn small danger"
-                type="button"
-                disabled
-                title="Archive is not available yet."
-              >
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 8h16"></path>
-                    <path d="M6 8v10h12V8"></path>
-                    <path d="M10 12h4"></path>
-                    <path d="M9 4h6l1 2H8l1-2Z"></path>
-                  </svg>
-                </span>
-                Archive
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mobile cards -->
-        <div class="cards" *ngIf="users.length">
-          <article
-            class="user-card"
-            *ngFor="let u of users; trackBy: trackByUser"
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                <path d="M13 6l4 4"></path>
+              </svg>
+            </span>
+            Edit
+          </button>
+          <button
+            class="btn small danger"
+            type="button"
+            [disabled]="isArchiveDisabled(u)"
+            (click)="archiveUser(u)"
           >
-            <div class="row">
-              <div class="name">{{ u.name || '—' }}</div>
-              <span class="badge" [class.archived]="u.status === 'archived'">
-                {{ u.status || 'active' }}
-              </span>
-            </div>
-            <div class="meta">
-              <div><span>Username:</span> {{ u.username }}</div>
-              <div><span>Email:</span> {{ u.email || '—' }}</div>
-              <div *ngIf="isSuperAdmin">
-                <span>Company:</span> {{ u.companyName || '—' }}
-              </div>
-              <div><span>Type:</span> {{ u.type || '—' }}</div>
-              <div><span>Mobile:</span> {{ u.cel || '—' }}</div>
-            </div>
-            <div class="card-actions">
-              <button
-                class="btn small secondary"
-                type="button"
-                (click)="openEdit(u)"
-              >
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
-                    <path d="M13 6l4 4"></path>
-                  </svg>
-                </span>
-                Edit
-              </button>
-              <button
-                class="btn small danger"
-                type="button"
-                disabled
-                title="Archive is not available yet."
-              >
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 8h16"></path>
-                    <path d="M6 8v10h12V8"></path>
-                    <path d="M10 12h4"></path>
-                    <path d="M9 4h6l1 2H8l1-2Z"></path>
-                  </svg>
-                </span>
-                Archive
-              </button>
-            </div>
-          </article>
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 8h16"></path>
+                <path d="M6 8v10h12V8"></path>
+                <path d="M10 12h4"></path>
+                <path d="M9 4h6l1 2H8l1-2Z"></path>
+              </svg>
+            </span>
+            {{ u.hasProcesses ? 'Archive' : 'Delete' }}
+          </button>
         </div>
+      </div>
+      }
+    </div>
+    }
+    <!-- Mobile cards -->
+    @if (users.length) {
+    <div class="cards">
+      @for (u of users; track trackByUser($index, u)) {
+      <article class="user-card">
+        <div class="row">
+          <div class="name">{{ u.name || '—' }}</div>
+          <span class="badge" [class.archived]="u.status === 'archived'">
+            {{ u.status || 'active' }}
+          </span>
+        </div>
+        <div class="meta">
+          <div><span>Username:</span> {{ u.username }}</div>
+          <div><span>Email:</span> {{ u.email || '—' }}</div>
+          @if (isSuperAdmin) {
+          <div><span>Company:</span> {{ u.companyName || '—' }}</div>
+          }
+          <div><span>Type:</span> {{ u.type || '—' }}</div>
+          <div><span>Mobile:</span> {{ u.cel || '—' }}</div>
+        </div>
+        <div class="card-actions">
+          <button
+            class="btn small secondary"
+            type="button"
+            (click)="openEdit(u)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                <path d="M13 6l4 4"></path>
+              </svg>
+            </span>
+            Edit
+          </button>
+          <button
+            class="btn small danger"
+            type="button"
+            [disabled]="isArchiveDisabled(u)"
+            (click)="archiveUser(u)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 8h16"></path>
+                <path d="M6 8v10h12V8"></path>
+                <path d="M10 12h4"></path>
+                <path d="M9 4h6l1 2H8l1-2Z"></path>
+              </svg>
+            </span>
+            {{ u.hasProcesses ? 'Archive' : 'Delete' }}
+          </button>
+        </div>
+      </article>
+      }
+    </div>
+    } @if (!users.length && !(loading$ | async)) {
+    <div class="empty">No users found.</div>
+    }
+    <div class="infinite-sentinel" #infiniteSentinel></div>
+    }
+  </section>
+  }
 
-        <div class="empty" *ngIf="!users.length && !(loading$ | async)">
-          No users found.
+  @if (isConfirmModalOpen) {
+  <div class="status-modal-backdrop" (click)="onConfirmModalBackdrop()">
+    <div
+      class="status-modal"
+      [class.tone-warning]="confirmModalTone === 'warning'"
+      [class.tone-danger]="confirmModalTone === 'danger'"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      aria-describedby="confirm-modal-message"
+    >
+      <div class="status-modal-header">
+        <span class="status-modal-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7v6"></path>
+            <path d="M12 16.5h.01"></path>
+          </svg>
+        </span>
+        <div class="status-modal-text">
+          <h4 id="confirm-modal-title">{{ confirmModalTitle }}</h4>
+          <p id="confirm-modal-message">{{ confirmModalMessage }}</p>
         </div>
-        <div class="infinite-sentinel" #infiniteSentinel></div>
-      </ng-container>
-    </section>
-  </ng-container>
+      </div>
+      <div class="status-modal-actions">
+        @if (confirmModalShowCancel) {
+        <button
+          type="button"
+          class="btn secondary"
+          (click)="onConfirmModalCancel()"
+        >
+          {{ confirmModalCancelLabel }}
+        </button>
+        }
+        <button type="button" class="btn primary" (click)="onConfirmModalConfirm()">
+          {{ confirmModalConfirmLabel }}
+        </button>
+      </div>
+    </div>
+  </div>
+  }
 </div>

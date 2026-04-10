@@ -1,7 +1,14 @@
-<p-tabMenu
-  *ngIf="items.length"
-  [model]="items"
-  [activeItem]="activeItem"
-  class="overflow-x-auto whitespace-nowrap text-sm md:text-base"
->
-</p-tabMenu>
+@if (items$$().length) {
+  <nav class="flex flex-wrap gap-2 border-b border-gray-200 pb-2">
+    @for (item of items$$(); track item.label) {
+      <a
+        [routerLink]="item.routerLink"
+        class="px-3 py-1.5 text-sm font-medium border-b-2 border-transparent text-gray-600 hover:text-gray-900"
+        [class.border-emerald-500]="activeItem$$().label === item.label"
+        [class.text-emerald-600]="activeItem$$().label === item.label"
+        >
+        {{ item.label }}
+      </a>
+    }
+  </nav>
+}

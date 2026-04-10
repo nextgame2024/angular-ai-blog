@@ -89,8 +89,19 @@ export const managerLaborReducer = createReducer(
     const idx = state.labor.findIndex((l) => l.laborId === labor.laborId);
     const next = [...state.labor];
 
-    if (idx >= 0) next[idx] = labor;
-    else next.unshift(labor);
+    if (idx >= 0) {
+      const previous = next[idx];
+      next[idx] = {
+        ...previous,
+        ...labor,
+        hasProjects: labor.hasProjects ?? previous.hasProjects ?? false,
+      };
+    } else {
+      next.unshift({
+        ...labor,
+        hasProjects: labor.hasProjects ?? false,
+      });
+    }
 
     return {
       ...state,

@@ -15,27 +15,28 @@ import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
 import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
+import { InputGroupModule } from 'primeng/inputgroup';
+import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 
 @Component({
-  selector: 'mc-register',
-  templateUrl: './register.component.html',
-  styleUrls: ['./register.component.css'],
-  standalone: true,
-  imports: [
-    // Angular
-    ReactiveFormsModule,
-    RouterLink,
-    CommonModule,
-
-    // Your shared component
-    BackendErrorMessages,
-
-    // PrimeNG
-    CardModule,
-    InputTextModule,
-    PasswordModule,
-    ButtonModule,
-  ],
+    selector: 'mc-register',
+    templateUrl: './register.component.html',
+    styleUrls: ['./register.component.css'],
+    imports: [
+        // Angular
+        ReactiveFormsModule,
+        RouterLink,
+        CommonModule,
+        // Your shared component
+        BackendErrorMessages,
+        // PrimeNG
+        CardModule,
+        InputTextModule,
+        PasswordModule,
+        ButtonModule,
+        InputGroupModule,
+        InputGroupAddonModule,
+    ]
 })
 export class RegisterComponent {
   form = this.fb.nonNullable.group({

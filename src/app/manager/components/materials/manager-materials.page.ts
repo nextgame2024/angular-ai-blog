@@ -34,11 +34,10 @@ import type { BmMaterial } from '../../types/materials.interface';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 
 @Component({
-  selector: 'app-manager-materials-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
-  templateUrl: './manager-materials.page.html',
-  styleUrls: ['./manager-materials.page.css'],
+    selector: 'app-manager-materials-page',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+    templateUrl: './manager-materials.page.html',
+    styleUrls: ['./manager-materials.page.css']
 })
 export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
@@ -294,10 +293,12 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
   }
 
   removeMaterial(m: BmMaterial): void {
+    if (this.isArchiveActionDisabled(m)) return;
+
     const hasProjects = !!m.hasProjects;
     const title = hasProjects ? 'Archive Material?' : 'Delete Material?';
     const message = hasProjects
-      ? `Are you sure you want to archive "${m.materialName}"?`
+      ? `"${m.materialName}" material is linked to existing processes, so it cannot be deleted. Would you like to archive it instead?`
       : `Are you sure you want to delete "${m.materialName}"?`;
     this.openConfirmModal({
       title,
@@ -309,6 +310,10 @@ export class ManagerMaterialsPageComponent implements OnInit, OnDestroy {
           ManagerMaterialsActions.removeMaterial({ materialId: m.materialId }),
         ),
     });
+  }
+
+  isArchiveActionDisabled(m: BmMaterial): boolean {
+    return (m.status ?? 'active') === 'archived';
   }
 
   private setupInfiniteScroll(): void {

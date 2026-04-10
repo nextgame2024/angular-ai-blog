@@ -544,6 +544,12 @@
   border-radius: 12px;
   cursor: pointer;
 }
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .btn.primary {
   color: #0ccdb6;
   background: rgba(16, 224, 199, 0.1);

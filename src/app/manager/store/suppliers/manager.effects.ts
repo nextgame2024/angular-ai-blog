@@ -13,6 +13,7 @@ import {
   selectManagerEditingSupplierMaterial,
   selectManagerSupplierContactsLimit,
   selectManagerSupplierMaterialsLimit,
+  selectManagerSupplierMaterialsSearchQuery,
 } from './manager.selectors';
 
 @Injectable()
@@ -193,9 +194,18 @@ export class ManagerSuppliersEffects {
   loadSupplierMaterials$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerSuppliersActions.loadSupplierMaterials),
-      withLatestFrom(this.store.select(selectManagerSupplierMaterialsLimit)),
-      switchMap(([{ supplierId, page }, limit]) =>
-        this.api.listSupplierMaterials(supplierId, { page, limit }).pipe(
+      withLatestFrom(
+        this.store.select(selectManagerSupplierMaterialsLimit),
+        this.store.select(selectManagerSupplierMaterialsSearchQuery),
+      ),
+      switchMap(([{ supplierId, page }, limit, q]) =>
+        this.api
+          .listSupplierMaterials(supplierId, {
+            page,
+            limit,
+            q: q || undefined,
+          })
+          .pipe(
           map((res) => {
             const materials = res?.materials ?? [];
             return ManagerSuppliersActions.loadSupplierMaterialsSuccess({

@@ -1,10 +1,8 @@
+/* Prime theme is provided by PrimeNG preset; keep global styles lean. */
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Keep Prime base + icons only */
-@import "primeng/resources/primeng.min.css";
-@import "primeicons/primeicons.css";
 
 /* Optional: sensible page bg/text that reacts to Tailwind dark mode */
 html,
@@ -133,7 +131,13 @@ html.dark .manager-shell .content :is(
   .card-header,
   .table-head,
   .thead,
-  .strong
+  .strong,
+  .project-card .name,
+  .pricing-card .name,
+  .labor-card .name,
+  .material-card .name,
+  .user-card .name,
+  .supplier-card .name
 ) {
   color: #e2e8f0 !important;
 }
@@ -156,7 +160,16 @@ html.dark .manager-shell .content :is(
   .table,
   .card,
   .client-card,
-  .contact-card
+  .contact-card,
+  .project-card,
+  .pricing-card,
+  .labor-card,
+  .material-card,
+  .user-card,
+  .supplier-card,
+  .quote-card,
+  .company-card,
+  .surcharges-card
 ) {
   background: rgba(2, 6, 23, 0.7) !important;
   border-color: rgba(71, 85, 105, 0.45) !important;

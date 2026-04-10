@@ -1,7 +1,10 @@
-<p-messages
-  *ngIf="errorItems.length"
-  [value]="errorItems"
-  [closable]="false"
-  aria-live="polite"
->
-</p-messages>
+@if (errorItems$$().length) {
+  <div class="space-y-2" aria-live="polite">
+    @for (msg of errorItems$$(); track $index) {
+      <p-message [severity]="msg.severity" [closable]="false">
+        <span class="font-medium">{{ msg.summary }}</span>
+        <span class="ml-2">{{ msg.detail }}</span>
+      </p-message>
+    }
+  </div>
+}

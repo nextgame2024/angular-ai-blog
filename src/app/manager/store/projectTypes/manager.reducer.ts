@@ -9,6 +9,21 @@ import type {
 
 export const MANAGER_PROJECT_TYPES_FEATURE_KEY = 'managerProjectTypes';
 
+function sortProjectTypes(items: BmProjectType[]): BmProjectType[] {
+  return [...items].sort((a, b) => {
+    const aArchived = (a.status ?? 'active') === 'archived';
+    const bArchived = (b.status ?? 'active') === 'archived';
+    if (aArchived !== bArchived) return aArchived ? 1 : -1;
+
+    const nameCompare = (a.name ?? '').localeCompare(b.name ?? '', undefined, {
+      sensitivity: 'base',
+    });
+    if (nameCompare !== 0) return nameCompare;
+
+    return (a.createdAt ?? '').localeCompare(b.createdAt ?? '');
+  });
+}
+
 export const managerProjectTypesReducer = createReducer(
   initialManagerProjectTypesState,
 
@@ -30,7 +45,7 @@ export const managerProjectTypesReducer = createReducer(
   on(ManagerProjectTypesActions.loadProjectTypesSuccess, (state, { result }) => ({
     ...state,
     projectTypesLoading: false,
-    projectTypes:
+    projectTypes: sortProjectTypes(
       result.page > 1
         ? [
             ...state.projectTypes,
@@ -42,6 +57,7 @@ export const managerProjectTypesReducer = createReducer(
             ),
           ]
         : (result.items ?? []),
+    ),
     projectTypesPage: result.page,
     projectTypesLimit: result.limit,
     projectTypesTotal: result.total,
@@ -111,7 +127,7 @@ export const managerProjectTypesReducer = createReducer(
       return {
         ...state,
         projectTypesLoading: false,
-        projectTypes: next,
+        projectTypes: sortProjectTypes(next),
         projectTypesViewMode: closeOnSuccess ? ('list' as const) : state.projectTypesViewMode,
         editingProjectTypeId: closeOnSuccess ? null : projectType.projectTypeId,
       };
@@ -135,7 +151,7 @@ export const managerProjectTypesReducer = createReducer(
     (state, { projectTypeId, action }) => ({
       ...state,
       projectTypesLoading: false,
-      projectTypes:
+      projectTypes: sortProjectTypes(
         action === 'deleted'
           ? state.projectTypes.filter((pt) => pt.projectTypeId !== projectTypeId)
           : state.projectTypes.map((pt: BmProjectType) =>
@@ -143,6 +159,7 @@ export const managerProjectTypesReducer = createReducer(
                 ? { ...pt, status: 'archived' }
                 : pt,
             ),
+      ),
       projectTypesTotal:
         action === 'deleted'
           ? Math.max(0, state.projectTypesTotal - 1)

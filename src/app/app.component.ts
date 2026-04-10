@@ -1,20 +1,22 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, effect, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { TopBarComponent } from './auth/components/topBar/topBar.component';
 import { Store } from '@ngrx/store';
 import { authActions } from './auth/store/actions';
 import { FooterComponent } from 'src/app/shared/components/footer/footer.component';
+import { PrimeIconsService } from 'src/app/shared/services/prime-icons.service';
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  standalone: true,
-  imports: [RouterOutlet, TopBarComponent, FooterComponent],
+    selector: 'app-root',
+    templateUrl: './app.component.html',
+    imports: [RouterOutlet, TopBarComponent, FooterComponent]
 })
-export class AppComponent implements OnInit {
-  constructor(private store: Store) {}
+export class AppComponent {
+  private readonly store = inject(Store);
+  private readonly primeIcons = inject(PrimeIconsService);
 
-  ngOnInit(): void {
+  private readonly initEffect = effect(() => {
     this.store.dispatch(authActions.getCurrentUser());
-  }
+    this.primeIcons.ensureLoaded();
+  });
 }

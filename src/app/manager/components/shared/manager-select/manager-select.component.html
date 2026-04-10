@@ -5,7 +5,7 @@
     [attr.aria-expanded]="open"
     [disabled]="disabled"
     (click)="toggle($event)"
-  >
+    >
     <span class="value" [class.placeholder]="!selectedLabel">
       {{ selectedLabel || placeholder }}
     </span>
@@ -16,20 +16,25 @@
     </span>
   </button>
 
-  <div class="select-menu" *ngIf="open">
-    <button
-      type="button"
-      class="select-option"
-      *ngFor="let opt of options"
-      [class.is-active]="opt.value === value"
-      (click)="selectOption(opt, $event)"
-    >
-      <span>{{ opt.label }}</span>
-      <span class="check" *ngIf="opt.value === value" aria-hidden="true">
-        <svg viewBox="0 0 20 20">
-          <path d="M4 10l4 4 8-8"></path>
-        </svg>
-      </span>
-    </button>
-  </div>
+  @if (open) {
+    <div class="select-menu">
+      @for (opt of options; track opt) {
+        <button
+          type="button"
+          class="select-option"
+          [class.is-active]="opt.value === value"
+          (click)="selectOption(opt, $event)"
+          >
+          <span>{{ opt.label }}</span>
+          @if (opt.value === value) {
+            <span class="check" aria-hidden="true">
+              <svg viewBox="0 0 20 20">
+                <path d="M4 10l4 4 8-8"></path>
+              </svg>
+            </span>
+          }
+        </button>
+      }
+    </div>
+  }
 </div>

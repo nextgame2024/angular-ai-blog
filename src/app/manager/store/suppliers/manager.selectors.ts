@@ -104,6 +104,10 @@ export const selectManagerSupplierMaterials = createSelector(
   selectManagerSuppliersState,
   (s) => s.materials,
 );
+export const selectManagerSupplierMaterialsSearchQuery = createSelector(
+  selectManagerSuppliersState,
+  (s) => s.materialsSearchQuery,
+);
 export const selectManagerSupplierMaterialsLoading = createSelector(
   selectManagerSuppliersState,
   (s) => s.materialsLoading,

@@ -1,75 +1,76 @@
-<ng-container *ngIf="data$ | async as data">
-  <section
-    class="bg-slate-300 dark:bg-slate-800 dark:text-gray-300 mb-3 border-b"
-  >
-    <div class="container mx-auto px-4 py-8" *ngIf="data.article">
+<section
+  class="bg-slate-300 dark:bg-slate-800 dark:text-gray-300 mb-3 border-b"
+>
+  @if (article$$(); as article) {
+    <div class="container mx-auto px-4 py-8">
       <h1 class="text-2xl md:text-3xl font-semibold mb-4">
-        {{ data.article.title }}
+        {{ article.title }}
       </h1>
-
       <div class="flex items-center gap-3">
         <a
-          [routerLink]="['/profiles', data.article.author.username]"
+          [routerLink]="['/profiles', article.author.username]"
           class="shrink-0"
-        >
+          >
           <p-avatar
-            [image]="getAuthorImage(data.article)"
+            [image]="getAuthorImage(article)"
             shape="circle"
             size="large"
-          >
+            >
           </p-avatar>
         </a>
-
         <div class="min-w-0">
           <a
-            [routerLink]="['/profiles', data.article.author.username]"
+            [routerLink]="['/profiles', article.author.username]"
             class="block font-medium truncate"
-          >
-            {{ data.article.author.username }}
+            >
+            {{ article.author.username }}
           </a>
           <span class="text-sm text-gray-500">
-            {{ data.article.createdAt | date : "mediumDate" }}
+            {{ article.createdAt | date : "mediumDate" }}
           </span>
         </div>
-
-        <div class="ml-auto" *ngIf="data.isAuthor">
-          <button
-            pButton
-            type="button"
-            icon="pi pi-trash"
-            label="Delete"
-            class="p-button-outlined p-button-danger p-button-sm"
-            (click)="confirmDelete()"
-          ></button>
-        </div>
+        @if (isAuthor$$()) {
+          <div class="ml-auto">
+            <button
+              pButton
+              type="button"
+              icon="pi pi-trash"
+              label="Delete"
+              class="p-button-outlined p-button-danger p-button-sm"
+              (click)="confirmDelete()"
+            ></button>
+          </div>
+        }
       </div>
     </div>
-  </section>
-
-  <div class="container mx-auto px-4 py-6">
-    <mc-loading *ngIf="data.isLoading"></mc-loading>
-
-    <mc-error-message *ngIf="data.error" [message]="data.error">
+  }
+</section>
+<div class="container mx-auto px-4 py-6">
+  @if (isLoading$$()) {
+    <mc-loading></mc-loading>
+  }
+  @if (error$$()) {
+    <mc-error-message [message]="error$$()">
     </mc-error-message>
-
-    <!-- Media + CTA (place this BEFORE the existing <div *ngIf="data.article">) -->
-    <div *ngIf="data.article" class="mb-8">
+  }
+  <!-- Media + CTA -->
+  @if (article$$(); as article) {
+    <div class="mb-8">
       <div class="grid gap-4 md:grid-cols-12 md:gap-6">
         <!-- Left: article video/image/audio -->
         <div class="md:col-span-7">
           <mc-article-media
-            [assets]="data.article.assets || []"
+            [assets]="article.assets || []"
           ></mc-article-media>
         </div>
-
         <!-- Right: message + uploader -->
         <div class="md:col-span-5">
           <div
             class="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white/60 dark:bg-neutral-900/60 backdrop-blur p-4 md:p-5"
-          >
+            >
             <h2 class="text-lg md:text-xl font-semibold mb-2">
               Want this effect with you?<span class="text-violet-500"
-                >A$3.99</span
+              >A$3.99</span
               >
             </h2>
             <p class="text-sm text-neutral-700 dark:text-neutral-300 mb-4">
@@ -78,7 +79,6 @@
               <strong>sophiaAi</strong> will match your likeness and render the
               same cinematic effect in seconds—consistent for everyone.
             </p>
-
             <!-- Uploader (mobile-first) -->
             <label class="block">
               <span class="sr-only">Upload your photo</span>
@@ -88,12 +88,12 @@
                 accept="image/*"
                 hidden
                 (change)="onFileSelected($event)"
-              />
+                />
               <button
                 type="button"
                 class="w-full rounded-md border-2 border-dashed border-neutral-300 dark:border-neutral-700 p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition"
                 (click)="fileInput.click()"
-              >
+                >
                 <div class="flex items-center justify-center gap-3">
                   <i class="pi pi-upload text-xl"></i>
                   <span class="text-sm">Choose an image…</span>
@@ -103,33 +103,37 @@
                 </p>
               </button>
             </label>
-
             <!-- Selection + validation feedback -->
-            <div
-              *ngIf="selectedFileName"
-              class="mt-3 text-xs truncate text-neutral-700 dark:text-neutral-300"
-            >
-              Selected: {{ selectedFileName }}
-            </div>
-            <div *ngIf="uploadError" class="mt-2 text-xs text-red-600">
-              {{ uploadError }}
-            </div>
-
+            @if (selectedFileName$$()) {
+              <div
+                class="mt-3 text-xs truncate text-neutral-700 dark:text-neutral-300"
+                >
+                Selected: {{ selectedFileName$$() }}
+              </div>
+            }
+            @if (uploadError$$()) {
+              <div class="mt-2 text-xs text-red-600">
+                {{ uploadError$$() }}
+              </div>
+            }
             <!-- CTA -->
             <button
               type="button"
               pButton
               icon="pi pi-magic"
               [label]="
-                creatingCheckout
+                creatingCheckout$$()
                   ? 'Preparing checkout…'
                   : 'Generate my video — A$3.99'
               "
               class="w-full mt-4 p-button-sm"
-              [disabled]="!selectedFile || !!uploadError || creatingCheckout"
+              [disabled]="
+                !selectedFile$$() ||
+                !!uploadError$$() ||
+                creatingCheckout$$()
+              "
               (click)="onGenerateRequested()"
             ></button>
-
             <small class="block mt-3 text-[11px] text-neutral-500">
               We process your image securely. By uploading you agree to our
               <a routerLink="/terms" class="underline">Terms</a>.
@@ -138,18 +142,18 @@
         </div>
       </div>
     </div>
-
-    <div *ngIf="data.article">
+  }
+  @if (article$$(); as article) {
+    <div>
       <article class="prose max-w-none">
         <p class="whitespace-pre-line leading-relaxed">
-          {{ data.article.body }}
+          {{ article.body }}
         </p>
       </article>
-
       <div class="mt-6">
-        <mc-tag-list [tags]="data.article.tagList"></mc-tag-list>
+        <mc-tag-list [tags]="article.tagList"></mc-tag-list>
       </div>
     </div>
-  </div>
-  <p-confirmDialog></p-confirmDialog>
-</ng-container>
+  }
+</div>
+<p-confirmDialog></p-confirmDialog>

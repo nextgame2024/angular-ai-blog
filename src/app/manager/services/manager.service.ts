@@ -79,6 +79,7 @@ export interface BmUser {
   // IMPORTANT: company_id exists in DB but NOT used in UI
   companyId?: string | null;
   companyName?: string | null;
+  hasProcesses?: boolean;
 }
 
 export interface ListUsersResponse {
@@ -237,8 +238,11 @@ export class ManagerService {
     );
   }
 
-  archiveUser(userId: string): Observable<{ ok: boolean }> {
-    // No archive endpoint in backend yet.
-    return this.http.patch<{ ok: boolean }>(this.userBase, {});
+  archiveUser(
+    userId: string,
+  ): Observable<{ userId: string; action: 'archived' | 'deleted' }> {
+    return this.http.delete<{ userId: string; action: 'archived' | 'deleted' }>(
+      `${this.usersBase}/${userId}`,
+    );
   }
 }

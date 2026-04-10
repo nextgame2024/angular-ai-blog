@@ -1,7 +1,13 @@
-import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
-import { select, Store } from '@ngrx/store';
-import { combineLatest, filter, Subscription } from 'rxjs';
+import { Store } from '@ngrx/store';
 import { selectCurrentUser } from 'src/app/auth/store/reducers';
 import { CurrentUserInterface } from 'src/app/shared/types/currentUser.interface';
 import { selectIsSubmitting, selectValidationErrors } from './store/reducers';
@@ -9,48 +15,62 @@ import { CommonModule } from '@angular/common';
 import { BackendErrorMessages } from 'src/app/shared/components/backendErrorMessages.component';
 import { CurrentUserRequestInterface } from 'src/app/shared/types/currentUserRequest.interface';
 import { authActions } from 'src/app/auth/store/actions';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map } from 'rxjs/operators';
 
 /* PrimeNG */
 import { CardModule } from 'primeng/card';
 import { InputTextModule } from 'primeng/inputtext';
-import { InputTextareaModule } from 'primeng/inputtextarea';
 import { PasswordModule } from 'primeng/password';
+import { TextareaModule } from 'primeng/textarea';
 import { ButtonModule } from 'primeng/button';
 import { AvatarModule } from 'primeng/avatar';
 import { FileUpload, FileUploadModule } from 'primeng/fileupload';
+import { InputGroupModule } from 'primeng/inputgroup';
+import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 
 /* NgRx (avatar upload) */
-import { Observable } from 'rxjs';
 import { uploadActions } from './store/upload.actions';
 import {
   selectIsUploading,
-  selectUploadError,
   selectUploadedUrl,
 } from './store';
 
-@Component({
-  selector: 'mc-settings',
-  templateUrl: './settings.component.html',
-  styleUrls: ['./settings.component.css'],
-  standalone: true,
-  imports: [
-    CommonModule,
-    ReactiveFormsModule,
-    BackendErrorMessages,
-    // PrimeNG
-    CardModule,
-    InputTextModule,
-    InputTextareaModule,
-    PasswordModule,
-    ButtonModule,
-    AvatarModule,
-    FileUploadModule,
-  ],
-})
-export class SettingsComponent implements OnInit, OnDestroy {
-  @ViewChild('uploader') uploader?: FileUpload;
+type FileUploadSelectEvent = {
+  files?: File[];
+};
 
-  form = this.fb.nonNullable.group({
+type FileUploadHandlerEvent = {
+  files?: File[];
+};
+
+@Component({
+    selector: 'mc-settings',
+    templateUrl: './settings.component.html',
+    styleUrls: ['./settings.component.css'],
+    imports: [
+        CommonModule,
+        ReactiveFormsModule,
+        BackendErrorMessages,
+        // PrimeNG
+        CardModule,
+        InputTextModule,
+        PasswordModule,
+        TextareaModule,
+        ButtonModule,
+        AvatarModule,
+        FileUploadModule,
+        InputGroupModule,
+        InputGroupAddonModule,
+    ]
+})
+export class SettingsComponent {
+  readonly uploaderRef$$ = viewChild<FileUpload>('uploader');
+
+  private readonly fb = inject(FormBuilder);
+  private readonly store = inject(Store);
+
+  readonly form = this.fb.nonNullable.group({
     image: '',
     username: '',
     bio: '',
@@ -59,69 +79,66 @@ export class SettingsComponent implements OnInit, OnDestroy {
   });
 
   // bigger default preview if image is empty/broken
-  defaultAvatar =
+  readonly defaultAvatar =
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png';
 
-  currentUser?: CurrentUserInterface;
-
-  data$ = combineLatest({
-    isSubmitting: this.store.select(selectIsSubmitting),
-    backendErrors: this.store.select(selectValidationErrors),
+  readonly currentUser$$ = toSignal<CurrentUserInterface | null>(
+    this.store.select(selectCurrentUser).pipe(map((user) => user ?? null)),
+    { initialValue: null }
+  );
+  readonly isSubmitting$$ = toSignal(this.store.select(selectIsSubmitting), {
+    initialValue: false,
+  });
+  readonly backendErrors$$ = toSignal(this.store.select(selectValidationErrors), {
+    initialValue: null,
   });
 
-  currentUserSubscription?: Subscription;
-
   // avatar upload state
-  isUploadingAvatar$!: Observable<boolean>;
-  uploadError$!: Observable<string | null>;
-  uploadedUrlSub?: Subscription;
+  readonly isUploadingAvatar$$ = toSignal(this.store.select(selectIsUploading), {
+    initialValue: false,
+  });
+  private readonly uploadedUrl$$ = toSignal(
+    this.store.select(selectUploadedUrl),
+    { initialValue: null }
+  );
 
   // local preview (Object URL)
-  previewUrl: string | null = null;
-  selectedFile?: File;
+  readonly previewUrl$$ = signal<string | null>(null);
+  readonly selectedFile$$ = signal<File | null>(null);
+  private readonly imageControl = this.form.controls.image;
+  readonly imageUrl$$ = toSignal(this.imageControl.valueChanges, {
+    initialValue: this.imageControl.value,
+  });
+  readonly avatarUrl$$ = computed(
+    () => this.previewUrl$$() ?? this.imageUrl$$() ?? this.defaultAvatar
+  );
 
-  constructor(private fb: FormBuilder, private store: Store) {}
-
-  ngOnInit(): void {
-    this.currentUserSubscription = this.store
-      .pipe(select(selectCurrentUser), filter(Boolean))
-      .subscribe((currentUser) => {
-        this.currentUser = currentUser;
-        this.initializeForm();
-      });
-
-    this.isUploadingAvatar$ = this.store.select(selectIsUploading);
-    this.uploadError$ = this.store.select(selectUploadError);
-
-    // when effect emits S3 URL → set form.image, clear preview and reset uploader so user can upload again
-    this.uploadedUrlSub = this.store
-      .select(selectUploadedUrl)
-      .pipe(filter((u): u is string => !!u))
-      .subscribe((url) => {
-        this.form.patchValue({ image: url });
-        this.revokePreview();
-        // allow immediate re-upload
-        this.uploader?.clear();
-        this.selectedFile = undefined;
-      });
-  }
-
-  ngOnDestroy(): void {
-    this.currentUserSubscription?.unsubscribe();
-    this.uploadedUrlSub?.unsubscribe();
-    this.revokePreview();
-  }
-
-  initializeForm(): void {
-    if (!this.currentUser) throw new Error('Current user is not set');
+  private readonly initFormEffect = effect(() => {
+    const currentUser = this.currentUser$$();
+    if (!currentUser) return;
     this.form.patchValue({
-      image: this.currentUser.image ?? '',
-      username: this.currentUser.username,
-      bio: this.currentUser.bio ?? '',
-      email: this.currentUser.email,
+      image: currentUser.image ?? '',
+      username: currentUser.username,
+      bio: currentUser.bio ?? '',
+      email: currentUser.email,
       password: '',
     });
-  }
+  });
+
+  private readonly uploadedUrlEffect = effect(() => {
+    const url = this.uploadedUrl$$();
+    if (!url) return;
+    this.form.patchValue({ image: url });
+    this.previewUrl$$.set(null);
+    this.selectedFile$$.set(null);
+    this.uploaderRef$$()?.clear();
+  });
+
+  private readonly previewCleanupEffect = effect((onCleanup) => {
+    const preview = this.previewUrl$$();
+    if (!preview) return;
+    onCleanup(() => URL.revokeObjectURL(preview));
+  });
 
   logout(): void {
     this.store.dispatch(authActions.logout());
@@ -129,40 +146,34 @@ export class SettingsComponent implements OnInit, OnDestroy {
 
   // ===== Avatar upload handlers =====
 
-  private revokePreview() {
-    if (this.previewUrl) {
-      URL.revokeObjectURL(this.previewUrl);
-      this.previewUrl = null;
-    }
-  }
-
-  onFileSelected(ev: any) {
-    const file: File | undefined = ev?.files?.[0];
+  onFileSelected(ev: FileUploadSelectEvent): void {
+    const file = ev.files?.[0];
     if (!file) return;
-    this.selectedFile = file;
+    this.selectedFile$$.set(file);
 
     // instant local preview
-    this.revokePreview();
-    this.previewUrl = URL.createObjectURL(file);
+    this.previewUrl$$.set(URL.createObjectURL(file));
 
     // since [auto]="true", PrimeNG will immediately trigger uploadHandler → onUpload()
     // nothing else to do here
   }
 
-  onUpload(_: any) {
-    if (!this.selectedFile) return;
+  onUpload(_: FileUploadHandlerEvent): void {
+    const file = this.selectedFile$$();
+    if (!file) return;
     this.store.dispatch(
-      uploadActions.uploadAvatar({ file: this.selectedFile })
+      uploadActions.uploadAvatar({ file })
     );
   }
 
   // ===== Submit settings =====
 
   submit(): void {
-    if (!this.currentUser) throw new Error('Current user is not set');
+    const currentUser = this.currentUser$$();
+    if (!currentUser) throw new Error('Current user is not set');
     const currentUserRequest: CurrentUserRequestInterface = {
       user: {
-        ...this.currentUser,
+        ...currentUser,
         ...this.form.getRawValue(),
       },
     };

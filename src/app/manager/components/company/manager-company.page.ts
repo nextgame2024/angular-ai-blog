@@ -42,11 +42,10 @@ import { AvatarUploadService } from '../../../settings/components/settings/servi
 import { CompanyBrandingService } from '../../../shared/services/company-branding.service';
 
 @Component({
-  selector: 'app-manager-company-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
-  templateUrl: './manager-company.page.html',
-  styleUrls: ['./manager-company.page.css'],
+    selector: 'app-manager-company-page',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+    templateUrl: './manager-company.page.html',
+    styleUrls: ['./manager-company.page.css']
 })
 export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();

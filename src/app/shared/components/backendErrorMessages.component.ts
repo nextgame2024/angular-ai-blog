@@ -1,15 +1,9 @@
-import { CommonModule } from '@angular/common';
-import {
-  Component,
-  Input,
-  OnChanges,
-  OnInit,
-  SimpleChanges,
-} from '@angular/core';
+
+import { Component, computed, input } from '@angular/core';
 import { BackendErrorsInterface } from '../types/backendErrors.interface';
 
 /* PrimeNG */
-import { MessagesModule } from 'primeng/messages';
+import { MessageModule } from 'primeng/message';
 
 type PrimeMessage = {
   severity?: 'success' | 'info' | 'warn' | 'error';
@@ -18,33 +12,24 @@ type PrimeMessage = {
 };
 
 @Component({
-  selector: 'mc-backend-error-messages',
-  templateUrl: './backendErrorMessages.component.html',
-  standalone: true,
-  imports: [CommonModule, MessagesModule],
+    selector: 'mc-backend-error-messages',
+    templateUrl: './backendErrorMessages.component.html',
+    imports: [MessageModule]
 })
-export class BackendErrorMessages implements OnInit, OnChanges {
-  @Input() backendErrors: BackendErrorsInterface | null = null;
+export class BackendErrorMessages {
+  readonly backendErrors$$ = input<BackendErrorsInterface | null>(null, {
+    alias: 'backendErrors',
+  });
 
-  /** Messages consumed by <p-messages> */
-  errorItems: PrimeMessage[] = [];
-
-  ngOnInit(): void {
-    this.buildMessages();
-  }
-
-  ngOnChanges(_: SimpleChanges): void {
-    this.buildMessages();
-  }
-
-  private buildMessages(): void {
-    const errs = this.backendErrors || {};
-    this.errorItems = Object.entries(errs).map(([field, msgs]) => {
+  /** Messages consumed by <p-message> list */
+  readonly errorItems$$ = computed<PrimeMessage[]>(() => {
+    const errs = this.backendErrors$$() ?? {};
+    return Object.entries(errs).map(([field, msgs]) => {
       const summary = this.humanize(field);
       const detail = Array.isArray(msgs) ? msgs.join(' ') : String(msgs ?? '');
       return { severity: 'error', summary, detail };
     });
-  }
+  });
 
   private humanize(key: string): string {
     if (!key) return '';

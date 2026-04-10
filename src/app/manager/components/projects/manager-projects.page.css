@@ -10,15 +10,19 @@
   scroll-margin-top: 72px;
 }
 
-.list-header {
+.list-header,
+.form-header {
   position: sticky;
   top: 0;
   z-index: 6;
   background: rgba(248, 250, 252, 0.95);
   backdrop-filter: blur(6px);
-  margin: -0.75rem -0.75rem 0;
   padding: 0.75rem;
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.list-header {
+  margin: -0.75rem -0.75rem 0;
 }
 
 .breadcrumb {
@@ -46,12 +50,14 @@
   gap: 0.75rem;
 }
 
-.title h3 {
+.title h3,
+.form-header h3 {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 800;
 }
-.title .sub {
+.title .sub,
+.form-header .sub {
   margin: 0.25rem 0 0 0;
   opacity: 0.75;
   font-size: 0.9rem;
@@ -63,30 +69,12 @@
 }
 
 .form-header {
-  position: sticky;
-  top: 0;
-  z-index: 6;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 0.75rem;
   border-radius: 0;
   border: 0;
-  background: rgba(248, 250, 252, 0.95);
-  backdrop-filter: blur(6px);
   margin: 0 -0.75rem 0;
-}
-
-.form-header h3 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 800;
-}
-
-.form-header .sub {
-  margin: 0.25rem 0 0 0;
-  opacity: 0.75;
-  font-size: 0.9rem;
 }
 
 .form-header-top {
@@ -147,23 +135,7 @@
   gap: 0.6rem;
 }
 
-.materials-inline-cost {
-  display: inline-flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  padding: 0.45rem 0.65rem;
-  border-radius: 10px;
-  border: 1px dashed rgb(185 242 237);
-  background: rgb(226 247 248);
-}
-
-:host-context(html.dark) .materials-inline-cost {
-  border-color: rgba(45, 212, 191, 0.46);
-  background: rgba(15, 23, 42, 0.92);
-  color: #e2e8f0;
-}
-
+.materials-inline-cost,
 .labor-inline-cost {
   display: inline-flex;
   align-items: baseline;
@@ -175,17 +147,14 @@
   background: rgb(226 247 248);
 }
 
+:host-context(html.dark) .materials-inline-cost,
 :host-context(html.dark) .labor-inline-cost {
   border-color: rgba(45, 212, 191, 0.46);
   background: rgba(15, 23, 42, 0.92);
   color: #e2e8f0;
 }
 
-.materials-inline-cost strong {
-  font-size: 0.9rem;
-  font-weight: 800;
-}
-
+.materials-inline-cost strong,
 .labor-inline-cost strong {
   font-size: 0.9rem;
   font-weight: 800;
@@ -322,14 +291,15 @@
   padding-right: 44px;
 }
 
-.warning-icon {
+.warning-icon,
+.search-icon {
   display: inline-flex;
   width: 16px;
   height: 16px;
-  color: rgb(212 157 28);
 }
 
-.warning-icon svg {
+.warning-icon svg,
+.search-icon svg {
   width: 16px;
   height: 16px;
   fill: none;
@@ -337,6 +307,10 @@
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.warning-icon {
+  color: rgb(212 157 28);
 }
 
 .warning-dismiss {
@@ -393,20 +367,7 @@
 }
 
 .search-icon {
-  display: inline-flex;
-  width: 16px;
-  height: 16px;
   color: rgba(15, 23, 42, 0.6);
-}
-
-.search-icon svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .icon-btn {
@@ -502,16 +463,6 @@
   border: 1px dashed rgba(15, 23, 42, 0.2);
   background: rgba(255, 255, 255, 0.9);
   font-size: 0.9rem;
-}
-
-.quote-card-wide {
-  align-items: center;
-}
-
-.quote-card-labor {
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
 }
 
 .labor-summary-main {

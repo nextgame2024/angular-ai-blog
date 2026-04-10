@@ -5,6 +5,27 @@ import type { BmPricingProfile } from '../../types/pricing.interface';
 
 export const MANAGER_PRICING_FEATURE_KEY = 'managerPricing';
 
+function isArchived(profile: BmPricingProfile): boolean {
+  return (profile.status ?? 'active') === 'archived';
+}
+
+function sortPricingProfiles(items: BmPricingProfile[]): BmPricingProfile[] {
+  return [...items].sort((a, b) => {
+    if (isArchived(a) !== isArchived(b)) return isArchived(a) ? 1 : -1;
+
+    const nameA = (a.profileName ?? '').trim().toLowerCase();
+    const nameB = (b.profileName ?? '').trim().toLowerCase();
+    if (nameA !== nameB) return nameA.localeCompare(nameB);
+
+    const createdA = Date.parse(a.createdAt ?? '');
+    const createdB = Date.parse(b.createdAt ?? '');
+    if (Number.isFinite(createdA) && Number.isFinite(createdB)) {
+      return createdB - createdA;
+    }
+    return 0;
+  });
+}
+
 export const managerPricingReducer = createReducer(
   initialManagerPricingState,
 
@@ -77,14 +98,24 @@ export const managerPricingReducer = createReducer(
       (p) => p.pricingProfileId === pricingProfile.pricingProfileId,
     );
     const next = [...state.pricingProfiles];
-
-    if (idx >= 0) next[idx] = pricingProfile;
-    else next.unshift(pricingProfile);
+    if (idx >= 0) {
+      const previous = next[idx];
+      next[idx] = {
+        ...previous,
+        ...pricingProfile,
+        hasProjects: pricingProfile.hasProjects ?? previous.hasProjects ?? false,
+      };
+    } else {
+      next.push({
+        ...pricingProfile,
+        hasProjects: pricingProfile.hasProjects ?? false,
+      });
+    }
 
     return {
       ...state,
       pricingLoading: false,
-      pricingProfiles: next,
+      pricingProfiles: sortPricingProfiles(next),
       pricingViewMode: 'list' as const,
       editingPricingProfileId: null,
     };
@@ -118,7 +149,7 @@ export const managerPricingReducer = createReducer(
       return {
         ...state,
         pricingLoading: false,
-        pricingProfiles,
+        pricingProfiles: sortPricingProfiles(pricingProfiles),
         pricingTotal: isDeleted ? Math.max(state.pricingTotal - 1, 0) : state.pricingTotal,
       };
     },

@@ -55,11 +55,10 @@ import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townp
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 
 @Component({
-  selector: 'app-manager-clients-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
-  templateUrl: './manager-clients.page.html',
-  styleUrls: ['./manager-clients.page.css'],
+    selector: 'app-manager-clients-page',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+    templateUrl: './manager-clients.page.html',
+    styleUrls: ['./manager-clients.page.css']
 })
 export class ManagerClientsPageComponent
   implements OnInit, OnDestroy, AfterViewInit

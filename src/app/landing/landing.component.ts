@@ -1,85 +1,91 @@
-import { CommonModule } from '@angular/common';
+import { CommonModule, DOCUMENT } from '@angular/common';
 import {
-  AfterViewInit,
   Component,
   ElementRef,
-  OnDestroy,
-  OnInit,
-  ViewChild,
+  Renderer2,
+  RendererFactory2,
+  effect,
+  inject,
+  signal,
+  viewChild,
 } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { environment } from 'src/environments/environment';
 
 @Component({
-  selector: 'app-landing',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
-  templateUrl: './landing.component.html',
-  styleUrls: ['./landing.component.css'],
+    selector: 'app-landing',
+    imports: [CommonModule, ReactiveFormsModule],
+    templateUrl: './landing.component.html',
+    styleUrls: ['./landing.component.css']
 })
-export class LandingComponent implements AfterViewInit, OnInit, OnDestroy {
+export class LandingComponent {
   private readonly mobileMaxWidth = 680;
-  videoSrc = environment.bannerVideo;
-  submitState: 'idle' | 'sending' = 'idle';
-  isMuted = false;
-  isPlaying = false;
-  heroReveal = false;
-  headerH = 0;
-  toast: { type: 'success' | 'error'; message: string } | null = null;
-  private toastTimer?: number;
-  private headerObserver?: ResizeObserver;
   private readonly revealThresholdSeconds = 2;
 
-  @ViewChild('heroVideo', { static: false })
-  videoRef?: ElementRef<HTMLVideoElement>;
+  private readonly fb = inject(FormBuilder);
+  private readonly http = inject(HttpClient);
+  private readonly renderer = inject(Renderer2);
+  private readonly rendererFactory = inject(RendererFactory2);
+  private readonly document = inject(DOCUMENT);
 
-  contactForm = this.fb.nonNullable.group({
+  readonly videoSrc$$ = signal(environment.bannerVideo);
+  readonly submitState$$ = signal<'idle' | 'sending'>('idle');
+  readonly isMuted$$ = signal(false);
+  readonly isPlaying$$ = signal(false);
+  readonly heroReveal$$ = signal(false);
+  readonly headerH$$ = signal(0);
+  readonly toast$$ = signal<{ type: 'success' | 'error'; message: string } | null>(
+    null
+  );
+  private readonly toastTimer$$ = signal<number | null>(null);
+  private readonly headerObserver$$ = signal<ResizeObserver | null>(null);
+
+  readonly videoRef$$ = viewChild<ElementRef<HTMLVideoElement>>('heroVideo');
+
+  readonly contactForm = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(80)]],
     email: ['', [Validators.required, Validators.email]],
     company: [''],
     message: ['', [Validators.required, Validators.maxLength(1200)]],
   });
 
-  constructor(
-    private fb: FormBuilder,
-    private http: HttpClient,
-  ) {}
-
-  ngOnInit(): void {
+  private readonly initEffect = effect((onCleanup) => {
     this.updateVideoSource();
-  }
-
-  ngAfterViewInit(): void {
     this.measureHeader();
     this.observeHeaderResize();
-    window.addEventListener('resize', this.onWindowResize, { passive: true });
-  }
-
-  ngOnDestroy(): void {
-    if (this.toastTimer) window.clearTimeout(this.toastTimer);
-    this.headerObserver?.disconnect();
-    window.removeEventListener('resize', this.onWindowResize);
-  }
+    this.syncVideoMuted();
+    const onResize = () => {
+      this.measureHeader();
+      this.updateVideoSource();
+    };
+    window.addEventListener('resize', onResize, { passive: true });
+    onCleanup(() => {
+      const timer = this.toastTimer$$();
+      if (timer) window.clearTimeout(timer);
+      this.headerObserver$$()?.disconnect();
+      window.removeEventListener('resize', onResize);
+    });
+  });
 
   onVideoPlay(): void {
-    this.isPlaying = true;
+    this.isPlaying$$.set(true);
     this.syncHeroReveal();
   }
 
   onVideoPause(): void {
-    this.isPlaying = false;
+    this.isPlaying$$.set(false);
     this.syncHeroReveal();
   }
 
   onVideoEnded(): void {
-    this.isPlaying = false;
-    this.heroReveal = true;
+    this.isPlaying$$.set(false);
+    this.heroReveal$$.set(true);
   }
 
   onVideoMeta(): void {
+    this.syncVideoMuted();
     this.syncHeroReveal();
   }
 
@@ -88,42 +94,53 @@ export class LandingComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   playVideo(): void {
-    const v = this.videoRef?.nativeElement;
+    const v = this.videoRef$$()?.nativeElement;
     if (!v) return;
     if (Number.isFinite(v.duration) && (v.ended || v.currentTime >= v.duration - 0.05)) {
-      v.currentTime = 0;
+      this.renderer.setProperty(v, 'currentTime', 0);
     }
+    this.syncVideoMuted();
     this.syncHeroReveal();
     v.play().catch(() => {});
   }
 
   pauseVideo(): void {
-    this.videoRef?.nativeElement.pause();
+    this.videoRef$$()?.nativeElement.pause();
   }
 
   stopVideo(): void {
-    const v = this.videoRef?.nativeElement;
+    const v = this.videoRef$$()?.nativeElement;
     if (!v) return;
     v.pause();
-    v.currentTime = 0;
+    this.renderer.setProperty(v, 'currentTime', 0);
     this.syncHeroReveal();
   }
 
   toggleMute(): void {
-    const v = this.videoRef?.nativeElement;
+    const v = this.videoRef$$()?.nativeElement;
     if (!v) return;
-    this.isMuted = !this.isMuted;
-    v.muted = this.isMuted;
+    const nextMuted = !this.isMuted$$();
+    this.isMuted$$.set(nextMuted);
+    this.renderer.setProperty(v, 'muted', nextMuted);
+  }
+
+  private syncVideoMuted(): void {
+    const v = this.videoRef$$()?.nativeElement;
+    if (!v) return;
+    const isMuted = this.isMuted$$();
+    if (v.muted !== isMuted) {
+      this.renderer.setProperty(v, 'muted', isMuted);
+    }
   }
 
   private syncHeroReveal(): void {
-    const v = this.videoRef?.nativeElement;
+    const v = this.videoRef$$()?.nativeElement;
     if (!v || !Number.isFinite(v.duration) || v.duration <= 0) {
-      this.heroReveal = false;
+      this.heroReveal$$.set(false);
       return;
     }
     const remaining = v.duration - v.currentTime;
-    this.heroReveal = remaining <= this.revealThresholdSeconds;
+    this.heroReveal$$.set(remaining <= this.revealThresholdSeconds);
   }
 
   private updateVideoSource(): void {
@@ -134,14 +151,14 @@ export class LandingComponent implements AfterViewInit, OnInit, OnDestroy {
       isMobile && environment.bannerVideoMobile
         ? environment.bannerVideoMobile
         : environment.bannerVideo;
-    if (nextSrc === this.videoSrc) return;
-    this.heroReveal = false;
-    this.videoSrc = nextSrc;
-    const v = this.videoRef?.nativeElement;
+    if (nextSrc === this.videoSrc$$()) return;
+    this.heroReveal$$.set(false);
+    this.videoSrc$$.set(nextSrc);
+    const v = this.videoRef$$()?.nativeElement;
     if (!v) return;
     const wasPlaying = !v.paused && !v.ended;
     v.pause();
-    v.currentTime = 0;
+    this.renderer.setProperty(v, 'currentTime', 0);
     v.load();
     if (wasPlaying) {
       v.play().catch(() => {});
@@ -149,27 +166,27 @@ export class LandingComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   private measureHeader(): void {
+    const renderer = this.rendererFactory.createRenderer(null, null);
+    const root = renderer.selectRootElement(this.document, true) as Document;
     const menubars = Array.from(
-      document.querySelectorAll<HTMLElement>('.p-menubar, header, mc-topbar')
-    );
+      root.querySelectorAll('.p-menubar, header, mc-topbar'),
+    ) as HTMLElement[];
     if (!menubars.length) return;
-    const newH = Math.max(...menubars.map((el) => el.offsetHeight || 0));
-    if (newH > 0) this.headerH = newH;
+    const newH = Math.max(
+      ...menubars.map((el: HTMLElement) => el.offsetHeight || 0),
+    );
+    if (newH > 0) this.headerH$$.set(newH);
   }
 
   private observeHeaderResize(): void {
-    const menubar = document.querySelector<HTMLElement>(
+    const menubar = this.document.querySelector<HTMLElement>(
       '.p-menubar, header, mc-topbar'
     );
     if (!('ResizeObserver' in window) || !menubar) return;
-    this.headerObserver = new ResizeObserver(() => this.measureHeader());
-    this.headerObserver.observe(menubar);
+    const observer = new ResizeObserver(() => this.measureHeader());
+    observer.observe(menubar);
+    this.headerObserver$$.set(observer);
   }
-
-  private onWindowResize = (): void => {
-    this.measureHeader();
-    this.updateVideoSource();
-  };
 
   isInvalid(controlName: 'name' | 'email' | 'message'): boolean {
     const control = this.contactForm.get(controlName);
@@ -185,11 +202,13 @@ export class LandingComponent implements AfterViewInit, OnInit, OnDestroy {
   }
 
   private showToast(type: 'success' | 'error', message: string): void {
-    this.toast = { type, message };
-    if (this.toastTimer) window.clearTimeout(this.toastTimer);
-    this.toastTimer = window.setTimeout(() => {
-      this.toast = null;
+    this.toast$$.set({ type, message });
+    const currentTimer = this.toastTimer$$();
+    if (currentTimer) window.clearTimeout(currentTimer);
+    const timer = window.setTimeout(() => {
+      this.toast$$.set(null);
     }, 4000);
+    this.toastTimer$$.set(timer);
   }
 
   submitContact(): void {
@@ -199,7 +218,7 @@ export class LandingComponent implements AfterViewInit, OnInit, OnDestroy {
     }
 
     const { name, email, company, message } = this.contactForm.getRawValue();
-    this.submitState = 'sending';
+    this.submitState$$.set('sending');
 
     this.http
       .post(`${environment.apiUrl}/contact`, {
@@ -208,7 +227,7 @@ export class LandingComponent implements AfterViewInit, OnInit, OnDestroy {
         company,
         message,
       })
-      .pipe(finalize(() => (this.submitState = 'idle')))
+      .pipe(finalize(() => this.submitState$$.set('idle')))
       .subscribe({
         next: () => {
           this.showToast('success', "Thanks! We'll reply within 24 hours.");

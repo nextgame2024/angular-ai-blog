@@ -46,11 +46,10 @@ import { ManagerCompanyService } from '../../services/manager.company.service';
 import type { BmUser } from '../../services/manager.service';
 
 @Component({
-  selector: 'app-manager-users-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
-  templateUrl: './manager-users.page.html',
-  styleUrls: ['./manager-users.page.css'],
+    selector: 'app-manager-users-page',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+    templateUrl: './manager-users.page.html',
+    styleUrls: ['./manager-users.page.css']
 })
 export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
@@ -76,6 +75,15 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   private isLoading = false;
   private closeAfterSave = false;
   dismissedErrors = new Set<string>();
+  isConfirmModalOpen = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmLabel = 'Continue';
+  confirmModalCancelLabel = 'Cancel';
+  confirmModalShowCancel = false;
+  confirmModalTone: 'info' | 'warning' | 'danger' = 'info';
+  private confirmModalConfirmAction: (() => void) | null = null;
+  private confirmModalCancelAction: (() => void) | null = null;
   currentUser: CurrentUserInterface | null = null;
   isSuperAdmin = false;
   companyOptions: ManagerSelectOption[] = [];
@@ -351,12 +359,24 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   archiveUser(u: BmUser): void {
-    const ok = window.confirm(
-      `Archive user "${u.username}"?\n\nThis is a soft-delete (status = archived).`,
-    );
-    if (!ok) return;
+    if (this.isArchiveDisabled(u)) return;
 
-    this.store.dispatch(ManagerActions.archiveUser({ userId: u.id }));
+    const displayName = u.name || u.username || 'User';
+    const hasProcesses = !!u.hasProcesses;
+    this.openConfirmModal({
+      title: hasProcesses ? 'Archive User?' : 'Delete User?',
+      message: hasProcesses
+        ? `"${displayName}" user is linked to existing processes, so it cannot be deleted. Would you like to archive it instead?`
+        : `Are you sure you want to delete "${displayName}"?`,
+      tone: hasProcesses ? 'warning' : 'danger',
+      confirmLabel: hasProcesses ? 'Archive' : 'Delete',
+      onConfirm: () =>
+        this.store.dispatch(ManagerActions.archiveUser({ userId: u.id })),
+    });
+  }
+
+  isArchiveDisabled(u: BmUser): boolean {
+    return (u.status ?? 'active') === 'archived';
   }
 
   get avatarSrc(): string {
@@ -386,6 +406,52 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     );
 
     this.infiniteObserver.observe(sentinel);
+  }
+
+  private openConfirmModal(options: {
+    title: string;
+    message: string;
+    tone?: 'info' | 'warning' | 'danger';
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }): void {
+    this.confirmModalTitle = options.title;
+    this.confirmModalMessage = options.message;
+    this.confirmModalTone = options.tone ?? 'info';
+    this.confirmModalConfirmLabel = options.confirmLabel ?? 'Continue';
+    this.confirmModalCancelLabel = options.cancelLabel ?? 'Cancel';
+    this.confirmModalShowCancel = true;
+    this.confirmModalConfirmAction = options.onConfirm;
+    this.confirmModalCancelAction = options.onCancel ?? null;
+    this.isConfirmModalOpen = true;
+  }
+
+  onConfirmModalConfirm(): void {
+    const action = this.confirmModalConfirmAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalCancel(): void {
+    const action = this.confirmModalCancelAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalBackdrop(): void {
+    if (this.confirmModalShowCancel) {
+      this.onConfirmModalCancel();
+    } else {
+      this.onConfirmModalConfirm();
+    }
+  }
+
+  private closeConfirmModal(): void {
+    this.isConfirmModalOpen = false;
+    this.confirmModalConfirmAction = null;
+    this.confirmModalCancelAction = null;
   }
 
   private tryLoadMore(): void {

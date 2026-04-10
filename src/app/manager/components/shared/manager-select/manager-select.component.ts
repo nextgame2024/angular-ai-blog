@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   Component,
   ElementRef,
@@ -15,18 +15,17 @@ export interface ManagerSelectOption {
 }
 
 @Component({
-  selector: 'app-manager-select',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './manager-select.component.html',
-  styleUrls: ['./manager-select.component.css'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => ManagerSelectComponent),
-      multi: true,
-    },
-  ],
+    selector: 'app-manager-select',
+    imports: [],
+    templateUrl: './manager-select.component.html',
+    styleUrls: ['./manager-select.component.css'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => ManagerSelectComponent),
+            multi: true,
+        },
+    ]
 })
 export class ManagerSelectComponent implements ControlValueAccessor {
   @Input() options: ManagerSelectOption[] = [];

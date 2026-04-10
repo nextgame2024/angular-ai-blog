@@ -1,5 +1,5 @@
-<ng-container *ngIf="data$ | async as data">
-  <div *ngIf="currentUser" class="container mx-auto px-4 py-6">
+@if (currentUser$$()) {
+  <div class="container mx-auto px-4 py-6">
     <div class="max-w-2xl mx-auto my-4">
       <p-card class="shadow-sm">
         <!-- Header aligned to body padding -->
@@ -14,17 +14,15 @@
             ></button>
           </div>
         </ng-template>
-
         <!-- Preview row: bigger avatar on the left, Upload on the right -->
         <div class="flex items-center justify-between gap-6 mb-4 px-5">
           <!-- Larger, cropped, keeps aspect ratio -->
           <img
-            [src]="previewUrl || form.value.image || defaultAvatar"
+            [src]="avatarUrl$$()"
             alt="profile picture"
             class="h-28 w-28 rounded-full object-cover"
             referrerpolicy="no-referrer"
-          />
-
+            />
           <!-- Upload button to the right -->
           <p-fileUpload
             #uploader
@@ -37,67 +35,69 @@
             chooseLabel="Upload"
             (onSelect)="onFileSelected($event)"
             (uploadHandler)="onUpload($event)"
-            [disabled]="data.isSubmitting || !!(isUploadingAvatar$ | async)"
+            [disabled]="isSubmitting$$() || isUploadingAvatar$$()"
           ></p-fileUpload>
         </div>
-
         <p class="text-xs text-gray-400 px-5 -mt-2 mb-2">
           PNG/JPG/WebP, up to 5 MB. We’ll upload and replace your profile
           picture.
         </p>
-
-        <mc-backend-error-messages
-          *ngIf="data.backendErrors"
-          [backendErrors]="data.backendErrors"
-          class="px-5"
-        ></mc-backend-error-messages>
-
+        @if (backendErrors$$()) {
+          <mc-backend-error-messages
+            [backendErrors]="backendErrors$$()"
+            class="px-5"
+          ></mc-backend-error-messages>
+        }
         <form
           [formGroup]="form"
           (ngSubmit)="submit()"
           class="space-y-4 mt-2 px-5 pb-5"
-        >
+          >
           <!-- Username -->
-          <div class="p-inputgroup w-full">
-            <span class="p-inputgroup-addon"><i class="pi pi-user"></i></span>
+          <p-inputgroup styleClass="w-full">
+            <p-inputgroup-addon><i class="pi pi-user"></i></p-inputgroup-addon>
             <input
               pInputText
               type="text"
               formControlName="username"
+              id="settings-username"
+              name="username"
               placeholder="Username"
               class="w-full"
-            />
-          </div>
-
+              />
+          </p-inputgroup>
           <!-- Bio -->
           <textarea
             pInputTextarea
             formControlName="bio"
+            id="settings-bio"
+            name="bio"
             rows="4"
             placeholder="Short bio about you"
             class="w-full"
           ></textarea>
-
           <!-- Email -->
-          <div class="p-inputgroup w-full">
-            <span class="p-inputgroup-addon"
-              ><i class="pi pi-envelope"></i
-            ></span>
+          <p-inputgroup styleClass="w-full">
+            <p-inputgroup-addon>
+              <i class="pi pi-envelope"></i>
+            </p-inputgroup-addon>
             <input
               pInputText
               type="email"
               formControlName="email"
+              id="settings-email"
+              name="email"
               placeholder="Email"
               class="w-full"
-            />
-          </div>
-
+              />
+          </p-inputgroup>
           <!-- Password -->
-          <div class="p-inputgroup w-full">
-            <span class="p-inputgroup-addon"><i class="pi pi-lock"></i></span>
+          <p-inputgroup styleClass="w-full">
+            <p-inputgroup-addon><i class="pi pi-lock"></i></p-inputgroup-addon>
             <div class="flex-1 min-w-0">
               <p-password
                 formControlName="password"
+                inputId="settings-password"
                 [feedback]="false"
                 [toggleMask]="true"
                 styleClass="block w-full"
@@ -107,8 +107,7 @@
                 placeholder="New password"
               ></p-password>
             </div>
-          </div>
-
+          </p-inputgroup>
           <button
             pButton
             type="submit"
@@ -116,12 +115,12 @@
             class="w-full md:w-full py-6"
             [disabled]="
               form.invalid ||
-              data.isSubmitting ||
-              !!(isUploadingAvatar$ | async)
+              isSubmitting$$() ||
+              isUploadingAvatar$$()
             "
           ></button>
         </form>
       </p-card>
     </div>
   </div>
-</ng-container>
+}

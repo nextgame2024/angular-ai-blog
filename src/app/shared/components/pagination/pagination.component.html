@@ -1,10 +1,10 @@
 <!-- Desktop / Tablet: full paginator -->
 <div class="hidden md:block">
   <p-paginator
-    [first]="first"
-    [rows]="limit"
-    [totalRecords]="total"
-    [pageLinkSize]="pageLinkSize"
+    [first]="first$$()"
+    [rows]="limit$$()"
+    [totalRecords]="total$$()"
+    [pageLinkSize]="pageLinkSize$$()"
     [alwaysShow]="false"
     [showCurrentPageReport]="true"
     currentPageReportTemplate="Showing {first}–{last} of {totalRecords}"
@@ -17,9 +17,10 @@
       <div class="flex items-center gap-2">
         <span class="text-sm text-gray-600">Go to</span>
         <p-inputNumber
-          [(ngModel)]="gotoPage"
+          [ngModel]="gotoPage$$()"
+          (ngModelChange)="onGotoPageChange($event)"
           [min]="1"
-          [max]="pagesCount"
+          [max]="pagesCount$$()"
           [showButtons]="false"
           [useGrouping]="false"
           [inputStyle]="{ width: '5rem' }"
@@ -47,7 +48,7 @@
       type="button"
       class="p-button-text"
       icon="pi pi-angle-double-left"
-      [disabled]="currentPage <= 1"
+      [disabled]="currentPage$$() <= 1"
       (click)="navigateToPage(1)"
     ></button>
 
@@ -56,18 +57,18 @@
       type="button"
       class="p-button-text"
       icon="pi pi-angle-left"
-      [disabled]="currentPage <= 1"
+      [disabled]="currentPage$$() <= 1"
       (click)="prevPage()"
     ></button>
 
-    <span class="text-sm">Page {{ currentPage }} / {{ pagesCount }}</span>
+    <span class="text-sm">Page {{ currentPage$$() }} / {{ pagesCount$$() }}</span>
 
     <button
       pButton
       type="button"
       class="p-button-text"
       icon="pi pi-angle-right"
-      [disabled]="currentPage >= pagesCount"
+      [disabled]="currentPage$$() >= pagesCount$$()"
       (click)="nextPage()"
     ></button>
 
@@ -76,16 +77,17 @@
       type="button"
       class="p-button-text"
       icon="pi pi-angle-double-right"
-      [disabled]="currentPage >= pagesCount"
-      (click)="navigateToPage(pagesCount)"
+      [disabled]="currentPage$$() >= pagesCount$$()"
+      (click)="navigateToPage(pagesCount$$())"
     ></button>
   </div>
 
   <div class="flex items-center justify-center gap-2">
     <p-inputNumber
-      [(ngModel)]="gotoPage"
+      [ngModel]="gotoPage$$()"
+      (ngModelChange)="onGotoPageChange($event)"
       [min]="1"
-      [max]="pagesCount"
+      [max]="pagesCount$$()"
       [showButtons]="false"
       [useGrouping]="false"
       [inputStyle]="{ width: '4rem', textAlign: 'center' }"

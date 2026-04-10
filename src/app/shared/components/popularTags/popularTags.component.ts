@@ -1,7 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, computed, effect, inject } from '@angular/core';
 import { popularTagsActions } from './store/actions';
 import { Store } from '@ngrx/store';
-import { combineLatest } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   selectError,
   selectIsLoading,
@@ -16,27 +16,31 @@ import { RouterLink } from '@angular/router';
 import { ChipModule } from 'primeng/chip';
 
 @Component({
-  selector: 'mc-popular-tags',
-  templateUrl: './popularTags.component.html',
-  standalone: true,
-  imports: [
-    CommonModule,
-    LoadingComponent,
-    ErrorMessageComponent,
-    RouterLink,
-    ChipModule,
-  ],
+    selector: 'mc-popular-tags',
+    templateUrl: './popularTags.component.html',
+    imports: [
+        CommonModule,
+        LoadingComponent,
+        ErrorMessageComponent,
+        RouterLink,
+        ChipModule,
+    ]
 })
-export class PopularTagsComponent implements OnInit {
-  data$ = combineLatest({
-    popularTags: this.store.select(selectPopularTagsData),
-    isLoading: this.store.select(selectIsLoading),
-    error: this.store.select(selectError),
+export class PopularTagsComponent {
+  private readonly store = inject(Store);
+
+  readonly popularTags$$ = toSignal(this.store.select(selectPopularTagsData), {
+    initialValue: [],
+  });
+  readonly safePopularTags$$ = computed(() => this.popularTags$$() ?? []);
+  readonly isLoading$$ = toSignal(this.store.select(selectIsLoading), {
+    initialValue: false,
+  });
+  readonly error$$ = toSignal(this.store.select(selectError), {
+    initialValue: null,
   });
 
-  constructor(private store: Store) {}
-
-  ngOnInit(): void {
+  private readonly loadEffect = effect(() => {
     this.store.dispatch(popularTagsActions.getPopularTags());
-  }
+  });
 }

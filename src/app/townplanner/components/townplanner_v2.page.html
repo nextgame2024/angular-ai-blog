@@ -1,100 +1,97 @@
 <div class="tp2-shell">
   <!-- Blocking loading overlay (after selecting an address) -->
-  <div
-    class="tp2-loading"
-    *ngIf="loading$ | async"
-    role="status"
-    aria-live="polite"
-    aria-label="Loading property information"
-  >
-    <div class="tp2-loading-card">
-      <div class="tp2-loading-graphic" aria-hidden="true">
-        <svg
-          class="tp2-loading-svg"
-          viewBox="0 0 360 120"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <g class="tp2-loading-house">
-            <path
-              d="M72 58 L120 20 L168 58"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M88 58 V100 H152 V58"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <path
-              d="M116 100 V76 H124 V100"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="6"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            />
-            <circle cx="146" cy="74" r="6" fill="currentColor" opacity="0.85" />
-          </g>
-
-          <g class="tp2-loading-gear" transform="translate(250 68)">
-            <circle
-              cx="0"
-              cy="0"
-              r="22"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="6"
-              opacity="0.9"
-            />
-            <circle cx="0" cy="0" r="6" fill="currentColor" opacity="0.9" />
-            <path
+  @if (loading$ | async) {
+    <div
+      class="tp2-loading"
+      role="status"
+      aria-live="polite"
+      aria-label="Loading property information"
+      >
+      <div class="tp2-loading-card">
+        <div class="tp2-loading-graphic" aria-hidden="true">
+          <svg
+            class="tp2-loading-svg"
+            viewBox="0 0 360 120"
+            xmlns="http://www.w3.org/2000/svg"
+            >
+            <g class="tp2-loading-house">
+              <path
+                d="M72 58 L120 20 L168 58"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                />
+              <path
+                d="M88 58 V100 H152 V58"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                />
+              <path
+                d="M116 100 V76 H124 V100"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                />
+              <circle cx="146" cy="74" r="6" fill="currentColor" opacity="0.85" />
+            </g>
+            <g class="tp2-loading-gear" transform="translate(250 68)">
+              <circle
+                cx="0"
+                cy="0"
+                r="22"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="6"
+                opacity="0.9"
+                />
+              <circle cx="0" cy="0" r="6" fill="currentColor" opacity="0.9" />
+              <path
               d="M0 -30 V-22 M0 22 V30 M-30 0 H-22 M22 0 H30
                  M-21 -21 L-16 -16 M16 16 L21 21 M-21 21 L-16 16 M16 -16 L21 -21"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="6"
-              stroke-linecap="round"
-              opacity="0.9"
-            />
-          </g>
-
-          <g class="tp2-loading-dots">
-            <circle cx="200" cy="34" r="4" fill="currentColor" opacity="0.35" />
-            <circle cx="218" cy="26" r="3" fill="currentColor" opacity="0.25" />
-            <circle cx="236" cy="34" r="4" fill="currentColor" opacity="0.30" />
-            <circle cx="212" cy="46" r="3" fill="currentColor" opacity="0.22" />
-            <circle cx="230" cy="48" r="3" fill="currentColor" opacity="0.18" />
-          </g>
-        </svg>
-
-        <div class="tp2-loading-bars" aria-hidden="true">
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
-          <span class="tp2-loading-bar"></span>
+                fill="none"
+                stroke="currentColor"
+                stroke-width="6"
+                stroke-linecap="round"
+                opacity="0.9"
+                />
+            </g>
+            <g class="tp2-loading-dots">
+              <circle cx="200" cy="34" r="4" fill="currentColor" opacity="0.35" />
+              <circle cx="218" cy="26" r="3" fill="currentColor" opacity="0.25" />
+              <circle cx="236" cy="34" r="4" fill="currentColor" opacity="0.30" />
+              <circle cx="212" cy="46" r="3" fill="currentColor" opacity="0.22" />
+              <circle cx="230" cy="48" r="3" fill="currentColor" opacity="0.18" />
+            </g>
+          </svg>
+          <div class="tp2-loading-bars" aria-hidden="true">
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+            <span class="tp2-loading-bar"></span>
+          </div>
+        </div>
+        <div class="tp2-loading-title">Loading property information</div>
+        <div class="tp2-loading-text">
+          This process may take a couple of minutes.
         </div>
       </div>
-
-      <div class="tp2-loading-title">Loading property information</div>
-      <div class="tp2-loading-text">
-        This process may take a couple of minutes.
-      </div>
     </div>
-  </div>
+  }
 
   <!-- Search (top) -->
   <div class="tp2-search" role="search">
@@ -111,28 +108,30 @@
         (keydown)="onInputKeydown($event)"
         autocomplete="off"
         aria-label="Property address"
-      />
+        />
 
-      <div
-        class="tp2-suggestions"
-        *ngIf="showSuggestions && (suggestions$ | async) as sugs"
-      >
-        <button
-          type="button"
-          class="tp2-suggestions-item"
-          *ngFor="let s of sugs; let i = index"
-          [class.is-active]="i === activeIndex"
-          (mousedown)="onSuggestionMouseDown(s)"
-        >
-          {{ s.description }}
-        </button>
-      </div>
+      @if (showSuggestions && (suggestions$ | async); as sugs) {
+        <div
+          class="tp2-suggestions"
+          >
+          @for (s of sugs; track s; let i = $index) {
+            <button
+              type="button"
+              class="tp2-suggestions-item"
+              [class.is-active]="i === activeIndex"
+              (mousedown)="onSuggestionMouseDown(s)"
+              >
+              {{ s.description }}
+            </button>
+          }
+        </div>
+      }
     </div>
   </div>
 
   <!-- Map -->
   <div class="tp2-map">
-    <ng-container *ngIf="mapsLoaded; else mapFallback">
+    @if (mapsLoaded) {
       <google-map
         class="tp2-google-map"
         [height]="'100%'"
@@ -140,66 +139,70 @@
         [center]="mapCenter"
         [zoom]="mapZoom"
         [options]="mapOptions"
-      >
-        <map-polygon
-          *ngIf="siteParcelPath.length"
-          [paths]="siteParcelPath"
-          [options]="siteParcelOptions"
-        ></map-polygon>
-
-        <map-polygon
-          *ngFor="let zonePath of zoningPolygonPaths"
-          [paths]="zonePath"
-          [options]="zoningPolygonOptions"
-        ></map-polygon>
-
-        <map-polygon
-          *ngFor="let ov of overlayPolygonPaths"
-          [paths]="ov.path"
-          [options]="ov.style"
-        ></map-polygon>
-
-        <map-polyline
-          *ngFor="let ln of overlayPolylinePaths"
-          [path]="ln.path"
-          [options]="ln.style"
-        ></map-polyline>
-
-        <map-marker
-          *ngIf="markerPosition"
-          [position]="markerPosition"
-        ></map-marker>
+        >
+        @if (siteParcelPath.length) {
+          <map-polygon
+            [paths]="siteParcelPath"
+            [options]="siteParcelOptions"
+          ></map-polygon>
+        }
+        @for (zonePath of zoningPolygonPaths; track zonePath) {
+          <map-polygon
+            [paths]="zonePath"
+            [options]="zoningPolygonOptions"
+          ></map-polygon>
+        }
+        @for (ov of overlayPolygonPaths; track ov) {
+          <map-polygon
+            [paths]="ov.path"
+            [options]="ov.style"
+          ></map-polygon>
+        }
+        @for (ln of overlayPolylinePaths; track ln) {
+          <map-polyline
+            [path]="ln.path"
+            [options]="ln.style"
+          ></map-polyline>
+        }
+        @if (markerPosition) {
+          <map-marker
+            [position]="markerPosition"
+          ></map-marker>
+        }
       </google-map>
-
       <!-- Floating legend (desktop/tablet). Hidden on mobile via CSS. -->
-      <div class="tp2-legend" *ngIf="hasMapLayers()">
-        <div class="tp2-legend-title">Map legend</div>
-        <div class="tp2-legend-items">
-          <div class="tp2-legend-item" *ngIf="siteParcelPath.length">
-            <span class="tp2-legend-swatch tp2-legend-swatch--parcel"></span>
-            <span class="tp2-legend-label">Property boundary</span>
-          </div>
-          <div class="tp2-legend-item" *ngIf="zoningPolygonPaths.length">
-            <span class="tp2-legend-swatch tp2-legend-swatch--zoning"></span>
-            <span class="tp2-legend-label">Zoning for subject site</span>
-          </div>
-          <div class="tp2-legend-item">
-            <span class="tp2-legend-swatch tp2-legend-swatch--flood"></span>
-            <span class="tp2-legend-label">Flood / overland flow</span>
-          </div>
-          <div class="tp2-legend-item">
-            <span class="tp2-legend-swatch tp2-legend-swatch--noise"></span>
-            <span class="tp2-legend-label">Transport noise</span>
-          </div>
-          <div class="tp2-legend-item">
-            <span class="tp2-legend-swatch tp2-legend-swatch--other"></span>
-            <span class="tp2-legend-label">Other overlays</span>
+      @if (hasMapLayers()) {
+        <div class="tp2-legend">
+          <div class="tp2-legend-title">Map legend</div>
+          <div class="tp2-legend-items">
+            @if (siteParcelPath.length) {
+              <div class="tp2-legend-item">
+                <span class="tp2-legend-swatch tp2-legend-swatch--parcel"></span>
+                <span class="tp2-legend-label">Property boundary</span>
+              </div>
+            }
+            @if (zoningPolygonPaths.length) {
+              <div class="tp2-legend-item">
+                <span class="tp2-legend-swatch tp2-legend-swatch--zoning"></span>
+                <span class="tp2-legend-label">Zoning for subject site</span>
+              </div>
+            }
+            <div class="tp2-legend-item">
+              <span class="tp2-legend-swatch tp2-legend-swatch--flood"></span>
+              <span class="tp2-legend-label">Flood / overland flow</span>
+            </div>
+            <div class="tp2-legend-item">
+              <span class="tp2-legend-swatch tp2-legend-swatch--noise"></span>
+              <span class="tp2-legend-label">Transport noise</span>
+            </div>
+            <div class="tp2-legend-item">
+              <span class="tp2-legend-swatch tp2-legend-swatch--other"></span>
+              <span class="tp2-legend-label">Other overlays</span>
+            </div>
           </div>
         </div>
-      </div>
-    </ng-container>
-
-    <ng-template #mapFallback>
+      }
+    } @else {
       <div class="tp2-map-fallback">
         <div>
           <div class="tp2-map-fallback-title">Map unavailable</div>
@@ -209,7 +212,8 @@
           </div>
         </div>
       </div>
-    </ng-template>
+    }
+
   </div>
 
   <!-- Right panel -->
@@ -217,13 +221,13 @@
     class="tp2-panel"
     [class.is-collapsed]="panelCollapsed"
     [attr.aria-hidden]="panelCollapsed"
-  >
+    >
     <button
       type="button"
       class="tp2-panel-toggle"
       (click)="togglePanel()"
       [attr.aria-label]="panelCollapsed ? 'Expand panel' : 'Collapse panel'"
-    >
+      >
       {{ panelArrow() }}
     </button>
 
@@ -231,100 +235,107 @@
       <div class="tp2-panel-title">Property details</div>
 
       <div class="tp2-panel-body">
-        <ng-container *ngIf="selected$ | async as selected; else emptyState">
+        @if (selected$ | async; as selected) {
           <div class="tp2-property-photo" #propertyStreetViewRef>
-            <div class="tp2-property-photo-fallback" *ngIf="photoLoading">
-              Loading preview...
-            </div>
-            <div
-              class="tp2-property-photo-fallback"
-              *ngIf="!photoLoading && !photoReady"
-            >
-              No preview available
-            </div>
+            @if (photoLoading) {
+              <div class="tp2-property-photo-fallback">
+                Loading preview...
+              </div>
+            }
+            @if (!photoLoading && !photoReady) {
+              <div
+                class="tp2-property-photo-fallback"
+                >
+                No preview available
+              </div>
+            }
           </div>
-
           <div class="tp2-panel-text">
             {{ selected.address || selected.formattedAddress || 'Selected
             property' }}
           </div>
-
           <div class="tp2-card tp2-card--action">
             <div class="tp2-card-title">Property report</div>
-
             <button
               type="button"
               class="tp2-btn tp2-btn--primary"
               (click)="onGenerateReport()"
               [disabled]="(loading$ | async) || (reportGenerating$ | async) || !canGenerateReport(selected)"
-            >
+              >
               Generate property report
             </button>
-
-            <div class="tp2-card-hint" *ngIf="reportGenerating$ | async">
-              Generating report. This process may take a couple of minutes.
-            </div>
-
-            <div class="tp2-card-hint" *ngIf="(reportError$ | async) as err">
-              {{ err }}
-            </div>
+            @if (reportGenerating$ | async) {
+              <div class="tp2-card-hint">
+                Generating report. This process may take a couple of minutes.
+              </div>
+            }
+            @if ((reportError$ | async); as err) {
+              <div class="tp2-card-hint">
+                {{ err }}
+              </div>
+            }
           </div>
-
           <div class="tp2-card">
             <div class="tp2-card-title">Property overview</div>
-            <ng-container *ngIf="propertyOverviewRows(selected) as rows">
-              <div class="tp2-overview-list" *ngIf="rows.length; else overviewFallback">
-                <div class="tp2-overview-row" *ngFor="let row of rows">
-                  <span class="tp2-overview-label">{{ row.label }}</span>
-                  <span class="tp2-overview-value">{{ row.value }}</span>
+            @if (propertyOverviewRows(selected); as rows) {
+              @if (rows.length) {
+                <div class="tp2-overview-list">
+                  @for (row of rows; track row) {
+                    <div class="tp2-overview-row">
+                      <span class="tp2-overview-label">{{ row.label }}</span>
+                      <span class="tp2-overview-value">{{ row.value }}</span>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <div class="tp2-card-muted">No overview data available.</div>
+              }
+            }
+          </div>
+          <!-- Panel legend (mobile). Hidden on desktop via CSS. -->
+          @if (hasMapLayers()) {
+            <div class="tp2-panel-legend">
+              <div class="tp2-panel-legend-title">Map legend</div>
+              <div class="tp2-panel-legend-items">
+                @if (siteParcelPath.length) {
+                  <div class="tp2-legend-item">
+                    <span
+                      class="tp2-legend-swatch tp2-legend-swatch--parcel"
+                    ></span>
+                    <span class="tp2-legend-label">Property boundary</span>
+                  </div>
+                }
+                @if (zoningPolygonPaths.length) {
+                  <div class="tp2-legend-item">
+                    <span
+                      class="tp2-legend-swatch tp2-legend-swatch--zoning"
+                    ></span>
+                    <span class="tp2-legend-label">Zoning for subject site</span>
+                  </div>
+                }
+                <div class="tp2-legend-item">
+                  <span class="tp2-legend-swatch tp2-legend-swatch--flood"></span>
+                  <span class="tp2-legend-label">Flood / overland flow</span>
+                </div>
+                <div class="tp2-legend-item">
+                  <span class="tp2-legend-swatch tp2-legend-swatch--noise"></span>
+                  <span class="tp2-legend-label">Transport noise</span>
+                </div>
+                <div class="tp2-legend-item">
+                  <span class="tp2-legend-swatch tp2-legend-swatch--other"></span>
+                  <span class="tp2-legend-label">Other overlays</span>
                 </div>
               </div>
-            </ng-container>
-            <ng-template #overviewFallback>
-              <div class="tp2-card-muted">No overview data available.</div>
-            </ng-template>
-          </div>
-
-          <!-- Panel legend (mobile). Hidden on desktop via CSS. -->
-          <div class="tp2-panel-legend" *ngIf="hasMapLayers()">
-            <div class="tp2-panel-legend-title">Map legend</div>
-            <div class="tp2-panel-legend-items">
-              <div class="tp2-legend-item" *ngIf="siteParcelPath.length">
-                <span
-                  class="tp2-legend-swatch tp2-legend-swatch--parcel"
-                ></span>
-                <span class="tp2-legend-label">Property boundary</span>
-              </div>
-              <div class="tp2-legend-item" *ngIf="zoningPolygonPaths.length">
-                <span
-                  class="tp2-legend-swatch tp2-legend-swatch--zoning"
-                ></span>
-                <span class="tp2-legend-label">Zoning for subject site</span>
-              </div>
-              <div class="tp2-legend-item">
-                <span class="tp2-legend-swatch tp2-legend-swatch--flood"></span>
-                <span class="tp2-legend-label">Flood / overland flow</span>
-              </div>
-              <div class="tp2-legend-item">
-                <span class="tp2-legend-swatch tp2-legend-swatch--noise"></span>
-                <span class="tp2-legend-label">Transport noise</span>
-              </div>
-              <div class="tp2-legend-item">
-                <span class="tp2-legend-swatch tp2-legend-swatch--other"></span>
-                <span class="tp2-legend-label">Other overlays</span>
-              </div>
             </div>
-          </div>
-
+          }
           <div class="tp2-footer">© 2026 sophiaAi</div>
-        </ng-container>
-
-        <ng-template #emptyState>
+        } @else {
           <div class="tp2-panel-text">
             Enter an address to explore property insights.
           </div>
           <div class="tp2-footer">© 2026 sophiaAi</div>
-        </ng-template>
+        }
+
       </div>
     </div>
   </aside>

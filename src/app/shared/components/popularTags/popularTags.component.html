@@ -1,19 +1,18 @@
-<ng-container *ngIf="data$ | async as data">
-  <mc-loading *ngIf="data.isLoading"></mc-loading>
-  <mc-error-message
-    *ngIf="data.error"
-    [message]="data.error"
-  ></mc-error-message>
-
-  <div *ngIf="!data.isLoading && !data.error && data.popularTags?.length">
+@if (isLoading$$()) {
+  <mc-loading></mc-loading>
+}
+@if (error$$()) {
+  <mc-error-message [message]="error$$()"></mc-error-message>
+}
+@if (!isLoading$$() && !error$$() && safePopularTags$$().length) {
+  <div>
     <div class="flex flex-wrap items-center gap-x-2 gap-y-2">
       <p class="font-medium mr-2 shrink-0">Popular Tags:</p>
-
-      <ng-container *ngFor="let popularTag of data.popularTags">
+      @for (popularTag of safePopularTags$$(); track popularTag) {
         <a [routerLink]="['/tag', popularTag]" class="inline-block">
           <p-chip [label]="popularTag"></p-chip>
         </a>
-      </ng-container>
+      }
     </div>
   </div>
-</ng-container>
+}

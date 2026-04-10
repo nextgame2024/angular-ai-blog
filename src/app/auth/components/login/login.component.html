@@ -3,7 +3,7 @@
   <!-- Main area centers content and can scroll a tiny bit if the keyboard opens -->
   <main
     class="flex-1 flex items-center justify-center px-3 sm:px-4 overflow-y-auto"
-  >
+    >
     <!-- Width owner: snug on phones, grows responsibly -->
     <div class="w-full max-w-[23rem] sm:max-w-md md:max-w-lg">
       <p-card header="Sign In" styleClass="w-full m-0">
@@ -11,38 +11,39 @@
           <a routerLink="/register" class="text-sm">Need an account?</a>
         </div>
 
-        <div
-          class="login-error"
-          *ngIf="backendErrors"
-          [class.closing]="backendErrorsClosing"
-        >
-          <mc-backend-error-messages
-            [backendErrors]="backendErrors"
-          ></mc-backend-error-messages>
-        </div>
+        @if (backendErrors$$()) {
+          <div
+            class="login-error"
+            [class.closing]="backendErrorsClosing$$()"
+            >
+            <mc-backend-error-messages
+              [backendErrors]="backendErrors$$()"
+            ></mc-backend-error-messages>
+          </div>
+        }
 
         <form
           [formGroup]="form"
           (ngSubmit)="onSubmit()"
           class="space-y-4 mt-4"
-        >
+          >
           <!-- EMAIL -->
-          <div class="p-inputgroup">
-            <span class="p-inputgroup-addon"
-              ><i class="pi pi-envelope"></i
-            ></span>
+          <p-inputgroup>
+            <p-inputgroup-addon>
+              <i class="pi pi-envelope"></i>
+            </p-inputgroup-addon>
             <input
               pInputText
               type="email"
               formControlName="email"
               placeholder="Email"
               class="w-full flex-auto"
-            />
-          </div>
+              />
+          </p-inputgroup>
 
           <!-- PASSWORD -->
-          <div class="p-inputgroup">
-            <span class="p-inputgroup-addon"><i class="pi pi-lock"></i></span>
+          <p-inputgroup>
+            <p-inputgroup-addon><i class="pi pi-lock"></i></p-inputgroup-addon>
             <p-password
               formControlName="password"
               [feedback]="false"
@@ -51,16 +52,16 @@
               inputStyleClass="p-inputtext w-full"
               [inputStyle]="{ width: '100%' }"
               placeholder="Password"
-            >
+              >
             </p-password>
-          </div>
+          </p-inputgroup>
 
           <button
             pButton
             type="submit"
             label="Sign In"
             class="w-full"
-            [disabled]="form.invalid || (isSubmitting$ | async)"
+            [disabled]="form.invalid || isSubmitting$$()"
           ></button>
         </form>
       </p-card>
@@ -69,6 +70,6 @@
 
   <!-- Footer pinned to bottom via flex + mt-auto -->
   <!-- <div class="mt-auto">
-    <mc-footer></mc-footer>
-  </div> -->
+  <mc-footer></mc-footer>
+</div> -->
 </section>

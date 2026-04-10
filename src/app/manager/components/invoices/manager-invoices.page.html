@@ -1,58 +1,58 @@
 <div class="projects-shell">
-  <div class="list-header" *ngIf="viewMode === 'list'">
-    <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a routerLink="/manager/menu">Menu</a>
-      <span class="sep">/</span>
-      <span>Invoices</span>
-    </nav>
-
-    <div class="projects-toolbar">
-      <div class="title">
-        <h3>Invoices</h3>
-        <p class="sub">Manage invoices generated from projects.</p>
+  @if (viewMode === 'list') {
+    <div class="list-header">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/manager/menu">Menu</a>
+        <span class="sep">/</span>
+        <span>Invoices</span>
+      </nav>
+      <div class="projects-toolbar">
+        <div class="title">
+          <h3>Invoices</h3>
+          <p class="sub">Manage invoices generated from projects.</p>
+        </div>
+      </div>
+      <div class="toolbar-row">
+        <label class="search-field">
+          <span class="search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="M20 20l-3.5-3.5"></path>
+            </svg>
+          </span>
+          <input
+            type="search"
+            [formControl]="searchCtrl"
+            placeholder="Search by invoice #, project, or client"
+            aria-label="Search invoices"
+            />
+          @if (searchCtrl.value) {
+            <button
+              class="icon-btn"
+              type="button"
+              (click)="searchCtrl.setValue('')"
+              aria-label="Clear search"
+              >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 6l12 12"></path>
+                <path d="M18 6l-12 12"></path>
+              </svg>
+            </button>
+          }
+        </label>
+      </div>
+      <div class="table-head" aria-hidden="true">
+        <div>Invoice #</div>
+        <div>Project</div>
+        <div>Client</div>
+        <div>Issue Date</div>
+        <div>Total</div>
+        <div class="actions-col">Actions</div>
       </div>
     </div>
+  }
 
-    <div class="toolbar-row">
-      <label class="search-field">
-        <span class="search-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="7"></circle>
-            <path d="M20 20l-3.5-3.5"></path>
-          </svg>
-        </span>
-        <input
-          type="search"
-          [formControl]="searchCtrl"
-          placeholder="Search by invoice #, project, or client"
-          aria-label="Search invoices"
-        />
-        <button
-          *ngIf="searchCtrl.value"
-          class="icon-btn"
-          type="button"
-          (click)="searchCtrl.setValue('')"
-          aria-label="Clear search"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M6 6l12 12"></path>
-            <path d="M18 6l-12 12"></path>
-          </svg>
-        </button>
-      </label>
-    </div>
-
-    <div class="table-head" aria-hidden="true">
-      <div>Invoice #</div>
-      <div>Project</div>
-      <div>Client</div>
-      <div>Issue Date</div>
-      <div>Total</div>
-      <div class="actions-col">Actions</div>
-    </div>
-  </div>
-
-  <ng-container *ngIf="error">
+  @if (error) {
     <div class="error">
       <span>{{ error }}</span>
       <button
@@ -60,368 +60,57 @@
         class="error-dismiss"
         aria-label="Dismiss error"
         (click)="error = null"
-      >
+        >
         x
       </button>
     </div>
-  </ng-container>
+  }
 
-  <ng-container *ngIf="viewMode === 'list'">
+  @if (viewMode === 'list') {
     <div class="list" #invoicesList>
-      <div class="table" *ngIf="invoices.length">
-        <div class="thead">
-          <div>Invoice #</div>
-          <div>Project</div>
-          <div>Client</div>
-          <div>Issue Date</div>
-          <div>Total</div>
-          <div class="actions-col">Actions</div>
-        </div>
-
-        <div class="trow" *ngFor="let inv of invoices">
-          <div class="cell strong">{{ inv.docNumber || '—' }}</div>
-          <div class="cell muted">{{ inv.projectName || '—' }}</div>
-          <div class="cell muted">{{ inv.clientName || '—' }}</div>
-          <div class="cell muted">
-            {{ inv.issueDate ? (inv.issueDate | date : 'dd MMM yyyy') : '—' }}
+      @if (invoices.length) {
+        <div class="table">
+          <div class="thead">
+            <div>Invoice #</div>
+            <div>Project</div>
+            <div>Client</div>
+            <div>Issue Date</div>
+            <div>Total</div>
+            <div class="actions-col">Actions</div>
           </div>
-          <div class="cell">
-            {{ formatMoney(inv.totalAmount ?? inv.subtotal ?? 0) }}
-          </div>
-          <div class="cell actions-col">
-            <button
-              class="btn small secondary"
-              type="button"
-              (click)="openInvoicePdf(inv)"
-              [disabled]="pdfLoadingId === inv.documentId"
-            >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M4 4h16v16H4z"></path>
-                  <path d="M8 8h8"></path>
-                  <path d="M8 12h8"></path>
-                  <path d="M8 16h5"></path>
-                </svg>
-              </span>
-              {{ pdfLoadingId === inv.documentId ? 'Loading...' : 'Invoice' }}
-            </button>
-            <button
-              class="btn small tertiary"
-              type="button"
-              (click)="viewInvoice(inv)"
-            >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
-                  <circle cx="12" cy="12" r="2.5"></circle>
-                </svg>
-              </span>
-              View
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="cards" *ngIf="invoices.length">
-        <article class="project-card" *ngFor="let inv of invoices">
-          <div class="row">
-            <div class="name">{{ inv.docNumber || '—' }}</div>
-            <span class="badge"
-              >{{ inv.issueDate ? (inv.issueDate | date : 'dd MMM yyyy') : '—'
-              }}</span
-            >
-          </div>
-          <div class="meta">
-            <div><span>Project:</span> {{ inv.projectName || '—' }}</div>
-            <div><span>Client:</span> {{ inv.clientName || '—' }}</div>
-            <div>
-              <span>Total:</span> {{ formatMoney(inv.totalAmount ?? inv.subtotal
-              ?? 0) }}
-            </div>
-          </div>
-          <div class="card-actions">
-            <button
-              class="btn small secondary"
-              type="button"
-              (click)="openInvoicePdf(inv)"
-              [disabled]="pdfLoadingId === inv.documentId"
-            >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M4 4h16v16H4z"></path>
-                  <path d="M8 8h8"></path>
-                  <path d="M8 12h8"></path>
-                  <path d="M8 16h5"></path>
-                </svg>
-              </span>
-              {{ pdfLoadingId === inv.documentId ? 'Loading...' : 'Invoice' }}
-            </button>
-            <button
-              class="btn small tertiary"
-              type="button"
-              (click)="viewInvoice(inv)"
-            >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
-                  <circle cx="12" cy="12" r="2.5"></circle>
-                </svg>
-              </span>
-              View
-            </button>
-          </div>
-        </article>
-      </div>
-
-      <div class="empty" *ngIf="!invoices.length && !loading">
-        No invoices found.
-      </div>
-
-      <div
-        class="screen-loader"
-        *ngIf="loading || isLoadingMore"
-        aria-live="polite"
-        aria-busy="true"
-      >
-        <div class="loader-card">
-          <div class="loader-ring" aria-hidden="true"></div>
-          <div class="loader-text">Loading…</div>
-        </div>
-      </div>
-
-      <div #infiniteSentinel class="infinite-sentinel" aria-hidden="true"></div>
-    </div>
-  </ng-container>
-
-  <ng-container *ngIf="viewMode === 'detail'">
-    <div class="form-header">
-      <nav class="breadcrumb" aria-label="Breadcrumb">
-        <a routerLink="/manager/menu">Menu</a>
-        <span class="sep">/</span>
-        <a href="#" (click)="$event.preventDefault(); closeDetail()"
-          >Invoices</a
-        >
-        <span class="sep">/</span>
-        <span>View</span>
-      </nav>
-
-      <div class="form-header-mainrow">
-        <div class="header-main">
-          <h3>Invoice Details</h3>
-          <p class="sub">View project details in read-only mode.</p>
-        </div>
-        <div class="header-actions">
-          <button class="btn" type="button" (click)="closeDetail()">
-            <span class="btn-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M6 6l12 12"></path>
-                <path d="M18 6l-12 12"></path>
-              </svg>
-            </span>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="form-tabs">
-      <button
-        type="button"
-        class="tab"
-        [class.active]="activeTab === 'details'"
-        (click)="setTab('details')"
-      >
-        <span class="btn-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="9"></circle>
-            <path d="M12 10v6"></path>
-            <path d="M12 7h.01"></path>
-          </svg>
-        </span>
-        Details
-      </button>
-      <button
-        type="button"
-        class="tab"
-        [class.active]="activeTab === 'materials'"
-        (click)="setTab('materials')"
-      >
-        <span class="btn-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M4 6h16"></path>
-            <path d="M4 10h16"></path>
-            <path d="M4 14h16"></path>
-            <path d="M4 18h16"></path>
-          </svg>
-        </span>
-        Materials
-      </button>
-      <button
-        type="button"
-        class="tab"
-        [class.active]="activeTab === 'labor'"
-        (click)="setTab('labor')"
-      >
-        <span class="btn-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="8"></circle>
-            <path d="M12 7v5l3.5 2"></path>
-          </svg>
-        </span>
-        Labor
-      </button>
-    </div>
-
-    <div class="screen-loader" *ngIf="detailLoading">
-      <div class="loader-card">
-        <div class="loader-ring" aria-hidden="true"></div>
-        <div class="loader-text">Loading…</div>
-      </div>
-    </div>
-
-    <ng-container *ngIf="!detailLoading">
-      <ng-container *ngIf="activeTab === 'details'">
-        <section class="card">
-          <div class="quote-summary">
-            <div class="quote-summary-column cost-summary">
-              <div class="quote-card quote-card-wide">
-                <div class="cost-line">
-                  <strong>Materials Cost $</strong>
-                  <span class="net-note"
-                    >(Net Cost $ {{ formatMoney(netMaterialsCost) }})</span
-                  >
-                </div>
-                <strong>{{ formatMoney(totalMaterialsCost) }}</strong>
+          @for (inv of invoices; track inv) {
+            <div class="trow">
+              <div class="cell strong">{{ inv.docNumber || '—' }}</div>
+              <div class="cell muted">{{ inv.projectName || '—' }}</div>
+              <div class="cell muted">{{ inv.clientName || '—' }}</div>
+              <div class="cell muted">
+                {{ inv.issueDate ? (inv.issueDate | date : 'dd MMM yyyy') : '—' }}
               </div>
-              <div class="quote-card quote-card-wide quote-card-labor">
-                <div class="labor-summary-main">
-                  <div class="labor-summary-top">
-                    <strong>Labor Cost $</strong>
-                  </div>
-                  <span class="net-note"
-                    >(Net Cost $ {{ formatMoney(netLaborCost) }})</span
-                  >
-                </div>
-                <strong class="labor-summary-extra">{{
-                  formatMoney(totalLaborCost)
-                }}</strong>
+              <div class="cell">
+                {{ formatMoney(inv.totalAmount ?? inv.subtotal ?? 0) }}
               </div>
-              <div class="quote-card quote-card-wide">
-                <div class="cost-line">
-                  <strong>Surcharges $</strong>
-                </div>
-                <strong>{{ formatMoney(surchargeTotal) }}</strong>
-              </div>
-            </div>
-            <div class="quote-summary-column totals-summary">
-              <div class="quote-card">
-                <strong>Subtotal</strong>
-                <strong>{{ formatMoney(subtotal) }}</strong>
-              </div>
-              <div class="quote-card">
-                <strong>GST ({{ formatNumber(gstRatePercent) }}%)</strong>
-                <strong>{{ formatMoney(gstAmount) }}</strong>
-              </div>
-              <div class="quote-card">
-                <strong>Total</strong>
-                <strong>{{ formatMoney(grandTotal) }}</strong>
-              </div>
-            </div>
-          </div>
-
-          <form class="form" [formGroup]="projectForm" autocomplete="off">
-            <div class="grid-2">
-              <label>
-                <span>Project Name</span>
-                <input formControlName="project_name" [disabled]="true" />
-              </label>
-              <label>
-                <span>Project Type</span>
-                <input formControlName="project_type" [disabled]="true" />
-              </label>
-            </div>
-
-            <div class="grid-2">
-              <label>
-                <span>Client</span>
-                <input formControlName="client_name" [disabled]="true" />
-              </label>
-              <label>
-                <span>Meters Required</span>
-                <input formControlName="meters_required" [disabled]="true" />
-              </label>
-            </div>
-
-            <div class="grid-2">
-              <label>
-                <span>Status</span>
-                <input formControlName="status" [disabled]="true" />
-              </label>
-              <label>
-                <span>Pricing Profile</span>
-                <input formControlName="pricing_profile" [disabled]="true" />
-              </label>
-            </div>
-
-            <div class="grid-2">
-              <label>
-                <span>Cost in quote</span>
-                <input formControlName="cost_in_quote" [disabled]="true" />
-              </label>
-              <label>
-                <span>Default pricing</span>
-                <input formControlName="default_pricing" [disabled]="true" />
-              </label>
-            </div>
-
-            <label>
-              <span>Description</span>
-              <textarea
-                formControlName="description"
-                rows="3"
-                [disabled]="true"
-              ></textarea>
-            </label>
-          </form>
-        </section>
-      </ng-container>
-
-      <ng-container *ngIf="activeTab === 'materials'">
-        <div
-          class="table-head materials-head"
-          *ngIf="materialsViewMode === 'list'"
-          aria-hidden="true"
-        >
-          <div>Material</div>
-          <div>Quantity</div>
-          <div>Unit</div>
-          <div>Unit Cost</div>
-          <div>Sell Cost</div>
-          <div class="actions-col">Actions</div>
-        </div>
-
-        <section class="card" *ngIf="materialsViewMode === 'list'">
-          <div class="table materials-table">
-            <div class="thead">
-              <div>Material</div>
-              <div>Quantity</div>
-              <div>Unit</div>
-              <div>Unit Cost</div>
-              <div>Sell Cost</div>
-              <div class="actions-col">Actions</div>
-            </div>
-            <div class="trow" *ngFor="let m of projectMaterials">
-              <div class="cell strong">{{ m.materialName }}</div>
-              <div class="cell muted">{{ formatNumber(m.quantity) }}</div>
-              <div class="cell muted">{{ m.unit || '—' }}</div>
-              <div class="cell">{{ formatMoney(m.unitCostOverride) }}</div>
-              <div class="cell">{{ formatMoney(m.sellCostOverride) }}</div>
               <div class="cell actions-col">
+                <button
+                  class="btn small secondary"
+                  type="button"
+                  (click)="openInvoicePdf(inv)"
+                  [disabled]="pdfLoadingId === inv.documentId"
+                  >
+                  <span class="btn-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M4 4h16v16H4z"></path>
+                      <path d="M8 8h8"></path>
+                      <path d="M8 12h8"></path>
+                      <path d="M8 16h5"></path>
+                    </svg>
+                  </span>
+                  {{ pdfLoadingId === inv.documentId ? 'Loading...' : 'Invoice' }}
+                </button>
                 <button
                   class="btn small tertiary"
                   type="button"
-                  (click)="openMaterialView(m)"
-                >
+                  (click)="viewInvoice(inv)"
+                  >
                   <span class="btn-icon" aria-hidden="true">
                     <svg viewBox="0 0 24 24">
                       <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
@@ -432,56 +121,368 @@
                 </button>
               </div>
             </div>
+          }
+        </div>
+      }
+      @if (invoices.length) {
+        <div class="cards">
+          @for (inv of invoices; track inv) {
+            <article class="project-card">
+              <div class="row">
+                <div class="name">{{ inv.docNumber || '—' }}</div>
+                <span class="badge"
+                  >{{ inv.issueDate ? (inv.issueDate | date : 'dd MMM yyyy') : '—'
+                  }}</span
+                  >
+                </div>
+                <div class="meta">
+                  <div><span>Project:</span> {{ inv.projectName || '—' }}</div>
+                  <div><span>Client:</span> {{ inv.clientName || '—' }}</div>
+                  <div>
+                    <span>Total:</span> {{ formatMoney(inv.totalAmount ?? inv.subtotal
+                    ?? 0) }}
+                  </div>
+                </div>
+                <div class="card-actions">
+                  <button
+                    class="btn small secondary"
+                    type="button"
+                    (click)="openInvoicePdf(inv)"
+                    [disabled]="pdfLoadingId === inv.documentId"
+                    >
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 4h16v16H4z"></path>
+                        <path d="M8 8h8"></path>
+                        <path d="M8 12h8"></path>
+                        <path d="M8 16h5"></path>
+                      </svg>
+                    </span>
+                    {{ pdfLoadingId === inv.documentId ? 'Loading...' : 'Invoice' }}
+                  </button>
+                  <button
+                    class="btn small tertiary"
+                    type="button"
+                    (click)="viewInvoice(inv)"
+                    >
+                    <span class="btn-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
+                        <circle cx="12" cy="12" r="2.5"></circle>
+                      </svg>
+                    </span>
+                    View
+                  </button>
+                </div>
+              </article>
+            }
           </div>
-          <div class="empty" *ngIf="!projectMaterials.length">No materials</div>
-        </section>
-
-        <section class="card" *ngIf="materialsViewMode === 'view'">
-          <form class="form">
-            <label>
-              <span>Supplier *</span>
-              <input
-                [value]="selectedMaterial?.supplierName || '—'"
-                [disabled]="true"
-              />
-            </label>
-
-            <label>
-              <span>Material *</span>
-              <input
-                [value]="selectedMaterial?.materialName || '—'"
-                [disabled]="true"
-              />
-            </label>
-
-            <div class="grid-2">
-              <label>
-                <span>Quantity</span>
-                <input
-                  [value]="formatNumber(selectedMaterial?.quantity)"
-                  [disabled]="true"
-                />
-              </label>
-              <label>
-                <span>Unit</span>
-                <input
-                  [value]="selectedMaterial?.unit || '—'"
-                  [disabled]="true"
-                />
-              </label>
+        }
+        @if (!invoices.length && !loading) {
+          <div class="empty">
+            No invoices found.
+          </div>
+        }
+        @if (loading || isLoadingMore) {
+          <div
+            class="screen-loader"
+            aria-live="polite"
+            aria-busy="true"
+            >
+            <div class="loader-card">
+              <div class="loader-ring" aria-hidden="true"></div>
+              <div class="loader-text">Loading…</div>
             </div>
+          </div>
+        }
+        <div #infiniteSentinel class="infinite-sentinel" aria-hidden="true"></div>
+      </div>
+    }
 
-            <div class="grid-2">
-              <label>
-                <span>Unit Cost</span>
-                <input
-                  [value]="formatMoney(selectedMaterial?.unitCostOverride)"
-                  [disabled]="true"
-                />
-              </label>
-              <label>
-                <span>Cost per unit</span>
-                <input
+    @if (viewMode === 'detail') {
+      <div class="form-header">
+        <nav class="breadcrumb" aria-label="Breadcrumb">
+          <a routerLink="/manager/menu">Menu</a>
+          <span class="sep">/</span>
+          <a href="#" (click)="$event.preventDefault(); closeDetail()"
+            >Invoices</a
+            >
+            <span class="sep">/</span>
+            <span>View</span>
+          </nav>
+          <div class="form-header-mainrow">
+            <div class="header-main">
+              <h3>Invoice Details</h3>
+              <p class="sub">View project details in read-only mode.</p>
+            </div>
+            <div class="header-actions">
+              <button class="btn" type="button" (click)="closeDetail()">
+                <span class="btn-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M6 6l12 12"></path>
+                    <path d="M18 6l-12 12"></path>
+                  </svg>
+                </span>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="form-tabs">
+          <button
+            type="button"
+            class="tab"
+            [class.active]="activeTab === 'details'"
+            (click)="setTab('details')"
+            >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 10v6"></path>
+                <path d="M12 7h.01"></path>
+              </svg>
+            </span>
+            Details
+          </button>
+          <button
+            type="button"
+            class="tab"
+            [class.active]="activeTab === 'materials'"
+            (click)="setTab('materials')"
+            >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 6h16"></path>
+                <path d="M4 10h16"></path>
+                <path d="M4 14h16"></path>
+                <path d="M4 18h16"></path>
+              </svg>
+            </span>
+            Materials
+          </button>
+          <button
+            type="button"
+            class="tab"
+            [class.active]="activeTab === 'labor'"
+            (click)="setTab('labor')"
+            >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="8"></circle>
+                <path d="M12 7v5l3.5 2"></path>
+              </svg>
+            </span>
+            Labor
+          </button>
+        </div>
+        @if (detailLoading) {
+          <div class="screen-loader">
+            <div class="loader-card">
+              <div class="loader-ring" aria-hidden="true"></div>
+              <div class="loader-text">Loading…</div>
+            </div>
+          </div>
+        }
+        @if (!detailLoading) {
+          @if (activeTab === 'details') {
+            <section class="card">
+              <div class="quote-summary">
+                <div class="quote-summary-column cost-summary">
+                  <div class="quote-card quote-card-wide">
+                    <div class="cost-line">
+                      <strong>Materials Cost $</strong>
+                      <span class="net-note"
+                        >(Net Cost $ {{ formatMoney(netMaterialsCost) }})</span
+                        >
+                      </div>
+                      <strong>{{ formatMoney(totalMaterialsCost) }}</strong>
+                    </div>
+                    <div class="quote-card quote-card-wide quote-card-labor">
+                      <div class="labor-summary-main">
+                        <div class="labor-summary-top">
+                          <strong>Labor Cost $</strong>
+                        </div>
+                        <span class="net-note"
+                          >(Net Cost $ {{ formatMoney(netLaborCost) }})</span
+                          >
+                        </div>
+                        <strong class="labor-summary-extra">{{
+                          formatMoney(totalLaborCost)
+                        }}</strong>
+                      </div>
+                      <div class="quote-card quote-card-wide">
+                        <div class="cost-line">
+                          <strong>Surcharges $</strong>
+                        </div>
+                        <strong>{{ formatMoney(surchargeTotal) }}</strong>
+                      </div>
+                    </div>
+                    <div class="quote-summary-column totals-summary">
+                      <div class="quote-card">
+                        <strong>Subtotal</strong>
+                        <strong>{{ formatMoney(subtotal) }}</strong>
+                      </div>
+                      <div class="quote-card">
+                        <strong>GST ({{ formatNumber(gstRatePercent) }}%)</strong>
+                        <strong>{{ formatMoney(gstAmount) }}</strong>
+                      </div>
+                      <div class="quote-card">
+                        <strong>Total</strong>
+                        <strong>{{ formatMoney(grandTotal) }}</strong>
+                      </div>
+                    </div>
+                  </div>
+                  <form class="form" [formGroup]="projectForm" autocomplete="off">
+                    <div class="grid-2">
+                      <label>
+                        <span>Project Name</span>
+                        <input formControlName="project_name" [disabled]="true" />
+                      </label>
+                      <label>
+                        <span>Project Type</span>
+                        <input formControlName="project_type" [disabled]="true" />
+                      </label>
+                    </div>
+                    <div class="grid-2">
+                      <label>
+                        <span>Client</span>
+                        <input formControlName="client_name" [disabled]="true" />
+                      </label>
+                      <label>
+                        <span>Meters Required</span>
+                        <input formControlName="meters_required" [disabled]="true" />
+                      </label>
+                    </div>
+                    <div class="grid-2">
+                      <label>
+                        <span>Status</span>
+                        <input formControlName="status" [disabled]="true" />
+                      </label>
+                      <label>
+                        <span>Pricing Profile</span>
+                        <input formControlName="pricing_profile" [disabled]="true" />
+                      </label>
+                    </div>
+                    <div class="grid-2">
+                      <label>
+                        <span>Cost in quote</span>
+                        <input formControlName="cost_in_quote" [disabled]="true" />
+                      </label>
+                      <label>
+                        <span>Default pricing</span>
+                        <input formControlName="default_pricing" [disabled]="true" />
+                      </label>
+                    </div>
+                    <label>
+                      <span>Description</span>
+                      <textarea
+                        formControlName="description"
+                        rows="3"
+                        [disabled]="true"
+                      ></textarea>
+                    </label>
+                  </form>
+                </section>
+              }
+              @if (activeTab === 'materials') {
+                @if (materialsViewMode === 'list') {
+                  <div
+                    class="table-head materials-head"
+                    aria-hidden="true"
+                    >
+                    <div>Material</div>
+                    <div>Quantity</div>
+                    <div>Unit</div>
+                    <div>Unit Cost</div>
+                    <div>Sell Cost</div>
+                    <div class="actions-col">Actions</div>
+                  </div>
+                }
+                @if (materialsViewMode === 'list') {
+                  <section class="card">
+                    <div class="table materials-table">
+                      <div class="thead">
+                        <div>Material</div>
+                        <div>Quantity</div>
+                        <div>Unit</div>
+                        <div>Unit Cost</div>
+                        <div>Sell Cost</div>
+                        <div class="actions-col">Actions</div>
+                      </div>
+                      @for (m of projectMaterials; track m) {
+                        <div class="trow">
+                          <div class="cell strong">{{ m.materialName }}</div>
+                          <div class="cell muted">{{ formatNumber(m.quantity) }}</div>
+                          <div class="cell muted">{{ m.unit || '—' }}</div>
+                          <div class="cell">{{ formatMoney(m.unitCostOverride) }}</div>
+                          <div class="cell">{{ formatMoney(m.sellCostOverride) }}</div>
+                          <div class="cell actions-col">
+                            <button
+                              class="btn small tertiary"
+                              type="button"
+                              (click)="openMaterialView(m)"
+                              >
+                              <span class="btn-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24">
+                                  <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
+                                  <circle cx="12" cy="12" r="2.5"></circle>
+                                </svg>
+                              </span>
+                              View
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                    @if (!projectMaterials.length) {
+                      <div class="empty">No materials</div>
+                    }
+                  </section>
+                }
+                @if (materialsViewMode === 'view') {
+                  <section class="card">
+                    <form class="form">
+                      <label>
+                        <span>Supplier *</span>
+                        <input
+                          [value]="selectedMaterial?.supplierName || '—'"
+                          [disabled]="true"
+                          />
+                      </label>
+                      <label>
+                        <span>Material *</span>
+                        <input
+                          [value]="selectedMaterial?.materialName || '—'"
+                          [disabled]="true"
+                          />
+                      </label>
+                      <div class="grid-2">
+                        <label>
+                          <span>Quantity</span>
+                          <input
+                            [value]="formatNumber(selectedMaterial?.quantity)"
+                            [disabled]="true"
+                            />
+                        </label>
+                        <label>
+                          <span>Unit</span>
+                          <input
+                            [value]="selectedMaterial?.unit || '—'"
+                            [disabled]="true"
+                            />
+                        </label>
+                      </div>
+                      <div class="grid-2">
+                        <label>
+                          <span>Unit Cost</span>
+                          <input
+                            [value]="formatMoney(selectedMaterial?.unitCostOverride)"
+                            [disabled]="true"
+                            />
+                        </label>
+                        <label>
+                          <span>Cost per unit</span>
+                          <input
                   [value]="
                     selectedMaterial?.unitCostOverride !== null &&
                     selectedMaterial?.unitCostOverride !== undefined &&
@@ -492,183 +493,182 @@
                         )
                       : formatMoney(0)
                   "
-                  [disabled]="true"
-                />
-              </label>
-            </div>
-
-            <div class="grid-2">
-              <label>
-                <span>Coverage ratio</span>
-                <input
-                  [value]="formatNumber(selectedMaterial?.coverageRatio)"
-                  [disabled]="true"
-                />
-              </label>
-              <label>
-                <span>Coverage unit</span>
-                <input
-                  [value]="selectedMaterial?.coverageUnit || '—'"
-                  [disabled]="true"
-                />
-              </label>
-            </div>
-
-            <label>
-              <span>Sell Cost</span>
-              <input
-                [value]="formatMoney(selectedMaterial?.sellCostOverride)"
-                [disabled]="true"
-              />
-            </label>
-
-            <label>
-              <span>Notes</span>
-              <textarea
-                rows="3"
-                [value]="selectedMaterial?.notes || ''"
-                [disabled]="true"
-              ></textarea>
-            </label>
-          </form>
-
-          <div class="card-actions right-actions">
-            <button class="btn" type="button" (click)="closeMaterialView()">
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M6 6l12 12"></path>
-                  <path d="M18 6l-12 12"></path>
-                </svg>
-              </span>
-              Cancel
-            </button>
-          </div>
-        </section>
-      </ng-container>
-
-      <ng-container *ngIf="activeTab === 'labor'">
-        <div
-          class="table-head labor-head"
-          *ngIf="laborViewMode === 'list'"
-          aria-hidden="true"
-        >
-          <div>Labor</div>
-          <div>Unit Type</div>
-          <div>Unit Cost</div>
-          <div>Sell Cost</div>
-          <div class="actions-col">Actions</div>
+                            [disabled]="true"
+                            />
+                        </label>
+                      </div>
+                      <div class="grid-2">
+                        <label>
+                          <span>Coverage ratio</span>
+                          <input
+                            [value]="formatNumber(selectedMaterial?.coverageRatio)"
+                            [disabled]="true"
+                            />
+                        </label>
+                        <label>
+                          <span>Coverage unit</span>
+                          <input
+                            [value]="selectedMaterial?.coverageUnit || '—'"
+                            [disabled]="true"
+                            />
+                        </label>
+                      </div>
+                      <label>
+                        <span>Sell Cost</span>
+                        <input
+                          [value]="formatMoney(selectedMaterial?.sellCostOverride)"
+                          [disabled]="true"
+                          />
+                      </label>
+                      <label>
+                        <span>Notes</span>
+                        <textarea
+                          rows="3"
+                          [value]="selectedMaterial?.notes || ''"
+                          [disabled]="true"
+                        ></textarea>
+                      </label>
+                    </form>
+                    <div class="card-actions right-actions">
+                      <button class="btn" type="button" (click)="closeMaterialView()">
+                        <span class="btn-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24">
+                            <path d="M6 6l12 12"></path>
+                            <path d="M18 6l-12 12"></path>
+                          </svg>
+                        </span>
+                        Cancel
+                      </button>
+                    </div>
+                  </section>
+                }
+              }
+              @if (activeTab === 'labor') {
+                @if (laborViewMode === 'list') {
+                  <div
+                    class="table-head labor-head"
+                    aria-hidden="true"
+                    >
+                    <div>Labor</div>
+                    <div>Unit Type</div>
+                    <div>Unit Cost</div>
+                    <div>Sell Cost</div>
+                    <div class="actions-col">Actions</div>
+                  </div>
+                }
+                @if (laborViewMode === 'list') {
+                  <section class="card">
+                    <div class="table labor-table">
+                      <div class="thead">
+                        <div>Labor</div>
+                        <div>Unit Type</div>
+                        <div>Unit Cost</div>
+                        <div>Sell Cost</div>
+                        <div class="actions-col">Actions</div>
+                      </div>
+                      @for (l of projectLabor; track l) {
+                        <div class="trow">
+                          <div class="cell strong">{{ l.laborName }}</div>
+                          <div class="cell muted">{{ l.unitType || '—' }}</div>
+                          <div class="cell">{{ formatMoney(l.unitCostOverride) }}</div>
+                          <div class="cell">{{ formatMoney(l.sellCostOverride) }}</div>
+                          <div class="cell actions-col">
+                            <button
+                              class="btn small tertiary"
+                              type="button"
+                              (click)="openLaborView(l)"
+                              >
+                              <span class="btn-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24">
+                                  <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
+                                  <circle cx="12" cy="12" r="2.5"></circle>
+                                </svg>
+                              </span>
+                              View
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                    @if (!projectLabor.length) {
+                      <div class="empty">No labor</div>
+                    }
+                  </section>
+                }
+                @if (laborViewMode === 'view') {
+                  <section class="card">
+                    <form class="form">
+                      <div class="grid-2">
+                        <label>
+                          <span>Labor *</span>
+                          <input
+                            [value]="selectedLabor?.laborName || '—'"
+                            [disabled]="true"
+                            />
+                        </label>
+                        <label>
+                          <span>Unit Type</span>
+                          <input
+                            [value]="selectedLabor?.unitType || '—'"
+                            [disabled]="true"
+                            />
+                        </label>
+                      </div>
+                      <div class="grid-2">
+                        <label>
+                          <span>Unit Cost</span>
+                          <input
+                            [value]="formatMoney(selectedLabor?.unitCostOverride)"
+                            [disabled]="true"
+                            />
+                        </label>
+                        <label>
+                          <span>Sell Cost</span>
+                          <input
+                            [value]="formatMoney(selectedLabor?.sellCostOverride)"
+                            [disabled]="true"
+                            />
+                        </label>
+                      </div>
+                      <div class="grid-2">
+                        <label>
+                          <span>Productivity</span>
+                          <input
+                            [value]="formatNumber(selectedLabor?.unitProductivity)"
+                            [disabled]="true"
+                            />
+                        </label>
+                        <label>
+                          <span>Productivity Unit</span>
+                          <input
+                            [value]="selectedLabor?.productivityUnit || '—'"
+                            [disabled]="true"
+                            />
+                        </label>
+                      </div>
+                      <label>
+                        <span>Notes</span>
+                        <textarea
+                          rows="3"
+                          [value]="selectedLabor?.notes || ''"
+                          [disabled]="true"
+                        ></textarea>
+                      </label>
+                    </form>
+                    <div class="card-actions right-actions">
+                      <button class="btn" type="button" (click)="closeLaborView()">
+                        <span class="btn-icon" aria-hidden="true">
+                          <svg viewBox="0 0 24 24">
+                            <path d="M6 6l12 12"></path>
+                            <path d="M18 6l-12 12"></path>
+                          </svg>
+                        </span>
+                        Cancel
+                      </button>
+                    </div>
+                  </section>
+                }
+              }
+            }
+          }
         </div>
-
-        <section class="card" *ngIf="laborViewMode === 'list'">
-          <div class="table labor-table">
-            <div class="thead">
-              <div>Labor</div>
-              <div>Unit Type</div>
-              <div>Unit Cost</div>
-              <div>Sell Cost</div>
-              <div class="actions-col">Actions</div>
-            </div>
-            <div class="trow" *ngFor="let l of projectLabor">
-              <div class="cell strong">{{ l.laborName }}</div>
-              <div class="cell muted">{{ l.unitType || '—' }}</div>
-              <div class="cell">{{ formatMoney(l.unitCostOverride) }}</div>
-              <div class="cell">{{ formatMoney(l.sellCostOverride) }}</div>
-              <div class="cell actions-col">
-                <button
-                  class="btn small tertiary"
-                  type="button"
-                  (click)="openLaborView(l)"
-                >
-                  <span class="btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6z"></path>
-                      <circle cx="12" cy="12" r="2.5"></circle>
-                    </svg>
-                  </span>
-                  View
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="empty" *ngIf="!projectLabor.length">No labor</div>
-        </section>
-
-        <section class="card" *ngIf="laborViewMode === 'view'">
-          <form class="form">
-            <div class="grid-2">
-              <label>
-                <span>Labor *</span>
-                <input
-                  [value]="selectedLabor?.laborName || '—'"
-                  [disabled]="true"
-                />
-              </label>
-              <label>
-                <span>Unit Type</span>
-                <input
-                  [value]="selectedLabor?.unitType || '—'"
-                  [disabled]="true"
-                />
-              </label>
-            </div>
-
-            <div class="grid-2">
-              <label>
-                <span>Unit Cost</span>
-                <input
-                  [value]="formatMoney(selectedLabor?.unitCostOverride)"
-                  [disabled]="true"
-                />
-              </label>
-              <label>
-                <span>Sell Cost</span>
-                <input
-                  [value]="formatMoney(selectedLabor?.sellCostOverride)"
-                  [disabled]="true"
-                />
-              </label>
-            </div>
-
-            <div class="grid-2">
-              <label>
-                <span>Productivity</span>
-                <input
-                  [value]="formatNumber(selectedLabor?.unitProductivity)"
-                  [disabled]="true"
-                />
-              </label>
-              <label>
-                <span>Productivity Unit</span>
-                <input
-                  [value]="selectedLabor?.productivityUnit || '—'"
-                  [disabled]="true"
-                />
-              </label>
-            </div>
-
-            <label>
-              <span>Notes</span>
-              <textarea
-                rows="3"
-                [value]="selectedLabor?.notes || ''"
-                [disabled]="true"
-              ></textarea>
-            </label>
-          </form>
-
-          <div class="card-actions right-actions">
-            <button class="btn" type="button" (click)="closeLaborView()">
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M6 6l12 12"></path>
-                  <path d="M18 6l-12 12"></path>
-                </svg>
-              </span>
-              Cancel
-            </button>
-          </div>
-        </section>
-      </ng-container>
-    </ng-container>
-  </ng-container>
-</div>

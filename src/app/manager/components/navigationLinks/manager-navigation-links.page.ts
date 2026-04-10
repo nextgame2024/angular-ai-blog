@@ -49,11 +49,10 @@ import { selectCurrentUser } from '../../../auth/store/reducers';
 import type { CurrentUserInterface } from '../../../shared/types/currentUser.interface';
 
 @Component({
-  selector: 'app-manager-navigation-links-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
-  templateUrl: './manager-navigation-links.page.html',
-  styleUrls: ['./manager-navigation-links.page.css'],
+    selector: 'app-manager-navigation-links-page',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+    templateUrl: './manager-navigation-links.page.html',
+    styleUrls: ['./manager-navigation-links.page.css']
 })
 export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();

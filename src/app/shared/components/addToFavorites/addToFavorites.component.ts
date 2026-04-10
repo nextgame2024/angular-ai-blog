@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
+
+import { Component, effect, inject, input, signal } from '@angular/core';
 import { Store } from '@ngrx/store';
 import { Router } from '@angular/router';
 import { take } from 'rxjs';
@@ -10,17 +10,25 @@ import { selectCurrentUser } from 'src/app/auth/store/reducers';
 import { ButtonModule } from 'primeng/button';
 
 @Component({
-  selector: 'mc-add-to-favorites',
-  templateUrl: './addToFavorites.component.html',
-  standalone: true,
-  imports: [CommonModule, ButtonModule],
+    selector: 'mc-add-to-favorites',
+    templateUrl: './addToFavorites.component.html',
+    imports: [ButtonModule]
 })
 export class AddToFavoritesComponent {
-  @Input() isFavorited = false;
-  @Input() favoritesCount = 0;
-  @Input() articleSlug = '';
+  readonly isFavoritedInput$$ = input(false, { alias: 'isFavorited' });
+  readonly favoritesCountInput$$ = input(0, { alias: 'favoritesCount' });
+  readonly articleSlug$$ = input('', { alias: 'articleSlug' });
 
-  constructor(private store: Store, private router: Router) {}
+  readonly isFavorited$$ = signal(false);
+  readonly favoritesCount$$ = signal(0);
+
+  private readonly store = inject(Store);
+  private readonly router = inject(Router);
+
+  private readonly syncInputs = effect(() => {
+    this.isFavorited$$.set(this.isFavoritedInput$$());
+    this.favoritesCount$$.set(this.favoritesCountInput$$());
+  });
 
   handleLike(): void {
     this.store
@@ -32,16 +40,16 @@ export class AddToFavoritesComponent {
           return;
         }
 
-        const prevFav = this.isFavorited;
-        const prevCount = this.favoritesCount;
+        const prevFav = this.isFavorited$$();
+        const prevCount = this.favoritesCount$$();
 
-        this.isFavorited = !prevFav;
-        this.favoritesCount = prevFav ? prevCount - 1 : prevCount + 1;
+        this.isFavorited$$.set(!prevFav);
+        this.favoritesCount$$.set(prevFav ? prevCount - 1 : prevCount + 1);
 
         this.store.dispatch(
           addToFavoritesActions.addToFavorites({
             isFavorited: prevFav,
-            slug: this.articleSlug,
+            slug: this.articleSlug$$(),
           })
         );
       });

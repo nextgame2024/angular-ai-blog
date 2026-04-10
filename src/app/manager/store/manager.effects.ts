@@ -241,7 +241,12 @@ export class ManagerEffects {
       ofType(ManagerActions.archiveUser),
       switchMap(({ userId }) =>
         this.api.archiveUser(userId).pipe(
-          map(() => ManagerActions.archiveUserSuccess({ userId })),
+          map((res) =>
+            ManagerActions.archiveUserSuccess({
+              userId: res?.userId ?? userId,
+              action: res?.action ?? 'archived',
+            }),
+          ),
           catchError((err) =>
             of(
               ManagerActions.archiveUserFailure({

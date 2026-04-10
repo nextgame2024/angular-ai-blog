@@ -18,11 +18,10 @@ import type {
 import { environment } from '../../../../environments/environment';
 
 @Component({
-  selector: 'app-manager-invoices-page',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  templateUrl: './manager-invoices.page.html',
-  styleUrls: ['./manager-invoices.page.css'],
+    selector: 'app-manager-invoices-page',
+    imports: [CommonModule, ReactiveFormsModule, RouterModule],
+    templateUrl: './manager-invoices.page.html',
+    styleUrls: ['./manager-invoices.page.css']
 })
 export class ManagerInvoicesPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();

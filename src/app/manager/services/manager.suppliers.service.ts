@@ -119,11 +119,12 @@ export class ManagerSuppliersService {
   // Supplier materials
   listSupplierMaterials(
     supplierId: string,
-    params: { page: number; limit: number },
+    params: { page: number; limit: number; q?: string },
   ): Observable<{ materials: BmSupplierMaterial[]; page: number; limit: number; total: number }> {
     let httpParams = new HttpParams()
       .set('page', String(params.page ?? 1))
       .set('limit', String(params.limit ?? 20));
+    if (params.q) httpParams = httpParams.set('q', params.q);
     return this.http.get<{ materials: BmSupplierMaterial[]; page: number; limit: number; total: number }>(
       `${this.suppliersBase}/${supplierId}/materials`,
       { params: httpParams },

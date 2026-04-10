@@ -1,24 +1,21 @@
-<ng-container *ngIf="tags?.length; else noTags">
+@if (tags$$().length) {
   <div class="flex flex-wrap gap-2">
-    <ng-container *ngFor="let tag of tags">
+    @for (tag of tags$$(); track tag) {
       <!-- With links -->
-      <a
-        *ngIf="clickable; else plainChip"
-        class="inline-block"
-        [routerLink]="[linkBase, tag]"
-        [attr.aria-label]="'Filter by tag ' + tag"
-      >
+      @if (clickable$$()) {
+        <a
+          class="inline-block"
+          [routerLink]="[linkBase$$(), tag]"
+          [attr.aria-label]="'Filter by tag ' + tag"
+          >
+          <p-chip [label]="tag"></p-chip>
+        </a>
+      } @else {
         <p-chip [label]="tag"></p-chip>
-      </a>
-
+      }
       <!-- Without links -->
-      <ng-template #plainChip>
-        <p-chip [label]="tag"></p-chip>
-      </ng-template>
-    </ng-container>
+    }
   </div>
-</ng-container>
-
-<ng-template #noTags>
+} @else {
   <span class="text-sm text-gray-500">No tags</span>
-</ng-template>
+}

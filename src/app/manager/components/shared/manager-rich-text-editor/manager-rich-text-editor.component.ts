@@ -1,4 +1,4 @@
-import { CommonModule } from '@angular/common';
+
 import {
   Component,
   ElementRef,
@@ -10,18 +10,17 @@ import {
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 @Component({
-  selector: 'app-manager-rich-text-editor',
-  standalone: true,
-  imports: [CommonModule],
-  templateUrl: './manager-rich-text-editor.component.html',
-  styleUrls: ['./manager-rich-text-editor.component.css'],
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => ManagerRichTextEditorComponent),
-      multi: true,
-    },
-  ],
+    selector: 'app-manager-rich-text-editor',
+    imports: [],
+    templateUrl: './manager-rich-text-editor.component.html',
+    styleUrls: ['./manager-rich-text-editor.component.css'],
+    providers: [
+        {
+            provide: NG_VALUE_ACCESSOR,
+            useExisting: forwardRef(() => ManagerRichTextEditorComponent),
+            multi: true,
+        },
+    ]
 })
 export class ManagerRichTextEditorComponent implements ControlValueAccessor {
   @Input() placeholder = 'Type here...';

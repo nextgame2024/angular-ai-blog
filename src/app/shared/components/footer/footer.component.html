@@ -7,7 +7,7 @@
     >
       <a routerLink="/" class="flex items-center" aria-label="sophiaAi home">
         <img
-          [src]="logoUrl || defaultLogo"
+          [src]="resolvedLogoUrl$$()"
           alt="sophiaAi"
           class="h-[2.8rem] w-auto select-none"
           loading="lazy"
@@ -16,7 +16,7 @@
         <span class="sr-only">sophiaAi</span>
       </a>
       <p class="text-xs text-neutral-500 dark:text-neutral-400">
-        © {{ year }}. All rights reserved.
+        © {{ year$$() }}. All rights reserved.
       </p>
       <p class="text-xs text-neutral-500 dark:text-neutral-400">
         Development by

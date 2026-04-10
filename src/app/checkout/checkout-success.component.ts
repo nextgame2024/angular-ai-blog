@@ -1,7 +1,8 @@
-import { Component, OnDestroy } from '@angular/core';
+import { Component, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { interval, Subscription, switchMap, startWith } from 'rxjs';
+import { interval, switchMap, startWith } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   RenderService,
   type RenderStatusResponse,
@@ -9,50 +10,65 @@ import {
 } from '../shared/services/render.service';
 
 @Component({
-  standalone: true,
-  selector: 'mc-checkout-success',
-  templateUrl: './checkout-success.component.html',
-  imports: [CommonModule, RouterLink],
+    selector: 'mc-checkout-success',
+    templateUrl: './checkout-success.component.html',
+    imports: [CommonModule, RouterLink]
 })
-export class CheckoutSuccessComponent implements OnDestroy {
-  jobId = this.route.snapshot.queryParamMap.get('jobId') || '';
-  articleSlug = this.route.snapshot.queryParamMap.get('article') || '';
+export class CheckoutSuccessComponent {
+  private readonly route = inject(ActivatedRoute);
+  private readonly render = inject(RenderService);
+
+  private readonly queryParams$$ = toSignal(this.route.queryParamMap, {
+    initialValue: this.route.snapshot.queryParamMap,
+  });
+  readonly jobId$$ = signal('');
+  readonly articleSlug$$ = signal('');
 
   // ✅ strong typing for status
-  status: RenderJobStatus = 'paid';
-  signedUrl: string | null = null;
-  expiresAt: string | null = null;
+  readonly status$$ = signal<RenderJobStatus>('paid');
+  readonly signedUrl$$ = signal<string | null>(null);
+  readonly expiresAt$$ = signal<string | null>(null);
 
-  sub?: Subscription;
+  private readonly paramsSyncEffect = effect(() => {
+    const params = this.queryParams$$();
+    const jobId = params.get('jobId') || '';
+    const article = params.get('article') || '';
 
-  constructor(private route: ActivatedRoute, private render: RenderService) {
-    // poll every 5s
-    this.sub = interval(5000)
+    if (jobId !== this.jobId$$()) {
+      this.jobId$$.set(jobId);
+    }
+    if (article !== this.articleSlug$$()) {
+      this.articleSlug$$.set(article);
+    }
+  });
+
+  private readonly pollEffect = effect((onCleanup) => {
+    const jobId = this.jobId$$();
+    if (!jobId) return;
+
+    const sub = interval(5000)
       .pipe(
         startWith(0),
-        switchMap(() => this.render.getStatus(this.jobId))
+        switchMap(() => this.render.getStatus(jobId))
       )
       .subscribe({
         next: (r: RenderStatusResponse) => {
-          this.status = r.status;
-          this.expiresAt = r.expiresAt || null;
-          this.signedUrl = r.signedUrl || null;
-          if (!this.articleSlug && (r as any).articleSlug) {
-            this.articleSlug = (r as any).articleSlug;
+          this.status$$.set(r.status);
+          this.expiresAt$$.set(r.expiresAt || null);
+          this.signedUrl$$.set(r.signedUrl || null);
+          const currentSlug = this.articleSlug$$();
+          if (!currentSlug && r.articleSlug) {
+            this.articleSlug$$.set(r.articleSlug);
           }
 
           // stop polling once terminal
-          if (this.status === 'done' || this.status === 'failed') {
-            this.sub?.unsubscribe();
-          }
+          if (r.status === 'done' || r.status === 'failed') sub.unsubscribe();
         },
         error: () => {
           // optional: show a transient error/toast; keep polling or stop as desired
         },
       });
-  }
 
-  ngOnDestroy(): void {
-    this.sub?.unsubscribe();
-  }
+    onCleanup(() => sub.unsubscribe());
+  });
 }

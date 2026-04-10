@@ -56,6 +56,8 @@ export const ManagerSuppliersActions = createActionGroup({
     'Delete Supplier Contact Failure': props<{ error: string }>(),
 
     // Materials
+    'Set Supplier Materials Search Query': props<{ query: string }>(),
+
     'Load Supplier Materials': props<{ supplierId: string; page: number }>(),
     'Load Supplier Materials Success': props<{
       materials: BmSupplierMaterial[];
