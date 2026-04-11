@@ -809,7 +809,13 @@
   </section>
   }
 
-  @if (isConfirmModalOpen) {
+  @if (formToastMessage) {
+  <div class="form-toast-wrap" aria-live="polite">
+    <div class="form-toast error" [class.closing]="formToastClosing">
+      {{ formToastMessage }}
+    </div>
+  </div>
+  } @if (isConfirmModalOpen) {
   <div class="status-modal-backdrop" (click)="onConfirmModalBackdrop()">
     <div
       class="status-modal"

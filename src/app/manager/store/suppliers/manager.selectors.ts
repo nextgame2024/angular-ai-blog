@@ -52,6 +52,11 @@ export const selectManagerEditingSupplier = createSelector(
   },
 );
 
+export const selectManagerEditingSupplierId = createSelector(
+  selectManagerSuppliersState,
+  (s) => s.editingSupplierId,
+);
+
 export const selectManagerSupplierFormTab = createSelector(
   selectManagerSuppliersState,
   (s) => s.supplierFormTab,
@@ -99,6 +104,11 @@ export const selectManagerEditingSupplierContact = createSelector(
   },
 );
 
+export const selectManagerEditingSupplierContactId = createSelector(
+  selectManagerSuppliersState,
+  (s) => s.editingContactId,
+);
+
 // Materials
 export const selectManagerSupplierMaterials = createSelector(
   selectManagerSuppliersState,
@@ -143,4 +153,9 @@ export const selectManagerEditingSupplierMaterial = createSelector(
       ) ?? null
     );
   },
+);
+
+export const selectManagerEditingSupplierMaterialId = createSelector(
+  selectManagerSuppliersState,
+  (s) => s.editingMaterialId,
 );

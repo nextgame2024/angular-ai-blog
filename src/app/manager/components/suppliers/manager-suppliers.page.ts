@@ -84,6 +84,12 @@ export class ManagerSuppliersPageComponent
   private isLoadingMoreContacts = false;
   private isLoadingMoreMaterials = false;
   private closeAfterSave = false;
+  private closeAfterContactSave = false;
+  private closeAfterMaterialSave = false;
+  private saveContactAfterSupplierSaveAndClose = false;
+  private saveMaterialAfterSupplierSaveAndClose = false;
+  private pendingContactPayloadAfterSupplierSave: any = null;
+  private pendingMaterialPayloadAfterSupplierSave: any = null;
 
   loading$ = this.store.select(selectManagerSuppliersLoading);
   error$ = this.store.select(selectManagerSuppliersError);
@@ -145,6 +151,10 @@ export class ManagerSuppliersPageComponent
   private isLoadingMaterials = false;
   dismissedErrors = new Set<string>();
   dismissedWarnings = new Set<string>();
+  formToastMessage: string | null = null;
+  formToastClosing = false;
+  private formToastTimer: ReturnType<typeof setTimeout> | null = null;
+  private formToastCloseTimer: ReturnType<typeof setTimeout> | null = null;
   isConfirmModalOpen = false;
   confirmModalTitle = '';
   confirmModalMessage = '';
@@ -290,11 +300,83 @@ export class ManagerSuppliersPageComponent
         takeUntil(this.destroy$),
       )
       .subscribe((action) => {
+        if (action.type === ManagerSuppliersActions.saveSupplierSuccess.type) {
+          if (this.dispatchNextPendingChildSave(action.supplier.supplierId)) return;
+        } else {
+          if (this.closeAfterSave || this.hasPendingContactSave() || this.hasPendingMaterialSave()) {
+            this.showFormToast(
+              (action as { error?: string })?.error ||
+                'Could not save supplier details. Please review required fields and try again.',
+            );
+          }
+          this.clearPendingChildSaves();
+        }
+
         if (!this.closeAfterSave) return;
         this.closeAfterSave = false;
         if (action.type === ManagerSuppliersActions.saveSupplierSuccess.type) {
           this.store.dispatch(ManagerSuppliersActions.closeSupplierForm());
         }
+      });
+
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerSuppliersActions.saveSupplierContactSuccess,
+          ManagerSuppliersActions.saveSupplierContactFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterContactSave) return;
+        this.closeAfterContactSave = false;
+        if (action.type !== ManagerSuppliersActions.saveSupplierContactSuccess.type) {
+          this.showFormToast(
+            (action as { error?: string })?.error ||
+              'Could not save contact. Please review required fields and try again.',
+          );
+          this.clearPendingChildSaves();
+          return;
+        }
+
+        this.store
+          .select(selectManagerEditingSupplier)
+          .pipe(take(1))
+          .subscribe((supplier) => {
+            const supplierId = supplier?.supplierId ?? null;
+            if (supplierId && this.dispatchNextPendingChildSave(supplierId)) return;
+            this.store.dispatch(ManagerSuppliersActions.closeSupplierForm());
+          });
+      });
+
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerSuppliersActions.saveSupplierMaterialSuccess,
+          ManagerSuppliersActions.saveSupplierMaterialFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterMaterialSave) return;
+        this.closeAfterMaterialSave = false;
+        if (action.type !== ManagerSuppliersActions.saveSupplierMaterialSuccess.type) {
+          this.showFormToast(
+            (action as { error?: string })?.error ||
+              'Could not save material. Please review required fields and try again.',
+          );
+          this.clearPendingChildSaves();
+          return;
+        }
+
+        this.store
+          .select(selectManagerEditingSupplier)
+          .pipe(take(1))
+          .subscribe((supplier) => {
+            const supplierId = supplier?.supplierId ?? null;
+            if (supplierId && this.dispatchNextPendingChildSave(supplierId)) return;
+            this.store.dispatch(ManagerSuppliersActions.closeSupplierForm());
+          });
       });
   }
 
@@ -431,6 +513,7 @@ export class ManagerSuppliersPageComponent
     this.infiniteObserver?.disconnect();
     this.contactsInfiniteObserver?.disconnect();
     this.materialsInfiniteObserver?.disconnect();
+    this.clearFormToastTimers();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -503,10 +586,70 @@ export class ManagerSuppliersPageComponent
   saveSupplierAndClose(): void {
     if (this.supplierForm.invalid) {
       this.supplierForm.markAllAsTouched();
+      this.showFormToast('Please complete required supplier fields before using Save & Finish.');
       return;
     }
-    this.closeAfterSave = true;
-    this.saveSupplier();
+
+    combineLatest([
+      this.contactsViewMode$.pipe(take(1)),
+      this.materialsViewMode$.pipe(take(1)),
+      this.store.select(selectManagerEditingSupplier).pipe(take(1)),
+    ]).subscribe(([contactsMode, materialsMode, supplier]) => {
+      let contactPayload: any | null = null;
+      let materialPayload: any | null = null;
+
+      if (contactsMode === 'form') {
+        if (this.contactForm.invalid) {
+          this.contactForm.markAllAsTouched();
+          this.showFormToast('Please complete required contact fields before using Save & Finish.');
+          this.currentTabValue = 'contacts';
+          this.store.dispatch(
+            ManagerSuppliersActions.setSupplierFormTab({ tab: 'contacts' }),
+          );
+          return;
+        }
+        contactPayload = this.contactForm.getRawValue();
+      }
+
+      if (materialsMode === 'form') {
+        materialPayload = this.buildSupplierMaterialPayload();
+        if (!materialPayload) {
+          this.showFormToast('Please complete required material fields before using Save & Finish.');
+          this.currentTabValue = 'materials';
+          this.store.dispatch(
+            ManagerSuppliersActions.setSupplierFormTab({ tab: 'materials' }),
+          );
+          return;
+        }
+      }
+
+      this.closeAfterSave = false;
+      this.closeAfterContactSave = false;
+      this.closeAfterMaterialSave = false;
+      this.saveContactAfterSupplierSaveAndClose = !!contactPayload;
+      this.saveMaterialAfterSupplierSaveAndClose = !!materialPayload;
+      this.pendingContactPayloadAfterSupplierSave = contactPayload;
+      this.pendingMaterialPayloadAfterSupplierSave = materialPayload;
+
+      const hasPendingChildren =
+        this.hasPendingContactSave() || this.hasPendingMaterialSave();
+
+      if (!hasPendingChildren) {
+        this.closeAfterSave = true;
+        this.saveSupplier();
+        return;
+      }
+
+      const supplierId = supplier?.supplierId ?? null;
+      if (!supplierId || this.supplierForm.dirty) {
+        this.saveSupplier();
+        return;
+      }
+
+      if (this.dispatchNextPendingChildSave(supplierId)) return;
+      this.closeAfterSave = true;
+      this.saveSupplier();
+    });
   }
 
   removeSupplier(s: BmSupplier): void {
@@ -638,28 +781,8 @@ export class ManagerSuppliersPageComponent
   }
 
   saveSupplierMaterial(): void {
-    if (!this.supplierMaterialForm.controls.material_id.value) {
-      const match = this.resolveMaterialSelection();
-      if (match) {
-        this.onMaterialSelect(match);
-      }
-    }
-    if (this.supplierMaterialForm.invalid) {
-      this.supplierMaterialForm.markAllAsTouched();
-      return;
-    }
-
-    const payload: any = this.supplierMaterialForm.getRawValue();
-
-    if (payload.lead_time_days !== null && payload.lead_time_days !== '') {
-      payload.lead_time_days = Number(payload.lead_time_days);
-    }
-    if (payload.unit_cost !== null && payload.unit_cost !== '') {
-      payload.unit_cost = this.formatMoney(payload.unit_cost);
-    }
-    if (payload.sell_cost !== null && payload.sell_cost !== '') {
-      payload.sell_cost = this.formatMoney(payload.sell_cost);
-    }
+    const payload = this.buildSupplierMaterialPayload();
+    if (!payload) return;
 
     this.store
       .select(selectManagerEditingSupplier)
@@ -673,6 +796,107 @@ export class ManagerSuppliersPageComponent
           }),
         );
       });
+  }
+
+  private buildSupplierMaterialPayload(): any | null {
+    if (!this.supplierMaterialForm.controls.material_id.value) {
+      const match = this.resolveMaterialSelection();
+      if (match) this.onMaterialSelect(match);
+    }
+    if (this.supplierMaterialForm.invalid) {
+      this.supplierMaterialForm.markAllAsTouched();
+      return null;
+    }
+
+    const payload: any = this.supplierMaterialForm.getRawValue();
+    if (payload.lead_time_days !== null && payload.lead_time_days !== '') {
+      payload.lead_time_days = Number(payload.lead_time_days);
+    }
+    if (payload.unit_cost !== null && payload.unit_cost !== '') {
+      payload.unit_cost = this.formatMoney(payload.unit_cost);
+    }
+    if (payload.sell_cost !== null && payload.sell_cost !== '') {
+      payload.sell_cost = this.formatMoney(payload.sell_cost);
+    }
+    return payload;
+  }
+
+  private hasPendingContactSave(): boolean {
+    return (
+      this.saveContactAfterSupplierSaveAndClose &&
+      this.pendingContactPayloadAfterSupplierSave !== null
+    );
+  }
+
+  private hasPendingMaterialSave(): boolean {
+    return (
+      this.saveMaterialAfterSupplierSaveAndClose &&
+      this.pendingMaterialPayloadAfterSupplierSave !== null
+    );
+  }
+
+  private clearPendingChildSaves(): void {
+    this.saveContactAfterSupplierSaveAndClose = false;
+    this.saveMaterialAfterSupplierSaveAndClose = false;
+    this.pendingContactPayloadAfterSupplierSave = null;
+    this.pendingMaterialPayloadAfterSupplierSave = null;
+  }
+
+  private dispatchNextPendingChildSave(supplierId: string): boolean {
+    if (this.hasPendingContactSave()) {
+      const payload = this.pendingContactPayloadAfterSupplierSave;
+      this.pendingContactPayloadAfterSupplierSave = null;
+      this.saveContactAfterSupplierSaveAndClose = false;
+      this.closeAfterContactSave = true;
+      this.store.dispatch(
+        ManagerSuppliersActions.saveSupplierContact({
+          supplierId,
+          payload,
+        }),
+      );
+      return true;
+    }
+
+    if (this.hasPendingMaterialSave()) {
+      const payload = this.pendingMaterialPayloadAfterSupplierSave;
+      this.pendingMaterialPayloadAfterSupplierSave = null;
+      this.saveMaterialAfterSupplierSaveAndClose = false;
+      this.closeAfterMaterialSave = true;
+      this.store.dispatch(
+        ManagerSuppliersActions.saveSupplierMaterial({
+          supplierId,
+          payload,
+        }),
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  private showFormToast(message: string): void {
+    this.clearFormToastTimers();
+    this.formToastMessage = message;
+    this.formToastClosing = false;
+
+    this.formToastTimer = window.setTimeout(() => {
+      this.formToastClosing = true;
+      this.formToastCloseTimer = window.setTimeout(() => {
+        this.formToastMessage = null;
+        this.formToastClosing = false;
+      }, 220);
+    }, 3200);
+  }
+
+  private clearFormToastTimers(): void {
+    if (this.formToastTimer) {
+      clearTimeout(this.formToastTimer);
+      this.formToastTimer = null;
+    }
+    if (this.formToastCloseTimer) {
+      clearTimeout(this.formToastCloseTimer);
+      this.formToastCloseTimer = null;
+    }
   }
 
   removeSupplierMaterial(supplier: BmSupplier, material: BmSupplierMaterial): void {

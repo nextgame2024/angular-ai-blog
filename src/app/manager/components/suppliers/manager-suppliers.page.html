@@ -1,1248 +1,1147 @@
 <div class="suppliers-shell">
   <!-- LIST HEADER -->
   @if ((viewMode$ | async) === 'list') {
-    <div class="list-header" #listHeader>
+  <div class="list-header" #listHeader>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <span>Suppliers</span>
+    </nav>
+    <div class="suppliers-toolbar">
+      <div class="title">
+        <h3>Suppliers</h3>
+        <p class="sub">Manage suppliers, contacts, and materials.</p>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn primary" (click)="openCreate()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 5v14"></path>
+              <path d="M5 12h14"></path>
+            </svg>
+          </span>
+          Create
+        </button>
+      </div>
+    </div>
+    <div class="toolbar-row">
+      <label class="search-field">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </span>
+        <input
+          type="search"
+          [formControl]="searchCtrl"
+          placeholder="Search by name, email, mobile, or status"
+          aria-label="Search suppliers"
+        />
+        @if (searchCtrl.value) {
+        <button
+          class="icon-btn"
+          type="button"
+          (click)="searchCtrl.setValue('')"
+          aria-label="Clear search"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </button>
+        }
+      </label>
+    </div>
+    <div class="table-head" aria-hidden="true">
+      <div>Name</div>
+      <div>Email</div>
+      <div>Mobile</div>
+      <div>Status</div>
+      <div class="actions-col">Actions</div>
+    </div>
+  </div>
+  } @if ((error$ | async); as err) { @if (!isErrorDismissed(err)) {
+  <div class="error">
+    <span>{{ err }}</span>
+    <button
+      type="button"
+      class="error-dismiss"
+      aria-label="Dismiss error"
+      (click)="dismissError(err)"
+    >
+      x
+    </button>
+  </div>
+  } } @if ((loading$ | async) || (contactsLoading$ | async) ||
+  (materialsLoading$ | async)) {
+  <div class="screen-loader" aria-live="polite" aria-busy="true">
+    <div class="loader-card">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <div class="loader-bar" aria-hidden="true"></div>
+      <div class="loader-text">Loading…</div>
+    </div>
+  </div>
+  }
+
+  <!-- FORM MODE -->
+  @if ((viewMode$ | async) === 'form') { @if (editingSupplier$ | async; as
+  supplier) {
+  <div class="form-header">
+    <div class="form-header-top">
       <nav class="breadcrumb" aria-label="Breadcrumb">
         <a routerLink="/manager/menu">Menu</a>
         <span class="sep">/</span>
-        <span>Suppliers</span>
+        <a href="#" (click)="$event.preventDefault(); closeForm()">Suppliers</a>
+        <span class="sep">/</span>
+        <span>Edit</span>
       </nav>
-      <div class="suppliers-toolbar">
-        <div class="title">
-          <h3>Suppliers</h3>
-          <p class="sub">Manage suppliers, contacts, and materials.</p>
+      <div class="form-header-mainrow">
+        <div class="header-main">
+          <h3>Supplier Details</h3>
+          <p class="sub">Update supplier details, contacts, and materials.</p>
         </div>
-        <div class="actions">
-          <button type="button" class="btn primary" (click)="openCreate()">
+        <div class="header-actions">
+          <button class="btn" type="button" (click)="closeForm()">
             <span class="btn-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24">
-                <path d="M12 5v14"></path>
-                <path d="M5 12h14"></path>
-              </svg>
-            </span>
-            Create
-          </button>
-        </div>
-      </div>
-      <div class="toolbar-row">
-        <label class="search-field">
-          <span class="search-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="7"></circle>
-              <path d="M20 20l-3.5-3.5"></path>
-            </svg>
-          </span>
-          <input
-            type="search"
-            [formControl]="searchCtrl"
-            placeholder="Search by name, email, mobile, or status"
-            aria-label="Search suppliers"
-            />
-          @if (searchCtrl.value) {
-            <button
-              class="icon-btn"
-              type="button"
-              (click)="searchCtrl.setValue('')"
-              aria-label="Clear search"
-              >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M6 6l12 12"></path>
                 <path d="M18 6l-12 12"></path>
               </svg>
+            </span>
+            Cancel
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+            (click)="saveSupplierAndClose()"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 5h11l3 3v11H5z"></path>
+                <path d="M9 5v6h6V5"></path>
+              </svg>
+            </span>
+            Save & Finish
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="form-tabs">
+      <button
+        type="button"
+        class="tab"
+        [class.active]="(tab$ | async) === 'details'"
+        (click)="setTab('details', supplier)"
+      >
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 10v6"></path>
+            <path d="M12 7h.01"></path>
+          </svg>
+        </span>
+        Details
+      </button>
+      <button
+        type="button"
+        class="tab"
+        [class.active]="(tab$ | async) === 'contacts'"
+        [disabled]="!supplier?.supplierId"
+        (click)="setTab('contacts', supplier)"
+      >
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="9" cy="8" r="3"></circle>
+            <circle cx="17" cy="9" r="2.5"></circle>
+            <path d="M3.5 19c0-3 2.7-5.5 6-5.5S15.5 16 15.5 19"></path>
+            <path d="M14 19c0-2.1 1.8-3.8 4-3.8"></path>
+          </svg>
+        </span>
+        Contacts
+      </button>
+      <button
+        type="button"
+        class="tab"
+        [class.active]="(tab$ | async) === 'materials'"
+        [disabled]="!supplier?.supplierId"
+        (click)="setTab('materials', supplier)"
+      >
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 6h16"></path>
+            <path d="M4 10h16"></path>
+            <path d="M4 14h16"></path>
+            <path d="M4 18h16"></path>
+          </svg>
+        </span>
+        Materials
+      </button>
+    </div>
+    @if ((tab$ | async) === 'contacts' && (contactsViewMode$ | async) ===
+    'list') {
+    <div class="form-header-actions-row">
+      <button class="btn primary" type="button" (click)="openContactCreate()">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 5v14"></path>
+            <path d="M5 12h14"></path>
+          </svg>
+        </span>
+        Add
+      </button>
+    </div>
+    } @if ((tab$ | async) === 'contacts' && (contactsViewMode$ | async) ===
+    'list') {
+    <div class="table-head contacts-head" aria-hidden="true">
+      <div>Name</div>
+      <div>Role</div>
+      <div>Email</div>
+      <div>Mobile</div>
+      <div class="actions-col">Actions</div>
+    </div>
+    } @if ((tab$ | async) === 'materials' && (materialsViewMode$ | async) ===
+    'list') {
+    <div class="materials-toolbar-row">
+      <label class="search-field materials-search-field">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="M20 20l-3.5-3.5"></path>
+          </svg>
+        </span>
+        <input
+          type="search"
+          [formControl]="materialsSearchCtrl"
+          placeholder="Search by material, unit, or supplier SKU"
+          aria-label="Search supplier materials"
+        />
+        @if (materialsSearchCtrl.value) {
+        <button
+          class="icon-btn"
+          type="button"
+          (click)="materialsSearchCtrl.setValue('')"
+          aria-label="Clear material search"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </button>
+        }
+      </label>
+      <button class="btn primary" type="button" (click)="openMaterialCreate()">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 5v14"></path>
+            <path d="M5 12h14"></path>
+          </svg>
+        </span>
+        Add Material
+      </button>
+    </div>
+    } @if ((tab$ | async) === 'materials' && (materialsViewMode$ | async) ===
+    'list') {
+    <div class="table-head materials-head" aria-hidden="true">
+      <div>Material</div>
+      <div>Quantity</div>
+      <div>Unit</div>
+      <div>Supplier SKU</div>
+      <div>Lead Time</div>
+      <div>Unit Cost</div>
+      <div>Sell Cost</div>
+      <div class="actions-col">Actions</div>
+    </div>
+    }
+  </div>
+  @if ((tab$ | async) === 'details') {
+  <section class="card">
+    <form class="form" [formGroup]="supplierForm" autocomplete="off">
+      <label>
+        <span>Supplier Name *</span>
+        <input
+          formControlName="supplier_name"
+          placeholder="Supplier name"
+          autocomplete="off"
+        />
+      </label>
+      <label class="address-label">
+        <span>Address</span>
+        <div class="address-field">
+          <input
+            formControlName="address"
+            placeholder="Address"
+            (focus)="onAddressFocus()"
+            (blur)="onAddressBlur()"
+            (keydown)="onAddressKeydown($event)"
+            autocomplete="off"
+          />
+          @if (showAddressSuggestions && addressSuggestions.length) {
+          <div class="address-suggestions">
+            @for (s of addressSuggestions; track s; let i = $index) {
+            <button
+              type="button"
+              class="address-suggestion"
+              [class.is-active]="i === addressActiveIndex"
+              (click)="onAddressSelect(s)"
+            >
+              {{ s.description }}
             </button>
+            }
+          </div>
           }
+        </div>
+      </label>
+      <div class="grid-2">
+        <label>
+          <span>Email</span>
+          <input formControlName="email" placeholder="email@example.com" />
+        </label>
+        <label>
+          <span>Mobile</span>
+          <input formControlName="cel" placeholder="0412..." />
         </label>
       </div>
-      <div class="table-head" aria-hidden="true">
+      <div class="grid-2">
+        <label>
+          <span>Phone</span>
+          <input formControlName="tel" placeholder="07..." />
+        </label>
+        <label>
+          <span>Status</span>
+          <app-manager-select
+            formControlName="status"
+            [options]="statusOptions"
+            placeholder="Select status"
+          ></app-manager-select>
+        </label>
+      </div>
+      <label>
+        <span>Notes</span>
+        <textarea
+          formControlName="notes"
+          rows="3"
+          placeholder="Notes..."
+        ></textarea>
+      </label>
+    </form>
+    <div class="card-actions right-actions">
+      <button class="btn" type="button" (click)="closeForm()">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </span>
+        Cancel
+      </button>
+      <button class="btn primary" type="button" (click)="saveSupplier()">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 5h11l3 3v11H5z"></path>
+            <path d="M9 5v6h6V5"></path>
+          </svg>
+        </span>
+        Save
+      </button>
+    </div>
+  </section>
+  }
+  <!-- CONTACTS TAB -->
+  @if ((tab$ | async) === 'contacts') {
+  <section>
+    @if ((contactsError$ | async); as cerr) { @if (!isErrorDismissed(cerr)) {
+    <div class="error">
+      <span>{{ cerr }}</span>
+      <button
+        type="button"
+        class="error-dismiss"
+        aria-label="Dismiss error"
+        (click)="dismissError(cerr)"
+      >
+        x
+      </button>
+    </div>
+    } } @if ((contactsViewMode$ | async) === 'form') {
+    <div class="card">
+      <div class="card-header">
+        <strong>Contact details</strong>
+      </div>
+      <form class="form" [formGroup]="contactForm">
+        <label>
+          <span>Name *</span>
+          <input formControlName="name" placeholder="Contact name" />
+        </label>
+        <div class="grid-2">
+          <label>
+            <span>Role title</span>
+            <input
+              formControlName="role_title"
+              placeholder="Manager, Owner..."
+            />
+          </label>
+          <label>
+            <span>Email</span>
+            <input formControlName="email" placeholder="email@example.com" />
+          </label>
+        </div>
+        <div class="grid-2">
+          <label>
+            <span>Mobile</span>
+            <input formControlName="cel" placeholder="0412..." />
+          </label>
+          <label>
+            <span>Phone</span>
+            <input formControlName="tel" placeholder="07..." />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" (click)="cancelContactForm()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 6l12 12"></path>
+                <path d="M18 6l-12 12"></path>
+              </svg>
+            </span>
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="btn primary"
+            (click)="saveContact(supplier)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 5h11l3 3v11H5z"></path>
+                <path d="M9 5v6h6V5"></path>
+              </svg>
+            </span>
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+    } @if ((contactsViewMode$ | async) === 'list') {
+    <div class="contacts-list" #contactsList>
+      @if ((contacts$ | async); as contacts) { @if (contacts.length) {
+      <div class="table contacts-table">
+        <div class="thead">
+          <div>Name</div>
+          <div>Role</div>
+          <div>Email</div>
+          <div>Mobile</div>
+          <div class="actions-col">Actions</div>
+        </div>
+        @for (ct of contacts; track trackByContact($index, ct)) {
+        <div class="trow">
+          <div class="cell strong">{{ ct.name }}</div>
+          <div class="cell muted">{{ ct.roleTitle || '—' }}</div>
+          <div class="cell muted">{{ ct.email || '—' }}</div>
+          <div class="cell muted">{{ ct.cel || '—' }}</div>
+          <div class="cell actions-col">
+            <button
+              class="btn small secondary"
+              type="button"
+              (click)="openContactEdit(ct)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                  <path d="M13 6l4 4"></path>
+                </svg>
+              </span>
+              Edit
+            </button>
+            <button
+              class="btn small danger"
+              type="button"
+              (click)="deleteContact(supplier, ct)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 7h16"></path>
+                  <path d="M9 7V5h6v2"></path>
+                  <path d="M7 7l1 12h8l1-12"></path>
+                </svg>
+              </span>
+              Delete
+            </button>
+          </div>
+        </div>
+        }
+      </div>
+      } @if (contacts.length) {
+      <div class="cards">
+        @for (ct of contacts; track trackByContact($index, ct)) {
+        <article class="client-card">
+          <div class="row">
+            <div class="name">{{ ct.name }}</div>
+            <div class="muted">{{ ct.roleTitle || '—' }}</div>
+          </div>
+          <div class="meta">
+            <div><span>Email:</span> {{ ct.email || '—' }}</div>
+            <div><span>Mobile:</span> {{ ct.cel || '—' }}</div>
+            <div><span>Phone:</span> {{ ct.tel || '—' }}</div>
+          </div>
+          <div class="card-actions">
+            <button
+              class="btn small secondary"
+              type="button"
+              (click)="openContactEdit(ct)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                  <path d="M13 6l4 4"></path>
+                </svg>
+              </span>
+              Edit
+            </button>
+            <button
+              class="btn small danger"
+              type="button"
+              (click)="deleteContact(supplier, ct)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 7h16"></path>
+                  <path d="M9 7V5h6v2"></path>
+                  <path d="M7 7l1 12h8l1-12"></path>
+                </svg>
+              </span>
+              Delete
+            </button>
+          </div>
+        </article>
+        }
+      </div>
+      } @if (!contacts.length && !(contactsLoading$ | async)) {
+      <div class="empty">No contacts yet. Click “Add” to create one.</div>
+      } }
+      <div class="infinite-sentinel" #contactsInfiniteSentinel></div>
+    </div>
+    }
+  </section>
+  }
+  <!-- MATERIALS TAB -->
+  @if ((tab$ | async) === 'materials') {
+  <section>
+    @if ((materialsError$ | async); as merr) { @if (!isErrorDismissed(merr)) {
+    <div class="error">
+      <span>{{ merr }}</span>
+      <button
+        type="button"
+        class="error-dismiss"
+        aria-label="Dismiss error"
+        (click)="dismissError(merr)"
+      >
+        x
+      </button>
+    </div>
+    } } @if ((materialsViewMode$ | async) === 'form') {
+    <div class="card">
+      <div class="card-header">
+        <strong>Supplier material</strong>
+      </div>
+      <form class="form" [formGroup]="supplierMaterialForm">
+        <label class="address-label">
+          <span>Material *</span>
+          <div class="address-field">
+            <input
+              [formControl]="materialSearchCtrl"
+              placeholder="Search material"
+              [class.is-invalid]="supplierMaterialForm.controls.material_id.touched && supplierMaterialForm.controls.material_id.invalid"
+              (input)="onMaterialQueryInput(materialSearchCtrl.value)"
+              (focus)="onMaterialQueryFocus()"
+              (blur)="onMaterialQueryBlur()"
+              (keydown)="onMaterialQueryKeydown($event)"
+              autocomplete="off"
+            />
+            @if (showMaterialSuggestions && materialSuggestions.length) {
+            <div class="address-suggestions">
+              @for (m of materialSuggestions; track m; let i = $index) {
+              <button
+                type="button"
+                class="address-suggestion"
+                [class.is-active]="i === materialActiveIndex"
+                (click)="onMaterialSelect(m)"
+              >
+                {{ m.materialName }} @if (m.code) {
+                <span class="hint">({{ m.code }})</span>
+                }
+              </button>
+              }
+            </div>
+            }
+          </div>
+          @if (supplierMaterialForm.controls.material_id.touched &&
+          supplierMaterialForm.controls.material_id.invalid) {
+          <div class="error-text">Select a material from the list.</div>
+          }
+        </label>
+        <div class="grid-2">
+          <label>
+            <span>Quantity</span>
+            <input
+              [value]="getSelectedMaterialQuantity()"
+              placeholder="0"
+              disabled
+            />
+          </label>
+          <label>
+            <span>Unit</span>
+            <input
+              [value]="getSelectedMaterialUnit()"
+              placeholder="Unit"
+              disabled
+            />
+          </label>
+        </div>
+        <div class="grid-2">
+          <label>
+            <span>Supplier SKU</span>
+            <input formControlName="supplier_sku" placeholder="SKU" />
+          </label>
+          <label>
+            <span>Lead Time (days)</span>
+            <input
+              formControlName="lead_time_days"
+              type="number"
+              step="1"
+              min="0"
+              placeholder="0"
+            />
+          </label>
+        </div>
+        <div class="grid-2">
+          <label>
+            <span>Unit Cost</span>
+            <input
+              formControlName="unit_cost"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              (blur)="formatMoneyControl('unit_cost')"
+            />
+          </label>
+          <label>
+            <span>Sell Cost</span>
+            <input
+              formControlName="sell_cost"
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              (blur)="formatMoneyControl('sell_cost')"
+            />
+          </label>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn" (click)="cancelMaterialForm()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 6l12 12"></path>
+                <path d="M18 6l-12 12"></path>
+              </svg>
+            </span>
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="btn primary"
+            (click)="saveSupplierMaterial()"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 5h11l3 3v11H5z"></path>
+                <path d="M9 5v6h6V5"></path>
+              </svg>
+            </span>
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+    } @if ((materialsViewMode$ | async) === 'list') {
+    <div class="contacts-list" #materialsList>
+      @if ((materials$ | async); as materials) { @if (materials.length) {
+      <div class="table materials-table">
+        <div class="thead">
+          <div>Material</div>
+          <div>Quantity</div>
+          <div>Unit</div>
+          <div>Supplier SKU</div>
+          <div>Lead Time</div>
+          <div>Unit Cost</div>
+          <div>Sell Cost</div>
+          <div class="actions-col">Actions</div>
+        </div>
+        @for (sm of materials; track trackBySupplierMaterial($index, sm)) {
+        <div class="trow">
+          <div class="cell strong">{{ getMaterialName(sm.materialId) }}</div>
+          <div class="cell muted">
+            {{ (sm.quantity ?? getMaterialQuantity(sm.materialId)) ?? '—' }}
+          </div>
+          <div class="cell muted">
+            {{ (sm.unit ?? getMaterialUnit(sm.materialId)) || '—' }}
+          </div>
+          <div class="cell muted">{{ sm.supplierSku || '—' }}</div>
+          <div class="cell muted">{{ sm.leadTimeDays ?? '—' }}</div>
+          <div class="cell muted">
+            {{ sm.unitCost === null || sm.unitCost === undefined ? '—' :
+            (sm.unitCost | number : '1.2-2') }}
+          </div>
+          <div class="cell muted">
+            {{ sm.sellCost === null || sm.sellCost === undefined ? '—' :
+            (sm.sellCost | number : '1.2-2') }}
+          </div>
+          <div class="cell actions-col">
+            <button
+              class="btn small secondary"
+              type="button"
+              (click)="openMaterialEdit(sm)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                  <path d="M13 6l4 4"></path>
+                </svg>
+              </span>
+              Edit
+            </button>
+            <button
+              class="btn small danger"
+              type="button"
+              (click)="removeSupplierMaterial(supplier, sm)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 7h16"></path>
+                  <path d="M9 7V5h6v2"></path>
+                  <path d="M7 7l1 12h8l1-12"></path>
+                </svg>
+              </span>
+              Delete
+            </button>
+          </div>
+        </div>
+        }
+      </div>
+      } @if (materials.length) {
+      <div class="cards">
+        @for (sm of materials; track trackBySupplierMaterial($index, sm)) {
+        <article class="client-card">
+          <div class="row">
+            <div class="name">{{ getMaterialName(sm.materialId) }}</div>
+            <div class="muted">{{ sm.supplierSku || '—' }}</div>
+          </div>
+          <div class="meta">
+            <div>
+              <span>Quantity:</span>
+              {{ (sm.quantity ?? getMaterialQuantity(sm.materialId)) ?? '—' }}
+            </div>
+            <div>
+              <span>Unit:</span>
+              {{ (sm.unit ?? getMaterialUnit(sm.materialId)) || '—' }}
+            </div>
+            <div><span>Lead Time:</span> {{ sm.leadTimeDays ?? '—' }}</div>
+            <div>
+              <span>Unit Cost:</span>
+              {{ sm.unitCost === null || sm.unitCost === undefined ? '—' :
+              (sm.unitCost | number : '1.2-2') }}
+            </div>
+            <div>
+              <span>Sell Cost:</span>
+              {{ sm.sellCost === null || sm.sellCost === undefined ? '—' :
+              (sm.sellCost | number : '1.2-2') }}
+            </div>
+          </div>
+          <div class="card-actions">
+            <button
+              class="btn small secondary"
+              type="button"
+              (click)="openMaterialEdit(sm)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                  <path d="M13 6l4 4"></path>
+                </svg>
+              </span>
+              Edit
+            </button>
+            <button
+              class="btn small danger"
+              type="button"
+              (click)="removeSupplierMaterial(supplier, sm)"
+            >
+              <span class="btn-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 7h16"></path>
+                  <path d="M9 7V5h6v2"></path>
+                  <path d="M7 7l1 12h8l1-12"></path>
+                </svg>
+              </span>
+              Delete
+            </button>
+          </div>
+        </article>
+        }
+      </div>
+      } @if (!materials.length && !(materialsLoading$ | async)) {
+      <div class="empty">No materials linked to this supplier yet.</div>
+      } }
+      <div class="infinite-sentinel" #materialsInfiniteSentinel></div>
+    </div>
+    }
+  </section>
+  } } @else {
+  <div class="form-header">
+    <div class="form-header-top">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/manager/menu">Menu</a>
+        <span class="sep">/</span>
+        <a href="#" (click)="$event.preventDefault(); closeForm()">Suppliers</a>
+        <span class="sep">/</span>
+        <span>Create</span>
+      </nav>
+      <div class="form-header-mainrow">
+        <div class="header-main">
+          <h3>Create Supplier</h3>
+          <p class="sub">Create a new supplier entry.</p>
+        </div>
+        <div class="header-actions">
+          <button class="btn" type="button" (click)="closeForm()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 6l12 12"></path>
+                <path d="M18 6l-12 12"></path>
+              </svg>
+            </span>
+            Cancel
+          </button>
+          <button
+            class="btn primary"
+            type="button"
+            (click)="saveSupplierAndClose()"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 5h11l3 3v11H5z"></path>
+                <path d="M9 5v6h6V5"></path>
+              </svg>
+            </span>
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="form-tabs">
+      <button type="button" class="tab active">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 10v6"></path>
+            <path d="M12 7h.01"></path>
+          </svg>
+        </span>
+        Details
+      </button>
+      <button type="button" class="tab" disabled>
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="9" cy="8" r="3"></circle>
+            <circle cx="17" cy="9" r="2.5"></circle>
+            <path d="M3.5 19c0-3 2.7-5.5 6-5.5S15.5 16 15.5 19"></path>
+            <path d="M14 19c0-2.1 1.8-3.8 4-3.8"></path>
+          </svg>
+        </span>
+        Contacts
+      </button>
+      <button type="button" class="tab" disabled>
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M4 6h16"></path>
+            <path d="M4 10h16"></path>
+            <path d="M4 14h16"></path>
+            <path d="M4 18h16"></path>
+          </svg>
+        </span>
+        Materials
+      </button>
+    </div>
+  </div>
+  @if (!isWarningDismissed('supplier-create-tabs')) {
+  <div class="warning-banner">
+    <span class="warning-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <path d="M12 4 3 20h18L12 4Z"></path>
+        <path d="M12 9v5"></path>
+        <path d="M12 17h.01"></path>
+      </svg>
+    </span>
+    Save the supplier first to enable the Contacts and Materials tabs.
+    <button
+      type="button"
+      class="warning-dismiss"
+      aria-label="Dismiss notice"
+      (click)="dismissWarning('supplier-create-tabs')"
+    >
+      x
+    </button>
+  </div>
+  }
+  <section class="card">
+    <form class="form" [formGroup]="supplierForm" autocomplete="off">
+      <label>
+        <span>Supplier Name *</span>
+        <input formControlName="supplier_name" placeholder="Supplier name" />
+      </label>
+      <label class="address-label">
+        <span>Address</span>
+        <div class="address-field">
+          <input
+            formControlName="address"
+            placeholder="Address"
+            (focus)="onAddressFocus()"
+            (blur)="onAddressBlur()"
+            (keydown)="onAddressKeydown($event)"
+            autocomplete="off"
+          />
+          @if (showAddressSuggestions && addressSuggestions.length) {
+          <div class="address-suggestions">
+            @for (s of addressSuggestions; track s; let i = $index) {
+            <button
+              type="button"
+              class="address-suggestion"
+              [class.is-active]="i === addressActiveIndex"
+              (click)="onAddressSelect(s)"
+            >
+              {{ s.description }}
+            </button>
+            }
+          </div>
+          }
+        </div>
+      </label>
+      <div class="grid-2">
+        <label>
+          <span>Email</span>
+          <input formControlName="email" placeholder="email@example.com" />
+        </label>
+        <label>
+          <span>Mobile</span>
+          <input formControlName="cel" placeholder="0412..." />
+        </label>
+      </div>
+      <div class="grid-2">
+        <label>
+          <span>Phone</span>
+          <input formControlName="tel" placeholder="07..." />
+        </label>
+        <label>
+          <span>Status</span>
+          <app-manager-select
+            formControlName="status"
+            [options]="statusOptions"
+            placeholder="Select status"
+          ></app-manager-select>
+        </label>
+      </div>
+      <label>
+        <span>Notes</span>
+        <textarea
+          formControlName="notes"
+          rows="3"
+          placeholder="Notes..."
+        ></textarea>
+      </label>
+    </form>
+    <div class="card-actions right-actions">
+      <button class="btn" type="button" (click)="closeForm()">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </span>
+        Cancel
+      </button>
+      <button class="btn primary" type="button" (click)="saveSupplier()">
+        <span class="btn-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 5h11l3 3v11H5z"></path>
+            <path d="M9 5v6h6V5"></path>
+          </svg>
+        </span>
+        Save
+      </button>
+    </div>
+  </section>
+  } }
+
+  <!-- LIST MODE -->
+  @if ((viewMode$ | async) === 'list') {
+  <section class="list" #suppliersList>
+    @if (suppliersRaw$ | async; as suppliers) { @if (suppliers.length) {
+    <div class="table">
+      <div class="thead">
         <div>Name</div>
         <div>Email</div>
         <div>Mobile</div>
         <div>Status</div>
         <div class="actions-col">Actions</div>
       </div>
+      @for (s of suppliers; track trackBySupplier($index, s)) {
+      <div class="trow">
+        <div class="cell strong">{{ s.supplierName }}</div>
+        <div class="cell muted">{{ s.email || '—' }}</div>
+        <div class="cell muted">{{ s.cel || '—' }}</div>
+        <div class="cell">
+          <span class="badge" [class.archived]="s.status === 'archived'">
+            {{ s.status || 'active' }}
+          </span>
+        </div>
+        <div class="cell actions-col">
+          <button
+            class="btn small secondary"
+            type="button"
+            (click)="openEdit(s)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                <path d="M13 6l4 4"></path>
+              </svg>
+            </span>
+            Edit
+          </button>
+          <button
+            class="btn small danger"
+            type="button"
+            [disabled]="isArchiveActionDisabled(s)"
+            (click)="removeSupplier(s)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 8h16"></path>
+                <path d="M6 8v10h12V8"></path>
+                <path d="M10 12h4"></path>
+                <path d="M9 4h6l1 2H8l1-2Z"></path>
+              </svg>
+            </span>
+            {{ s.hasProjects ? 'Archive' : 'Delete' }}
+          </button>
+        </div>
+      </div>
+      }
     </div>
-  }
-
-  @if ((error$ | async); as err) {
-    @if (!isErrorDismissed(err)) {
-      <div class="error">
-        <span>{{ err }}</span>
+    } @if (suppliers.length) {
+    <div class="cards">
+      @for (s of suppliers; track trackBySupplier($index, s)) {
+      <article class="supplier-card">
+        <div class="row">
+          <div class="name">{{ s.supplierName }}</div>
+          <span class="badge" [class.archived]="s.status === 'archived'">
+            {{ s.status || 'active' }}
+          </span>
+        </div>
+        <div class="meta">
+          <div><span>Email:</span> {{ s.email || '—' }}</div>
+          <div><span>Mobile:</span> {{ s.cel || '—' }}</div>
+          <div><span>Phone:</span> {{ s.tel || '—' }}</div>
+        </div>
+        <div class="card-actions">
+          <button
+            class="btn small secondary"
+            type="button"
+            (click)="openEdit(s)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
+                <path d="M13 6l4 4"></path>
+              </svg>
+            </span>
+            Edit
+          </button>
+          <button
+            class="btn small danger"
+            type="button"
+            [disabled]="isArchiveActionDisabled(s)"
+            (click)="removeSupplier(s)"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M4 8h16"></path>
+                <path d="M6 8v10h12V8"></path>
+                <path d="M10 12h4"></path>
+                <path d="M9 4h6l1 2H8l1-2Z"></path>
+              </svg>
+            </span>
+            {{ s.hasProjects ? 'Archive' : 'Delete' }}
+          </button>
+        </div>
+      </article>
+      }
+    </div>
+    } @if (!suppliers.length && !(loading$ | async)) {
+    <div class="empty">No suppliers found.</div>
+    }
+    <div class="infinite-sentinel" #infiniteSentinel></div>
+    }
+  </section>
+  } @if (formToastMessage) {
+  <div class="form-toast-wrap" aria-live="polite">
+    <div class="form-toast error" [class.closing]="formToastClosing">
+      {{ formToastMessage }}
+    </div>
+  </div>
+  } @if (isConfirmModalOpen) {
+  <div class="status-modal-backdrop" (click)="onConfirmModalBackdrop()">
+    <div
+      class="status-modal"
+      [class.tone-warning]="confirmModalTone === 'warning'"
+      [class.tone-danger]="confirmModalTone === 'danger'"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      aria-describedby="confirm-modal-message"
+    >
+      <div class="status-modal-header">
+        <span class="status-modal-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7v6"></path>
+            <path d="M12 16.5h.01"></path>
+          </svg>
+        </span>
+        <div class="status-modal-text">
+          <h4 id="confirm-modal-title">{{ confirmModalTitle }}</h4>
+          <p id="confirm-modal-message">{{ confirmModalMessage }}</p>
+        </div>
+      </div>
+      <div class="status-modal-actions">
+        @if (confirmModalShowCancel) {
         <button
           type="button"
-          class="error-dismiss"
-          aria-label="Dismiss error"
-          (click)="dismissError(err)"
-          >
-          x
+          class="btn secondary"
+          (click)="onConfirmModalCancel()"
+        >
+          {{ confirmModalCancelLabel }}
+        </button>
+        }
+        <button
+          type="button"
+          class="btn primary"
+          (click)="onConfirmModalConfirm()"
+        >
+          {{ confirmModalConfirmLabel }}
         </button>
       </div>
-    }
-  }
-
-  @if ((loading$ | async) || (contactsLoading$ | async) || (materialsLoading$ | async)) {
-    <div
-      class="screen-loader"
-      aria-live="polite"
-      aria-busy="true"
-      >
-      <div class="loader-card">
-        <div class="loader-ring" aria-hidden="true"></div>
-        <div class="loader-bar" aria-hidden="true"></div>
-        <div class="loader-text">Loading…</div>
-      </div>
     </div>
+  </div>
   }
-
-  <!-- FORM MODE -->
-  @if ((viewMode$ | async) === 'form') {
-    @if (editingSupplier$ | async; as supplier) {
-      <div class="form-header">
-        <div class="form-header-top">
-          <nav class="breadcrumb" aria-label="Breadcrumb">
-            <a routerLink="/manager/menu">Menu</a>
-            <span class="sep">/</span>
-            <a href="#" (click)="$event.preventDefault(); closeForm()"
-              >Suppliers</a
-              >
-              <span class="sep">/</span>
-              <span>Edit</span>
-            </nav>
-            <div class="form-header-mainrow">
-              <div class="header-main">
-                <h3>Supplier Details</h3>
-                <p class="sub">
-                  Update supplier details, contacts, and materials.
-                </p>
-              </div>
-              <div class="header-actions">
-                <button class="btn" type="button" (click)="closeForm()">
-                  <span class="btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M6 6l12 12"></path>
-                      <path d="M18 6l-12 12"></path>
-                    </svg>
-                  </span>
-                  Cancel
-                </button>
-                <button
-                  class="btn primary"
-                  type="button"
-                  (click)="saveSupplierAndClose()"
-                  >
-                  <span class="btn-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M5 5h11l3 3v11H5z"></path>
-                      <path d="M9 5v6h6V5"></path>
-                    </svg>
-                  </span>
-                  Finish
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="form-tabs">
-            <button
-              type="button"
-              class="tab"
-              [class.active]="(tab$ | async) === 'details'"
-              (click)="setTab('details', supplier)"
-              >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="9"></circle>
-                  <path d="M12 10v6"></path>
-                  <path d="M12 7h.01"></path>
-                </svg>
-              </span>
-              Details
-            </button>
-            <button
-              type="button"
-              class="tab"
-              [class.active]="(tab$ | async) === 'contacts'"
-              [disabled]="!supplier?.supplierId"
-              (click)="setTab('contacts', supplier)"
-              >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="9" cy="8" r="3"></circle>
-                  <circle cx="17" cy="9" r="2.5"></circle>
-                  <path d="M3.5 19c0-3 2.7-5.5 6-5.5S15.5 16 15.5 19"></path>
-                  <path d="M14 19c0-2.1 1.8-3.8 4-3.8"></path>
-                </svg>
-              </span>
-              Contacts
-            </button>
-            <button
-              type="button"
-              class="tab"
-              [class.active]="(tab$ | async) === 'materials'"
-              [disabled]="!supplier?.supplierId"
-              (click)="setTab('materials', supplier)"
-              >
-              <span class="btn-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M4 6h16"></path>
-                  <path d="M4 10h16"></path>
-                  <path d="M4 14h16"></path>
-                  <path d="M4 18h16"></path>
-                </svg>
-              </span>
-              Materials
-            </button>
-          </div>
-          @if ((tab$ | async) === 'contacts' && (contactsViewMode$ | async) === 'list') {
-            <div
-              class="form-header-actions-row"
-              >
-              <button
-                class="btn primary"
-                type="button"
-                (click)="openContactCreate()"
-                >
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M12 5v14"></path>
-                    <path d="M5 12h14"></path>
-                  </svg>
-                </span>
-                Add
-              </button>
-            </div>
-          }
-          @if ((tab$ | async) === 'contacts' && (contactsViewMode$ | async) === 'list') {
-            <div
-              class="table-head contacts-head"
-              aria-hidden="true"
-              >
-              <div>Name</div>
-              <div>Role</div>
-              <div>Email</div>
-              <div>Mobile</div>
-              <div class="actions-col">Actions</div>
-            </div>
-          }
-          @if ((tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list') {
-            <div class="materials-toolbar-row">
-              <label class="search-field materials-search-field">
-                <span class="search-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <circle cx="11" cy="11" r="7"></circle>
-                    <path d="M20 20l-3.5-3.5"></path>
-                  </svg>
-                </span>
-                <input
-                  type="search"
-                  [formControl]="materialsSearchCtrl"
-                  placeholder="Search by material, unit, or supplier SKU"
-                  aria-label="Search supplier materials"
-                  />
-                @if (materialsSearchCtrl.value) {
-                  <button
-                    class="icon-btn"
-                    type="button"
-                    (click)="materialsSearchCtrl.setValue('')"
-                    aria-label="Clear material search"
-                    >
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M6 6l12 12"></path>
-                      <path d="M18 6l-12 12"></path>
-                    </svg>
-                  </button>
-                }
-              </label>
-              <button
-                class="btn primary"
-                type="button"
-                (click)="openMaterialCreate()"
-                >
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M12 5v14"></path>
-                    <path d="M5 12h14"></path>
-                  </svg>
-                </span>
-                Add Material
-              </button>
-            </div>
-          }
-          @if ((tab$ | async) === 'materials' && (materialsViewMode$ | async) === 'list') {
-            <div
-              class="table-head materials-head"
-              aria-hidden="true"
-              >
-              <div>Material</div>
-              <div>Quantity</div>
-              <div>Unit</div>
-              <div>Supplier SKU</div>
-              <div>Lead Time</div>
-              <div>Unit Cost</div>
-              <div>Sell Cost</div>
-              <div class="actions-col">Actions</div>
-            </div>
-          }
-        </div>
-        @if ((tab$ | async) === 'details') {
-          <section class="card">
-            <form class="form" [formGroup]="supplierForm" autocomplete="off">
-              <label>
-                <span>Supplier Name *</span>
-                <input
-                  formControlName="supplier_name"
-                  placeholder="Supplier name"
-                  autocomplete="off"
-                  />
-              </label>
-              <label class="address-label">
-                <span>Address</span>
-                <div class="address-field">
-                  <input
-                    formControlName="address"
-                    placeholder="Address"
-                    (focus)="onAddressFocus()"
-                    (blur)="onAddressBlur()"
-                    (keydown)="onAddressKeydown($event)"
-                    autocomplete="off"
-                    />
-                  @if (showAddressSuggestions && addressSuggestions.length) {
-                    <div
-                      class="address-suggestions"
-                      >
-                      @for (s of addressSuggestions; track s; let i = $index) {
-                        <button
-                          type="button"
-                          class="address-suggestion"
-                          [class.is-active]="i === addressActiveIndex"
-                          (click)="onAddressSelect(s)"
-                          >
-                          {{ s.description }}
-                        </button>
-                      }
-                    </div>
-                  }
-                </div>
-              </label>
-              <div class="grid-2">
-                <label>
-                  <span>Email</span>
-                  <input
-                    formControlName="email"
-                    placeholder="email@example.com"
-                    />
-                </label>
-                <label>
-                  <span>Mobile</span>
-                  <input formControlName="cel" placeholder="0412..." />
-                </label>
-              </div>
-              <div class="grid-2">
-                <label>
-                  <span>Phone</span>
-                  <input formControlName="tel" placeholder="07..." />
-                </label>
-                <label>
-                  <span>Status</span>
-                  <app-manager-select
-                    formControlName="status"
-                    [options]="statusOptions"
-                    placeholder="Select status"
-                  ></app-manager-select>
-                </label>
-              </div>
-              <label>
-                <span>Notes</span>
-                <textarea
-                  formControlName="notes"
-                  rows="3"
-                  placeholder="Notes..."
-                ></textarea>
-              </label>
-            </form>
-            <div class="card-actions right-actions">
-              <button class="btn" type="button" (click)="closeForm()">
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M6 6l12 12"></path>
-                    <path d="M18 6l-12 12"></path>
-                  </svg>
-                </span>
-                Cancel
-              </button>
-              <button class="btn primary" type="button" (click)="saveSupplier()">
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M5 5h11l3 3v11H5z"></path>
-                    <path d="M9 5v6h6V5"></path>
-                  </svg>
-                </span>
-                Save
-              </button>
-            </div>
-          </section>
-        }
-        <!-- CONTACTS TAB -->
-        @if ((tab$ | async) === 'contacts') {
-          <section>
-            @if ((contactsError$ | async); as cerr) {
-              @if (!isErrorDismissed(cerr)) {
-                <div class="error">
-                  <span>{{ cerr }}</span>
-                  <button
-                    type="button"
-                    class="error-dismiss"
-                    aria-label="Dismiss error"
-                    (click)="dismissError(cerr)"
-                    >
-                    x
-                  </button>
-                </div>
-              }
-            }
-            @if ((contactsViewMode$ | async) === 'form') {
-              <div class="card">
-                <div class="card-header">
-                  <strong>Contact details</strong>
-                </div>
-                <form class="form" [formGroup]="contactForm">
-                  <label>
-                    <span>Name *</span>
-                    <input formControlName="name" placeholder="Contact name" />
-                  </label>
-                  <div class="grid-2">
-                    <label>
-                      <span>Role title</span>
-                      <input
-                        formControlName="role_title"
-                        placeholder="Manager, Owner..."
-                        />
-                    </label>
-                    <label>
-                      <span>Email</span>
-                      <input
-                        formControlName="email"
-                        placeholder="email@example.com"
-                        />
-                    </label>
-                  </div>
-                  <div class="grid-2">
-                    <label>
-                      <span>Mobile</span>
-                      <input formControlName="cel" placeholder="0412..." />
-                    </label>
-                    <label>
-                      <span>Phone</span>
-                      <input formControlName="tel" placeholder="07..." />
-                    </label>
-                  </div>
-                  <div class="form-actions">
-                    <button type="button" class="btn" (click)="cancelContactForm()">
-                      <span class="btn-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                          <path d="M6 6l12 12"></path>
-                          <path d="M18 6l-12 12"></path>
-                        </svg>
-                      </span>
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      class="btn primary"
-                      (click)="saveContact(supplier)"
-                      >
-                      <span class="btn-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                          <path d="M5 5h11l3 3v11H5z"></path>
-                          <path d="M9 5v6h6V5"></path>
-                        </svg>
-                      </span>
-                      Save
-                    </button>
-                  </div>
-                </form>
-              </div>
-            }
-            @if ((contactsViewMode$ | async) === 'list') {
-              <div class="contacts-list" #contactsList>
-                @if ((contacts$ | async); as contacts) {
-                  @if (contacts.length) {
-                    <div class="table contacts-table">
-                      <div class="thead">
-                        <div>Name</div>
-                        <div>Role</div>
-                        <div>Email</div>
-                        <div>Mobile</div>
-                        <div class="actions-col">Actions</div>
-                      </div>
-                      @for (ct of contacts; track trackByContact($index, ct)) {
-                        <div
-                          class="trow"
-                          >
-                          <div class="cell strong">{{ ct.name }}</div>
-                          <div class="cell muted">{{ ct.roleTitle || '—' }}</div>
-                          <div class="cell muted">{{ ct.email || '—' }}</div>
-                          <div class="cell muted">{{ ct.cel || '—' }}</div>
-                          <div class="cell actions-col">
-                            <button
-                              class="btn small secondary"
-                              type="button"
-                              (click)="openContactEdit(ct)"
-                              >
-                              <span class="btn-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24">
-                                  <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
-                                  <path d="M13 6l4 4"></path>
-                                </svg>
-                              </span>
-                              Edit
-                            </button>
-                            <button
-                              class="btn small danger"
-                              type="button"
-                              (click)="deleteContact(supplier, ct)"
-                              >
-                              <span class="btn-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24">
-                                  <path d="M4 7h16"></path>
-                                  <path d="M9 7V5h6v2"></path>
-                                  <path d="M7 7l1 12h8l1-12"></path>
-                                </svg>
-                              </span>
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  }
-                  @if (contacts.length) {
-                    <div class="cards">
-                      @for (ct of contacts; track trackByContact($index, ct)) {
-                        <article
-                          class="client-card"
-                          >
-                          <div class="row">
-                            <div class="name">{{ ct.name }}</div>
-                            <div class="muted">{{ ct.roleTitle || '—' }}</div>
-                          </div>
-                          <div class="meta">
-                            <div><span>Email:</span> {{ ct.email || '—' }}</div>
-                            <div><span>Mobile:</span> {{ ct.cel || '—' }}</div>
-                            <div><span>Phone:</span> {{ ct.tel || '—' }}</div>
-                          </div>
-                          <div class="card-actions">
-                            <button
-                              class="btn small secondary"
-                              type="button"
-                              (click)="openContactEdit(ct)"
-                              >
-                              <span class="btn-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24">
-                                  <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
-                                  <path d="M13 6l4 4"></path>
-                                </svg>
-                              </span>
-                              Edit
-                            </button>
-                            <button
-                              class="btn small danger"
-                              type="button"
-                              (click)="deleteContact(supplier, ct)"
-                              >
-                              <span class="btn-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24">
-                                  <path d="M4 7h16"></path>
-                                  <path d="M9 7V5h6v2"></path>
-                                  <path d="M7 7l1 12h8l1-12"></path>
-                                </svg>
-                              </span>
-                              Delete
-                            </button>
-                          </div>
-                        </article>
-                      }
-                    </div>
-                  }
-                  @if (!contacts.length && !(contactsLoading$ | async)) {
-                    <div
-                      class="empty"
-                      >
-                      No contacts yet. Click “Add” to create one.
-                    </div>
-                  }
-                }
-                <div class="infinite-sentinel" #contactsInfiniteSentinel></div>
-              </div>
-            }
-          </section>
-        }
-        <!-- MATERIALS TAB -->
-        @if ((tab$ | async) === 'materials') {
-          <section>
-            @if ((materialsError$ | async); as merr) {
-              @if (!isErrorDismissed(merr)) {
-                <div class="error">
-                  <span>{{ merr }}</span>
-                  <button
-                    type="button"
-                    class="error-dismiss"
-                    aria-label="Dismiss error"
-                    (click)="dismissError(merr)"
-                    >
-                    x
-                  </button>
-                </div>
-              }
-            }
-            @if ((materialsViewMode$ | async) === 'form') {
-              <div class="card">
-                <div class="card-header">
-                  <strong>Supplier material</strong>
-                </div>
-                <form class="form" [formGroup]="supplierMaterialForm">
-                  <label class="address-label">
-                    <span>Material *</span>
-                    <div class="address-field">
-                      <input
-                        [formControl]="materialSearchCtrl"
-                        placeholder="Search material"
-                        [class.is-invalid]="supplierMaterialForm.controls.material_id.touched && supplierMaterialForm.controls.material_id.invalid"
-                        (input)="onMaterialQueryInput(materialSearchCtrl.value)"
-                        (focus)="onMaterialQueryFocus()"
-                        (blur)="onMaterialQueryBlur()"
-                        (keydown)="onMaterialQueryKeydown($event)"
-                        autocomplete="off"
-                        />
-                      @if (showMaterialSuggestions && materialSuggestions.length) {
-                        <div
-                          class="address-suggestions"
-                          >
-                          @for (m of materialSuggestions; track m; let i = $index) {
-                            <button
-                              type="button"
-                              class="address-suggestion"
-                              [class.is-active]="i === materialActiveIndex"
-                              (click)="onMaterialSelect(m)"
-                              >
-                              {{ m.materialName }}
-                              @if (m.code) {
-                                <span class="hint">({{ m.code }})</span>
-                              }
-                            </button>
-                          }
-                        </div>
-                      }
-                    </div>
-                    @if (supplierMaterialForm.controls.material_id.touched && supplierMaterialForm.controls.material_id.invalid) {
-                      <div
-                        class="error-text"
-                        >
-                        Select a material from the list.
-                      </div>
-                    }
-                  </label>
-                  <div class="grid-2">
-                    <label>
-                      <span>Quantity</span>
-                      <input
-                        [value]="getSelectedMaterialQuantity()"
-                        placeholder="0"
-                        disabled
-                        />
-                    </label>
-                    <label>
-                      <span>Unit</span>
-                      <input
-                        [value]="getSelectedMaterialUnit()"
-                        placeholder="Unit"
-                        disabled
-                        />
-                    </label>
-                  </div>
-                  <div class="grid-2">
-                    <label>
-                      <span>Supplier SKU</span>
-                      <input formControlName="supplier_sku" placeholder="SKU" />
-                    </label>
-                    <label>
-                      <span>Lead Time (days)</span>
-                      <input
-                        formControlName="lead_time_days"
-                        type="number"
-                        step="1"
-                        min="0"
-                        placeholder="0"
-                        />
-                    </label>
-                  </div>
-                  <div class="grid-2">
-                    <label>
-                      <span>Unit Cost</span>
-                      <input
-                        formControlName="unit_cost"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        (blur)="formatMoneyControl('unit_cost')"
-                        />
-                    </label>
-                    <label>
-                      <span>Sell Cost</span>
-                      <input
-                        formControlName="sell_cost"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="0.00"
-                        (blur)="formatMoneyControl('sell_cost')"
-                        />
-                    </label>
-                  </div>
-                  <div class="form-actions">
-                    <button
-                      type="button"
-                      class="btn"
-                      (click)="cancelMaterialForm()"
-                      >
-                      <span class="btn-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                          <path d="M6 6l12 12"></path>
-                          <path d="M18 6l-12 12"></path>
-                        </svg>
-                      </span>
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      class="btn primary"
-                      (click)="saveSupplierMaterial()"
-                      >
-                      <span class="btn-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24">
-                          <path d="M5 5h11l3 3v11H5z"></path>
-                          <path d="M9 5v6h6V5"></path>
-                        </svg>
-                      </span>
-                      Save
-                    </button>
-                  </div>
-                </form>
-              </div>
-            }
-            @if ((materialsViewMode$ | async) === 'list') {
-              <div class="contacts-list" #materialsList>
-                @if ((materials$ | async); as materials) {
-                  @if (materials.length) {
-                    <div class="table materials-table">
-                      <div class="thead">
-                        <div>Material</div>
-                        <div>Quantity</div>
-                        <div>Unit</div>
-                        <div>Supplier SKU</div>
-                        <div>Lead Time</div>
-                        <div>Unit Cost</div>
-                        <div>Sell Cost</div>
-                        <div class="actions-col">Actions</div>
-                      </div>
-                      @for (sm of materials; track trackBySupplierMaterial($index, sm)) {
-                        <div
-                          class="trow"
-                          >
-                          <div class="cell strong">
-                            {{ getMaterialName(sm.materialId) }}
-                          </div>
-                          <div class="cell muted">
-                            {{ (sm.quantity ?? getMaterialQuantity(sm.materialId)) ??
-                            '—' }}
-                          </div>
-                          <div class="cell muted">
-                            {{ (sm.unit ?? getMaterialUnit(sm.materialId)) || '—' }}
-                          </div>
-                          <div class="cell muted">{{ sm.supplierSku || '—' }}</div>
-                          <div class="cell muted">{{ sm.leadTimeDays ?? '—' }}</div>
-                          <div class="cell muted">
-                            {{ sm.unitCost === null || sm.unitCost === undefined ? '—' :
-                            (sm.unitCost | number : '1.2-2') }}
-                          </div>
-                          <div class="cell muted">
-                            {{ sm.sellCost === null || sm.sellCost === undefined ? '—' :
-                            (sm.sellCost | number : '1.2-2') }}
-                          </div>
-                          <div class="cell actions-col">
-                            <button
-                              class="btn small secondary"
-                              type="button"
-                              (click)="openMaterialEdit(sm)"
-                              >
-                              <span class="btn-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24">
-                                  <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
-                                  <path d="M13 6l4 4"></path>
-                                </svg>
-                              </span>
-                              Edit
-                            </button>
-                            <button
-                              class="btn small danger"
-                              type="button"
-                              (click)="removeSupplierMaterial(supplier, sm)"
-                              >
-                              <span class="btn-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24">
-                                  <path d="M4 7h16"></path>
-                                  <path d="M9 7V5h6v2"></path>
-                                  <path d="M7 7l1 12h8l1-12"></path>
-                                </svg>
-                              </span>
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  }
-                  @if (materials.length) {
-                    <div class="cards">
-                      @for (sm of materials; track trackBySupplierMaterial($index, sm)) {
-                        <article
-                          class="client-card"
-                          >
-                          <div class="row">
-                            <div class="name">{{ getMaterialName(sm.materialId) }}</div>
-                            <div class="muted">{{ sm.supplierSku || '—' }}</div>
-                          </div>
-                          <div class="meta">
-                            <div>
-                              <span>Quantity:</span>
-                              {{ (sm.quantity ?? getMaterialQuantity(sm.materialId)) ??
-                              '—' }}
-                            </div>
-                            <div>
-                              <span>Unit:</span>
-                              {{ (sm.unit ?? getMaterialUnit(sm.materialId)) || '—' }}
-                            </div>
-                            <div>
-                              <span>Lead Time:</span> {{ sm.leadTimeDays ?? '—' }}
-                            </div>
-                            <div>
-                              <span>Unit Cost:</span>
-                              {{ sm.unitCost === null || sm.unitCost === undefined ? '—'
-                              : (sm.unitCost | number : '1.2-2') }}
-                            </div>
-                            <div>
-                              <span>Sell Cost:</span>
-                              {{ sm.sellCost === null || sm.sellCost === undefined ? '—'
-                              : (sm.sellCost | number : '1.2-2') }}
-                            </div>
-                          </div>
-                          <div class="card-actions">
-                            <button
-                              class="btn small secondary"
-                              type="button"
-                              (click)="openMaterialEdit(sm)"
-                              >
-                              <span class="btn-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24">
-                                  <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
-                                  <path d="M13 6l4 4"></path>
-                                </svg>
-                              </span>
-                              Edit
-                            </button>
-                            <button
-                              class="btn small danger"
-                              type="button"
-                              (click)="removeSupplierMaterial(supplier, sm)"
-                              >
-                              <span class="btn-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24">
-                                  <path d="M4 7h16"></path>
-                                  <path d="M9 7V5h6v2"></path>
-                                  <path d="M7 7l1 12h8l1-12"></path>
-                                </svg>
-                              </span>
-                              Delete
-                            </button>
-                          </div>
-                        </article>
-                      }
-                    </div>
-                  }
-                  @if (!materials.length && !(materialsLoading$ | async)) {
-                    <div
-                      class="empty"
-                      >
-                      No materials linked to this supplier yet.
-                    </div>
-                  }
-                }
-                <div class="infinite-sentinel" #materialsInfiniteSentinel></div>
-              </div>
-            }
-          </section>
-        }
-      } @else {
-        <div class="form-header">
-          <div class="form-header-top">
-            <nav class="breadcrumb" aria-label="Breadcrumb">
-              <a routerLink="/manager/menu">Menu</a>
-              <span class="sep">/</span>
-              <a href="#" (click)="$event.preventDefault(); closeForm()"
-                >Suppliers</a
-                >
-                <span class="sep">/</span>
-                <span>Create</span>
-              </nav>
-              <div class="form-header-mainrow">
-                <div class="header-main">
-                  <h3>Create Supplier</h3>
-                  <p class="sub">Create a new supplier entry.</p>
-                </div>
-                <div class="header-actions">
-                  <button class="btn" type="button" (click)="closeForm()">
-                    <span class="btn-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24">
-                        <path d="M6 6l12 12"></path>
-                        <path d="M18 6l-12 12"></path>
-                      </svg>
-                    </span>
-                    Cancel
-                  </button>
-                  <button
-                    class="btn primary"
-                    type="button"
-                    (click)="saveSupplierAndClose()"
-                    >
-                    <span class="btn-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24">
-                        <path d="M5 5h11l3 3v11H5z"></path>
-                        <path d="M9 5v6h6V5"></path>
-                      </svg>
-                    </span>
-                    Save
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div class="form-tabs">
-              <button type="button" class="tab active">
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="9"></circle>
-                    <path d="M12 10v6"></path>
-                    <path d="M12 7h.01"></path>
-                  </svg>
-                </span>
-                Details
-              </button>
-              <button type="button" class="tab" disabled>
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <circle cx="9" cy="8" r="3"></circle>
-                    <circle cx="17" cy="9" r="2.5"></circle>
-                    <path d="M3.5 19c0-3 2.7-5.5 6-5.5S15.5 16 15.5 19"></path>
-                    <path d="M14 19c0-2.1 1.8-3.8 4-3.8"></path>
-                  </svg>
-                </span>
-                Contacts
-              </button>
-              <button type="button" class="tab" disabled>
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M4 6h16"></path>
-                    <path d="M4 10h16"></path>
-                    <path d="M4 14h16"></path>
-                    <path d="M4 18h16"></path>
-                  </svg>
-                </span>
-                Materials
-              </button>
-            </div>
-          </div>
-          @if (!isWarningDismissed('supplier-create-tabs')) {
-            <div class="warning-banner">
-              <span class="warning-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d="M12 4 3 20h18L12 4Z"></path>
-                  <path d="M12 9v5"></path>
-                  <path d="M12 17h.01"></path>
-                </svg>
-              </span>
-              Save the supplier first to enable the Contacts and Materials tabs.
-              <button
-                type="button"
-                class="warning-dismiss"
-                aria-label="Dismiss notice"
-                (click)="dismissWarning('supplier-create-tabs')"
-                >
-                x
-              </button>
-            </div>
-          }
-          <section class="card">
-            <form class="form" [formGroup]="supplierForm" autocomplete="off">
-              <label>
-                <span>Supplier Name *</span>
-                <input
-                  formControlName="supplier_name"
-                  placeholder="Supplier name"
-                  />
-              </label>
-              <label class="address-label">
-                <span>Address</span>
-                <div class="address-field">
-                  <input
-                    formControlName="address"
-                    placeholder="Address"
-                    (focus)="onAddressFocus()"
-                    (blur)="onAddressBlur()"
-                    (keydown)="onAddressKeydown($event)"
-                    autocomplete="off"
-                    />
-                  @if (showAddressSuggestions && addressSuggestions.length) {
-                    <div
-                      class="address-suggestions"
-                      >
-                      @for (s of addressSuggestions; track s; let i = $index) {
-                        <button
-                          type="button"
-                          class="address-suggestion"
-                          [class.is-active]="i === addressActiveIndex"
-                          (click)="onAddressSelect(s)"
-                          >
-                          {{ s.description }}
-                        </button>
-                      }
-                    </div>
-                  }
-                </div>
-              </label>
-              <div class="grid-2">
-                <label>
-                  <span>Email</span>
-                  <input formControlName="email" placeholder="email@example.com" />
-                </label>
-                <label>
-                  <span>Mobile</span>
-                  <input formControlName="cel" placeholder="0412..." />
-                </label>
-              </div>
-              <div class="grid-2">
-                <label>
-                  <span>Phone</span>
-                  <input formControlName="tel" placeholder="07..." />
-                </label>
-                <label>
-                  <span>Status</span>
-                  <app-manager-select
-                    formControlName="status"
-                    [options]="statusOptions"
-                    placeholder="Select status"
-                  ></app-manager-select>
-                </label>
-              </div>
-              <label>
-                <span>Notes</span>
-                <textarea
-                  formControlName="notes"
-                  rows="3"
-                  placeholder="Notes..."
-                ></textarea>
-              </label>
-            </form>
-            <div class="card-actions right-actions">
-              <button class="btn" type="button" (click)="closeForm()">
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M6 6l12 12"></path>
-                    <path d="M18 6l-12 12"></path>
-                  </svg>
-                </span>
-                Cancel
-              </button>
-              <button class="btn primary" type="button" (click)="saveSupplier()">
-                <span class="btn-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d="M5 5h11l3 3v11H5z"></path>
-                    <path d="M9 5v6h6V5"></path>
-                  </svg>
-                </span>
-                Save
-              </button>
-            </div>
-          </section>
-        }
-      }
-
-      <!-- LIST MODE -->
-      @if ((viewMode$ | async) === 'list') {
-        <section class="list" #suppliersList>
-          @if (suppliersRaw$ | async; as suppliers) {
-            @if (suppliers.length) {
-              <div class="table">
-                <div class="thead">
-                  <div>Name</div>
-                  <div>Email</div>
-                  <div>Mobile</div>
-                  <div>Status</div>
-                  <div class="actions-col">Actions</div>
-                </div>
-                @for (s of suppliers; track trackBySupplier($index, s)) {
-                  <div
-                    class="trow"
-                    >
-                    <div class="cell strong">{{ s.supplierName }}</div>
-                    <div class="cell muted">{{ s.email || '—' }}</div>
-                    <div class="cell muted">{{ s.cel || '—' }}</div>
-                    <div class="cell">
-                      <span class="badge" [class.archived]="s.status === 'archived'">
-                        {{ s.status || 'active' }}
-                      </span>
-                    </div>
-                    <div class="cell actions-col">
-                      <button
-                        class="btn small secondary"
-                        type="button"
-                        (click)="openEdit(s)"
-                        >
-                        <span class="btn-icon" aria-hidden="true">
-                          <svg viewBox="0 0 24 24">
-                            <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
-                            <path d="M13 6l4 4"></path>
-                          </svg>
-                        </span>
-                        Edit
-                      </button>
-                      <button
-                        class="btn small danger"
-                        type="button"
-                        [disabled]="isArchiveActionDisabled(s)"
-                        (click)="removeSupplier(s)"
-                        >
-                        <span class="btn-icon" aria-hidden="true">
-                          <svg viewBox="0 0 24 24">
-                            <path d="M4 8h16"></path>
-                            <path d="M6 8v10h12V8"></path>
-                            <path d="M10 12h4"></path>
-                            <path d="M9 4h6l1 2H8l1-2Z"></path>
-                          </svg>
-                        </span>
-                        {{ s.hasProjects ? 'Archive' : 'Delete' }}
-                      </button>
-                    </div>
-                  </div>
-                }
-              </div>
-            }
-            @if (suppliers.length) {
-              <div class="cards">
-                @for (s of suppliers; track trackBySupplier($index, s)) {
-                  <article
-                    class="supplier-card"
-                    >
-                    <div class="row">
-                      <div class="name">{{ s.supplierName }}</div>
-                      <span class="badge" [class.archived]="s.status === 'archived'">
-                        {{ s.status || 'active' }}
-                      </span>
-                    </div>
-                    <div class="meta">
-                      <div><span>Email:</span> {{ s.email || '—' }}</div>
-                      <div><span>Mobile:</span> {{ s.cel || '—' }}</div>
-                      <div><span>Phone:</span> {{ s.tel || '—' }}</div>
-                    </div>
-                    <div class="card-actions">
-                      <button
-                        class="btn small secondary"
-                        type="button"
-                        (click)="openEdit(s)"
-                        >
-                        <span class="btn-icon" aria-hidden="true">
-                          <svg viewBox="0 0 24 24">
-                            <path d="M4 20h4l10-10-4-4L4 16v4Z"></path>
-                            <path d="M13 6l4 4"></path>
-                          </svg>
-                        </span>
-                        Edit
-                      </button>
-                      <button
-                        class="btn small danger"
-                        type="button"
-                        [disabled]="isArchiveActionDisabled(s)"
-                        (click)="removeSupplier(s)"
-                        >
-                        <span class="btn-icon" aria-hidden="true">
-                          <svg viewBox="0 0 24 24">
-                            <path d="M4 8h16"></path>
-                            <path d="M6 8v10h12V8"></path>
-                            <path d="M10 12h4"></path>
-                            <path d="M9 4h6l1 2H8l1-2Z"></path>
-                          </svg>
-                        </span>
-                        {{ s.hasProjects ? 'Archive' : 'Delete' }}
-                      </button>
-                    </div>
-                  </article>
-                }
-              </div>
-            }
-            @if (!suppliers.length && !(loading$ | async)) {
-              <div class="empty">
-                No suppliers found.
-              </div>
-            }
-            <div class="infinite-sentinel" #infiniteSentinel></div>
-          }
-        </section>
-      }
-
-      @if (isConfirmModalOpen) {
-        <div
-          class="status-modal-backdrop"
-          (click)="onConfirmModalBackdrop()"
-          >
-          <div
-            class="status-modal"
-            [class.tone-warning]="confirmModalTone === 'warning'"
-            [class.tone-danger]="confirmModalTone === 'danger'"
-            (click)="$event.stopPropagation()"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="confirm-modal-title"
-            aria-describedby="confirm-modal-message"
-            >
-            <div class="status-modal-header">
-              <span class="status-modal-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="9"></circle>
-                  <path d="M12 7v6"></path>
-                  <path d="M12 16.5h.01"></path>
-                </svg>
-              </span>
-              <div class="status-modal-text">
-                <h4 id="confirm-modal-title">{{ confirmModalTitle }}</h4>
-                <p id="confirm-modal-message">{{ confirmModalMessage }}</p>
-              </div>
-            </div>
-            <div class="status-modal-actions">
-              @if (confirmModalShowCancel) {
-                <button
-                  type="button"
-                  class="btn secondary"
-                  (click)="onConfirmModalCancel()"
-                  >
-                  {{ confirmModalCancelLabel }}
-                </button>
-              }
-              <button
-                type="button"
-                class="btn primary"
-                (click)="onConfirmModalConfirm()"
-                >
-                {{ confirmModalConfirmLabel }}
-              </button>
-            </div>
-          </div>
-        </div>
-      }
-    </div>
+</div>

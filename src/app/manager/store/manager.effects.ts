@@ -9,8 +9,8 @@ import { ManagerService } from '../services/manager.service';
 import {
   selectManagerClientsSearchQuery,
   selectManagerUsersSearchQuery,
-  selectManagerEditingClient,
-  selectManagerEditingContact,
+  selectManagerEditingClientId,
+  selectManagerEditingContactId,
   selectManagerEditingUser,
 } from './manager.selectors';
 
@@ -54,10 +54,10 @@ export class ManagerEffects {
   saveClient$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerActions.saveClient),
-      withLatestFrom(this.store.select(selectManagerEditingClient)),
-      switchMap(([{ payload }, editing]) => {
-        const request$ = editing
-          ? this.api.updateClient(editing.clientId, payload)
+      withLatestFrom(this.store.select(selectManagerEditingClientId)),
+      switchMap(([{ payload }, editingClientId]) => {
+        const request$ = editingClientId
+          ? this.api.updateClient(editingClientId, payload)
           : this.api.createClient(payload);
 
         return request$.pipe(
@@ -144,10 +144,10 @@ export class ManagerEffects {
   saveContact$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerActions.saveContact),
-      withLatestFrom(this.store.select(selectManagerEditingContact)),
-      switchMap(([{ clientId, payload }, editing]) => {
-        const request$ = editing
-          ? this.api.updateClientContact(clientId, editing.contactId, payload)
+      withLatestFrom(this.store.select(selectManagerEditingContactId)),
+      switchMap(([{ clientId, payload }, editingContactId]) => {
+        const request$ = editingContactId
+          ? this.api.updateClientContact(clientId, editingContactId, payload)
           : this.api.createClientContact(clientId, payload);
 
         return request$.pipe(

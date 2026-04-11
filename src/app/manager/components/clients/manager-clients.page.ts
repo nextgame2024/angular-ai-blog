@@ -124,10 +124,15 @@ export class ManagerClientsPageComponent
   private canLoadMore = false;
   private isLoading = false;
   private currentContactsPage = 1;
+  private currentTabValue: ClientFormTab = 'details';
   private canLoadMoreContacts = false;
   private isLoadingContacts = false;
   dismissedErrors = new Set<string>();
   dismissedWarnings = new Set<string>();
+  formToastMessage: string | null = null;
+  formToastClosing = false;
+  private formToastTimer: ReturnType<typeof setTimeout> | null = null;
+  private formToastCloseTimer: ReturnType<typeof setTimeout> | null = null;
   isConfirmModalOpen = false;
   confirmModalTitle = '';
   confirmModalMessage = '';
@@ -236,12 +241,23 @@ export class ManagerClientsPageComponent
             return;
           }
         } else if (this.saveContactAfterClientSaveAndClose) {
+          this.showFormToast(
+            (action as { error?: string })?.error ||
+              'Could not save client details. Please review required fields and try again.',
+          );
           this.saveContactAfterClientSaveAndClose = false;
           this.pendingContactPayloadAfterClientSave = null;
         }
 
         if (!this.closeAfterSave) return;
         this.closeAfterSave = false;
+        if (action.type === ManagerActions.saveClientFailure.type) {
+          this.showFormToast(
+            (action as { error?: string })?.error ||
+              'Could not save client details. Please review required fields and try again.',
+          );
+          return;
+        }
         if (action.type === ManagerActions.saveClientSuccess.type) {
           this.closeForm();
         }
@@ -255,6 +271,13 @@ export class ManagerClientsPageComponent
       .subscribe((action) => {
         if (!this.closeAfterContactSave) return;
         this.closeAfterContactSave = false;
+        if (action.type === ManagerActions.saveContactFailure.type) {
+          this.showFormToast(
+            (action as { error?: string })?.error ||
+              'Could not save contact. Please review required fields and try again.',
+          );
+          return;
+        }
         if (action.type === ManagerActions.saveContactSuccess.type) {
           this.closeForm();
         }
@@ -294,6 +317,7 @@ export class ManagerClientsPageComponent
       });
 
     this.tab$.pipe(takeUntil(this.destroy$)).subscribe((tab) => {
+      this.currentTabValue = tab;
       if (tab !== 'contacts') return;
       setTimeout(() => this.setupContactsInfiniteScroll(), 0);
     });
@@ -376,6 +400,7 @@ export class ManagerClientsPageComponent
   ngOnDestroy(): void {
     this.infiniteObserver?.disconnect();
     this.contactsInfiniteObserver?.disconnect();
+    this.clearFormToastTimers();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -408,6 +433,7 @@ export class ManagerClientsPageComponent
   // -------- Clients UI --------
 
   openCreate(): void {
+    this.currentTabValue = 'details';
     this.clientForm.reset({
       client_name: '',
       owner_name: '',
@@ -425,6 +451,7 @@ export class ManagerClientsPageComponent
   }
 
   openEdit(c: BmClient): void {
+    this.currentTabValue = 'details';
     this.store.dispatch(
       ManagerActions.openClientEdit({ clientId: c.clientId })
     );
@@ -446,38 +473,86 @@ export class ManagerClientsPageComponent
   }
 
   saveClientAndClose(): void {
-    combineLatest([
-      this.tab$.pipe(take(1)),
-      this.contactsViewMode$.pipe(take(1)),
-    ]).subscribe(([tab, contactsMode]) => {
-      if (tab === 'contacts' && contactsMode === 'form') {
-        if (this.clientForm.invalid) {
-          this.clientForm.markAllAsTouched();
+    if (this.clientForm.invalid) {
+      this.clientForm.markAllAsTouched();
+      this.showFormToast('Please complete required client fields before using Save & Finish.');
+      return;
+    }
+
+    if (this.currentTabValue === 'contacts') {
+      this.contactsViewMode$.pipe(take(1)).subscribe((contactsMode) => {
+        if (contactsMode !== 'form') {
+          this.closeAfterSave = true;
+          this.saveClient();
           return;
         }
+
         if (this.contactForm.invalid) {
           this.contactForm.markAllAsTouched();
+          this.showFormToast('Please complete required contact fields before using Save & Finish.');
           return;
         }
 
-        this.closeAfterSave = false;
-        this.closeAfterContactSave = false;
-        this.saveContactAfterClientSaveAndClose = true;
-        this.pendingContactPayloadAfterClientSave =
-          this.contactForm.getRawValue();
-        this.store.dispatch(
-          ManagerActions.saveClient({ payload: this.clientForm.getRawValue() }),
-        );
-        return;
-      }
+        const contactPayload = this.contactForm.getRawValue();
+        this.store
+          .select(selectManagerEditingClient)
+          .pipe(take(1))
+          .subscribe((client) => {
+            this.closeAfterSave = false;
+            this.closeAfterContactSave = false;
 
-      if (this.clientForm.invalid) {
-        this.clientForm.markAllAsTouched();
-        return;
-      }
-      this.closeAfterSave = true;
-      this.saveClient();
-    });
+            if (client?.clientId && !this.clientForm.dirty) {
+              this.saveContactAfterClientSaveAndClose = false;
+              this.pendingContactPayloadAfterClientSave = null;
+              this.closeAfterContactSave = true;
+              this.store.dispatch(
+                ManagerActions.saveContact({
+                  clientId: client.clientId,
+                  payload: contactPayload,
+                }),
+              );
+              return;
+            }
+
+            this.saveContactAfterClientSaveAndClose = true;
+            this.pendingContactPayloadAfterClientSave = contactPayload;
+            this.store.dispatch(
+              ManagerActions.saveClient({
+                payload: this.clientForm.getRawValue(),
+              }),
+            );
+          });
+      });
+      return;
+    }
+
+    this.closeAfterSave = true;
+    this.saveClient();
+  }
+
+  private showFormToast(message: string): void {
+    this.clearFormToastTimers();
+    this.formToastMessage = message;
+    this.formToastClosing = false;
+
+    this.formToastTimer = window.setTimeout(() => {
+      this.formToastClosing = true;
+      this.formToastCloseTimer = window.setTimeout(() => {
+        this.formToastMessage = null;
+        this.formToastClosing = false;
+      }, 220);
+    }, 3200);
+  }
+
+  private clearFormToastTimers(): void {
+    if (this.formToastTimer) {
+      clearTimeout(this.formToastTimer);
+      this.formToastTimer = null;
+    }
+    if (this.formToastCloseTimer) {
+      clearTimeout(this.formToastCloseTimer);
+      this.formToastCloseTimer = null;
+    }
   }
 
   archiveClient(c: BmClient): void {
@@ -741,6 +816,7 @@ export class ManagerClientsPageComponent
   setTab(tab: ClientFormTab, client: BmClient | null): void {
     // Contacts tab requires saved client
     if (tab === 'contacts' && !client?.clientId) return;
+    this.currentTabValue = tab;
 
     this.store.dispatch(ManagerActions.setClientFormTab({ tab }));
 

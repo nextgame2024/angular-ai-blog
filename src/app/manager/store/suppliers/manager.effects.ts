@@ -8,9 +8,9 @@ import { ManagerSuppliersActions } from './manager.actions';
 import { ManagerSuppliersService } from '../../services/manager.suppliers.service';
 import {
   selectManagerSuppliersSearchQuery,
-  selectManagerEditingSupplier,
-  selectManagerEditingSupplierContact,
-  selectManagerEditingSupplierMaterial,
+  selectManagerEditingSupplierId,
+  selectManagerEditingSupplierContactId,
+  selectManagerEditingSupplierMaterialId,
   selectManagerSupplierContactsLimit,
   selectManagerSupplierMaterialsLimit,
   selectManagerSupplierMaterialsSearchQuery,
@@ -51,10 +51,10 @@ export class ManagerSuppliersEffects {
   saveSupplier$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerSuppliersActions.saveSupplier),
-      withLatestFrom(this.store.select(selectManagerEditingSupplier)),
-      switchMap(([{ payload }, editing]) => {
-        const req$ = editing
-          ? this.api.updateSupplier(editing.supplierId, payload)
+      withLatestFrom(this.store.select(selectManagerEditingSupplierId)),
+      switchMap(([{ payload }, editingSupplierId]) => {
+        const req$ = editingSupplierId
+          ? this.api.updateSupplier(editingSupplierId, payload)
           : this.api.createSupplier(payload);
 
         return req$.pipe(
@@ -136,12 +136,12 @@ export class ManagerSuppliersEffects {
   saveSupplierContact$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerSuppliersActions.saveSupplierContact),
-      withLatestFrom(this.store.select(selectManagerEditingSupplierContact)),
-      switchMap(([{ supplierId, payload }, editing]) => {
-        const req$ = editing
+      withLatestFrom(this.store.select(selectManagerEditingSupplierContactId)),
+      switchMap(([{ supplierId, payload }, editingContactId]) => {
+        const req$ = editingContactId
           ? this.api.updateSupplierContact(
               supplierId,
-              editing.contactId,
+              editingContactId,
               payload,
             )
           : this.api.createSupplierContact(supplierId, payload);
@@ -233,12 +233,12 @@ export class ManagerSuppliersEffects {
   saveSupplierMaterial$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerSuppliersActions.saveSupplierMaterial),
-      withLatestFrom(this.store.select(selectManagerEditingSupplierMaterial)),
-      switchMap(([{ supplierId, payload }, editing]) => {
-        const req$ = editing
+      withLatestFrom(this.store.select(selectManagerEditingSupplierMaterialId)),
+      switchMap(([{ supplierId, payload }, editingMaterialId]) => {
+        const req$ = editingMaterialId
           ? this.api.updateSupplierMaterial(
               supplierId,
-              editing.materialId,
+              editingMaterialId,
               payload,
             )
           : this.api.addSupplierMaterial(supplierId, payload);

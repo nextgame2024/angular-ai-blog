@@ -57,6 +57,11 @@ export const selectManagerEditingClient = createSelector(
   },
 );
 
+export const selectManagerEditingClientId = createSelector(
+  selectManagerState,
+  (s) => s.editingClientId,
+);
+
 // Client Form UI
 export const selectManagerClientFormTab = createSelector(
   selectManagerState,
@@ -99,6 +104,11 @@ export const selectManagerEditingContact = createSelector(
     if (!s.editingContactId) return null;
     return s.contacts.find((c) => c.contactId === s.editingContactId) ?? null;
   },
+);
+
+export const selectManagerEditingContactId = createSelector(
+  selectManagerState,
+  (s) => s.editingContactId,
 );
 
 /* =========================
