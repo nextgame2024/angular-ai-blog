@@ -61,12 +61,16 @@ export class GoogleMapsLoaderService {
 
   private async loadInternal(): Promise<void> {
     // If loaded between calls
-    if (window.google?.maps) return;
+    if (window.google?.maps) {
+      this.ensureImportLibraryFallback();
+      return;
+    }
 
     const apiKey = await this.getApiKey();
 
     await this.injectScript(apiKey);
     await this.waitForGoogleMaps();
+    this.ensureImportLibraryFallback();
   }
 
   /**
@@ -135,7 +139,9 @@ export class GoogleMapsLoaderService {
       script.src =
         'https://maps.googleapis.com/maps/api/js' +
         `?key=${encodeURIComponent(apiKey)}` +
-        '&libraries=places';
+        '&v=weekly' +
+        '&loading=async' +
+        '&libraries=places,marker';
 
       script.onload = () => resolve();
       script.onerror = () =>
@@ -154,7 +160,10 @@ export class GoogleMapsLoaderService {
 
     return new Promise<void>((resolve, reject) => {
       const tick = () => {
-        if (window.google?.maps) {
+        if (
+          window.google?.maps
+          && typeof (window.google.maps as any).Map === 'function'
+        ) {
           resolve();
           return;
         }
@@ -167,6 +176,67 @@ export class GoogleMapsLoaderService {
         setTimeout(tick, 50);
       };
 
+      tick();
+    });
+  }
+
+  private ensureImportLibraryFallback(): void {
+    const maps = window.google?.maps as
+      | {
+          Geocoder?: unknown;
+          marker?: unknown;
+          places?: unknown;
+          [key: string]: unknown;
+          importLibrary?: (libraryName: string) => Promise<unknown>;
+        }
+      | undefined;
+    if (!maps || typeof maps.importLibrary === 'function') return;
+
+    maps.importLibrary = async (libraryName: string): Promise<unknown> => {
+      switch (libraryName) {
+        case 'core':
+          await this.waitForMapsField(() => !!maps['MVCObject']);
+          return { MVCObject: maps['MVCObject'] };
+        case 'maps':
+          await this.waitForMapsField(() => typeof maps['Map'] === 'function');
+          return { Map: maps['Map'] };
+        case 'marker':
+          await this.waitForMapsField(
+            () => !!maps.marker && typeof (maps.marker as any).AdvancedMarkerElement === 'function',
+          );
+          return maps.marker || {};
+        case 'places':
+          await this.waitForMapsField(() => !!maps.places);
+          return maps.places || {};
+        case 'geocoding':
+          await this.waitForMapsField(() => typeof maps.Geocoder === 'function');
+          return { Geocoder: maps.Geocoder };
+        default:
+          await this.waitForMapsField(() => Boolean((maps as any)[libraryName]));
+          return (maps as any)[libraryName] || {};
+      }
+    };
+  }
+
+  private waitForMapsField(
+    predicate: () => boolean,
+    timeoutMs = 5000,
+  ): Promise<void> {
+    if (predicate()) return Promise.resolve();
+
+    const started = Date.now();
+    return new Promise<void>((resolve, reject) => {
+      const tick = () => {
+        if (predicate()) {
+          resolve();
+          return;
+        }
+        if (Date.now() - started > timeoutMs) {
+          reject(new Error('Google Maps library did not initialize in time.'));
+          return;
+        }
+        setTimeout(tick, 25);
+      };
       tick();
     });
   }

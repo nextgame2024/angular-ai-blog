@@ -1,8 +1,9 @@
 <div class="manager-shell">
   <!-- Map layer -->
-  <div class="map-container" #mapContainerRef>
+  <div class="map-container">
     @if (mapsLoaded$$()) {
       <google-map
+        #googleMapRef
         height="100%"
         width="100%"
         [center]="mapCenter"
@@ -10,18 +11,33 @@
         [options]="mapOptions"
         >
         @for (marker of projectMarkers$$(); track trackByProjectMarker($index, marker)) {
-          <map-marker
-            [position]="marker.position"
-            [icon]="marker.icon"
-            (mapClick)="openProjectInfo(marker.project)"
-          ></map-marker>
+          @if (useAdvancedMarkers) {
+            <map-advanced-marker
+              [position]="marker.position"
+              [title]="marker.title"
+              [options]="projectMarkerOptions"
+              (markerInitialized)="onProjectMarkerInitialized(marker.projectId, $event)"
+            ></map-advanced-marker>
+          } @else {
+            <map-marker
+              [position]="marker.position"
+              [title]="marker.title"
+              (mapClick)="onProjectMarkerClick(marker.projectId)"
+            ></map-marker>
+          }
         }
         @if (companyMarker$$(); as companyMarker) {
-          <map-marker
-            [position]="companyMarker.position"
-            [icon]="companyMarker.icon"
-            [title]="'Company'"
-          ></map-marker>
+          @if (useAdvancedMarkers) {
+            <map-advanced-marker
+              [position]="companyMarker.position"
+              [title]="'Company'"
+            ></map-advanced-marker>
+          } @else {
+            <map-marker
+              [position]="companyMarker.position"
+              [title]="'Company'"
+            ></map-marker>
+          }
         }
         @if (routePath$$().length > 1) {
           <map-polyline
@@ -36,77 +52,82 @@
         <p class="msg">{{ mapsError$$() || 'Google Maps is still loading...' }}</p>
       </div>
     }
+  </div>
 
-    @if (activeProject$$(); as activeProject) {
-      <div
-        #mapInfoPanelRef
-        class="map-floating-info"
-        [class.dragging]="isDraggingInfoPanel$$()"
-        [style.left.px]="infoPanelPosition$$().x"
-        [style.top.px]="infoPanelPosition$$().y"
-        >
-        <div class="map-floating-info-bar" (pointerdown)="onInfoPanelPointerDown($event)">
-          <span>Project details</span>
-          <button
-            type="button"
-            class="map-info-close"
-            aria-label="Close project details"
-            (click)="closeProjectInfo()"
-            >
-            x
-          </button>
-        </div>
-        <div class="map-info">
-          <div class="map-info-photo" #streetViewPreviewRef>
-            @if (streetViewLoading$$()) {
-              <div class="map-info-photo-fallback">
-                Loading preview...
-              </div>
-            }
-            @if (!streetViewLoading$$() && !streetViewReady$$()) {
-              <div
-                class="map-info-photo-fallback"
-                >
-                No preview available
-              </div>
-            }
-          </div>
-          <div class="map-info-title">{{ activeProject.projectName }}</div>
-          <div class="map-info-row">
-            <span>Client</span>
-            <span>{{ activeProject.clientName || '—' }}</span>
-          </div>
-          <div class="map-info-row">
-            <span>Address</span>
-            <span>{{ activeProject.clientAddress || '—' }}</span>
-          </div>
-          <div class="map-info-row">
-            <span>Type</span>
-            <span>{{ activeProject.projectTypeName || '—' }}</span>
-          </div>
-          <div class="map-info-row">
-            <span>Status</span>
-            <span>{{ formatStatus(activeProject.status) }}</span>
-          </div>
-          <div class="map-info-row">
-            <span>Transportation</span>
-            @if (routeLoading$$()) {
-              <span>Calculating...</span>
-            }
-            @if (!routeLoading$$()) {
-              <span>{{ activeProjectTravelTime$$() || '—' }}</span>
-            }
-          </div>
-          @if (routeError$$()) {
-            <div class="map-info-note">
-              {{ routeError$$() }}
+  @if (activeProject$$(); as activeProject) {
+    <div
+      class="map-static-info"
+      >
+      <div class="map-static-info-bar">
+        <span>Project details</span>
+        <button
+          type="button"
+          class="map-info-close"
+          aria-label="Close project details"
+          (click)="closeProjectInfo()"
+          >
+          x
+        </button>
+      </div>
+      <div class="map-info">
+        <div class="map-info-photo">
+          @if (streetViewImageUrl$$(); as streetViewImageUrl) {
+            <img
+              class="map-info-photo-img"
+              [src]="streetViewImageUrl"
+              alt="Project location preview"
+              loading="lazy"
+              (load)="onStreetViewImageLoad(activeProject.projectId)"
+              (error)="onStreetViewImageError(activeProject.projectId)"
+            />
+          }
+          @if (streetViewLoading$$()) {
+            <div class="map-info-photo-fallback">
+              Loading preview...
+            </div>
+          }
+          @if (!streetViewLoading$$() && !streetViewReady$$()) {
+            <div
+              class="map-info-photo-fallback"
+              >
+              No preview available
             </div>
           }
         </div>
+        <div class="map-info-title">{{ activeProject.projectName }}</div>
+        <div class="map-info-row">
+          <span>Client</span>
+          <span>{{ activeProject.clientName || '—' }}</span>
+        </div>
+        <div class="map-info-row">
+          <span>Address</span>
+          <span>{{ activeProject.clientAddress || '—' }}</span>
+        </div>
+        <div class="map-info-row">
+          <span>Type</span>
+          <span>{{ activeProject.projectTypeName || '—' }}</span>
+        </div>
+        <div class="map-info-row">
+          <span>Status</span>
+          <span>{{ formatStatus(activeProject.status) }}</span>
+        </div>
+        <div class="map-info-row">
+          <span>Transportation</span>
+          @if (routeLoading$$()) {
+            <span>Calculating...</span>
+          }
+          @if (!routeLoading$$()) {
+            <span>{{ activeProjectTravelTime$$() || '—' }}</span>
+          }
+        </div>
+        @if (routeError$$()) {
+          <div class="map-info-note">
+            {{ routeError$$() }}
+          </div>
+        }
       </div>
-    }
-
-  </div>
+    </div>
+  }
 
   <!-- Search bar -->
   <div class="search-bar">

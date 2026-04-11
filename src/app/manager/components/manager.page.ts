@@ -1,7 +1,7 @@
 
 import {
   Component,
-  ElementRef,
+  OnDestroy,
   computed,
   effect,
   inject,
@@ -9,7 +9,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { GoogleMapsModule } from '@angular/google-maps';
+import { GoogleMap, GoogleMapsModule } from '@angular/google-maps';
 import {
   ActivatedRoute,
   NavigationEnd,
@@ -18,7 +18,7 @@ import {
 } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { firstValueFrom } from 'rxjs';
-import { filter, map } from 'rxjs/operators';
+import { filter, map, timeout } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
 
 import { selectCurrentUser } from '../../auth/store/reducers';
@@ -52,7 +52,7 @@ type MenuItem = {
     templateUrl: './manager.page.html',
     styleUrls: ['./manager.page.css']
 })
-export class ManagerPageComponent {
+export class ManagerPageComponent implements OnDestroy {
   private readonly store = inject(Store);
   private readonly mapsLoader = inject(GoogleMapsLoaderService);
   private readonly companyService = inject(ManagerCompanyService);
@@ -68,17 +68,25 @@ export class ManagerPageComponent {
     string,
     Promise<google.maps.LatLngLiteral | null>
   >();
-  private streetViewService: google.maps.StreetViewService | null = null;
-  private streetViewPanorama: google.maps.StreetViewPanorama | null = null;
+  private directionsService: google.maps.DirectionsService | null = null;
+  private mapsApiKey: string | null = null;
   private streetViewRequestToken = 0;
+  private readonly streetViewEnabled = true;
+  private readonly routePreviewEnabled = true;
   private readonly superAdminId = 'c2dad143-077c-4082-92f0-47805601db3b';
   private menuLoadToken = 0;
-  private infoPanelDragOffset = { x: 0, y: 0 };
-
-  readonly mapContainerRef$$ = viewChild<ElementRef<HTMLElement>>('mapContainerRef');
-  readonly mapInfoPanelRef$$ = viewChild<ElementRef<HTMLElement>>('mapInfoPanelRef');
-  readonly streetViewPreviewRef$$ =
-    viewChild<ElementRef<HTMLElement>>('streetViewPreviewRef');
+  readonly useAdvancedMarkers = false;
+  private readonly mapDebugEnabled =
+    typeof window !== 'undefined'
+    && window.localStorage.getItem('manager-map-debug') === '1';
+  private readonly projectMarkerListeners = new Map<
+    string,
+    {
+      marker: google.maps.marker.AdvancedMarkerElement;
+      cleanup: () => void;
+    }
+  >();
+  readonly googleMapRef$$ = viewChild<GoogleMap>('googleMapRef');
 
   readonly mapsLoaded$$ = signal(false);
   readonly mapsError$$ = signal<string | null>(null);
@@ -125,32 +133,37 @@ export class ManagerPageComponent {
     fullscreenControl: false,
     streetViewControl: false,
     mapTypeControl: false,
+    renderingType: 'RASTER' as google.maps.RenderingType,
+    // Required for AdvancedMarkerElement so we avoid deprecated Marker fallback.
+    mapId: this.useAdvancedMarkers ? 'DEMO_MAP_ID' : undefined,
   };
 
   readonly projectMarkers$$ = signal<Array<{
-    project: BmProject;
+    projectId: string;
+    title: string;
     position: google.maps.LatLngLiteral;
-    icon: google.maps.Icon;
   }>>([]);
   readonly companyMarker$$ =
-    signal<{ position: google.maps.LatLngLiteral; icon: google.maps.Icon } | null>(
+    signal<{ position: google.maps.LatLngLiteral } | null>(
       null,
     );
   readonly activeProject$$ = signal<BmProject | null>(null);
-  readonly infoPanelPosition$$ = signal({ x: 24, y: 120 });
   readonly routePath$$ = signal<google.maps.LatLngLiteral[]>([]);
   readonly routeLoading$$ = signal(false);
   readonly routeError$$ = signal<string | null>(null);
   readonly activeProjectTravelTime$$ = signal<string | null>(null);
   readonly streetViewLoading$$ = signal(false);
   readonly streetViewReady$$ = signal(false);
-  readonly isDraggingInfoPanel$$ = signal(false);
+  readonly streetViewImageUrl$$ = signal<string | null>(null);
 
   readonly routePolylineOptions: google.maps.PolylineOptions = {
     geodesic: false,
     strokeColor: '#ef4444',
     strokeOpacity: 0.9,
     strokeWeight: 5.5,
+  };
+  readonly projectMarkerOptions: google.maps.marker.AdvancedMarkerElementOptions = {
+    gmpClickable: true,
   };
 
   private readonly allowedStatuses = new Set([
@@ -234,28 +247,14 @@ export class ManagerPageComponent {
 
   private readonly initEffect = effect((onCleanup) => {
     this.updateIsMobile();
-    this.clampInfoPanelPosition();
     const onResize = () => {
       this.updateIsMobile();
-      this.clampInfoPanelPosition();
-    };
-    const onPointerMove = (event: PointerEvent) => {
-      if (!this.isDraggingInfoPanel$$()) return;
-      this.moveInfoPanel(event.clientX, event.clientY);
-      event.preventDefault();
-    };
-    const onPointerUp = () => {
-      this.isDraggingInfoPanel$$.set(false);
     };
 
     window.addEventListener('resize', onResize, { passive: true });
-    window.addEventListener('pointermove', onPointerMove);
-    window.addEventListener('pointerup', onPointerUp);
 
     onCleanup(() => {
       window.removeEventListener('resize', onResize);
-      window.removeEventListener('pointermove', onPointerMove);
-      window.removeEventListener('pointerup', onPointerUp);
     });
   });
 
@@ -268,6 +267,14 @@ export class ManagerPageComponent {
         this.mapsLoaded$$.set(true);
         this.mapsError$$.set(null);
         this.ensureGeocoder();
+        void this.mapsLoader
+          .getApiKey()
+          .then((key) => {
+            this.mapsApiKey = key;
+          })
+          .catch(() => {
+            this.mapsApiKey = null;
+          });
         this.refreshMapMarkers();
       })
       .catch((e: unknown) => {
@@ -337,6 +344,72 @@ export class ManagerPageComponent {
     void this.loadCompanyAddress();
   });
 
+  private readonly debugInteractionProbeEffect = effect((onCleanup) => {
+    if (!this.mapDebugEnabled) return;
+    if (typeof document === 'undefined') return;
+
+    const toTag = (el: EventTarget | null): string => {
+      if (!(el instanceof Element)) return 'n/a';
+      const cls = (el.className || '').toString().trim();
+      if (!cls) return el.tagName;
+      const shortClass = cls.replace(/\s+/g, '.');
+      return `${el.tagName}.${shortClass}`;
+    };
+
+    const logEvent = (name: string, event: Event) => {
+      const target = event.target as Element | null;
+      const active = document.activeElement as Element | null;
+      const center =
+        typeof window !== 'undefined'
+          ? document.elementFromPoint(
+            Math.max(0, Math.floor(window.innerWidth / 2)),
+            Math.max(0, Math.floor(window.innerHeight / 2)),
+          )
+          : null;
+      this.logMapDebug(name, {
+        target: toTag(target),
+        active: toTag(active),
+        center: toTag(center),
+      });
+    };
+
+    const onPointerDown = (event: PointerEvent) =>
+      logEvent('doc-pointerdown-capture', event);
+    const onPointerUp = (event: PointerEvent) =>
+      logEvent('doc-pointerup-capture', event);
+    const onClick = (event: MouseEvent) =>
+      logEvent('doc-click-capture', event);
+    const onError = (event: ErrorEvent) => {
+      this.logMapDebug('window-error', {
+        message: event.message,
+        source: event.filename,
+        line: event.lineno,
+        column: event.colno,
+      });
+    };
+    const onRejection = (event: PromiseRejectionEvent) => {
+      const reason =
+        event.reason instanceof Error
+          ? event.reason.message
+          : String(event.reason || '');
+      this.logMapDebug('window-unhandled-rejection', { reason });
+    };
+
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('pointerup', onPointerUp, true);
+    document.addEventListener('click', onClick, true);
+    window.addEventListener('error', onError);
+    window.addEventListener('unhandledrejection', onRejection);
+
+    onCleanup(() => {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('pointerup', onPointerUp, true);
+      document.removeEventListener('click', onClick, true);
+      window.removeEventListener('error', onError);
+      window.removeEventListener('unhandledrejection', onRejection);
+    });
+  });
+
   togglePanelCollapsed(): void {
     this.panelCollapsed$$.set(!this.panelCollapsed$$());
   }
@@ -381,22 +454,117 @@ export class ManagerPageComponent {
     }
   }
 
-  readonly trackByProjectMarker = (_: number, marker: { project: BmProject }) =>
-    marker.project.projectId;
+  readonly trackByProjectMarker = (
+    _: number,
+    marker: { projectId: string },
+  ) => marker.projectId;
 
-  openProjectInfo(project: BmProject): void {
-    this.activeProject$$.set(project);
+  onProjectMarkerInitialized(
+    projectId: string,
+    marker: google.maps.marker.AdvancedMarkerElement,
+  ): void {
+    if (!projectId || !marker) return;
+
+    const existing = this.projectMarkerListeners.get(projectId);
+    if (existing?.marker === marker) return;
+    if (existing) {
+      existing.cleanup();
+      this.projectMarkerListeners.delete(projectId);
+    }
+
+    marker.gmpClickable = true;
+
+    let cleanup: (() => void) | null = null;
+    if (
+      typeof marker.addEventListener === 'function'
+      && typeof marker.removeEventListener === 'function'
+    ) {
+      const onGmpClick = () => {
+        this.logMapDebug('gmp-click', { projectId });
+        this.onProjectMarkerClick(projectId);
+      };
+      marker.addEventListener('gmp-click', onGmpClick);
+      cleanup = () => marker.removeEventListener('gmp-click', onGmpClick);
+    } else {
+      const listener = marker.addListener('click', () => {
+        this.logMapDebug('click-fallback', { projectId });
+        this.onProjectMarkerClick(projectId);
+      });
+      cleanup = () => listener.remove();
+    }
+
+    this.projectMarkerListeners.set(projectId, { marker, cleanup });
+    this.logMapDebug('marker-initialized', { projectId });
+  }
+
+  onProjectMarkerClick(projectId: string): void {
+    this.logMapDebug('marker-click-received', {
+      projectId,
+      activeProjectId: this.activeProject$$()?.projectId || null,
+    });
+    if (!projectId) return;
+    if (this.activeProject$$()?.projectId === projectId) return;
+
+    const project = this.projects$$().find((it) => it.projectId === projectId);
+    if (!project?.projectId) return;
+
+    this.logMapDebug('open-project-info', { projectId });
+    this.openProjectInfo(project);
+  }
+
+  openProjectInfo(project: BmProject | null | undefined): void {
+    if (!project?.projectId) {
+      this.closeProjectInfo('openProjectInfo-invalid-project');
+      return;
+    }
+    this.logMapDebug('open-project-info-run', {
+      projectId: project.projectId,
+      projectName: project.projectName || null,
+    });
+
+    const safeProject: BmProject = {
+      projectId: project.projectId,
+      projectName: project.projectName,
+      clientName: project.clientName ?? null,
+      clientAddress: project.clientAddress ?? null,
+      projectTypeName: project.projectTypeName ?? null,
+      status: project.status ?? null,
+      clientId: project.clientId,
+    };
+    this.activeProject$$.set(safeProject);
     this.routeError$$.set(null);
     this.activeProjectTravelTime$$.set(null);
     this.routePath$$.set([]);
     this.streetViewLoading$$.set(false);
     this.streetViewReady$$.set(false);
-    this.setDefaultInfoPanelPosition();
-    void this.renderStreetViewPreview(project);
-    void this.drawCompanyToClientRoute(project);
+    this.streetViewImageUrl$$.set(null);
+    if (this.streetViewEnabled) {
+      void this.renderStreetViewPreview(project).catch(() => {
+        if (this.activeProject$$()?.projectId !== project.projectId) return;
+        this.streetViewLoading$$.set(false);
+        this.streetViewReady$$.set(false);
+        this.streetViewImageUrl$$.set(null);
+      });
+    }
+    if (this.routePreviewEnabled) {
+      void this.drawCompanyToClientRoute(project).catch((err: unknown) => {
+        if (this.activeProject$$()?.projectId !== project.projectId) return;
+        this.routeLoading$$.set(false);
+        this.routePath$$.set([]);
+        this.routeError$$.set(
+          this.normalizeRouteErrorMessage(
+            this.getErrorMessage(err, 'Unable to draw driving route on map right now.'),
+          ),
+        );
+      });
+    }
   }
 
-  closeProjectInfo(): void {
+  closeProjectInfo(reason = 'manual'): void {
+    this.logMapDebug('close-project-info', {
+      reason,
+      activeProjectId: this.activeProject$$()?.projectId || null,
+    });
     this.activeProject$$.set(null);
     this.routeLoading$$.set(false);
     this.routeError$$.set(null);
@@ -404,11 +572,8 @@ export class ManagerPageComponent {
     this.routePath$$.set([]);
     this.streetViewLoading$$.set(false);
     this.streetViewReady$$.set(false);
+    this.streetViewImageUrl$$.set(null);
     this.streetViewRequestToken += 1;
-    if (this.streetViewPanorama) {
-      this.streetViewPanorama.setVisible(false);
-    }
-    this.isDraggingInfoPanel$$.set(false);
   }
 
   formatStatus(status?: string | null): string {
@@ -442,31 +607,21 @@ export class ManagerPageComponent {
     this.geocoder = new google.maps.Geocoder();
   }
 
-  private ensureStreetViewService(): void {
-    if (this.streetViewService) return;
-    if (typeof google === 'undefined' || !google.maps?.StreetViewService) return;
-    this.streetViewService = new google.maps.StreetViewService();
-  }
-
-  private async waitForStreetViewHost(): Promise<HTMLElement | null> {
-    for (let i = 0; i < 8; i += 1) {
-      const host = this.streetViewPreviewRef$$()?.nativeElement || null;
-      if (host) return host;
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
-    }
-    return this.streetViewPreviewRef$$()?.nativeElement || null;
-  }
-
   private async renderStreetViewPreview(project: BmProject): Promise<void> {
+    if (!this.streetViewEnabled) {
+      this.streetViewLoading$$.set(false);
+      this.streetViewReady$$.set(false);
+      this.streetViewImageUrl$$.set(null);
+      return;
+    }
+
     const requestedProjectId = project.projectId;
     const requestToken = ++this.streetViewRequestToken;
     const destination = (project.clientAddress || '').trim();
 
     this.streetViewLoading$$.set(true);
     this.streetViewReady$$.set(false);
-    if (this.streetViewPanorama) {
-      this.streetViewPanorama.setVisible(false);
-    }
+    this.streetViewImageUrl$$.set(null);
 
     if (!destination) {
       this.streetViewLoading$$.set(false);
@@ -486,74 +641,68 @@ export class ManagerPageComponent {
       return;
     }
 
-    const host = await this.waitForStreetViewHost();
+    const apiKey = await this.resolveMapsApiKey();
     if (
       this.activeProject$$()?.projectId !== requestedProjectId
       || requestToken !== this.streetViewRequestToken
     ) {
       return;
     }
-    if (!host) {
+    if (!apiKey) {
       this.streetViewLoading$$.set(false);
       return;
     }
 
-    this.ensureStreetViewService();
-    if (
-      !this.streetViewService
-      || typeof google === 'undefined'
-      || !google.maps?.StreetViewPanorama
-    ) {
-      this.streetViewLoading$$.set(false);
-      return;
-    }
+    const staticUrl = this.buildStreetViewStaticUrl(destinationPos, apiKey);
+    this.streetViewImageUrl$$.set(staticUrl);
+  }
 
-    const panoramaData = await this.findStreetViewPanorama(destinationPos);
-    if (
-      this.activeProject$$()?.projectId !== requestedProjectId
-      || requestToken !== this.streetViewRequestToken
-    ) {
-      return;
-    }
-
-    if (!panoramaData?.location) {
-      this.streetViewReady$$.set(false);
-      this.streetViewLoading$$.set(false);
-      return;
-    }
-
-    const pano = panoramaData.location.pano || null;
-    const panoramaPosition =
-      this.toLatLngLiteral(panoramaData.location.latLng) || destinationPos;
-    const heading = this.computeHeading(panoramaPosition, destinationPos);
-
-    this.streetViewPanorama = new google.maps.StreetViewPanorama(host, {
-      position: panoramaPosition,
-      disableDefaultUI: true,
-      clickToGo: false,
-      linksControl: false,
-      panControl: false,
-      motionTracking: false,
-      motionTrackingControl: false,
-      fullscreenControl: false,
-      addressControl: false,
-      showRoadLabels: false,
-      zoomControl: false,
-      pov: { heading, pitch: 2 },
-      zoom: 1,
-    });
-    if (pano) {
-      this.streetViewPanorama.setPano(pano);
-    }
-    this.streetViewPanorama.setVisible(true);
+  onStreetViewImageLoad(projectId: string): void {
+    if (this.activeProject$$()?.projectId !== projectId) return;
     this.streetViewReady$$.set(true);
     this.streetViewLoading$$.set(false);
+  }
+
+  onStreetViewImageError(projectId: string): void {
+    if (this.activeProject$$()?.projectId !== projectId) return;
+    this.streetViewReady$$.set(false);
+    this.streetViewLoading$$.set(false);
+    this.streetViewImageUrl$$.set(null);
+    this.logMapDebug('street-view-image-error', { projectId });
+  }
+
+  private async resolveMapsApiKey(): Promise<string | null> {
+    if (this.mapsApiKey) return this.mapsApiKey;
+    try {
+      const key = await this.mapsLoader.getApiKey();
+      this.mapsApiKey = key;
+      return key;
+    } catch {
+      return null;
+    }
+  }
+
+  private buildStreetViewStaticUrl(
+    position: google.maps.LatLngLiteral,
+    apiKey: string,
+  ): string {
+    const params = new URLSearchParams({
+      size: '640x360',
+      location: `${position.lat},${position.lng}`,
+      source: 'outdoor',
+      fov: '95',
+      pitch: '2',
+      key: apiKey,
+    });
+    return `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`;
   }
 
   private async refreshMapMarkers(): Promise<void> {
     if (!this.mapsLoaded$$()) return;
     this.ensureGeocoder();
     if (!this.geocoder) return;
+    const startedAt =
+      typeof performance !== 'undefined' ? performance.now() : Date.now();
 
     const token = ++this.mapRefreshToken;
     const query = (this.searchQuery$$() || '').trim().toLowerCase();
@@ -571,9 +720,9 @@ export class ManagerPageComponent {
         const position = await this.geocodeAddress(address);
         if (!position) return null;
         return {
-          project,
+          projectId: project.projectId,
+          title: project.projectName || 'Project',
           position,
-          icon: this.buildMarkerIcon(project.status),
         };
       }),
     );
@@ -588,29 +737,39 @@ export class ManagerPageComponent {
       (
         marker,
       ): marker is {
-        project: BmProject;
+        projectId: string;
+        title: string;
         position: google.maps.LatLngLiteral;
-        icon: google.maps.Icon;
       } => Boolean(marker),
     );
     this.projectMarkers$$.set(nextMarkers);
+    this.pruneProjectMarkerListeners(nextMarkers);
     this.companyMarker$$.set(
       companyPosition
       ? {
           position: companyPosition,
-          icon: this.buildCompanyMarkerIcon(),
         }
       : null,
     );
+    const finishedAt =
+      typeof performance !== 'undefined' ? performance.now() : Date.now();
+    this.logMapDebug('markers-refreshed', {
+      visibleProjects: visible.length,
+      renderedMarkers: nextMarkers.length,
+      elapsedMs: Number((finishedAt - startedAt).toFixed(1)),
+    });
 
     const activeProject = this.activeProject$$();
     if (
       activeProject
       && !nextMarkers.some(
-        (marker) => marker.project.projectId === activeProject.projectId,
+        (marker) => marker.projectId === activeProject.projectId,
       )
     ) {
-      this.closeProjectInfo();
+      this.logMapDebug('active-project-closed-after-refresh', {
+        activeProjectId: activeProject.projectId,
+      });
+      this.closeProjectInfo('active-project-not-in-marker-set');
     }
   }
 
@@ -630,43 +789,6 @@ export class ManagerPageComponent {
     return haystack.includes(query);
   }
 
-  private buildMarkerIcon(status?: string | null): google.maps.Icon {
-    const color = this.statusColors[status || ''] ?? this.statusColors['to_do'];
-    const svg =
-      `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 24 32">` +
-      `<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#0f172a" fill-opacity="0.35" transform="translate(0 2)"/>` +
-      `<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="${color}" stroke="#0f172a" stroke-opacity="0.65" stroke-width="0.8"/>` +
-      `<circle cx="12" cy="9" r="3.2" fill="#ffffff" fill-opacity="0.9"/>` +
-      `</svg>`;
-    const url = this.svgToDataUrl(svg);
-    return {
-      url,
-      scaledSize: new google.maps.Size(38, 50),
-      anchor: new google.maps.Point(21, 48),
-    };
-  }
-
-  private buildCompanyMarkerIcon(): google.maps.Icon {
-    const svg =
-      `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 24 32">` +
-      `<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#111827" fill-opacity="0.34" transform="translate(0 2)"/>` +
-      `<path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#111827"/>` +
-      `<rect x="8.6" y="6.7" width="6.8" height="5.6" rx="0.8" fill="#ffffff"/>` +
-      `<path d="M10 7.8v3.4M12 7.8v3.4M14 7.8v3.4M9 9.5h6" stroke="#111827" stroke-width="0.8"/>` +
-      `</svg>`;
-    const url = this.svgToDataUrl(svg);
-    return {
-      url,
-      scaledSize: new google.maps.Size(34, 44),
-      anchor: new google.maps.Point(17, 42),
-    };
-  }
-
-  private svgToDataUrl(svg: string): string {
-    const encoded = window.btoa(unescape(encodeURIComponent(svg)));
-    return `data:image/svg+xml;base64,${encoded}`;
-  }
-
   private maybeLoadMoreProjectsForMap(): void {
     if (!this.mapsLoaded$$()) return;
     if (this.projectsLoading$$()) return;
@@ -681,18 +803,16 @@ export class ManagerPageComponent {
   }
 
   private async drawCompanyToClientRoute(project: BmProject): Promise<void> {
-    const origin = (this.companyAddress$$() || '').trim();
-    const destination = (project.clientAddress || '').trim();
+    const requestedProjectId = project.projectId;
+    const destinationAddress = (project.clientAddress || '').trim();
+    let originAddress = (this.companyAddress$$() || '').trim();
+    let resolvedDestinationAddress = destinationAddress;
 
-    if (!origin || !destination) {
+    if (!destinationAddress) {
       this.routePath$$.set([]);
       this.activeProjectTravelTime$$.set(null);
       this.routeLoading$$.set(false);
-      this.routeError$$.set(
-        !origin
-        ? 'Company address is missing.'
-        : 'Client address is missing.',
-      );
+      this.routeError$$.set('Client address is missing.');
       return;
     }
 
@@ -701,15 +821,26 @@ export class ManagerPageComponent {
     this.activeProjectTravelTime$$.set(null);
     this.routePath$$.set([]);
 
-    const requestedProjectId = project.projectId;
     let originPos: google.maps.LatLngLiteral | null = null;
     let destinationPos: google.maps.LatLngLiteral | null = null;
+    let routePath: google.maps.LatLngLiteral[] = [];
+    let backendRouteError: string | null = null;
 
     try {
-      [originPos, destinationPos] = await Promise.all([
-        this.geocodeAddress(origin),
-        this.geocodeAddress(destination),
-      ]);
+      const geocodeTasks: Array<Promise<void>> = [];
+      if (originAddress) {
+        geocodeTasks.push(
+          this.geocodeAddress(originAddress).then((position) => {
+            originPos = position;
+          }),
+        );
+      }
+      geocodeTasks.push(
+        this.geocodeAddress(resolvedDestinationAddress).then((position) => {
+          destinationPos = position;
+        }),
+      );
+      await Promise.all(geocodeTasks);
       if (this.activeProject$$()?.projectId !== requestedProjectId) return;
     } catch {
       if (this.activeProject$$()?.projectId !== requestedProjectId) return;
@@ -721,22 +852,51 @@ export class ManagerPageComponent {
       const routeResponse = await firstValueFrom(
         this.projectsService.getProjectSurchargeTransportationRoute(
           requestedProjectId,
-        ),
+        ).pipe(timeout({ first: 12000 })),
       );
       if (this.activeProject$$()?.projectId !== requestedProjectId) return;
+
+      const backendOriginAddress = String(
+        routeResponse?.transportationRoute?.companyAddress || '',
+      ).trim();
+      const backendDestinationAddress = String(
+        routeResponse?.transportationRoute?.clientAddress || '',
+      ).trim();
+      if (!originAddress && backendOriginAddress) {
+        originAddress = backendOriginAddress;
+        this.companyAddress$$.set(originAddress);
+      }
+      if (backendDestinationAddress) {
+        resolvedDestinationAddress = backendDestinationAddress;
+      }
+      if (!originPos && originAddress) {
+        originPos = await this.geocodeAddress(originAddress);
+      }
+      if (!destinationPos && resolvedDestinationAddress) {
+        destinationPos = await this.geocodeAddress(resolvedDestinationAddress);
+      }
+      if (this.activeProject$$()?.projectId !== requestedProjectId) return;
+      if (originPos) {
+        this.companyMarker$$.set({ position: originPos });
+      }
 
       const encodedPolyline = String(
         routeResponse?.transportationRoute?.encodedPolyline || '',
       ).trim();
-      const routePath = encodedPolyline
-        ? this.decodeEncodedPolyline(encodedPolyline)
+      const safeEncodedPolyline =
+        encodedPolyline.length > 20000 ? '' : encodedPolyline;
+      if (safeEncodedPolyline !== encodedPolyline) {
+        backendRouteError = 'Route geometry is too large to render on this device.';
+      }
+      routePath = safeEncodedPolyline
+        ? this.decodeEncodedPolyline(safeEncodedPolyline)
         : [];
 
       if (routePath.length > 1) {
         this.routePath$$.set(routePath);
+        this.fitMapToPath(routePath);
       } else {
-        this.routePath$$.set([]);
-        this.routeError$$.set('Unable to draw driving route on map right now.');
+        routePath = [];
       }
 
       const formattedRouteTime = String(
@@ -747,12 +907,46 @@ export class ManagerPageComponent {
       }
     } catch (err: unknown) {
       if (this.activeProject$$()?.projectId !== requestedProjectId) return;
-      this.routePath$$.set([]);
-      this.routeError$$.set(
-        this.normalizeRouteErrorMessage(
-          this.getErrorMessage(err, 'Unable to draw driving route on map right now.'),
+      backendRouteError = this.normalizeRouteErrorMessage(
+        this.getErrorMessage(
+          err,
+          'Unable to draw driving route on map right now.',
         ),
       );
+    }
+
+    if (!routePath.length) {
+      const browserRoute = await this.requestBrowserDirectionsRoute(
+        originAddress,
+        resolvedDestinationAddress,
+      );
+      if (this.activeProject$$()?.projectId !== requestedProjectId) return;
+      if (browserRoute?.path?.length && browserRoute.path.length > 1) {
+        routePath = browserRoute.path;
+        this.routePath$$.set(routePath);
+        this.fitMapToPath(routePath);
+        if (!this.activeProjectTravelTime$$() && browserRoute.durationText) {
+          this.activeProjectTravelTime$$.set(browserRoute.durationText);
+        }
+      }
+    }
+
+    if (!routePath.length && originPos && destinationPos) {
+      routePath = [originPos, destinationPos];
+      this.routePath$$.set(routePath);
+      this.fitMapToPath(routePath);
+      if (!this.routeError$$()) {
+        this.routeError$$.set('Live route unavailable. Showing straight-line route.');
+      }
+    }
+
+    if (!routePath.length) {
+      this.routePath$$.set([]);
+      this.routeError$$.set(
+        backendRouteError || 'Unable to draw driving route on map right now.',
+      );
+    } else if (!this.routeError$$() && backendRouteError) {
+      this.routeError$$.set('Live route unavailable. Showing fallback route.');
     }
 
     if (!this.activeProjectTravelTime$$()) {
@@ -760,7 +954,7 @@ export class ManagerPageComponent {
         const response = await firstValueFrom(
           this.projectsService.getProjectSurchargeTransportationTime(
             requestedProjectId,
-          ),
+          ).pipe(timeout({ first: 10000 })),
         );
         if (this.activeProject$$()?.projectId !== requestedProjectId) return;
 
@@ -802,6 +996,78 @@ export class ManagerPageComponent {
     if (this.activeProject$$()?.projectId === requestedProjectId) {
       this.routeLoading$$.set(false);
     }
+  }
+
+  private ensureDirectionsService(): void {
+    if (this.directionsService) return;
+    if (typeof google === 'undefined' || !google.maps?.DirectionsService) return;
+    this.directionsService = new google.maps.DirectionsService();
+  }
+
+  private async requestBrowserDirectionsRoute(
+    originAddress: string,
+    destinationAddress: string,
+  ): Promise<{ path: google.maps.LatLngLiteral[]; durationText: string | null } | null> {
+    const origin = String(originAddress || '').trim();
+    const destination = String(destinationAddress || '').trim();
+    if (!origin || !destination) return null;
+
+    this.ensureDirectionsService();
+    if (!this.directionsService || typeof google === 'undefined') return null;
+
+    const routePromise = new Promise<{
+      path: google.maps.LatLngLiteral[];
+      durationText: string | null;
+    } | null>((resolve) => {
+      this.directionsService?.route(
+        {
+          origin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING,
+          provideRouteAlternatives: false,
+        },
+        (result, status) => {
+          if (status !== 'OK' || !result?.routes?.length) {
+            resolve(null);
+            return;
+          }
+          const route = result.routes[0];
+          const overviewPath = route?.overview_path || [];
+          const path = overviewPath
+            .map((point) => ({ lat: point.lat(), lng: point.lng() }))
+            .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+          if (path.length <= 1) {
+            resolve(null);
+            return;
+          }
+
+          const durationText = String(route?.legs?.[0]?.duration?.text || '').trim() || null;
+          resolve({ path, durationText });
+        },
+      );
+    });
+
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), 10_000);
+    });
+
+    return Promise.race([routePromise, timeoutPromise]);
+  }
+
+  private fitMapToPath(path: google.maps.LatLngLiteral[]): void {
+    if (!Array.isArray(path) || path.length < 2) return;
+    if (typeof google === 'undefined' || !google.maps?.LatLngBounds) return;
+
+    const map = this.googleMapRef$$()?.googleMap;
+    if (!map) return;
+
+    const bounds = new google.maps.LatLngBounds();
+    for (const point of path) {
+      bounds.extend(point);
+    }
+    if (bounds.isEmpty()) return;
+
+    map.fitBounds(bounds, 72);
   }
 
   private estimateTravelMinutes(
@@ -849,85 +1115,6 @@ export class ManagerPageComponent {
     return `${hoursLabel} ${minutes} minute${minutes === 1 ? '' : 's'}`;
   }
 
-  onInfoPanelPointerDown(event: PointerEvent): void {
-    const target = event.target as HTMLElement | null;
-    if (target?.closest('button')) return;
-    if (!this.activeProject$$()) return;
-
-    const containerEl = this.mapContainerRef$$()?.nativeElement;
-    const panelEl = this.mapInfoPanelRef$$()?.nativeElement;
-    if (!containerEl || !panelEl) return;
-
-    const panelRect = panelEl.getBoundingClientRect();
-    this.infoPanelDragOffset = {
-      x: event.clientX - panelRect.left,
-      y: event.clientY - panelRect.top,
-    };
-    this.isDraggingInfoPanel$$.set(true);
-    event.preventDefault();
-  }
-
-  private moveInfoPanel(clientX: number, clientY: number): void {
-    const containerEl = this.mapContainerRef$$()?.nativeElement;
-    const panelEl = this.mapInfoPanelRef$$()?.nativeElement;
-    if (!containerEl || !panelEl) return;
-
-    const containerRect = containerEl.getBoundingClientRect();
-    const panelWidth = panelEl.offsetWidth || 380;
-    const panelHeight = panelEl.offsetHeight || 260;
-    const edge = 8;
-
-    const maxX = Math.max(edge, containerRect.width - panelWidth - edge);
-    const maxY = Math.max(edge, containerRect.height - panelHeight - edge);
-
-    const rawX = clientX - containerRect.left - this.infoPanelDragOffset.x;
-    const rawY = clientY - containerRect.top - this.infoPanelDragOffset.y;
-
-    this.infoPanelPosition$$.set({
-      x: Math.min(Math.max(rawX, edge), maxX),
-      y: Math.min(Math.max(rawY, edge), maxY),
-    });
-  }
-
-  private setDefaultInfoPanelPosition(): void {
-    const containerEl = this.mapContainerRef$$()?.nativeElement;
-    if (!containerEl) {
-      this.infoPanelPosition$$.set({ x: 24, y: 120 });
-      return;
-    }
-
-    const cardWidth = this.isMobile$$()
-      ? Math.min(containerEl.clientWidth - 24, 340)
-      : 420;
-    const edge = 8;
-    const maxX = Math.max(edge, containerEl.clientWidth - cardWidth - edge);
-    const x = Math.min(
-      Math.max((containerEl.clientWidth - cardWidth) / 2, edge),
-      maxX,
-    );
-    this.infoPanelPosition$$.set({
-      x: Math.round(x),
-      y: this.isMobile$$() ? 96 : 110,
-    });
-  }
-
-  private clampInfoPanelPosition(): void {
-    if (!this.activeProject$$()) return;
-    const containerEl = this.mapContainerRef$$()?.nativeElement;
-    const panelEl = this.mapInfoPanelRef$$()?.nativeElement;
-    if (!containerEl || !panelEl) return;
-
-    const edge = 8;
-    const maxX = Math.max(edge, containerEl.clientWidth - panelEl.offsetWidth - edge);
-    const maxY = Math.max(edge, containerEl.clientHeight - panelEl.offsetHeight - edge);
-
-    const current = this.infoPanelPosition$$();
-    this.infoPanelPosition$$.set({
-      x: Math.min(Math.max(current.x, edge), maxX),
-      y: Math.min(Math.max(current.y, edge), maxY),
-    });
-  }
-
   private countVisibleProjects(): number {
     const query = (this.searchQuery$$() || '').trim().toLowerCase();
     return this.projects$$().filter(
@@ -970,86 +1157,9 @@ export class ManagerPageComponent {
     return result;
   }
 
-  private async findStreetViewPanorama(
-    position: google.maps.LatLngLiteral,
-  ): Promise<google.maps.StreetViewPanoramaData | null> {
-    const radii = [40, 80, 140, 220];
-    for (const radius of radii) {
-      const data = await this.requestStreetViewPanorama(position, radius);
-      if (data) return data;
-    }
-    return null;
-  }
-
-  private requestStreetViewPanorama(
-    position: google.maps.LatLngLiteral,
-    radius: number,
-  ): Promise<google.maps.StreetViewPanoramaData | null> {
-    if (
-      !this.streetViewService
-      || typeof google === 'undefined'
-      || !google.maps?.StreetViewStatus
-    ) {
-      return Promise.resolve(null);
-    }
-
-    return new Promise((resolve) => {
-      this.streetViewService?.getPanorama(
-        {
-          location: position,
-          radius,
-          source: google.maps.StreetViewSource.OUTDOOR,
-          preference: google.maps.StreetViewPreference.NEAREST,
-        },
-        (data, status) => {
-          if (status !== google.maps.StreetViewStatus.OK || !data?.location) {
-            resolve(null);
-            return;
-          }
-          resolve(data);
-        },
-      );
-    });
-  }
-
-  private toLatLngLiteral(
-    value: google.maps.LatLng | google.maps.LatLngLiteral | null | undefined,
-  ): google.maps.LatLngLiteral | null {
-    if (!value) return null;
-    if (typeof (value as google.maps.LatLng).lat === 'function') {
-      const latLng = value as google.maps.LatLng;
-      return { lat: latLng.lat(), lng: latLng.lng() };
-    }
-
-    const literal = value as google.maps.LatLngLiteral;
-    if (!Number.isFinite(literal.lat) || !Number.isFinite(literal.lng)) {
-      return null;
-    }
-    return { lat: literal.lat, lng: literal.lng };
-  }
-
-  private computeHeading(
-    from: google.maps.LatLngLiteral,
-    to: google.maps.LatLngLiteral,
-  ): number {
-    if (from.lat === to.lat && from.lng === to.lng) return 0;
-
-    const toRad = (deg: number) => (deg * Math.PI) / 180;
-    const toDeg = (rad: number) => (rad * 180) / Math.PI;
-    const lat1 = toRad(from.lat);
-    const lat2 = toRad(to.lat);
-    const dLng = toRad(to.lng - from.lng);
-
-    const y = Math.sin(dLng) * Math.cos(lat2);
-    const x =
-      Math.cos(lat1) * Math.sin(lat2)
-      - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-    const heading = toDeg(Math.atan2(y, x));
-    return (heading + 360) % 360;
-  }
-
   private decodeEncodedPolyline(encoded: string): google.maps.LatLngLiteral[] {
     const path: google.maps.LatLngLiteral[] = [];
+    const maxPoints = 3000;
     let index = 0;
     let lat = 0;
     let lng = 0;
@@ -1083,6 +1193,9 @@ export class ManagerPageComponent {
       lng += dLng;
 
       path.push({ lat: lat / 1e5, lng: lng / 1e5 });
+      if (path.length >= maxPoints) {
+        break;
+      }
     }
 
     return path;
@@ -1103,6 +1216,9 @@ export class ManagerPageComponent {
 
   private normalizeRouteErrorMessage(message: string): string {
     const lower = String(message || '').toLowerCase();
+    if (lower.includes('timeout')) {
+      return 'Route service timed out. Please try again.';
+    }
     if (
       lower.includes('are blocked')
       || lower.includes('api not activated')
@@ -1153,5 +1269,39 @@ export class ManagerPageComponent {
     } else {
       this.panelOpenMobile$$.set(true);
     }
+  }
+
+  ngOnDestroy(): void {
+    this.clearProjectMarkerListeners();
+  }
+
+  private pruneProjectMarkerListeners(
+    markers: Array<{ projectId: string }>,
+  ): void {
+    const activeMarkerIds = new Set(markers.map((marker) => marker.projectId));
+    for (const [projectId, listenerRef] of this.projectMarkerListeners) {
+      if (activeMarkerIds.has(projectId)) continue;
+      listenerRef.cleanup();
+      this.projectMarkerListeners.delete(projectId);
+      this.logMapDebug('marker-listener-pruned', { projectId });
+    }
+  }
+
+  private clearProjectMarkerListeners(): void {
+    for (const [projectId, listenerRef] of this.projectMarkerListeners) {
+      listenerRef.cleanup();
+      this.logMapDebug('marker-listener-cleared', { projectId });
+    }
+    this.projectMarkerListeners.clear();
+  }
+
+  private logMapDebug(message: string, data?: unknown): void {
+    if (!this.mapDebugEnabled) return;
+    const prefix = '[ManagerMap]';
+    if (typeof data === 'undefined') {
+      console.log(prefix, message);
+      return;
+    }
+    console.log(prefix, message, data);
   }
 }
