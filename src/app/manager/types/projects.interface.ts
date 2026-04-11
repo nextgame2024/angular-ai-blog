@@ -7,6 +7,7 @@ export type ProjectStatus =
   | 'on_hold'
   | 'cancelled'
   | 'archived'
+  | 'deleted'
   | string;
 
 export interface BmProject {

@@ -2671,14 +2671,11 @@ export class ManagerProjectsPageComponent
   }
 
   removeProject(project: BmProject): void {
-    const hasProjects = !!project.hasProjects;
     this.openStatusConfirmModal({
-      title: hasProjects ? 'Archive Project?' : 'Delete Project?',
-      message: hasProjects
-        ? `Are you sure you want to archive "${project.projectName}"?`
-        : `Are you sure you want to delete "${project.projectName}"?`,
-      tone: hasProjects ? 'warning' : 'danger',
-      confirmLabel: hasProjects ? 'Archive' : 'Delete',
+      title: 'Delete Project?',
+      message: `Are you sure you want to delete "${project.projectName}"?`,
+      tone: 'danger',
+      confirmLabel: 'Delete',
       onConfirm: () =>
         this.store.dispatch(
           ManagerProjectsActions.removeProject({
