@@ -90,6 +90,7 @@ html.dark .manager-shell :is(.map-floating-info-bar, .map-static-info-bar) {
 html.dark .manager-shell :is(.map-floating-info-bar, .map-static-info-bar) span,
 html.dark .manager-shell .map-info,
 html.dark .manager-shell .map-info-title,
+html.dark .manager-shell .map-info-toggle,
 html.dark .manager-shell .map-info-close {
   color: #e2e8f0;
 }
@@ -99,7 +100,7 @@ html.dark .manager-shell .map-info-photo-fallback {
   color: rgba(148, 163, 184, 0.9);
 }
 
-html.dark .manager-shell .map-info-close {
+html.dark .manager-shell :is(.map-info-toggle, .map-info-close) {
   background: rgba(51, 65, 85, 0.8);
 }
 

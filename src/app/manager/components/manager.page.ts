@@ -169,6 +169,7 @@ export class ManagerPageComponent implements OnDestroy {
     y: 0,
   });
   readonly isDraggingInfoPanel$$ = signal(false);
+  readonly infoPanelCollapsedMobile$$ = signal(false);
   readonly routePath$$ = signal<google.maps.LatLngLiteral[]>([]);
   readonly routeLoading$$ = signal(false);
   readonly routeError$$ = signal<string | null>(null);
@@ -186,6 +187,9 @@ export class ManagerPageComponent implements OnDestroy {
   readonly projectMarkerOptions: google.maps.marker.AdvancedMarkerElementOptions = {
     gmpClickable: true,
   };
+  readonly showInfoPanelBody$$ = computed(
+    () => !this.isMobile$$() || !this.infoPanelCollapsedMobile$$(),
+  );
 
   private readonly allowedStatuses = new Set([
     'to_do',
@@ -553,6 +557,7 @@ export class ManagerPageComponent implements OnDestroy {
       clientId: project.clientId,
     };
     this.activeProject$$.set(safeProject);
+    this.infoPanelCollapsedMobile$$.set(false);
     this.routeError$$.set(null);
     this.activeProjectTravelTime$$.set(null);
     this.routePath$$.set([]);
@@ -596,6 +601,12 @@ export class ManagerPageComponent implements OnDestroy {
     this.streetViewImageUrl$$.set(null);
     this.streetViewRequestToken += 1;
     this.isDraggingInfoPanel$$.set(false);
+    this.infoPanelCollapsedMobile$$.set(false);
+  }
+
+  toggleInfoPanelMobileVisibility(): void {
+    if (!this.isMobile$$()) return;
+    this.infoPanelCollapsedMobile$$.set(!this.infoPanelCollapsedMobile$$());
   }
 
   onInfoPanelDragStarted(): void {
@@ -1311,6 +1322,7 @@ export class ManagerPageComponent implements OnDestroy {
     } else {
       this.panelOpenMobile$$.set(true);
       this.isDraggingInfoPanel$$.set(false);
+      this.infoPanelCollapsedMobile$$.set(false);
     }
   }
 

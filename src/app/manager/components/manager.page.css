@@ -113,6 +113,12 @@
   color: #334155;
 }
 
+.map-info-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .map-info {
   min-width: 220px;
   font-size: 0.85rem;
@@ -120,6 +126,7 @@
   padding: 0.5rem 0.6rem 0.6rem;
 }
 
+.map-info-toggle,
 .map-info-close {
   width: 24px;
   height: 24px;
@@ -130,6 +137,22 @@
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
+}
+
+.map-info-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-info-toggle svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .map-info-photo {

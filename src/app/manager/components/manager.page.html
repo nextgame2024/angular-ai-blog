@@ -68,72 +68,98 @@
       >
       <div class="map-static-info-bar" cdkDragHandle>
         <span>Project details</span>
-        <button
-          type="button"
-          class="map-info-close"
-          aria-label="Close project details"
-          (click)="closeProjectInfo()"
-          >
-          x
-        </button>
+        <div class="map-info-actions">
+          @if (isMobile$$()) {
+            <button
+              type="button"
+              class="map-info-toggle"
+              [attr.aria-label]="infoPanelCollapsedMobile$$() ? 'Show project details' : 'Hide project details'"
+              [attr.title]="infoPanelCollapsedMobile$$() ? 'Show details' : 'Hide details'"
+              (click)="toggleInfoPanelMobileVisibility()"
+            >
+              @if (!infoPanelCollapsedMobile$$()) {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M1.5 12s3.8-6 10.5-6 10.5 6 10.5 6-3.8 6-10.5 6S1.5 12 1.5 12z"></path>
+                  <circle cx="12" cy="12" r="3.25"></circle>
+                </svg>
+              } @else {
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 5l20 14"></path>
+                  <path d="M1.5 12s3.8-6 10.5-6c2.2 0 4.1.6 5.7 1.5"></path>
+                  <path d="M22.5 12s-3.8 6-10.5 6c-2.2 0-4.1-.6-5.7-1.5"></path>
+                </svg>
+              }
+            </button>
+          }
+          <button
+            type="button"
+            class="map-info-close"
+            aria-label="Close project details"
+            (click)="closeProjectInfo()"
+            >
+            x
+          </button>
+        </div>
       </div>
-      <div class="map-info">
-        <div class="map-info-photo">
-          @if (streetViewImageUrl$$(); as streetViewImageUrl) {
-            <img
-              class="map-info-photo-img"
-              [src]="streetViewImageUrl"
-              alt="Project location preview"
-              loading="lazy"
-              (load)="onStreetViewImageLoad(activeProject.projectId)"
-              (error)="onStreetViewImageError(activeProject.projectId)"
-            />
-          }
-          @if (streetViewLoading$$()) {
-            <div class="map-info-photo-fallback">
-              Loading preview...
-            </div>
-          }
-          @if (!streetViewLoading$$() && !streetViewReady$$()) {
-            <div
-              class="map-info-photo-fallback"
-              >
-              No preview available
-            </div>
-          }
-        </div>
-        <div class="map-info-title">{{ activeProject.projectName }}</div>
-        <div class="map-info-row">
-          <span>Client</span>
-          <span>{{ activeProject.clientName || '—' }}</span>
-        </div>
-        <div class="map-info-row">
-          <span>Address</span>
-          <span>{{ activeProject.clientAddress || '—' }}</span>
-        </div>
-        <div class="map-info-row">
-          <span>Type</span>
-          <span>{{ activeProject.projectTypeName || '—' }}</span>
-        </div>
-        <div class="map-info-row">
-          <span>Status</span>
-          <span>{{ formatStatus(activeProject.status) }}</span>
-        </div>
-        <div class="map-info-row">
-          <span>Transportation</span>
-          @if (routeLoading$$()) {
-            <span>Calculating...</span>
-          }
-          @if (!routeLoading$$()) {
-            <span>{{ activeProjectTravelTime$$() || '—' }}</span>
-          }
-        </div>
-        @if (routeError$$()) {
-          <div class="map-info-note">
-            {{ routeError$$() }}
+      @if (showInfoPanelBody$$()) {
+        <div class="map-info">
+          <div class="map-info-photo">
+            @if (streetViewImageUrl$$(); as streetViewImageUrl) {
+              <img
+                class="map-info-photo-img"
+                [src]="streetViewImageUrl"
+                alt="Project location preview"
+                loading="lazy"
+                (load)="onStreetViewImageLoad(activeProject.projectId)"
+                (error)="onStreetViewImageError(activeProject.projectId)"
+              />
+            }
+            @if (streetViewLoading$$()) {
+              <div class="map-info-photo-fallback">
+                Loading preview...
+              </div>
+            }
+            @if (!streetViewLoading$$() && !streetViewReady$$()) {
+              <div
+                class="map-info-photo-fallback"
+                >
+                No preview available
+              </div>
+            }
           </div>
-        }
-      </div>
+          <div class="map-info-title">{{ activeProject.projectName }}</div>
+          <div class="map-info-row">
+            <span>Client</span>
+            <span>{{ activeProject.clientName || '—' }}</span>
+          </div>
+          <div class="map-info-row">
+            <span>Address</span>
+            <span>{{ activeProject.clientAddress || '—' }}</span>
+          </div>
+          <div class="map-info-row">
+            <span>Type</span>
+            <span>{{ activeProject.projectTypeName || '—' }}</span>
+          </div>
+          <div class="map-info-row">
+            <span>Status</span>
+            <span>{{ formatStatus(activeProject.status) }}</span>
+          </div>
+          <div class="map-info-row">
+            <span>Transportation</span>
+            @if (routeLoading$$()) {
+              <span>Calculating...</span>
+            }
+            @if (!routeLoading$$()) {
+              <span>{{ activeProjectTravelTime$$() || '—' }}</span>
+            }
+          </div>
+          @if (routeError$$()) {
+            <div class="map-info-note">
+              {{ routeError$$() }}
+            </div>
+          }
+        </div>
+      }
     </div>
   }
 
