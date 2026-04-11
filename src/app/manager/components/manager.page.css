@@ -82,6 +82,10 @@
   overflow: hidden;
 }
 
+.map-static-info.is-dragging {
+  box-shadow: 0 20px 42px rgba(15, 23, 42, 0.26);
+}
+
 .map-static-info-bar {
   display: flex;
   align-items: center;
@@ -90,6 +94,17 @@
   padding: 0.45rem 0.6rem;
   border-bottom: 1px solid rgba(15, 23, 42, 0.1);
   background: rgba(241, 245, 249, 0.95);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.map-static-info.is-dragging .map-static-info-bar {
+  cursor: grabbing;
+}
+
+.map-static-info.cdk-drag-dragging {
+  box-shadow: 0 20px 42px rgba(15, 23, 42, 0.26);
 }
 
 .map-static-info-bar span {

@@ -36,6 +36,7 @@
             <map-marker
               [position]="companyMarker.position"
               [title]="'Company'"
+              [icon]="companyMarkerIcon"
             ></map-marker>
           }
         }
@@ -57,8 +58,15 @@
   @if (activeProject$$(); as activeProject) {
     <div
       class="map-static-info"
+      cdkDrag
+      [cdkDragBoundary]="'.manager-shell'"
+      [cdkDragDisabled]="isMobile$$()"
+      [cdkDragFreeDragPosition]="isMobile$$() ? zeroDragPosition : infoPanelDragPosition$$()"
+      (cdkDragStarted)="onInfoPanelDragStarted()"
+      (cdkDragEnded)="onInfoPanelDragEnded($event)"
+      [class.is-dragging]="isDraggingInfoPanel$$()"
       >
-      <div class="map-static-info-bar">
+      <div class="map-static-info-bar" cdkDragHandle>
         <span>Project details</span>
         <button
           type="button"

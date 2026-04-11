@@ -8,6 +8,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
+import { CdkDrag, CdkDragEnd, CdkDragHandle } from '@angular/cdk/drag-drop';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { GoogleMap, GoogleMapsModule } from '@angular/google-maps';
 import {
@@ -48,7 +49,13 @@ type MenuItem = {
 
 @Component({
     selector: 'app-manager-page',
-    imports: [ReactiveFormsModule, GoogleMapsModule, RouterModule],
+    imports: [
+      CdkDrag,
+      CdkDragHandle,
+      ReactiveFormsModule,
+      GoogleMapsModule,
+      RouterModule,
+    ],
     templateUrl: './manager.page.html',
     styleUrls: ['./manager.page.css']
 })
@@ -76,6 +83,15 @@ export class ManagerPageComponent implements OnDestroy {
   private readonly superAdminId = 'c2dad143-077c-4082-92f0-47805601db3b';
   private menuLoadToken = 0;
   readonly useAdvancedMarkers = false;
+  readonly zeroDragPosition = { x: 0, y: 0 };
+  private readonly companyMarkerIconUrl =
+    'data:image/svg+xml;utf8,'
+    + encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="44" height="58" viewBox="0 0 24 32"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#111827"/><rect x="8.6" y="6.7" width="6.8" height="5.6" rx="0.8" fill="#ffffff"/><path d="M10 7.8v3.4M12 7.8v3.4M14 7.8v3.4M9 9.5h6" stroke="#111827" stroke-width="0.8"/></svg>`,
+    );
+  readonly companyMarkerIcon: google.maps.Icon = {
+    url: this.companyMarkerIconUrl,
+  };
   private readonly mapDebugEnabled =
     typeof window !== 'undefined'
     && window.localStorage.getItem('manager-map-debug') === '1';
@@ -148,6 +164,11 @@ export class ManagerPageComponent implements OnDestroy {
       null,
     );
   readonly activeProject$$ = signal<BmProject | null>(null);
+  readonly infoPanelDragPosition$$ = signal<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
+  readonly isDraggingInfoPanel$$ = signal(false);
   readonly routePath$$ = signal<google.maps.LatLngLiteral[]>([]);
   readonly routeLoading$$ = signal(false);
   readonly routeError$$ = signal<string | null>(null);
@@ -574,6 +595,25 @@ export class ManagerPageComponent implements OnDestroy {
     this.streetViewReady$$.set(false);
     this.streetViewImageUrl$$.set(null);
     this.streetViewRequestToken += 1;
+    this.isDraggingInfoPanel$$.set(false);
+  }
+
+  onInfoPanelDragStarted(): void {
+    if (this.isMobile$$()) return;
+    this.isDraggingInfoPanel$$.set(true);
+  }
+
+  onInfoPanelDragEnded(event: CdkDragEnd): void {
+    this.isDraggingInfoPanel$$.set(false);
+    if (this.isMobile$$()) {
+      this.infoPanelDragPosition$$.set(this.zeroDragPosition);
+      return;
+    }
+    const next = event.source.getFreeDragPosition();
+    this.infoPanelDragPosition$$.set({
+      x: Number.isFinite(next.x) ? Math.round(next.x) : 0,
+      y: Number.isFinite(next.y) ? Math.round(next.y) : 0,
+    });
   }
 
   formatStatus(status?: string | null): string {
@@ -1264,14 +1304,18 @@ export class ManagerPageComponent implements OnDestroy {
 
     // Mobile-first behavior: panel acts like a drawer, except when fullscreen.
     if (isMobile) {
+      this.infoPanelDragPosition$$.set(this.zeroDragPosition);
+      this.isDraggingInfoPanel$$.set(false);
       this.panelCollapsed$$.set(false);
       if (!this.panelFullscreen$$()) this.panelOpenMobile$$.set(false);
     } else {
       this.panelOpenMobile$$.set(true);
+      this.isDraggingInfoPanel$$.set(false);
     }
   }
 
   ngOnDestroy(): void {
+    this.isDraggingInfoPanel$$.set(false);
     this.clearProjectMarkerListeners();
   }
 
