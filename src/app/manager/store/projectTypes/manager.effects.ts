@@ -8,7 +8,9 @@ import { ManagerProjectTypesActions } from './manager.actions';
 import { ManagerProjectTypesService } from '../../services/manager.project.types.service';
 import {
   selectManagerProjectTypesSearchQuery,
-  selectManagerEditingProjectType,
+  selectManagerEditingProjectTypeId,
+  selectManagerEditingProjectTypeMaterialId,
+  selectManagerEditingProjectTypeLaborId,
 } from './manager.selectors';
 
 @Injectable()
@@ -46,10 +48,10 @@ export class ManagerProjectTypesEffects {
   saveProjectType$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerProjectTypesActions.saveProjectType),
-      withLatestFrom(this.store.select(selectManagerEditingProjectType)),
-      switchMap(([{ payload, closeOnSuccess }, editing]) => {
-        const req$ = editing
-          ? this.api.updateProjectType(editing.projectTypeId, payload)
+      withLatestFrom(this.store.select(selectManagerEditingProjectTypeId)),
+      switchMap(([{ payload, closeOnSuccess }, editingProjectTypeId]) => {
+        const req$ = editingProjectTypeId
+          ? this.api.updateProjectType(editingProjectTypeId, payload)
           : this.api.createProjectType(payload);
 
         return req$.pipe(
@@ -128,11 +130,15 @@ export class ManagerProjectTypesEffects {
   saveProjectTypeMaterial$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerProjectTypesActions.saveProjectTypeMaterial),
-      switchMap(({ projectTypeId, materialId, payload }) => {
-        const req$ = materialId
+      withLatestFrom(
+        this.store.select(selectManagerEditingProjectTypeMaterialId),
+      ),
+      switchMap(([{ projectTypeId, materialId, payload }, editingMaterialId]) => {
+        const resolvedMaterialId = editingMaterialId ?? materialId ?? null;
+        const req$ = resolvedMaterialId
           ? this.api.upsertProjectTypeMaterial(
               projectTypeId,
-              materialId,
+              resolvedMaterialId,
               payload,
             )
           : this.api.addProjectTypeMaterial(projectTypeId, payload);
@@ -211,9 +217,15 @@ export class ManagerProjectTypesEffects {
   saveProjectTypeLabor$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerProjectTypesActions.saveProjectTypeLabor),
-      switchMap(({ projectTypeId, laborId, payload }) => {
-        const req$ = laborId
-          ? this.api.upsertProjectTypeLabor(projectTypeId, laborId, payload)
+      withLatestFrom(this.store.select(selectManagerEditingProjectTypeLaborId)),
+      switchMap(([{ projectTypeId, laborId, payload }, editingLaborId]) => {
+        const resolvedLaborId = editingLaborId ?? laborId ?? null;
+        const req$ = resolvedLaborId
+          ? this.api.upsertProjectTypeLabor(
+              projectTypeId,
+              resolvedLaborId,
+              payload,
+            )
           : this.api.addProjectTypeLabor(projectTypeId, payload);
 
         return req$.pipe(

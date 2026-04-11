@@ -62,6 +62,11 @@ export const selectManagerEditingProjectType = createSelector(
   },
 );
 
+export const selectManagerEditingProjectTypeId = createSelector(
+  selectManagerProjectTypesState,
+  (s) => s.editingProjectTypeId,
+);
+
 export const selectManagerProjectTypeMaterials = createSelector(
   selectManagerProjectTypesState,
   (s) => s.materials,
@@ -90,6 +95,11 @@ export const selectManagerEditingProjectTypeMaterial = createSelector(
   },
 );
 
+export const selectManagerEditingProjectTypeMaterialId = createSelector(
+  selectManagerProjectTypesState,
+  (s) => s.editingMaterialId,
+);
+
 export const selectManagerProjectTypeLabor = createSelector(
   selectManagerProjectTypesState,
   (s) => s.labor,
@@ -116,4 +126,9 @@ export const selectManagerEditingProjectTypeLabor = createSelector(
       ) ?? null
     );
   },
+);
+
+export const selectManagerEditingProjectTypeLaborId = createSelector(
+  selectManagerProjectTypesState,
+  (s) => s.editingLaborId,
 );

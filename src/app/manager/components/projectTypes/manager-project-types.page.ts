@@ -20,7 +20,7 @@ import {
   debounceTime,
   distinctUntilChanged,
   map,
-  startWith,
+  take,
   takeUntil,
 } from 'rxjs/operators';
 
@@ -106,6 +106,17 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
   dismissedErrors = new Set<string>();
   dismissedWarnings = new Set<string>();
   private closeAfterSave = false;
+  private closeAfterMaterialSave = false;
+  private closeAfterLaborSave = false;
+  private saveMaterialAfterProjectTypeSaveAndClose = false;
+  private saveLaborAfterProjectTypeSaveAndClose = false;
+  private pendingMaterialPayloadAfterProjectTypeSave: any = null;
+  private pendingLaborPayloadAfterProjectTypeSave: any = null;
+  private pendingSaveAndCloseProjectTypeId: string | null = null;
+  formToastMessage: string | null = null;
+  formToastClosing = false;
+  private formToastTimer: ReturnType<typeof setTimeout> | null = null;
+  private formToastCloseTimer: ReturnType<typeof setTimeout> | null = null;
   isConfirmModalOpen = false;
   confirmModalTitle = '';
   confirmModalMessage = '';
@@ -244,11 +255,93 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
       )
       .subscribe((action) => {
+        if (action.type === ManagerProjectTypesActions.saveProjectTypeSuccess.type) {
+          this.pendingSaveAndCloseProjectTypeId = action.projectType.projectTypeId;
+          if (this.dispatchNextPendingChildSave(action.projectType.projectTypeId)) {
+            return;
+          }
+        } else {
+          if (
+            this.closeAfterSave ||
+            this.hasPendingMaterialSave() ||
+            this.hasPendingLaborSave()
+          ) {
+            this.showFormToast(
+              (action as { error?: string })?.error ||
+                'Could not save project type details. Please review required fields and try again.',
+            );
+          }
+          this.clearPendingChildSaves();
+          this.pendingSaveAndCloseProjectTypeId = null;
+        }
+
         if (!this.closeAfterSave) return;
         this.closeAfterSave = false;
         if (action.type === ManagerProjectTypesActions.saveProjectTypeSuccess.type) {
+          this.pendingSaveAndCloseProjectTypeId = null;
           this.closeForm();
         }
+      });
+
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerProjectTypesActions.saveProjectTypeMaterialSuccess,
+          ManagerProjectTypesActions.saveProjectTypeMaterialFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterMaterialSave) return;
+        this.closeAfterMaterialSave = false;
+        if (
+          action.type !==
+          ManagerProjectTypesActions.saveProjectTypeMaterialSuccess.type
+        ) {
+          this.showFormToast(
+            (action as { error?: string })?.error ||
+              'Could not save material. Please review required fields and try again.',
+          );
+          this.clearPendingChildSaves();
+          return;
+        }
+
+        const projectTypeId = this.pendingSaveAndCloseProjectTypeId;
+        if (projectTypeId && this.dispatchNextPendingChildSave(projectTypeId)) {
+          return;
+        }
+
+        this.pendingSaveAndCloseProjectTypeId = null;
+        this.closeForm();
+      });
+
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerProjectTypesActions.saveProjectTypeLaborSuccess,
+          ManagerProjectTypesActions.saveProjectTypeLaborFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterLaborSave) return;
+        this.closeAfterLaborSave = false;
+        if (action.type !== ManagerProjectTypesActions.saveProjectTypeLaborSuccess.type) {
+          this.showFormToast(
+            (action as { error?: string })?.error ||
+              'Could not save labor. Please review required fields and try again.',
+          );
+          this.clearPendingChildSaves();
+          return;
+        }
+
+        const projectTypeId = this.pendingSaveAndCloseProjectTypeId;
+        if (projectTypeId && this.dispatchNextPendingChildSave(projectTypeId)) {
+          return;
+        }
+
+        this.pendingSaveAndCloseProjectTypeId = null;
+        this.closeForm();
       });
   }
 
@@ -369,6 +462,7 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.infiniteObserver?.disconnect();
+    this.clearFormToastTimers();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -411,6 +505,11 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
   }
 
   closeForm(): void {
+    this.closeAfterSave = false;
+    this.closeAfterMaterialSave = false;
+    this.closeAfterLaborSave = false;
+    this.pendingSaveAndCloseProjectTypeId = null;
+    this.clearPendingChildSaves();
     this.store.dispatch(ManagerProjectTypesActions.closeProjectTypeForm());
   }
 
@@ -447,8 +546,80 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
   }
 
   saveProjectTypeAndClose(): void {
-    this.closeAfterSave = true;
-    this.saveProjectType(true);
+    if (this.projectTypeForm.invalid) {
+      this.projectTypeForm.markAllAsTouched();
+      this.showFormToast(
+        'Please complete required project type fields before using Save & Finish.',
+      );
+      this.setTab('details');
+      return;
+    }
+
+    combineLatest([
+      this.materialsViewMode$.pipe(take(1)),
+      this.laborViewMode$.pipe(take(1)),
+      this.editingProjectType$.pipe(take(1)),
+    ]).subscribe(([materialsMode, laborMode, projectType]) => {
+      let materialPayload: any | null = null;
+      let laborPayload: any | null = null;
+
+      if (materialsMode === 'form') {
+        materialPayload = this.buildProjectTypeMaterialPayload(
+          this.editingMaterialValue,
+        );
+        if (!materialPayload) {
+          this.showFormToast(
+            'Please complete required material fields before using Save & Finish.',
+          );
+          this.setTab('materials', projectType?.projectTypeId ?? null);
+          return;
+        }
+      }
+
+      if (laborMode === 'form') {
+        laborPayload = this.buildProjectTypeLaborPayload(this.editingLaborValue);
+        if (!laborPayload) {
+          this.showFormToast(
+            'Please complete required labor fields before using Save & Finish.',
+          );
+          this.setTab('labor', projectType?.projectTypeId ?? null);
+          return;
+        }
+      }
+
+      this.closeAfterSave = false;
+      this.closeAfterMaterialSave = false;
+      this.closeAfterLaborSave = false;
+      this.saveMaterialAfterProjectTypeSaveAndClose = !!materialPayload;
+      this.saveLaborAfterProjectTypeSaveAndClose = !!laborPayload;
+      this.pendingMaterialPayloadAfterProjectTypeSave = materialPayload;
+      this.pendingLaborPayloadAfterProjectTypeSave = laborPayload;
+      this.pendingSaveAndCloseProjectTypeId = projectType?.projectTypeId ?? null;
+
+      const hasPendingChildren =
+        this.hasPendingMaterialSave() || this.hasPendingLaborSave();
+
+      if (!hasPendingChildren) {
+        this.closeAfterSave = true;
+        this.saveProjectType();
+        return;
+      }
+
+      if (
+        !this.pendingSaveAndCloseProjectTypeId ||
+        this.projectTypeForm.dirty
+      ) {
+        this.saveProjectType();
+        return;
+      }
+
+      if (this.dispatchNextPendingChildSave(this.pendingSaveAndCloseProjectTypeId)) {
+        return;
+      }
+
+      this.closeAfterSave = true;
+      this.saveProjectType();
+    });
   }
 
   removeProjectType(pt: BmProjectType): void {
@@ -508,14 +679,9 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
   }
 
   saveProjectTypeMaterial(projectTypeId: string, editing?: BmProjectTypeMaterial | null): void {
-    if (this.projectTypeMaterialForm.invalid) {
-      this.projectTypeMaterialForm.markAllAsTouched();
-      return;
-    }
-    const payload: any = this.projectTypeMaterialForm.getRawValue();
-    payload.coverage_ratio = this.formatCoverage(payload.coverage_ratio);
-    const materialId = payload.material_id;
-    if (!materialId && !editing?.materialId) return;
+    const payload = this.buildProjectTypeMaterialPayload(editing);
+    if (!payload) return;
+
     this.store.dispatch(
       ManagerProjectTypesActions.saveProjectTypeMaterial({
         projectTypeId,
@@ -573,15 +739,9 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
   }
 
   saveProjectTypeLabor(projectTypeId: string, editing?: BmProjectTypeLabor | null): void {
-    if (this.projectTypeLaborForm.invalid) {
-      this.projectTypeLaborForm.markAllAsTouched();
-      return;
-    }
-    const payload: any = this.projectTypeLaborForm.getRawValue();
-    payload.unit_productivity = this.formatProductivity(payload.unit_productivity);
-    const laborId = payload.labor_id;
-    if (!laborId && !editing?.laborId) return;
-    this.applyLaborDefaults(laborId ?? editing?.laborId ?? null, payload);
+    const payload = this.buildProjectTypeLaborPayload(editing);
+    if (!payload) return;
+
     this.store.dispatch(
       ManagerProjectTypesActions.saveProjectTypeLabor({
         projectTypeId,
@@ -610,6 +770,115 @@ export class ManagerProjectTypesPageComponent implements OnInit, OnDestroy {
           }),
         ),
     });
+  }
+
+  private buildProjectTypeMaterialPayload(
+    editing?: BmProjectTypeMaterial | null,
+  ): any | null {
+    if (this.projectTypeMaterialForm.invalid) {
+      this.projectTypeMaterialForm.markAllAsTouched();
+      return null;
+    }
+    const payload: any = this.projectTypeMaterialForm.getRawValue();
+    payload.coverage_ratio = this.formatCoverage(payload.coverage_ratio);
+    const materialId = payload.material_id;
+    if (!materialId && !editing?.materialId) return null;
+    return payload;
+  }
+
+  private buildProjectTypeLaborPayload(
+    editing?: BmProjectTypeLabor | null,
+  ): any | null {
+    if (this.projectTypeLaborForm.invalid) {
+      this.projectTypeLaborForm.markAllAsTouched();
+      return null;
+    }
+    const payload: any = this.projectTypeLaborForm.getRawValue();
+    payload.unit_productivity = this.formatProductivity(payload.unit_productivity);
+    const laborId = payload.labor_id;
+    if (!laborId && !editing?.laborId) return null;
+    this.applyLaborDefaults(laborId ?? editing?.laborId ?? null, payload);
+    return payload;
+  }
+
+  private hasPendingMaterialSave(): boolean {
+    return (
+      this.saveMaterialAfterProjectTypeSaveAndClose &&
+      this.pendingMaterialPayloadAfterProjectTypeSave !== null
+    );
+  }
+
+  private hasPendingLaborSave(): boolean {
+    return (
+      this.saveLaborAfterProjectTypeSaveAndClose &&
+      this.pendingLaborPayloadAfterProjectTypeSave !== null
+    );
+  }
+
+  private clearPendingChildSaves(): void {
+    this.saveMaterialAfterProjectTypeSaveAndClose = false;
+    this.saveLaborAfterProjectTypeSaveAndClose = false;
+    this.pendingMaterialPayloadAfterProjectTypeSave = null;
+    this.pendingLaborPayloadAfterProjectTypeSave = null;
+    this.closeAfterMaterialSave = false;
+    this.closeAfterLaborSave = false;
+  }
+
+  private dispatchNextPendingChildSave(projectTypeId: string): boolean {
+    if (this.hasPendingMaterialSave()) {
+      const payload = this.pendingMaterialPayloadAfterProjectTypeSave;
+      this.pendingMaterialPayloadAfterProjectTypeSave = null;
+      this.saveMaterialAfterProjectTypeSaveAndClose = false;
+      this.closeAfterMaterialSave = true;
+      this.store.dispatch(
+        ManagerProjectTypesActions.saveProjectTypeMaterial({
+          projectTypeId,
+          payload,
+        }),
+      );
+      return true;
+    }
+
+    if (this.hasPendingLaborSave()) {
+      const payload = this.pendingLaborPayloadAfterProjectTypeSave;
+      this.pendingLaborPayloadAfterProjectTypeSave = null;
+      this.saveLaborAfterProjectTypeSaveAndClose = false;
+      this.closeAfterLaborSave = true;
+      this.store.dispatch(
+        ManagerProjectTypesActions.saveProjectTypeLabor({
+          projectTypeId,
+          payload,
+        }),
+      );
+      return true;
+    }
+
+    return false;
+  }
+
+  private showFormToast(message: string): void {
+    this.clearFormToastTimers();
+    this.formToastMessage = message;
+    this.formToastClosing = false;
+
+    this.formToastTimer = window.setTimeout(() => {
+      this.formToastClosing = true;
+      this.formToastCloseTimer = window.setTimeout(() => {
+        this.formToastMessage = null;
+        this.formToastClosing = false;
+      }, 220);
+    }, 3200);
+  }
+
+  private clearFormToastTimers(): void {
+    if (this.formToastTimer) {
+      clearTimeout(this.formToastTimer);
+      this.formToastTimer = null;
+    }
+    if (this.formToastCloseTimer) {
+      clearTimeout(this.formToastCloseTimer);
+      this.formToastCloseTimer = null;
+    }
   }
 
   formatQuantity(value: number | null | undefined): string | null {
