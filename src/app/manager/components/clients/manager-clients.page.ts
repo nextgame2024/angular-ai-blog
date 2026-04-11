@@ -69,6 +69,9 @@ export class ManagerClientsPageComponent
   private isLoadingMore = false;
   private isLoadingMoreContacts = false;
   private closeAfterSave = false;
+  private closeAfterContactSave = false;
+  private saveContactAfterClientSaveAndClose = false;
+  private pendingContactPayloadAfterClientSave: any = null;
 
   loading$ = this.store.select(selectManagerClientsLoading);
   error$ = this.store.select(selectManagerClientsError);
@@ -215,9 +218,44 @@ export class ManagerClientsPageComponent
         takeUntil(this.destroy$),
       )
       .subscribe((action) => {
+        if (action.type === ManagerActions.saveClientSuccess.type) {
+          if (
+            this.saveContactAfterClientSaveAndClose &&
+            this.pendingContactPayloadAfterClientSave
+          ) {
+            const payload = this.pendingContactPayloadAfterClientSave;
+            this.pendingContactPayloadAfterClientSave = null;
+            this.saveContactAfterClientSaveAndClose = false;
+            this.closeAfterContactSave = true;
+            this.store.dispatch(
+              ManagerActions.saveContact({
+                clientId: action.client.clientId,
+                payload,
+              }),
+            );
+            return;
+          }
+        } else if (this.saveContactAfterClientSaveAndClose) {
+          this.saveContactAfterClientSaveAndClose = false;
+          this.pendingContactPayloadAfterClientSave = null;
+        }
+
         if (!this.closeAfterSave) return;
         this.closeAfterSave = false;
         if (action.type === ManagerActions.saveClientSuccess.type) {
+          this.closeForm();
+        }
+      });
+
+    this.actions$
+      .pipe(
+        ofType(ManagerActions.saveContactSuccess, ManagerActions.saveContactFailure),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterContactSave) return;
+        this.closeAfterContactSave = false;
+        if (action.type === ManagerActions.saveContactSuccess.type) {
           this.closeForm();
         }
       });
@@ -408,12 +446,38 @@ export class ManagerClientsPageComponent
   }
 
   saveClientAndClose(): void {
-    if (this.clientForm.invalid) {
-      this.clientForm.markAllAsTouched();
-      return;
-    }
-    this.closeAfterSave = true;
-    this.saveClient();
+    combineLatest([
+      this.tab$.pipe(take(1)),
+      this.contactsViewMode$.pipe(take(1)),
+    ]).subscribe(([tab, contactsMode]) => {
+      if (tab === 'contacts' && contactsMode === 'form') {
+        if (this.clientForm.invalid) {
+          this.clientForm.markAllAsTouched();
+          return;
+        }
+        if (this.contactForm.invalid) {
+          this.contactForm.markAllAsTouched();
+          return;
+        }
+
+        this.closeAfterSave = false;
+        this.closeAfterContactSave = false;
+        this.saveContactAfterClientSaveAndClose = true;
+        this.pendingContactPayloadAfterClientSave =
+          this.contactForm.getRawValue();
+        this.store.dispatch(
+          ManagerActions.saveClient({ payload: this.clientForm.getRawValue() }),
+        );
+        return;
+      }
+
+      if (this.clientForm.invalid) {
+        this.clientForm.markAllAsTouched();
+        return;
+      }
+      this.closeAfterSave = true;
+      this.saveClient();
+    });
   }
 
   archiveClient(c: BmClient): void {
