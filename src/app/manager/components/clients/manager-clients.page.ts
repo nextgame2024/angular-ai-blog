@@ -125,6 +125,15 @@ export class ManagerClientsPageComponent
   private isLoadingContacts = false;
   dismissedErrors = new Set<string>();
   dismissedWarnings = new Set<string>();
+  isConfirmModalOpen = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmLabel = 'Continue';
+  confirmModalCancelLabel = 'Cancel';
+  confirmModalShowCancel = false;
+  confirmModalTone: 'info' | 'warning' | 'danger' = 'info';
+  private confirmModalConfirmAction: (() => void) | null = null;
+  private confirmModalCancelAction: (() => void) | null = null;
 
   clientForm = this.fb.group({
     client_name: ['', [Validators.required, Validators.maxLength(120)]],
@@ -408,12 +417,43 @@ export class ManagerClientsPageComponent
   }
 
   archiveClient(c: BmClient): void {
-    const ok = window.confirm(
-      `Archive client "${c.clientName}"?\n\nThis will be a soft delete.`
-    );
-    if (!ok) return;
+    if (this.isArchiveActionDisabled(c)) return;
 
-    this.store.dispatch(ManagerActions.archiveClient({ clientId: c.clientId }));
+    const hasRelatedProcesses = c.hasProjects !== false;
+    this.openConfirmModal({
+      title: 'Archive Client?',
+      message: hasRelatedProcesses
+        ? `"${c.clientName}" client is linked to existing processes, so it cannot be deleted. Would you like to archive it instead?`
+        : `Archive client "${c.clientName}"?\n\nThis will be a soft delete.`,
+      tone: hasRelatedProcesses ? 'warning' : 'info',
+      confirmLabel: 'Archive',
+      onConfirm: () =>
+        this.store.dispatch(ManagerActions.archiveClient({ clientId: c.clientId })),
+    });
+  }
+
+  isArchiveActionDisabled(c: BmClient): boolean {
+    return (c.status ?? 'active') === 'archived';
+  }
+
+  onConfirmModalConfirm(): void {
+    const action = this.confirmModalConfirmAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalCancel(): void {
+    const action = this.confirmModalCancelAction;
+    this.closeConfirmModal();
+    action?.();
+  }
+
+  onConfirmModalBackdrop(): void {
+    if (this.confirmModalShowCancel) {
+      this.onConfirmModalCancel();
+    } else {
+      this.onConfirmModalConfirm();
+    }
   }
 
   onAddressFocus(): void {
@@ -699,5 +739,31 @@ export class ManagerClientsPageComponent
         contactId: contact.contactId,
       })
     );
+  }
+
+  private openConfirmModal(options: {
+    title: string;
+    message: string;
+    tone?: 'info' | 'warning' | 'danger';
+    confirmLabel?: string;
+    cancelLabel?: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  }): void {
+    this.confirmModalTitle = options.title;
+    this.confirmModalMessage = options.message;
+    this.confirmModalTone = options.tone ?? 'info';
+    this.confirmModalConfirmLabel = options.confirmLabel ?? 'Continue';
+    this.confirmModalCancelLabel = options.cancelLabel ?? 'Cancel';
+    this.confirmModalShowCancel = true;
+    this.confirmModalConfirmAction = options.onConfirm;
+    this.confirmModalCancelAction = options.onCancel ?? null;
+    this.isConfirmModalOpen = true;
+  }
+
+  private closeConfirmModal(): void {
+    this.isConfirmModalOpen = false;
+    this.confirmModalConfirmAction = null;
+    this.confirmModalCancelAction = null;
   }
 }

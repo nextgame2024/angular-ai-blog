@@ -27,6 +27,7 @@ export interface BmClient {
   notes?: string | null;
 
   status?: ClientStatus;
+  hasProjects?: boolean;
   createdAt?: string;
   updatedAt?: string | null;
 }

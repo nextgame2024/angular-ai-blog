@@ -1,7 +1,7 @@
 import { createReducer, on } from '@ngrx/store';
 import { ManagerActions } from './manager.actions';
 import { initialManagerState } from './manager.state';
-import type { BmUser } from '../services/manager.service';
+import type { BmClient, BmUser } from '../services/manager.service';
 
 export const MANAGER_FEATURE_KEY = 'manager';
 
@@ -15,6 +15,29 @@ function sortUsers(items: BmUser[]): BmUser[] {
 
     const nameA = (a.name || a.username || '').trim().toLowerCase();
     const nameB = (b.name || b.username || '').trim().toLowerCase();
+    if (nameA !== nameB) return nameA.localeCompare(nameB);
+
+    const createdA = Date.parse(a.createdAt ?? '');
+    const createdB = Date.parse(b.createdAt ?? '');
+    if (Number.isFinite(createdA) && Number.isFinite(createdB)) {
+      return createdB - createdA;
+    }
+    return 0;
+  });
+}
+
+function isClientArchived(client: BmClient): boolean {
+  return (client.status ?? 'active') === 'archived';
+}
+
+function sortClients(items: BmClient[]): BmClient[] {
+  return [...items].sort((a, b) => {
+    if (isClientArchived(a) !== isClientArchived(b)) {
+      return isClientArchived(a) ? 1 : -1;
+    }
+
+    const nameA = (a.clientName || '').trim().toLowerCase();
+    const nameB = (b.clientName || '').trim().toLowerCase();
     if (nameA !== nameB) return nameA.localeCompare(nameB);
 
     const createdA = Date.parse(a.createdAt ?? '');
@@ -56,7 +79,7 @@ export const managerReducer = createReducer(
     (state, { clients, page, limit, total }) => ({
       ...state,
       clientsLoading: false,
-      clients:
+      clients: sortClients(
         page > 1
           ? [
               ...state.clients,
@@ -65,6 +88,7 @@ export const managerReducer = createReducer(
               ),
             ]
           : (clients ?? []),
+      ),
       clientsPage: page,
       clientsLimit: limit,
       clientsTotal: total,
@@ -145,14 +169,25 @@ export const managerReducer = createReducer(
     const idx = state.clients.findIndex((c) => c.clientId === client.clientId);
     const next = [...state.clients];
 
-    if (idx >= 0) next[idx] = client;
-    else next.unshift(client);
+    if (idx >= 0) {
+      const prev = next[idx];
+      next[idx] = {
+        ...prev,
+        ...client,
+        hasProjects: client.hasProjects ?? prev.hasProjects ?? false,
+      };
+    } else {
+      next.unshift({
+        ...client,
+        hasProjects: client.hasProjects ?? false,
+      });
+    }
 
     // Keep user in form so they can jump to Contacts after saving.
     return {
       ...state,
       clientsLoading: false,
-      clients: next,
+      clients: sortClients(next),
       clientsViewMode: 'form' as const,
       editingClientId: client.clientId,
       clientFormTab: state.editingClientId
@@ -177,7 +212,11 @@ export const managerReducer = createReducer(
   on(ManagerActions.archiveClientSuccess, (state, { clientId }) => ({
     ...state,
     clientsLoading: false,
-    clients: state.clients.filter((c) => c.clientId !== clientId),
+    clients: sortClients(
+      state.clients.map((c) =>
+        c.clientId === clientId ? { ...c, status: 'archived' } : c,
+      ),
+    ),
   })),
 
   on(ManagerActions.archiveClientFailure, (state, { error }) => ({
