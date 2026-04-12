@@ -3,6 +3,7 @@ import {
   Component,
   ElementRef,
   HostBinding,
+  HostListener,
   Input,
   ViewChild,
   forwardRef,
@@ -46,12 +47,14 @@ export class ManagerRichTextEditorComponent implements ControlValueAccessor {
 
   private onChange: (value: string) => void = () => {};
   private onTouched: () => void = () => {};
+  private savedSelection: Range | null = null;
 
   writeValue(value: string | null): void {
     const incoming = String(value ?? '');
     const normalized = this.normalizeIncomingValue(incoming);
     this.value = normalized;
     this.isEmpty = this.isHtmlEffectivelyEmpty(normalized);
+    this.savedSelection = null;
     if (this.editorRef?.nativeElement) {
       this.editorRef.nativeElement.innerHTML = normalized;
     }
@@ -80,10 +83,30 @@ export class ManagerRichTextEditorComponent implements ControlValueAccessor {
     this.value = sanitized;
     this.isEmpty = this.isHtmlEffectivelyEmpty(sanitized);
     this.onChange(sanitized);
+    this.captureSelection();
   }
 
   onBlur(): void {
     this.onTouched();
+  }
+
+  @HostListener('document:selectionchange')
+  onDocumentSelectionChange(): void {
+    this.captureSelection();
+  }
+
+  onToolbarButtonMouseDown(event: MouseEvent): void {
+    if (this.disabled) {
+      return;
+    }
+
+    const target = event.target;
+    if (!(target instanceof HTMLElement) || !target.closest('button.tool')) {
+      return;
+    }
+
+    event.preventDefault();
+    this.restoreSelection();
   }
 
   applyCommand(
@@ -97,7 +120,8 @@ export class ManagerRichTextEditorComponent implements ControlValueAccessor {
       | 'outdent',
   ): void {
     if (this.disabled) return;
-    this.focusEditor();
+    this.restoreSelection();
+    document.execCommand('styleWithCSS', false, 'false');
     document.execCommand(command, false);
     this.onInput();
   }
@@ -106,7 +130,8 @@ export class ManagerRichTextEditorComponent implements ControlValueAccessor {
     command: 'justifyLeft' | 'justifyCenter' | 'justifyRight' | 'justifyFull',
   ): void {
     if (this.disabled) return;
-    this.focusEditor();
+    this.restoreSelection();
+    document.execCommand('styleWithCSS', false, 'false');
     document.execCommand(command, false);
     this.onInput();
   }
@@ -120,15 +145,16 @@ export class ManagerRichTextEditorComponent implements ControlValueAccessor {
 
   private applyFontSize(size: string): void {
     if (this.disabled) return;
-    this.focusEditor();
+    this.restoreSelection();
     document.execCommand('styleWithCSS', false, 'true');
     document.execCommand('fontSize', false, size);
+    document.execCommand('styleWithCSS', false, 'false');
     this.onInput();
   }
 
   clearFormatting(): void {
     if (this.disabled) return;
-    this.focusEditor();
+    this.restoreSelection();
     document.execCommand('removeFormat', false);
     document.execCommand('unlink', false);
     this.onInput();
@@ -136,17 +162,73 @@ export class ManagerRichTextEditorComponent implements ControlValueAccessor {
 
   insertLink(): void {
     if (this.disabled) return;
-    this.focusEditor();
+    const preservedSelection = this.cloneSavedSelection();
     const input = window.prompt('Enter URL', 'https://');
     if (!input) return;
     const href = this.normalizeHref(input);
     if (!href) return;
+    this.savedSelection = preservedSelection;
+    this.restoreSelection();
     document.execCommand('createLink', false, href);
     this.onInput();
   }
 
   private focusEditor(): void {
     this.editorRef.nativeElement.focus();
+  }
+
+  private captureSelection(): void {
+    if (!this.editorRef?.nativeElement) {
+      return;
+    }
+
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      return;
+    }
+
+    const range = selection.getRangeAt(0);
+    if (!this.isRangeInsideEditor(range)) {
+      return;
+    }
+
+    this.savedSelection = range.cloneRange();
+  }
+
+  private restoreSelection(): void {
+    this.focusEditor();
+
+    const selection = window.getSelection();
+    if (!selection) {
+      return;
+    }
+
+    selection.removeAllRanges();
+
+    const range = this.cloneSavedSelection();
+    if (range && this.isRangeInsideEditor(range)) {
+      try {
+        selection.addRange(range);
+        return;
+      } catch {
+        this.savedSelection = null;
+      }
+    }
+
+    const fallbackRange = document.createRange();
+    fallbackRange.selectNodeContents(this.editorRef.nativeElement);
+    fallbackRange.collapse(false);
+    selection.addRange(fallbackRange);
+    this.savedSelection = fallbackRange.cloneRange();
+  }
+
+  private cloneSavedSelection(): Range | null {
+    return this.savedSelection ? this.savedSelection.cloneRange() : null;
+  }
+
+  private isRangeInsideEditor(range: Range): boolean {
+    const editor = this.editorRef.nativeElement;
+    return editor.contains(range.commonAncestorContainer);
   }
 
   private normalizeHref(value: string): string | null {
@@ -281,6 +363,7 @@ export class ManagerRichTextEditorComponent implements ControlValueAccessor {
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
+    this.savedSelection = range.cloneRange();
   }
 
   private sanitizeAlignAttribute(value: string): string | null {
@@ -327,6 +410,27 @@ export class ManagerRichTextEditorComponent implements ControlValueAccessor {
           )
         ) {
           safe.push(`font-size:${rawValue}`);
+        }
+        continue;
+      }
+
+      if (rawProp === 'font-weight') {
+        if (/^(normal|bold|bolder|lighter|[1-9]00)$/i.test(rawValue)) {
+          safe.push(`font-weight:${rawValue}`);
+        }
+        continue;
+      }
+
+      if (rawProp === 'font-style') {
+        if (/^(normal|italic|oblique)$/i.test(rawValue)) {
+          safe.push(`font-style:${rawValue}`);
+        }
+        continue;
+      }
+
+      if (rawProp === 'text-decoration' || rawProp === 'text-decoration-line') {
+        if (/^(none|underline|line-through|underline line-through|line-through underline)$/i.test(rawValue)) {
+          safe.push(`${rawProp}:${rawValue}`);
         }
         continue;
       }

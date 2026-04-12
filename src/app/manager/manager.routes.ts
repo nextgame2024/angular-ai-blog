@@ -68,6 +68,7 @@ import {
 } from './store/navigationLinks/manager.reducer';
 import { ManagerEffects } from './store/manager.effects';
 import { MANAGER_FEATURE_KEY, managerReducer } from './store/manager.reducer';
+import { MANAGER_SCHEDULE_ROUTE } from './schedule.routes';
 
 export const MANAGER_ROUTES: Route[] = [
   {
@@ -126,6 +127,7 @@ export const MANAGER_ROUTES: Route[] = [
         ],
         data: { title: 'Project types', fullscreen: true },
       },
+      MANAGER_SCHEDULE_ROUTE,
       {
         path: 'users',
         component: ManagerUsersPageComponent,

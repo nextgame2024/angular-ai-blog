@@ -1,0 +1,418 @@
+<div class="schedule-shell">
+  <div class="list-header">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <span>Scheduling</span>
+    </nav>
+
+    <div class="schedule-toolbar">
+      <div class="title">
+        <h3>Scheduling</h3>
+        <p class="sub">{{ toolbarSubtext$$() }}</p>
+      </div>
+
+      <div class="actions" [class.actions--project]="isProjectScope$$()">
+        @if (isProjectScope$$()) {
+        <button type="button" class="btn secondary" (click)="finishProjectSchedule()">
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="m5 12 4 4L19 6"></path>
+            </svg>
+          </span>
+          Done
+        </button>
+        }
+        <button
+          type="button"
+          class="btn primary btn--new-booking"
+          (click)="openCreateFromSelectedDay()"
+        >
+          <span class="btn-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 5v14"></path>
+              <path d="M5 12h14"></path>
+            </svg>
+          </span>
+          New booking
+        </button>
+      </div>
+    </div>
+
+    <div class="calendar-controls">
+      <div class="calendar-nav">
+        <button
+          type="button"
+          class="icon-btn nav-btn"
+          aria-label="Previous month"
+          (click)="previousMonth()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M14.5 6.5 9 12l5.5 5.5"></path>
+          </svg>
+        </button>
+
+        <label class="select-field">
+          <span>Month</span>
+          <app-manager-select
+            [ngModel]="monthSelectValue$$()"
+            (ngModelChange)="onMonthChange($event)"
+            [ngModelOptions]="{ standalone: true }"
+            [options]="monthOptions"
+            [placeholder]="'Month'"
+          ></app-manager-select>
+        </label>
+
+        <label class="select-field select-field--year">
+          <span>Year</span>
+          <app-manager-select
+            [ngModel]="yearSelectValue$$()"
+            (ngModelChange)="onYearChange($event)"
+            [ngModelOptions]="{ standalone: true }"
+            [options]="yearOptions$$()"
+            [placeholder]="'Year'"
+          ></app-manager-select>
+        </label>
+
+        <button
+          type="button"
+          class="icon-btn nav-btn"
+          aria-label="Next month"
+          (click)="nextMonth()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M9.5 6.5 15 12l-5.5 5.5"></path>
+          </svg>
+        </button>
+      </div>
+
+      <button type="button" class="btn ghost" (click)="goToToday()">
+        Today
+      </button>
+    </div>
+  </div>
+
+  @if (error$$(); as errorMessage) {
+  <div class="error">
+    <span>{{ errorMessage }}</span>
+  </div>
+  } @if (pageLoading$$()) {
+  <div class="screen-loader" aria-live="polite" aria-busy="true">
+    <div class="loader-card">
+      <div class="loader-ring" aria-hidden="true"></div>
+      <div class="loader-bar" aria-hidden="true"></div>
+      <div class="loader-text">Loading...</div>
+    </div>
+  </div>
+  }
+
+  <section class="calendar-card desktop-calendar">
+    <div class="calendar-card-header">
+      <div>
+        <h4>{{ monthLabel$$() }}</h4>
+        <p>
+          {{ monthBookingCount$$() }} booking{{ monthBookingCount$$() === 1 ? ''
+          : 's' }} in view
+        </p>
+      </div>
+    </div>
+
+    <div class="weekday-row" aria-hidden="true">
+      @for (weekday of weekdayLabels; track weekday) {
+      <div>{{ weekday }}</div>
+      }
+    </div>
+
+    <div class="calendar-grid">
+      @for (day of calendarDays$$(); track trackByDay($index, day)) {
+      <article
+        class="calendar-day"
+        [class.outside-month]="!day.inCurrentMonth"
+        [class.today]="day.isToday"
+        [class.selected]="day.isSelected"
+        role="button"
+        tabindex="0"
+        (click)="openCreate(day.date)"
+        (keydown)="onDayKeydown($event, day.date)"
+      >
+        <div class="calendar-day-head">
+          <span class="calendar-day-number">{{ day.dayNumber }}</span>
+        </div>
+
+        <div class="calendar-day-events">
+          @for (schedule of day.schedules.slice(0, 3); track
+          trackBySchedule($index, schedule)) {
+          <button
+            type="button"
+            class="schedule-pill"
+            [attr.aria-label]="'Edit booking for ' + getScheduledItemDisplay(schedule)"
+            (click)="openEdit(schedule, $event)"
+          >
+            <span class="schedule-pill__label">
+              {{ getScheduledItemDisplay(schedule) }}
+            </span>
+            <span class="schedule-pill__time">
+              {{ getScheduleTimeRange(schedule) }}
+            </span>
+          </button>
+          } @if (getEventOverflow(day) > 0) {
+          <div class="schedule-overflow">+{{ getEventOverflow(day) }} more</div>
+          }
+        </div>
+      </article>
+      }
+    </div>
+  </section>
+
+  <section class="calendar-card mobile-calendar">
+    <div class="calendar-card-header calendar-card-header--mobile">
+      <div>
+        <h4>{{ monthLabel$$() }}</h4>
+        <p>Tap a day to create a booking, or a row below to edit one.</p>
+      </div>
+    </div>
+
+    <div class="mobile-weekday-row" aria-hidden="true">
+      @for (weekday of weekdayLabels; track weekday) {
+      <div>{{ weekday.charAt(0) }}</div>
+      }
+    </div>
+
+    <div class="mobile-grid">
+      @for (day of calendarDays$$(); track trackByDay($index, day)) {
+      <article
+        class="mobile-day"
+        [class.outside-month]="!day.inCurrentMonth"
+        [class.today]="day.isToday"
+        [class.selected]="day.isSelected"
+        role="button"
+        tabindex="0"
+        (click)="openCreate(day.date)"
+        (keydown)="onDayKeydown($event, day.date)"
+      >
+        <span class="mobile-day__number">{{ day.dayNumber }}</span>
+        <span
+          class="mobile-day__dot"
+          [class.has-bookings]="day.schedules.length > 0"
+        ></span>
+      </article>
+      }
+    </div>
+  </section>
+
+  <section class="agenda-card mobile-calendar">
+    <div class="agenda-header">
+      <div>
+        <h4>Month agenda</h4>
+        <p>
+          {{ monthBookingCount$$() }} booking{{ monthBookingCount$$() === 1 ? ''
+          : 's' }}
+        </p>
+      </div>
+    </div>
+
+    @if (monthAgendaGroups$$().length) { @for (group of monthAgendaGroups$$();
+    track trackByAgendaGroup($index, group)) {
+    <div class="agenda-group">
+      <div class="agenda-group__title">{{ group.label }}</div>
+
+      @for (schedule of group.schedules; track trackBySchedule($index,
+      schedule)) {
+      <button type="button" class="agenda-item" (click)="openEdit(schedule)">
+        <div class="agenda-item__main">
+          <span class="agenda-item__title">
+            {{ getScheduledItemDisplay(schedule) }}
+          </span>
+          <span class="agenda-item__time">
+            {{ getScheduleTimeRange(schedule) }}
+          </span>
+        </div>
+        <span class="agenda-item__chevron" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M9.5 6.5 15 12l-5.5 5.5"></path>
+          </svg>
+        </span>
+      </button>
+      }
+    </div>
+    } } @else if (!loading$$()) {
+    <div class="empty">No bookings planned for {{ monthLabel$$() }}.</div>
+    }
+  </section>
+
+  @if (isModalOpen$$()) {
+  <div class="schedule-modal-backdrop" (click)="closeModal()">
+    <div
+      class="schedule-modal"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="schedule-modal-title"
+    >
+      <div class="schedule-modal__header">
+        <div>
+          <p class="schedule-modal__eyebrow">Scheduling</p>
+          <h4 id="schedule-modal-title">
+            {{ modalMode$$() === 'edit' ? 'Edit booking' : 'Create booking' }}
+          </h4>
+        </div>
+
+        <button
+          type="button"
+          class="icon-btn modal-close"
+          aria-label="Close scheduling form"
+          (click)="closeModal()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M6 6l12 12"></path>
+            <path d="M18 6l-12 12"></path>
+          </svg>
+        </button>
+      </div>
+
+      <form
+        class="schedule-form"
+        [formGroup]="scheduleForm"
+        autocomplete="off"
+        (submit)="$event.preventDefault(); saveSchedule()"
+      >
+        <label class="form-field form-field--wide">
+          <span>Scheduled item *</span>
+
+          @if (isProjectScope$$()) {
+          <div class="autocomplete autocomplete--locked">
+            <input
+              type="text"
+              [value]="projectScopeDisplay$$()"
+              [placeholder]="projectScopeLoading$$() ? 'Loading project...' : 'Project unavailable'"
+              aria-readonly="true"
+              aria-disabled="true"
+              tabindex="-1"
+              readonly
+              disabled
+            />
+          </div>
+          } @else {
+          <div class="autocomplete">
+            <input
+              type="text"
+              [formControl]="scheduledItemSearchCtrl"
+              placeholder="Search by project name"
+              autocomplete="off"
+              (focus)="onScheduledItemFocus()"
+              (blur)="onScheduledItemBlur()"
+            />
+
+            @if (showScheduledItemsMenu$$()) {
+            <div class="autocomplete-menu">
+              @if (scheduledItemsLoading$$()) {
+              <div class="autocomplete-empty">Searching projects…</div>
+              } @else if (scheduledItemsError$$()) {
+              <div class="autocomplete-empty">
+                {{ scheduledItemsError$$() }}
+              </div>
+              } @else if (scheduledItems$$().length) { @for (item of
+              scheduledItems$$(); track trackByScheduledItem($index, item)) {
+              <button
+                type="button"
+                class="autocomplete-option"
+                (mousedown)="selectScheduledItem(item, $event)"
+              >
+                {{ getScheduledItemDisplay(item) }}
+              </button>
+              } } @else {
+              <div class="autocomplete-empty">No matching projects found.</div>
+              }
+            </div>
+            }
+          </div>
+          }
+        </label>
+
+        <div class="form-grid">
+          <label class="form-field">
+            <span>Date *</span>
+            @if (isDateEditable$$()) {
+              <input type="date" formControlName="date" />
+            } @else {
+              <input
+                type="text"
+                [value]="getFieldDate(modalDate$$())"
+                readonly
+                disabled
+              />
+            }
+          </label>
+
+          <label class="form-field">
+            <span>Start time *</span>
+            <app-manager-select
+              formControlName="start_time"
+              [options]="startTimeOptions$$()"
+              [placeholder]="'Select start time'"
+              [disabled]="!availableStartTimes$$().length"
+            ></app-manager-select>
+          </label>
+
+          <label class="form-field">
+            <span>End time *</span>
+            <app-manager-select
+              formControlName="end_time"
+              [options]="endTimeOptions$$()"
+              [placeholder]="'Select end time'"
+              [disabled]="!startTime$$() || !availableEndTimes$$().length"
+            ></app-manager-select>
+          </label>
+        </div>
+
+        @if (noAvailabilityForDate$$()) {
+        <div class="availability-note">
+          No 15-minute slots are available on this date.
+        </div>
+        }
+
+        <label class="form-field form-field--wide">
+          <span>Description *</span>
+          <app-manager-rich-text-editor
+            formControlName="description"
+            [placeholder]="'Add booking details'"
+            [minHeight]="180"
+          ></app-manager-rich-text-editor>
+        </label>
+
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="btn"
+            [disabled]="saving$$()"
+            (click)="closeModal()"
+          >
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M6 6l12 12"></path>
+                <path d="M18 6l-12 12"></path>
+              </svg>
+            </span>
+            Cancel
+          </button>
+          <button type="submit" class="btn primary" [disabled]="saving$$()">
+            <span class="btn-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M5 5h11l3 3v11H5z"></path>
+                <path d="M9 5v6h6V5"></path>
+              </svg>
+            </span>
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  } @if (toastMessage$$()) {
+  <div class="form-toast-wrap" aria-live="polite">
+    <div class="form-toast error" [class.closing]="toastClosing$$()">
+      {{ toastMessage$$() }}
+    </div>
+  </div>
+  }
+</div>

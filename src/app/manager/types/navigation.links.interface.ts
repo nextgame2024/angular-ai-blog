@@ -53,6 +53,7 @@ export const MENU_NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = [
   { value: 'Clients', label: 'Clients' },
   { value: 'Projects', label: 'Projects' },
   { value: 'Project types', label: 'Project types' },
+  { value: 'Scheduling', label: 'Scheduling' },
   { value: 'Users', label: 'Users' },
   { value: 'Company', label: 'Company' },
   { value: 'Navigation links', label: 'Navigation links' },

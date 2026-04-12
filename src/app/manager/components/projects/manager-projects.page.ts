@@ -13,7 +13,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Store } from '@ngrx/store';
 import {
@@ -88,6 +88,11 @@ Metallic epoxy design as approved via email, including agreed colour palette, de
 
 Terms
 By accepting this invoice, the client confirms approval of the pre-installation guidelines, quotation, and Sunshine Resin's terms and conditions.`;
+
+type ProjectScheduleReturnState = {
+  projectId?: string | null;
+  message?: string | null;
+};
 
 @Component({
   selector: 'app-manager-projects-page',
@@ -396,6 +401,7 @@ export class ManagerProjectsPageComponent
     private projectTypesService: ManagerProjectTypesService,
     private suppliersService: ManagerSuppliersService,
     private townPlanner: TownPlannerV2Service,
+    private router: Router,
     private http: HttpClient,
   ) {
     this.searchCtrl = new FormControl('', { nonNullable: true });
@@ -411,6 +417,7 @@ export class ManagerProjectsPageComponent
 
   ngOnInit(): void {
     this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
+    this.handleProjectScheduleReturnState();
     this.defaultPricing$.next(this.projectForm.controls.default_pricing.value);
     this.applyClientSelectionValidators();
     this.syncClientDetailsControls();
@@ -1023,6 +1030,23 @@ export class ManagerProjectsPageComponent
     this.transportationEstimateLoading = false;
     this.resetProjectSurchargeForm();
     this.store.dispatch(ManagerProjectsActions.closeProjectForm());
+  }
+
+  openProjectScheduling(project: BmProject | null): void {
+    const projectId = String(project?.projectId || '').trim();
+    if (!projectId) {
+      this.showProjectLaborToast(
+        'Save the project before opening scheduling.',
+        'error',
+      );
+      return;
+    }
+
+    void this.router.navigate(['/manager/scheduling'], {
+      queryParams: {
+        project_id: projectId,
+      },
+    });
   }
 
   saveProject(): void {
@@ -3819,5 +3843,34 @@ export class ManagerProjectsPageComponent
       this.projectLaborToastVisible = false;
       this.projectLaborToastClosing = false;
     }, 3000);
+  }
+
+  private handleProjectScheduleReturnState(): void {
+    const navigationState = (this.router.getCurrentNavigation()?.extras.state ??
+      history.state) as {
+      projectScheduleReturn?: ProjectScheduleReturnState;
+    };
+    const scheduleReturn = navigationState?.projectScheduleReturn;
+    const projectId = String(scheduleReturn?.projectId || '').trim();
+
+    if (!projectId) {
+      return;
+    }
+
+    this.store.dispatch(
+      ManagerProjectsActions.openProjectEdit({ projectId }),
+    );
+    this.store.dispatch(
+      ManagerProjectsActions.setProjectFormTab({ tab: 'details' }),
+    );
+
+    const message = String(scheduleReturn?.message || '').trim();
+    if (message) {
+      this.showProjectLaborToast(message, 'success');
+    }
+
+    const nextState = { ...(history.state || {}) };
+    delete nextState.projectScheduleReturn;
+    window.history.replaceState(nextState, document.title);
   }
 }
