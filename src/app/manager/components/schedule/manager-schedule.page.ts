@@ -34,8 +34,10 @@ import {
 import { ManagerProjectsService } from '../../services/manager.projects.service';
 import { ManagerScheduleActions } from '../../store/schedule/manager.actions';
 import {
+  selectManagerDeleteConfirmSchedule,
   selectManagerEditingSchedule,
   selectManagerScheduleError,
+  selectManagerScheduleDeleting,
   selectManagerScheduleLoading,
   selectManagerScheduleModalMode,
   selectManagerScheduleSaving,
@@ -402,6 +404,8 @@ export class ManagerSchedulePageComponent {
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
   private toastCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private lastPatchedModalKey: string | null = null;
+  private lastFormDateValue: string | null = null;
+  private suppressDateChangeReaction = false;
   private suppressScheduledItemSearchReaction = false;
 
   readonly weekdayLabels = WEEKDAY_LABELS;
@@ -461,6 +465,14 @@ export class ManagerSchedulePageComponent {
   readonly saving$$ = toSignal(this.store.select(selectManagerScheduleSaving), {
     initialValue: false,
   });
+  readonly deleting$$ = toSignal(
+    this.store.select(selectManagerScheduleDeleting),
+    { initialValue: false },
+  );
+  readonly deleteConfirmSchedule$$ = toSignal(
+    this.store.select(selectManagerDeleteConfirmSchedule),
+    { initialValue: null },
+  );
   readonly scheduledItems$$ = toSignal(
     this.store.select(selectManagerScheduledItems),
     { initialValue: [] as BmScheduledItem[] },
@@ -811,16 +823,58 @@ export class ManagerSchedulePageComponent {
         }
       });
 
+    this.scheduleForm.controls.date.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((dateValue) => {
+        if (this.suppressDateChangeReaction) {
+          return;
+        }
+
+        const normalizedDate = String(dateValue || '').trim() || null;
+        if (normalizedDate) {
+          this.selectedDay$$.set(normalizedDate);
+        }
+
+        if (normalizedDate === this.lastFormDateValue) {
+          return;
+        }
+
+        const hadPreviousDate = !!this.lastFormDateValue;
+        this.lastFormDateValue = normalizedDate;
+
+        if (!hadPreviousDate) {
+          return;
+        }
+
+        if (
+          this.scheduleForm.controls.start_time.value ||
+          this.scheduleForm.controls.end_time.value
+        ) {
+          this.scheduleForm.controls.start_time.setValue('');
+          this.scheduleForm.controls.end_time.setValue('');
+        }
+      });
+
     this.actions$
       .pipe(
         ofType(
           ManagerScheduleActions.loadScheduleRangeFailure,
           ManagerScheduleActions.saveScheduleFailure,
+          ManagerScheduleActions.deleteScheduleFailure,
         ),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe((action) => {
         this.showToast(action.error);
+      });
+
+    this.actions$
+      .pipe(
+        ofType(ManagerScheduleActions.deleteScheduleSuccess),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        this.showToast('Booking deleted successfully.');
       });
 
     this.actions$
@@ -835,6 +889,11 @@ export class ManagerSchedulePageComponent {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    if (this.deleteConfirmSchedule$$()) {
+      this.closeDeleteConfirm();
+      return;
+    }
+
     if (!this.isModalOpen$$()) {
       return;
     }
@@ -869,7 +928,7 @@ export class ManagerSchedulePageComponent {
     this.selectedDay$$.set(this.todayIso);
   }
 
-  openCreate(date: string, allowDateSelection = false): void {
+  openCreate(date: string, allowDateSelection = true): void {
     this.selectedDay$$.set(date);
     this.isDateEditable$$.set(allowDateSelection);
     this.store.dispatch(ManagerScheduleActions.openScheduleCreate({ date }));
@@ -882,7 +941,7 @@ export class ManagerSchedulePageComponent {
   openEdit(schedule: BmSchedule, event?: MouseEvent): void {
     event?.stopPropagation();
     this.selectedDay$$.set(schedule.date);
-    this.isDateEditable$$.set(false);
+    this.isDateEditable$$.set(true);
     this.store.dispatch(
       ManagerScheduleActions.openScheduleEdit({
         scheduleId: schedule.scheduleId,
@@ -892,6 +951,37 @@ export class ManagerSchedulePageComponent {
 
   closeModal(): void {
     this.store.dispatch(ManagerScheduleActions.closeScheduleModal());
+  }
+
+  openDeleteConfirm(schedule: BmSchedule, event?: MouseEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.store.dispatch(
+      ManagerScheduleActions.openScheduleDeleteConfirm({
+        scheduleId: schedule.scheduleId,
+      }),
+    );
+  }
+
+  closeDeleteConfirm(): void {
+    if (this.deleting$$()) {
+      return;
+    }
+
+    this.store.dispatch(ManagerScheduleActions.closeScheduleDeleteConfirm());
+  }
+
+  confirmDeleteSchedule(): void {
+    const schedule = this.deleteConfirmSchedule$$();
+    if (!schedule?.scheduleId) {
+      return;
+    }
+
+    this.store.dispatch(
+      ManagerScheduleActions.deleteSchedule({
+        scheduleId: schedule.scheduleId,
+      }),
+    );
   }
 
   finishProjectSchedule(): void {
@@ -916,7 +1006,7 @@ export class ManagerSchedulePageComponent {
     }
 
     event.preventDefault();
-    this.openCreate(date);
+    this.openCreate(date, true);
   }
 
   onMonthChange(value: string | null): void {
@@ -1040,6 +1130,10 @@ export class ManagerSchedulePageComponent {
     return formatAgendaDate(dateIso);
   }
 
+  getDeleteScheduleMessage(schedule: BmSchedule): string {
+    return `Are you sure you want to permanently delete the booking for "${this.getScheduledItemDisplay(schedule)}" on ${this.getFieldDate(schedule.date)} from ${this.getScheduleTimeRange(schedule)}?`;
+  }
+
   private setViewDate(nextDate: Date): void {
     const normalized = startOfMonth(nextDate);
     this.viewDate$$.set(normalized);
@@ -1054,6 +1148,7 @@ export class ManagerSchedulePageComponent {
   }
 
   private patchFormForCreate(): void {
+    this.suppressDateChangeReaction = true;
     this.scheduleForm.reset({
       scheduled_item_id: '',
       date: this.selectedDate$$() ?? this.selectedDay$$(),
@@ -1061,6 +1156,9 @@ export class ManagerSchedulePageComponent {
       end_time: '',
       description: '',
     });
+    this.suppressDateChangeReaction = false;
+    this.lastFormDateValue =
+      this.scheduleForm.controls.date.value || this.selectedDay$$();
     const projectScopeItem = this.projectScopeItem$$();
     if (projectScopeItem) {
       this.applyScheduledItem(projectScopeItem);
@@ -1072,6 +1170,7 @@ export class ManagerSchedulePageComponent {
   }
 
   private patchFormFromSchedule(schedule: BmSchedule): void {
+    this.suppressDateChangeReaction = true;
     this.scheduleForm.reset({
       scheduled_item_id: schedule.scheduledItemId,
       date: schedule.date,
@@ -1079,6 +1178,8 @@ export class ManagerSchedulePageComponent {
       end_time: schedule.endTime,
       description: schedule.description ?? '',
     });
+    this.suppressDateChangeReaction = false;
+    this.lastFormDateValue = schedule.date;
 
     this.applyScheduledItem(
       {
@@ -1094,6 +1195,7 @@ export class ManagerSchedulePageComponent {
   }
 
   private resetFormState(): void {
+    this.suppressDateChangeReaction = true;
     this.scheduleForm.reset({
       scheduled_item_id: '',
       date: '',
@@ -1101,6 +1203,8 @@ export class ManagerSchedulePageComponent {
       end_time: '',
       description: '',
     });
+    this.suppressDateChangeReaction = false;
+    this.lastFormDateValue = null;
     this.selectedScheduledItem$$.set(null);
     this.setScheduledItemSearchValue('');
     this.scheduledItemFocused$$.set(false);

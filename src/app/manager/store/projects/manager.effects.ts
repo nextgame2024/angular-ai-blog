@@ -7,7 +7,9 @@ import { catchError, map, switchMap, withLatestFrom } from 'rxjs/operators';
 import { ManagerProjectsActions } from './manager.actions';
 import { ManagerProjectsService } from '../../services/manager.projects.service';
 import {
-  selectManagerEditingProject,
+  selectManagerEditingProjectId,
+  selectManagerEditingProjectLaborId,
+  selectManagerEditingProjectMaterialId,
   selectManagerProjectsSearchQuery,
 } from './manager.selectors';
 
@@ -46,10 +48,10 @@ export class ManagerProjectsEffects {
   saveProject$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerProjectsActions.saveProject),
-      withLatestFrom(this.store.select(selectManagerEditingProject)),
-      switchMap(([{ payload, closeOnSuccess }, editing]) => {
-        const req$ = editing
-          ? this.api.updateProject(editing.projectId, payload)
+      withLatestFrom(this.store.select(selectManagerEditingProjectId)),
+      switchMap(([{ payload, closeOnSuccess }, editingProjectId]) => {
+        const req$ = editingProjectId
+          ? this.api.updateProject(editingProjectId, payload)
           : this.api.createProject(payload);
 
         return req$.pipe(
@@ -128,9 +130,15 @@ export class ManagerProjectsEffects {
   saveProjectMaterial$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerProjectsActions.saveProjectMaterial),
-      switchMap(({ projectId, materialId, payload }) => {
-        const req$ = materialId
-          ? this.api.upsertProjectMaterial(projectId, materialId, payload)
+      withLatestFrom(this.store.select(selectManagerEditingProjectMaterialId)),
+      switchMap(([{ projectId, materialId, payload }, editingMaterialId]) => {
+        const resolvedMaterialId = editingMaterialId ?? materialId ?? null;
+        const req$ = resolvedMaterialId
+          ? this.api.upsertProjectMaterial(
+              projectId,
+              resolvedMaterialId,
+              payload,
+            )
           : this.api.addProjectMaterial(projectId, payload);
         return req$.pipe(
           map((res) =>
@@ -204,9 +212,11 @@ export class ManagerProjectsEffects {
   saveProjectLabor$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerProjectsActions.saveProjectLabor),
-      switchMap(({ projectId, laborId, payload }) => {
-        const req$ = laborId
-          ? this.api.upsertProjectLabor(projectId, laborId, payload)
+      withLatestFrom(this.store.select(selectManagerEditingProjectLaborId)),
+      switchMap(([{ projectId, laborId, payload }, editingLaborId]) => {
+        const resolvedLaborId = editingLaborId ?? laborId ?? null;
+        const req$ = resolvedLaborId
+          ? this.api.upsertProjectLabor(projectId, resolvedLaborId, payload)
           : this.api.addProjectLabor(projectId, payload);
         return req$.pipe(
           map((res) =>

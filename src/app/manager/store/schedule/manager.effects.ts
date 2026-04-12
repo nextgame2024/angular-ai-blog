@@ -139,4 +139,29 @@ export class ManagerScheduleEffects {
       }),
     ),
   );
+
+  readonly deleteSchedule$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(ManagerScheduleActions.deleteSchedule),
+      switchMap(({ scheduleId }) =>
+        this.api.deleteSchedule(scheduleId).pipe(
+          map(() =>
+            ManagerScheduleActions.deleteScheduleSuccess({
+              scheduleId,
+            }),
+          ),
+          catchError((error: unknown) =>
+            of(
+              ManagerScheduleActions.deleteScheduleFailure({
+                error: normalizeErrorMessage(
+                  error,
+                  'Failed to delete booking',
+                ),
+              }),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }

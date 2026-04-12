@@ -139,4 +139,10 @@ export class ManagerScheduleProjectsService {
         })),
       );
   }
+
+  deleteSchedule(scheduleId: string): Observable<{ scheduleId: string }> {
+    return this.http.delete<{ scheduleId: string }>(
+      `${this.scheduleBase}/${scheduleId}`,
+    );
+  }
 }

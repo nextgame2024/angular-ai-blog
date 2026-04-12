@@ -20,6 +20,8 @@ export const ManagerScheduleActions = createActionGroup({
     'Open Schedule Create': props<{ date: string }>(),
     'Open Schedule Edit': props<{ scheduleId: string }>(),
     'Close Schedule Modal': emptyProps(),
+    'Open Schedule Delete Confirm': props<{ scheduleId: string }>(),
+    'Close Schedule Delete Confirm': emptyProps(),
 
     'Search Scheduled Items': props<{ query: string }>(),
     'Search Scheduled Items Success': props<{ items: BmScheduledItem[] }>(),
@@ -29,5 +31,8 @@ export const ManagerScheduleActions = createActionGroup({
     'Save Schedule': props<{ payload: ScheduleSavePayload }>(),
     'Save Schedule Success': props<{ schedule: BmSchedule }>(),
     'Save Schedule Failure': props<{ error: string }>(),
+    'Delete Schedule': props<{ scheduleId: string }>(),
+    'Delete Schedule Success': props<{ scheduleId: string }>(),
+    'Delete Schedule Failure': props<{ error: string }>(),
   },
 });

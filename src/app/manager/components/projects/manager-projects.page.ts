@@ -15,6 +15,7 @@ import {
 } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
 import {
   BehaviorSubject,
@@ -365,10 +366,28 @@ export class ManagerProjectsPageComponent
   projectLaborToastClosing = false;
   projectLaborToastTone: 'success' | 'error' = 'success';
   projectLaborToastMessage = '';
+  saveAndFinishLoading = false;
   private actionLoading = new Map<
     string,
     { quote: boolean; invoice: boolean }
   >();
+  private closeAfterSave = false;
+  private closeAfterMaterialSave = false;
+  private closeAfterLaborSave = false;
+  private pendingSaveAndCloseProjectId: string | null = null;
+  private pendingMaterialSaveAfterProjectSave: {
+    materialId: string;
+    payload: any;
+  } | null = null;
+  private pendingLaborSaveAfterProjectSave: {
+    laborId: string;
+    payload: any;
+  } | null = null;
+  private pendingSurchargeSaveAfterProjectSave: {
+    type: string;
+    name: string;
+    cost: number;
+  } | null = null;
 
   @ViewChild('projectsList') projectsListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
@@ -394,6 +413,7 @@ export class ManagerProjectsPageComponent
   constructor(
     private store: Store,
     private fb: FormBuilder,
+    private actions$: Actions,
     private managerService: ManagerService,
     private projectsService: ManagerProjectsService,
     private laborService: ManagerLaborService,
@@ -418,6 +438,7 @@ export class ManagerProjectsPageComponent
   ngOnInit(): void {
     this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
     this.handleProjectScheduleReturnState();
+    this.setupSaveAndFinishSubscriptions();
     this.defaultPricing$.next(this.projectForm.controls.default_pricing.value);
     this.applyClientSelectionValidators();
     this.syncClientDetailsControls();
@@ -979,6 +1000,7 @@ export class ManagerProjectsPageComponent
   }
 
   openCreate(): void {
+    this.resetSaveAndFinishFlow();
     this.allowClientChangeOnEdit = false;
     this.projectForm.controls.client_is_new.setValue(false, {
       emitEvent: false,
@@ -999,6 +1021,7 @@ export class ManagerProjectsPageComponent
   }
 
   openEdit(project: BmProject): void {
+    this.resetSaveAndFinishFlow();
     this.allowClientChangeOnEdit = false;
     this.projectForm.controls.client_is_new.setValue(false, {
       emitEvent: false,
@@ -1019,6 +1042,7 @@ export class ManagerProjectsPageComponent
   }
 
   closeForm(): void {
+    this.resetSaveAndFinishFlow();
     this.setSurcharges([]);
     this.surchargesError = null;
     this.surchargesLoading = false;
@@ -1053,8 +1077,435 @@ export class ManagerProjectsPageComponent
     void this.saveProjectWithClient(false);
   }
 
-  saveProjectAndClose(): void {
-    void this.saveProjectWithClient(true);
+  async saveProjectAndClose(): Promise<void> {
+    this.applyClientSelectionValidators();
+
+    const requiresInlineName = this.needsInlineClientName();
+    if (requiresInlineName && !this.getInlineClientName()) {
+      this.clientSearchCtrl.markAsTouched();
+    }
+
+    if (
+      this.projectForm.invalid ||
+      (requiresInlineName && !this.getInlineClientName())
+    ) {
+      this.projectForm.markAllAsTouched();
+      this.showProjectLaborToast(
+        'Please complete required project fields before using Save & Finish.',
+        'error',
+      );
+      this.setTab('details', this.editingProject);
+      return;
+    }
+
+    const [materialsMode, laborMode] = await firstValueFrom(
+      combineLatest([
+        this.materialsViewMode$.pipe(take(1)),
+        this.laborViewMode$.pipe(take(1)),
+      ]),
+    );
+
+    let pendingMaterial: { materialId: string; payload: any } | null = null;
+    let pendingLabor: { laborId: string; payload: any } | null = null;
+    let pendingSurcharge: { type: string; name: string; cost: number } | null =
+      null;
+
+    if (materialsMode === 'form') {
+      pendingMaterial = this.buildProjectMaterialPayload(this.editingMaterial);
+      if (!pendingMaterial) {
+        this.showProjectLaborToast(
+          'Please complete required material fields before using Save & Finish.',
+          'error',
+        );
+        this.setTab('materials', this.editingProject);
+        return;
+      }
+    }
+
+    if (laborMode === 'form') {
+      pendingLabor = this.buildProjectLaborPayload(this.editingLabor);
+      if (!pendingLabor) {
+        this.showProjectLaborToast(
+          'Please complete required labor fields before using Save & Finish.',
+          'error',
+        );
+        this.setTab('labor', this.editingProject);
+        return;
+      }
+    }
+
+    const surchargeStep = this.getPendingSurchargeSavePayload();
+    if (surchargeStep.hasDraft && !surchargeStep.payload) {
+      this.showProjectLaborToast(
+        'Please complete required surcharge fields before using Save & Finish.',
+        'error',
+      );
+      this.setTab('surcharges', this.editingProject);
+      return;
+    }
+    pendingSurcharge = surchargeStep.payload ?? null;
+
+    this.saveAndFinishLoading = true;
+    this.closeAfterSave = true;
+    this.closeAfterMaterialSave = false;
+    this.closeAfterLaborSave = false;
+    this.pendingSaveAndCloseProjectId = this.editingProject?.projectId ?? null;
+    this.pendingMaterialSaveAfterProjectSave = pendingMaterial;
+    this.pendingLaborSaveAfterProjectSave = pendingLabor;
+    this.pendingSurchargeSaveAfterProjectSave = pendingSurcharge;
+
+    const shouldSaveDetails =
+      !this.editingProject?.projectId ||
+      this.projectForm.dirty ||
+      this.isCreateNewClientMode ||
+      (this.isEditingProjectMode && !this.allowClientChangeOnEdit);
+
+    if (shouldSaveDetails) {
+      const dispatched = await this.saveProjectWithClient(false);
+      if (!dispatched) {
+        this.resetSaveAndFinishFlow();
+      }
+      return;
+    }
+
+    const projectId = this.editingProject?.projectId;
+    if (projectId && this.dispatchNextPendingChildSave(projectId)) {
+      return;
+    }
+
+    this.closeForm();
+  }
+
+  private setupSaveAndFinishSubscriptions(): void {
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerProjectsActions.saveProjectSuccess,
+          ManagerProjectsActions.saveProjectFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (action.type === ManagerProjectsActions.saveProjectSuccess.type) {
+          this.pendingSaveAndCloseProjectId = action.project.projectId;
+          if (this.dispatchNextPendingChildSave(action.project.projectId)) {
+            return;
+          }
+        } else {
+          if (
+            this.closeAfterSave ||
+            this.hasPendingMaterialSave() ||
+            this.hasPendingLaborSave() ||
+            this.hasPendingSurchargeSave()
+          ) {
+            this.showProjectLaborToast(
+              (action as { error?: string })?.error ||
+                'Could not save project details. Please review required fields and try again.',
+              'error',
+            );
+          }
+          this.resetSaveAndFinishFlow();
+          return;
+        }
+
+        if (!this.closeAfterSave) return;
+        this.closeAfterSave = false;
+        this.pendingSaveAndCloseProjectId = null;
+        this.closeForm();
+      });
+
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerProjectsActions.saveProjectMaterialSuccess,
+          ManagerProjectsActions.saveProjectMaterialFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterMaterialSave) return;
+        this.closeAfterMaterialSave = false;
+
+        if (action.type !== ManagerProjectsActions.saveProjectMaterialSuccess.type) {
+          this.showProjectLaborToast(
+            (action as { error?: string })?.error ||
+              'Could not save material. Please review required fields and try again.',
+            'error',
+          );
+          this.resetSaveAndFinishFlow();
+          return;
+        }
+
+        const projectId =
+          this.pendingSaveAndCloseProjectId ?? this.editingProject?.projectId ?? null;
+        if (projectId && this.dispatchNextPendingChildSave(projectId)) {
+          return;
+        }
+
+        this.pendingSaveAndCloseProjectId = null;
+        this.closeForm();
+      });
+
+    this.actions$
+      .pipe(
+        ofType(
+          ManagerProjectsActions.saveProjectLaborSuccess,
+          ManagerProjectsActions.saveProjectLaborFailure,
+        ),
+        takeUntil(this.destroy$),
+      )
+      .subscribe((action) => {
+        if (!this.closeAfterLaborSave) return;
+        this.closeAfterLaborSave = false;
+
+        if (action.type !== ManagerProjectsActions.saveProjectLaborSuccess.type) {
+          this.showProjectLaborToast(
+            (action as { error?: string })?.error ||
+              'Could not save labor. Please review required fields and try again.',
+            'error',
+          );
+          this.resetSaveAndFinishFlow();
+          return;
+        }
+
+        const projectId =
+          this.pendingSaveAndCloseProjectId ?? this.editingProject?.projectId ?? null;
+        if (projectId && this.dispatchNextPendingChildSave(projectId)) {
+          return;
+        }
+
+        this.pendingSaveAndCloseProjectId = null;
+        this.closeForm();
+      });
+  }
+
+  private hasPendingMaterialSave(): boolean {
+    return this.pendingMaterialSaveAfterProjectSave !== null;
+  }
+
+  private hasPendingLaborSave(): boolean {
+    return this.pendingLaborSaveAfterProjectSave !== null;
+  }
+
+  private hasPendingSurchargeSave(): boolean {
+    return this.pendingSurchargeSaveAfterProjectSave !== null;
+  }
+
+  private resetSaveAndFinishFlow(): void {
+    this.saveAndFinishLoading = false;
+    this.closeAfterSave = false;
+    this.closeAfterMaterialSave = false;
+    this.closeAfterLaborSave = false;
+    this.pendingSaveAndCloseProjectId = null;
+    this.pendingMaterialSaveAfterProjectSave = null;
+    this.pendingLaborSaveAfterProjectSave = null;
+    this.pendingSurchargeSaveAfterProjectSave = null;
+  }
+
+  private buildProjectMaterialPayload(
+    editing?: BmProjectMaterial | null,
+  ): { materialId: string; payload: any } | null {
+    if (this.projectMaterialForm.invalid) {
+      this.projectMaterialForm.markAllAsTouched();
+      return null;
+    }
+
+    const payload: any = this.projectMaterialForm.getRawValue();
+    payload.quantity = this.formatQuantity(payload.quantity ?? 0);
+    payload.coverage_ratio = this.formatCoverage(payload.coverage_ratio);
+    if (payload.unit_cost_override !== null) {
+      payload.unit_cost_override = this.formatMoney(payload.unit_cost_override);
+    }
+    if (payload.sell_cost_override !== null) {
+      payload.sell_cost_override = this.formatMoney(payload.sell_cost_override);
+    }
+    const materialId = editing?.materialId || payload.material_id;
+    delete payload.material_id;
+
+    if (!materialId) {
+      this.projectMaterialForm.markAllAsTouched();
+      return null;
+    }
+
+    return { materialId, payload };
+  }
+
+  private buildProjectLaborPayload(
+    editing?: BmProjectLabor | null,
+  ): { laborId: string; payload: any } | null {
+    if (this.projectLaborForm.invalid) {
+      this.projectLaborForm.markAllAsTouched();
+      return null;
+    }
+
+    const payload: any = this.projectLaborForm.getRawValue();
+    payload.unit_productivity = this.formatProductivity(
+      payload.unit_productivity,
+    );
+    if (payload.unit_cost_override !== null) {
+      payload.unit_cost_override = this.formatMoney(payload.unit_cost_override);
+    }
+    if (payload.sell_cost_override !== null) {
+      payload.sell_cost_override = this.formatMoney(payload.sell_cost_override);
+    }
+    const laborId = editing?.laborId || payload.labor_id;
+    delete payload.labor_id;
+
+    if (!laborId) {
+      this.projectLaborForm.markAllAsTouched();
+      return null;
+    }
+
+    return { laborId, payload };
+  }
+
+  private getPendingSurchargeSavePayload(): {
+    hasDraft: boolean;
+    payload: { type: string; name: string; cost: number } | null;
+  } {
+    const raw = this.projectSurchargeForm.getRawValue();
+    const type = this.normalizeSurchargeType(raw.type);
+    const name = (raw.name || '').trim();
+    const rawCost = String(raw.cost ?? '').trim();
+    const hasDraft = !!(type || name || rawCost);
+
+    if (!hasDraft) {
+      return { hasDraft: false, payload: null };
+    }
+
+    if (this.projectSurchargeForm.invalid) {
+      this.projectSurchargeForm.markAllAsTouched();
+      return { hasDraft: true, payload: null };
+    }
+
+    const cost = this.parseNonNegativeMoney(raw.cost);
+    if (!type || !name || cost === null) {
+      this.projectSurchargeForm.markAllAsTouched();
+      return { hasDraft: true, payload: null };
+    }
+
+    return {
+      hasDraft: true,
+      payload: {
+        type,
+        name,
+        cost,
+      },
+    };
+  }
+
+  private dispatchNextPendingChildSave(projectId: string): boolean {
+    if (this.hasPendingMaterialSave()) {
+      const pending = this.pendingMaterialSaveAfterProjectSave;
+      this.pendingMaterialSaveAfterProjectSave = null;
+      if (!pending) return false;
+
+      this.closeAfterMaterialSave = true;
+      this.store.dispatch(
+        ManagerProjectsActions.saveProjectMaterial({
+          projectId,
+          materialId: pending.materialId,
+          payload: pending.payload,
+        }),
+      );
+      return true;
+    }
+
+    if (this.hasPendingLaborSave()) {
+      const pending = this.pendingLaborSaveAfterProjectSave;
+      this.pendingLaborSaveAfterProjectSave = null;
+      if (!pending) return false;
+
+      this.closeAfterLaborSave = true;
+      this.store.dispatch(
+        ManagerProjectsActions.saveProjectLabor({
+          projectId,
+          laborId: pending.laborId,
+          payload: pending.payload,
+        }),
+      );
+      return true;
+    }
+
+    if (this.hasPendingSurchargeSave()) {
+      const pending = this.pendingSurchargeSaveAfterProjectSave;
+      this.pendingSurchargeSaveAfterProjectSave = null;
+      if (!pending) return false;
+
+      this.savePendingProjectSurcharge(projectId, pending);
+      return true;
+    }
+
+    return false;
+  }
+
+  private savePendingProjectSurcharge(
+    projectId: string,
+    payload: { type: string; name: string; cost: number },
+  ): void {
+    this.surchargeAddLoading = true;
+    this.surchargesError = null;
+
+    this.projectsService
+      .addProjectSurcharge(projectId, payload)
+      .pipe(take(1))
+      .subscribe({
+        next: (res) => {
+          const created = res?.projectSurcharge;
+          this.surchargeAddLoading = false;
+          if (!created?.surchargeId) {
+            this.loadProjectSurcharges(projectId);
+          } else {
+            const idx = this.surcharges.findIndex(
+              (item) => item.surchargeId === created.surchargeId,
+            );
+            const normalized = {
+              ...created,
+              cost: this.parseNonNegativeMoney(created.cost) ?? 0,
+            };
+            if (idx >= 0) {
+              const next = [...this.surcharges];
+              next[idx] = normalized;
+              this.setSurcharges(next);
+            } else {
+              this.setSurcharges([...this.surcharges, normalized]);
+            }
+            this.ensureSurchargeTypeSelection();
+            this.projectSurchargeForm.patchValue(
+              {
+                type: '',
+                name: '',
+                cost: '',
+              },
+              { emitEvent: false },
+            );
+            this.projectSurchargeForm.markAsPristine();
+            this.projectSurchargeForm.markAsUntouched();
+            if (
+              this.normalizeSurchargeType(normalized.type) === 'transportation'
+            ) {
+              this.loadTransportationEstimate(projectId, true);
+            }
+          }
+
+          const nextProjectId =
+            this.pendingSaveAndCloseProjectId ?? this.editingProject?.projectId ?? null;
+          if (nextProjectId && this.dispatchNextPendingChildSave(nextProjectId)) {
+            return;
+          }
+
+          this.pendingSaveAndCloseProjectId = null;
+          this.closeForm();
+        },
+        error: (err) => {
+          this.surchargeAddLoading = false;
+          const message =
+            err?.error?.error || err?.message || 'Could not save surcharge. Please try again.';
+          this.surchargesError = message;
+          this.showProjectLaborToast(message, 'error');
+          this.resetSaveAndFinishFlow();
+        },
+      });
   }
 
   get isEditingProjectMode(): boolean {
@@ -1135,7 +1586,7 @@ export class ManagerProjectsPageComponent
     this.clientActiveIndex = -1;
   }
 
-  private async saveProjectWithClient(closeOnSuccess: boolean): Promise<void> {
+  private async saveProjectWithClient(closeOnSuccess: boolean): Promise<boolean> {
     this.applyClientSelectionValidators();
 
     const requiresInlineName = this.needsInlineClientName();
@@ -1148,7 +1599,7 @@ export class ManagerProjectsPageComponent
       (requiresInlineName && !this.getInlineClientName())
     ) {
       this.projectForm.markAllAsTouched();
-      return;
+      return false;
     }
 
     let clientId = (this.projectForm.controls.client_id.value || '').trim();
@@ -1217,16 +1668,17 @@ export class ManagerProjectsPageComponent
             'Failed to save client details.',
         }),
       );
-      return;
+      return false;
     }
 
     const laborExtrasOk = await this.savePendingLaborExtrasBeforeProjectSave();
-    if (!laborExtrasOk) return;
+    if (!laborExtrasOk) return false;
 
     const payload = this.buildProjectPayload(clientId);
     this.store.dispatch(
       ManagerProjectsActions.saveProject({ payload, closeOnSuccess }),
     );
+    return true;
   }
 
   private async savePendingLaborExtrasBeforeProjectSave(): Promise<boolean> {
@@ -2769,30 +3221,14 @@ export class ManagerProjectsPageComponent
     project: BmProject,
     editing?: BmProjectMaterial | null,
   ): void {
-    if (this.projectMaterialForm.invalid) {
-      this.projectMaterialForm.markAllAsTouched();
-      return;
-    }
-
-    const payload: any = this.projectMaterialForm.getRawValue();
-    payload.quantity = this.formatQuantity(payload.quantity ?? 0);
-    payload.coverage_ratio = this.formatCoverage(payload.coverage_ratio);
-    if (payload.unit_cost_override !== null) {
-      payload.unit_cost_override = this.formatMoney(payload.unit_cost_override);
-    }
-    if (payload.sell_cost_override !== null) {
-      payload.sell_cost_override = this.formatMoney(payload.sell_cost_override);
-    }
-    const materialId = editing?.materialId || payload.material_id;
-    delete payload.material_id;
-
-    if (!materialId) return;
+    const next = this.buildProjectMaterialPayload(editing);
+    if (!next) return;
 
     this.store.dispatch(
       ManagerProjectsActions.saveProjectMaterial({
         projectId: project.projectId,
-        materialId,
-        payload,
+        materialId: next.materialId,
+        payload: next.payload,
       }),
     );
   }
@@ -3047,31 +3483,14 @@ export class ManagerProjectsPageComponent
   }
 
   saveProjectLabor(project: BmProject, editing?: BmProjectLabor | null): void {
-    if (this.projectLaborForm.invalid) {
-      this.projectLaborForm.markAllAsTouched();
-      return;
-    }
-
-    const payload: any = this.projectLaborForm.getRawValue();
-    payload.unit_productivity = this.formatProductivity(
-      payload.unit_productivity,
-    );
-    if (payload.unit_cost_override !== null) {
-      payload.unit_cost_override = this.formatMoney(payload.unit_cost_override);
-    }
-    if (payload.sell_cost_override !== null) {
-      payload.sell_cost_override = this.formatMoney(payload.sell_cost_override);
-    }
-    const laborId = editing?.laborId || payload.labor_id;
-    delete payload.labor_id;
-
-    if (!laborId) return;
+    const next = this.buildProjectLaborPayload(editing);
+    if (!next) return;
 
     this.store.dispatch(
       ManagerProjectsActions.saveProjectLabor({
         projectId: project.projectId,
-        laborId,
-        payload,
+        laborId: next.laborId,
+        payload: next.payload,
       }),
     );
   }

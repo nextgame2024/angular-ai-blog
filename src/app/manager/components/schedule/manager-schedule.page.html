@@ -142,19 +142,33 @@
         <div class="calendar-day-events">
           @for (schedule of day.schedules.slice(0, 3); track
           trackBySchedule($index, schedule)) {
-          <button
-            type="button"
-            class="schedule-pill"
-            [attr.aria-label]="'Edit booking for ' + getScheduledItemDisplay(schedule)"
-            (click)="openEdit(schedule, $event)"
-          >
-            <span class="schedule-pill__label">
-              {{ getScheduledItemDisplay(schedule) }}
-            </span>
-            <span class="schedule-pill__time">
-              {{ getScheduleTimeRange(schedule) }}
-            </span>
-          </button>
+          <div class="schedule-pill-shell">
+            <button
+              type="button"
+              class="schedule-pill"
+              [attr.aria-label]="'Edit booking for ' + getScheduledItemDisplay(schedule)"
+              (click)="openEdit(schedule, $event)"
+            >
+              <span class="schedule-pill__label">
+                {{ getScheduledItemDisplay(schedule) }}
+              </span>
+              <span class="schedule-pill__time">
+                {{ getScheduleTimeRange(schedule) }}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              class="schedule-pill-delete"
+              [attr.aria-label]="'Delete booking for ' + getScheduledItemDisplay(schedule)"
+              (click)="openDeleteConfirm(schedule, $event)"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 7l10 10"></path>
+                <path d="M17 7 7 17"></path>
+              </svg>
+            </button>
+          </div>
           } @if (getEventOverflow(day) > 0) {
           <div class="schedule-overflow">+{{ getEventOverflow(day) }} more</div>
           }
@@ -218,21 +232,35 @@
 
       @for (schedule of group.schedules; track trackBySchedule($index,
       schedule)) {
-      <button type="button" class="agenda-item" (click)="openEdit(schedule)">
-        <div class="agenda-item__main">
-          <span class="agenda-item__title">
-            {{ getScheduledItemDisplay(schedule) }}
+      <div class="agenda-item-shell">
+        <button type="button" class="agenda-item" (click)="openEdit(schedule)">
+          <div class="agenda-item__main">
+            <span class="agenda-item__title">
+              {{ getScheduledItemDisplay(schedule) }}
+            </span>
+            <span class="agenda-item__time">
+              {{ getScheduleTimeRange(schedule) }}
+            </span>
+          </div>
+          <span class="agenda-item__chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M9.5 6.5 15 12l-5.5 5.5"></path>
+            </svg>
           </span>
-          <span class="agenda-item__time">
-            {{ getScheduleTimeRange(schedule) }}
-          </span>
-        </div>
-        <span class="agenda-item__chevron" aria-hidden="true">
-          <svg viewBox="0 0 24 24">
-            <path d="M9.5 6.5 15 12l-5.5 5.5"></path>
+        </button>
+
+        <button
+          type="button"
+          class="agenda-item__delete"
+          [attr.aria-label]="'Delete booking for ' + getScheduledItemDisplay(schedule)"
+          (click)="openDeleteConfirm(schedule, $event)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 7l10 10"></path>
+            <path d="M17 7 7 17"></path>
           </svg>
-        </span>
-      </button>
+        </button>
+      </div>
       }
     </div>
     } } @else if (!loading$$()) {
@@ -406,6 +434,52 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+  } @if (deleteConfirmSchedule$$(); as scheduleToDelete) {
+  <div class="schedule-delete-backdrop" (click)="closeDeleteConfirm()">
+    <div
+      class="schedule-delete-modal tone-danger"
+      (click)="$event.stopPropagation()"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="schedule-delete-title"
+      aria-describedby="schedule-delete-message"
+    >
+      <div class="schedule-delete-header">
+        <span class="schedule-delete-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7v6"></path>
+            <path d="M12 16.5h.01"></path>
+          </svg>
+        </span>
+        <div class="schedule-delete-text">
+          <h4 id="schedule-delete-title">Delete booking?</h4>
+          <p id="schedule-delete-message">
+            {{ getDeleteScheduleMessage(scheduleToDelete) }}
+          </p>
+        </div>
+      </div>
+
+      <div class="schedule-delete-actions">
+        <button
+          type="button"
+          class="btn secondary"
+          [disabled]="deleting$$()"
+          (click)="closeDeleteConfirm()"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn primary"
+          [disabled]="deleting$$()"
+          (click)="confirmDeleteSchedule()"
+        >
+          {{ deleting$$() ? 'Deleting...' : 'Delete' }}
+        </button>
+      </div>
     </div>
   </div>
   } @if (toastMessage$$()) {

@@ -74,7 +74,7 @@
       x
     </button>
   </div>
-  } } @if ((loading$ | async)) {
+  } } @if ((loading$ | async) || saveAndFinishLoading) {
   <div class="screen-loader" aria-live="polite" aria-busy="true">
     <div class="loader-card">
       <div class="loader-ring" aria-hidden="true"></div>

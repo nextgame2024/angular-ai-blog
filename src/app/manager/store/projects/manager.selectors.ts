@@ -94,6 +94,11 @@ export const selectManagerEditingProjectMaterial = createSelector(
       : null,
 );
 
+export const selectManagerEditingProjectMaterialId = createSelector(
+  selectManagerProjectsState,
+  (state) => state.editingProjectMaterialId,
+);
+
 export const selectManagerProjectLabor = createSelector(
   selectManagerProjectsState,
   (state) => state.labor,
@@ -121,4 +126,9 @@ export const selectManagerEditingProjectLabor = createSelector(
       ? state.labor.find((l) => l.laborId === state.editingProjectLaborId) ??
         null
       : null,
+);
+
+export const selectManagerEditingProjectLaborId = createSelector(
+  selectManagerProjectsState,
+  (state) => state.editingProjectLaborId,
 );

@@ -46,12 +46,27 @@ export const selectManagerScheduleEditingScheduleId = createSelector(
   (state) => state.editingScheduleId,
 );
 
+export const selectManagerScheduleDeleteConfirmScheduleId = createSelector(
+  selectManagerScheduleState,
+  (state) => state.deleteConfirmScheduleId,
+);
+
 export const selectManagerEditingSchedule = createSelector(
   selectManagerScheduleState,
   (state) =>
     state.editingScheduleId
       ? state.schedules.find(
           (schedule) => schedule.scheduleId === state.editingScheduleId,
+        ) ?? null
+      : null,
+);
+
+export const selectManagerDeleteConfirmSchedule = createSelector(
+  selectManagerScheduleState,
+  (state) =>
+    state.deleteConfirmScheduleId
+      ? state.schedules.find(
+          (schedule) => schedule.scheduleId === state.deleteConfirmScheduleId,
         ) ?? null
       : null,
 );
@@ -64,6 +79,16 @@ export const selectManagerScheduleSaving = createSelector(
 export const selectManagerScheduleSaveError = createSelector(
   selectManagerScheduleState,
   (state) => state.saveError,
+);
+
+export const selectManagerScheduleDeleting = createSelector(
+  selectManagerScheduleState,
+  (state) => state.deleting,
+);
+
+export const selectManagerScheduleDeleteError = createSelector(
+  selectManagerScheduleState,
+  (state) => state.deleteError,
 );
 
 export const selectManagerScheduledItems = createSelector(

@@ -153,6 +153,16 @@
               <span>{{ activeProjectTravelTime$$() || '—' }}</span>
             }
           </div>
+          @if (activeProjectScheduleDates$$().length) {
+            <div class="map-info-row map-info-row--stacked">
+              <span>Scheduled</span>
+              <span class="map-info-multi-value">
+                @for (scheduleDate of activeProjectScheduleDates$$(); track scheduleDate) {
+                  <span>{{ formatProjectScheduleDate(scheduleDate) }}</span>
+                }
+              </span>
+            </div>
+          }
           @if (routeError$$()) {
             <div class="map-info-note">
               {{ routeError$$() }}

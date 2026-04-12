@@ -112,7 +112,7 @@ export const managerProjectsReducer = createReducer(
       projects: next,
       projectsViewMode: shouldClose ? ('list' as const) : ('form' as const),
       editingProjectId: shouldClose ? null : project.projectId,
-      projectFormTab: 'details',
+      projectFormTab: shouldClose ? 'details' : state.projectFormTab,
     };
   }),
 

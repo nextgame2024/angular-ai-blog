@@ -28,6 +28,7 @@ import { GoogleMapsLoaderService } from '../../townplanner/services/google-maps-
 import { ManagerCompanyService } from '../services/manager.company.service';
 import { NavigationLinksProjectsService } from '../services/navigation.links.projects.service';
 import { ManagerProjectsService } from '../services/manager.projects.service';
+import { ManagerScheduleProjectsService } from '../services/schedule.projects.service';
 import { ManagerActions } from '../store/manager.actions';
 import { selectManagerSearchQuery } from '../store/manager.selectors';
 import { ManagerProjectsActions } from '../store/projects/manager.actions';
@@ -47,6 +48,35 @@ type MenuItem = {
   superAdminOnly?: boolean;
 };
 
+function formatIsoDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDisplayDate(dateIso: string): string {
+  const normalized = String(dateIso || '').slice(0, 10);
+  const [yearRaw, monthRaw, dayRaw] = normalized.split('-');
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+
+  if (
+    !Number.isInteger(year)
+    || !Number.isInteger(month)
+    || !Number.isInteger(day)
+    || month < 1
+    || month > 12
+    || day < 1
+    || day > 31
+  ) {
+    return normalized;
+  }
+
+  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+}
+
 @Component({
     selector: 'app-manager-page',
     imports: [
@@ -56,6 +86,7 @@ type MenuItem = {
       GoogleMapsModule,
       RouterModule,
     ],
+    providers: [ManagerScheduleProjectsService],
     templateUrl: './manager.page.html',
     styleUrls: ['./manager.page.css']
 })
@@ -65,6 +96,7 @@ export class ManagerPageComponent implements OnDestroy {
   private readonly companyService = inject(ManagerCompanyService);
   private readonly navigationLinksApi = inject(NavigationLinksProjectsService);
   private readonly projectsService = inject(ManagerProjectsService);
+  private readonly scheduleProjectsService = inject(ManagerScheduleProjectsService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -78,6 +110,7 @@ export class ManagerPageComponent implements OnDestroy {
   private directionsService: google.maps.DirectionsService | null = null;
   private mapsApiKey: string | null = null;
   private streetViewRequestToken = 0;
+  private projectScheduleRequestToken = 0;
   private readonly streetViewEnabled = true;
   private readonly routePreviewEnabled = true;
   private readonly superAdminId = 'c2dad143-077c-4082-92f0-47805601db3b';
@@ -175,6 +208,7 @@ export class ManagerPageComponent implements OnDestroy {
   readonly routeLoading$$ = signal(false);
   readonly routeError$$ = signal<string | null>(null);
   readonly activeProjectTravelTime$$ = signal<string | null>(null);
+  readonly activeProjectScheduleDates$$ = signal<string[]>([]);
   readonly streetViewLoading$$ = signal(false);
   readonly streetViewReady$$ = signal(false);
   readonly streetViewImageUrl$$ = signal<string | null>(null);
@@ -561,10 +595,12 @@ export class ManagerPageComponent implements OnDestroy {
     this.infoPanelCollapsedMobile$$.set(false);
     this.routeError$$.set(null);
     this.activeProjectTravelTime$$.set(null);
+    this.activeProjectScheduleDates$$.set([]);
     this.routePath$$.set([]);
     this.streetViewLoading$$.set(false);
     this.streetViewReady$$.set(false);
     this.streetViewImageUrl$$.set(null);
+    void this.loadProjectScheduleDates(project.projectId);
     if (this.streetViewEnabled) {
       void this.renderStreetViewPreview(project).catch(() => {
         if (this.activeProject$$()?.projectId !== project.projectId) return;
@@ -596,11 +632,13 @@ export class ManagerPageComponent implements OnDestroy {
     this.routeLoading$$.set(false);
     this.routeError$$.set(null);
     this.activeProjectTravelTime$$.set(null);
+    this.activeProjectScheduleDates$$.set([]);
     this.routePath$$.set([]);
     this.streetViewLoading$$.set(false);
     this.streetViewReady$$.set(false);
     this.streetViewImageUrl$$.set(null);
     this.streetViewRequestToken += 1;
+    this.projectScheduleRequestToken += 1;
     this.isDraggingInfoPanel$$.set(false);
     this.infoPanelCollapsedMobile$$.set(false);
   }
@@ -651,6 +689,10 @@ export class ManagerPageComponent implements OnDestroy {
       default:
         return status || 'To do';
     }
+  }
+
+  formatProjectScheduleDate(dateIso: string): string {
+    return formatDisplayDate(dateIso);
   }
 
   private ensureGeocoder(): void {
@@ -1293,6 +1335,58 @@ export class ManagerPageComponent implements OnDestroy {
       this.companyAddress$$.set(null);
     } finally {
       this.refreshMapMarkers();
+    }
+  }
+
+  private async loadProjectScheduleDates(projectId: string): Promise<void> {
+    if (!projectId) {
+      this.activeProjectScheduleDates$$.set([]);
+      return;
+    }
+
+    const requestToken = ++this.projectScheduleRequestToken;
+    this.activeProjectScheduleDates$$.set([]);
+
+    const now = new Date();
+    const rangeStart = formatIsoDate(new Date(now.getFullYear() - 10, 0, 1));
+    const rangeEnd = formatIsoDate(new Date(now.getFullYear() + 10, 11, 31));
+
+    try {
+      const response = await firstValueFrom(
+        this.scheduleProjectsService
+          .listSchedules({
+            start: rangeStart,
+            end: rangeEnd,
+            projectId,
+          })
+          .pipe(timeout({ first: 10000 })),
+      );
+
+      if (
+        requestToken !== this.projectScheduleRequestToken
+        || this.activeProject$$()?.projectId !== projectId
+      ) {
+        return;
+      }
+
+      const scheduledDates = Array.from(
+        new Set(
+          (response?.schedules ?? [])
+            .map((schedule) => String(schedule.date || '').slice(0, 10))
+            .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date)),
+        ),
+      ).sort((left, right) => left.localeCompare(right));
+
+      this.activeProjectScheduleDates$$.set(scheduledDates);
+    } catch {
+      if (
+        requestToken !== this.projectScheduleRequestToken
+        || this.activeProject$$()?.projectId !== projectId
+      ) {
+        return;
+      }
+
+      this.activeProjectScheduleDates$$.set([]);
     }
   }
 

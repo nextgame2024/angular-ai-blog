@@ -53,6 +53,7 @@ export const managerScheduleReducer = createReducer(
     modalMode: 'create' as const,
     selectedDate: date,
     editingScheduleId: null,
+    deleteConfirmScheduleId: null,
     saveError: null,
     scheduledItems: [],
     scheduledItemsError: null,
@@ -69,6 +70,7 @@ export const managerScheduleReducer = createReducer(
       modalMode: 'edit' as const,
       selectedDate: editingSchedule?.date ?? state.selectedDate,
       editingScheduleId: scheduleId,
+      deleteConfirmScheduleId: null,
       saveError: null,
       scheduledItems: [],
       scheduledItemsError: null,
@@ -81,11 +83,25 @@ export const managerScheduleReducer = createReducer(
     modalMode: null,
     selectedDate: null,
     editingScheduleId: null,
+    deleteConfirmScheduleId: null,
     saving: false,
     saveError: null,
     scheduledItems: [],
     scheduledItemsError: null,
     scheduledItemsLoading: false,
+  })),
+
+  on(ManagerScheduleActions.openScheduleDeleteConfirm, (state, { scheduleId }) => ({
+    ...state,
+    deleteConfirmScheduleId: scheduleId,
+    deleteError: null,
+  })),
+
+  on(ManagerScheduleActions.closeScheduleDeleteConfirm, (state) => ({
+    ...state,
+    deleteConfirmScheduleId: null,
+    deleting: false,
+    deleteError: null,
   })),
 
   on(ManagerScheduleActions.searchScheduledItems, (state) => ({
@@ -150,5 +166,33 @@ export const managerScheduleReducer = createReducer(
     ...state,
     saving: false,
     saveError: error,
+  })),
+
+  on(ManagerScheduleActions.deleteSchedule, (state) => ({
+    ...state,
+    deleting: true,
+    deleteError: null,
+  })),
+
+  on(ManagerScheduleActions.deleteScheduleSuccess, (state, { scheduleId }) => ({
+    ...state,
+    schedules: state.schedules.filter(
+      (schedule) => schedule.scheduleId !== scheduleId,
+    ),
+    deleting: false,
+    deleteError: null,
+    deleteConfirmScheduleId: null,
+    modalMode:
+      state.editingScheduleId === scheduleId ? null : state.modalMode,
+    selectedDate:
+      state.editingScheduleId === scheduleId ? null : state.selectedDate,
+    editingScheduleId:
+      state.editingScheduleId === scheduleId ? null : state.editingScheduleId,
+  })),
+
+  on(ManagerScheduleActions.deleteScheduleFailure, (state, { error }) => ({
+    ...state,
+    deleting: false,
+    deleteError: error,
   })),
 );
