@@ -1,12 +1,13 @@
 import { authActions } from './actions';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
-import { catchError, map, of, switchMap, tap } from 'rxjs';
+import { EMPTY, catchError, map, of, switchMap, tap } from 'rxjs';
 import { CurrentUserInterface } from '../../shared/types/currentUser.interface';
 import { inject } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 import { HttpErrorResponse } from '@angular/common/http';
 import { PersistanceService } from '../../shared/services/persistance.service';
 import { Router } from '@angular/router';
+import { PostLoginRedirectService } from '../../shared/services/post-login-redirect.service';
 
 export const getCurrentUserEffect = createEffect(
   (
@@ -86,11 +87,11 @@ export const loginEffect = createEffect(
   ) => {
     return actions$.pipe(
       ofType(authActions.login),
-      switchMap(({ request }) => {
+      switchMap(({ request, redirectTarget }) => {
         return authService.login(request).pipe(
           map((currentUser: CurrentUserInterface) => {
             persistanceService.set('accessToken', currentUser.token);
-            return authActions.loginSuccess({ currentUser });
+            return authActions.loginSuccess({ currentUser, redirectTarget });
           }),
           catchError((errorResponse: HttpErrorResponse) => {
             const fallbackMessage =
@@ -117,12 +118,26 @@ export const loginEffect = createEffect(
 );
 
 export const afterLoginEffect = createEffect(
-  (actions$ = inject(Actions), router = inject(Router)) => {
+  (
+    actions$ = inject(Actions),
+    router = inject(Router),
+    postLoginRedirect = inject(PostLoginRedirectService),
+  ) => {
     return actions$.pipe(
       ofType(authActions.loginSuccess),
-      tap(() => {
-        router.navigateByUrl('/');
-      })
+      switchMap(({ currentUser, redirectTarget }) =>
+        postLoginRedirect
+          .resolvePostLoginRoute(currentUser, redirectTarget)
+          .pipe(
+            tap((route) => {
+              void router.navigateByUrl(route);
+            }),
+            catchError(() => {
+              void router.navigateByUrl('/manager');
+              return EMPTY;
+            }),
+          ),
+      ),
     );
   },
   { functional: true, dispatch: false }

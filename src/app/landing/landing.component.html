@@ -29,8 +29,20 @@
         systems that remove complexity and multiply momentum.
       </p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="#business-manager">Business Manager</a>
-        <a class="btn btn-ghost" href="#town-planner">Town Planner</a>
+        <button
+          type="button"
+          class="btn btn-primary"
+          (click)="openLoginTarget('business-manager')"
+        >
+          Business Manager
+        </button>
+        <button
+          type="button"
+          class="btn btn-ghost"
+          (click)="openLoginTarget('town-planner')"
+        >
+          Town Planner
+        </button>
       </div>
       <div class="hero-stats">
         <div class="stat">

@@ -17,14 +17,10 @@ type HeaderItem = {
 };
 
 @Component({
-    selector: 'mc-topbar',
-    templateUrl: './topBar.component.html',
-    styleUrls: ['./topBar.component.css'],
-    imports: [
-        CommonModule,
-        RouterLink,
-        RouterLinkActive,
-    ]
+  selector: 'mc-topbar',
+  templateUrl: './topBar.component.html',
+  styleUrls: ['./topBar.component.css'],
+  imports: [CommonModule, RouterLink, RouterLinkActive],
 })
 export class TopBarComponent {
   isMobileMenuOpen = false;
@@ -84,9 +80,9 @@ export class TopBarComponent {
       }
 
       return this.http
-        .get<{ company?: { logoUrl?: string | null } }>(
-          `${environment.apiUrl}/bm/company/${companyId}`,
-        )
+        .get<{
+          company?: { logoUrl?: string | null };
+        }>(`${environment.apiUrl}/bm/company/${companyId}`)
         .pipe(
           map((res) => res?.company?.logoUrl || this.defaultLogo),
           catchError(() => of(this.defaultLogo)),
@@ -129,8 +125,8 @@ export class TopBarComponent {
     const items: HeaderItem[] = [{ label: 'Home', route: '/' }];
     if (!isLoggedIn) return items;
     items.push(
-      { label: 'Town planner', route: '/townplanner' },
       { label: 'Business manager', route: '/manager' },
+      { label: 'Town planner', route: '/townplanner' },
       { label: 'Settings', route: '/settings' },
     );
     return items;

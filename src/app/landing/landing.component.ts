@@ -11,8 +11,17 @@ import {
 } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
+import { Store } from '@ngrx/store';
 import { finalize } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { environment } from 'src/environments/environment';
+import { selectCurrentUser } from '../auth/store/reducers';
+import {
+  LOGIN_REDIRECT_TARGET_QUERY_PARAM,
+  PostLoginRedirectService,
+  type LoginRedirectTarget,
+} from '../shared/services/post-login-redirect.service';
 
 @Component({
     selector: 'app-landing',
@@ -26,11 +35,17 @@ export class LandingComponent {
 
   private readonly fb = inject(FormBuilder);
   private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly store = inject(Store);
   private readonly renderer = inject(Renderer2);
   private readonly rendererFactory = inject(RendererFactory2);
   private readonly document = inject(DOCUMENT);
+  private readonly postLoginRedirect = inject(PostLoginRedirectService);
 
   readonly videoSrc$$ = signal(environment.bannerVideo);
+  readonly currentUser$$ = toSignal(this.store.select(selectCurrentUser), {
+    initialValue: undefined,
+  });
   readonly submitState$$ = signal<'idle' | 'sending'>('idle');
   readonly isMuted$$ = signal(false);
   readonly isPlaying$$ = signal(false);
@@ -199,6 +214,23 @@ export class LandingComponent {
     if (control.hasError('required')) return 'Email is required.';
     if (control.hasError('email')) return 'Enter a valid email address.';
     return null;
+  }
+
+  async openLoginTarget(target: LoginRedirectTarget): Promise<void> {
+    const currentUser = this.currentUser$$();
+    const route =
+      this.postLoginRedirect.getRequestedTargetRoute(target) || '/manager';
+
+    if (currentUser) {
+      await this.router.navigateByUrl(route);
+      return;
+    }
+
+    await this.router.navigate(['/login'], {
+      queryParams: {
+        [LOGIN_REDIRECT_TARGET_QUERY_PARAM]: target,
+      },
+    });
   }
 
   private showToast(type: 'success' | 'error', message: string): void {

@@ -2,7 +2,7 @@ import { Component, effect, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { authActions } from '../../store/actions';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   selectIsSubmitting,
   selectValidationErrors,
@@ -20,6 +20,7 @@ import { PasswordModule } from 'primeng/password';
 import { ButtonModule } from 'primeng/button';
 import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
+import { LOGIN_REDIRECT_TARGET_QUERY_PARAM } from '../../../shared/services/post-login-redirect.service';
 
 @Component({
     selector: 'mc-login',
@@ -44,6 +45,7 @@ import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly store = inject(Store);
+  private readonly route = inject(ActivatedRoute);
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -88,6 +90,9 @@ export class LoginComponent {
   onSubmit() {
     if (this.form.invalid) return;
     const request: LoginRequestInterface = { user: this.form.getRawValue() };
-    this.store.dispatch(authActions.login({ request }));
+    const redirectTarget =
+      this.route.snapshot.queryParamMap.get(LOGIN_REDIRECT_TARGET_QUERY_PARAM);
+
+    this.store.dispatch(authActions.login({ request, redirectTarget }));
   }
 }
