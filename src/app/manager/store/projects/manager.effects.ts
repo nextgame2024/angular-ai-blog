@@ -4,6 +4,7 @@ import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
 import { catchError, map, switchMap, withLatestFrom } from 'rxjs/operators';
 
+import { selectCurrentUser } from '../../../auth/store/reducers';
 import { ManagerProjectsActions } from './manager.actions';
 import { ManagerProjectsService } from '../../services/manager.projects.service';
 import {
@@ -24,12 +25,28 @@ export class ManagerProjectsEffects {
   loadProjects$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerProjectsActions.loadProjects),
-      withLatestFrom(this.store.select(selectManagerProjectsSearchQuery)),
-      switchMap(([{ page }, q]) =>
+      withLatestFrom(
+        this.store.select(selectManagerProjectsSearchQuery),
+        this.store.select(selectCurrentUser),
+      ),
+      switchMap(([{ page }, q, currentUser]) =>
         this.api.listProjects({ page, limit: 20, q: q || undefined }).pipe(
-          map((result) =>
-            ManagerProjectsActions.loadProjectsSuccess({ result }),
-          ),
+          map((result) => {
+            const currentCompanyId = currentUser?.companyId ?? null;
+            const items = currentCompanyId
+              ? (result.items ?? []).filter(
+                  (project) => project.companyId === currentCompanyId,
+                )
+              : [];
+
+            return ManagerProjectsActions.loadProjectsSuccess({
+              result: {
+                ...result,
+                items,
+                total: currentCompanyId ? result.total : 0,
+              },
+            });
+          }),
           catchError((err) =>
             of(
               ManagerProjectsActions.loadProjectsFailure({

@@ -1,4 +1,5 @@
 import { createReducer, on } from '@ngrx/store';
+import { authActions } from '../../../auth/store/actions';
 import { ManagerProjectsActions } from './manager.actions';
 import { initialManagerProjectsState } from './manager.state';
 import type {
@@ -11,6 +12,11 @@ export const MANAGER_PROJECTS_FEATURE_KEY = 'managerProjects';
 
 export const managerProjectsReducer = createReducer(
   initialManagerProjectsState,
+
+  on(ManagerProjectsActions.resetProjectsState, (state) => ({
+    ...initialManagerProjectsState,
+    projectsSearchQuery: state.projectsSearchQuery,
+  })),
 
   on(ManagerProjectsActions.setProjectsSearchQuery, (state, { query }) => ({
     ...state,
@@ -273,5 +279,9 @@ export const managerProjectsReducer = createReducer(
   on(ManagerProjectsActions.removeProjectLaborSuccess, (state, { laborId }) => ({
     ...state,
     labor: state.labor.filter((l) => l.laborId !== laborId),
+  })),
+
+  on(authActions.logout, () => ({
+    ...initialManagerProjectsState,
   })),
 );

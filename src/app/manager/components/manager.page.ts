@@ -242,11 +242,13 @@ export class ManagerPageComponent implements OnDestroy {
   };
 
   private readonly mapsInit$$ = signal(false);
-  private readonly companyAddressLoaded$$ = signal(false);
 
   private readonly currentUser$$ = toSignal(this.store.select(selectCurrentUser), {
     initialValue: null,
   });
+  private readonly currentCompanyId$$ = computed(
+    () => this.currentUser$$()?.companyId ?? null,
+  );
   private readonly isSuperAdmin$$ = computed(
     () => this.currentUser$$()?.id === this.superAdminId,
   );
@@ -258,6 +260,11 @@ export class ManagerPageComponent implements OnDestroy {
     this.store.select(selectManagerProjects),
     { initialValue: [] as BmProject[] },
   );
+  private readonly scopedProjects$$ = computed(() => {
+    const companyId = this.currentCompanyId$$();
+    if (!companyId) return [] as BmProject[];
+    return this.projects$$().filter((project) => project.companyId === companyId);
+  });
   private readonly projectsPage$$ = toSignal(
     this.store.select(selectManagerProjectsPage),
     { initialValue: 1 },
@@ -345,10 +352,6 @@ export class ManagerPageComponent implements OnDestroy {
       });
   });
 
-  private readonly projectsInitEffect = effect(() => {
-    this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
-  });
-
   private readonly searchQuerySyncEffect = effect(() => {
     const next = this.searchQuery$$() || '';
     if (this.searchCtrl.value !== next) {
@@ -370,7 +373,7 @@ export class ManagerPageComponent implements OnDestroy {
   });
 
   private readonly projectsEffect = effect(() => {
-    this.projects$$();
+    this.scopedProjects$$();
     this.refreshMapMarkers();
     this.maybeLoadMoreProjectsForMap();
   });
@@ -393,15 +396,25 @@ export class ManagerPageComponent implements OnDestroy {
     void this.loadActiveMenuLinks();
   });
 
+  private readonly currentCompanyScopeEffect = effect(() => {
+    const companyId = this.currentCompanyId$$();
+    this.resetCompanyScopedState(
+      companyId ? 'company-scope-changed' : 'company-scope-cleared',
+    );
+    this.store.dispatch(ManagerProjectsActions.resetProjectsState());
+    if (!companyId) return;
+    void this.loadCompanyAddress();
+    this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
+  });
+
   private readonly routeEffect = effect(() => {
     this.currentPath$$();
     this.syncRouteUIState();
   });
 
   private readonly companyAddressEffect = effect(() => {
-    if (this.companyAddressLoaded$$()) return;
-    this.companyAddressLoaded$$.set(true);
-    void this.loadCompanyAddress();
+    this.companyAddress$$();
+    this.refreshMapMarkers();
   });
 
   private readonly debugInteractionProbeEffect = effect((onCleanup) => {
@@ -565,7 +578,7 @@ export class ManagerPageComponent implements OnDestroy {
     if (!projectId) return;
     if (this.activeProject$$()?.projectId === projectId) return;
 
-    const project = this.projects$$().find((it) => it.projectId === projectId);
+    const project = this.scopedProjects$$().find((it) => it.projectId === projectId);
     if (!project?.projectId) return;
 
     this.logMapDebug('open-project-info', { projectId });
@@ -800,7 +813,7 @@ export class ManagerPageComponent implements OnDestroy {
 
     const token = ++this.mapRefreshToken;
     const query = (this.searchQuery$$() || '').trim().toLowerCase();
-    const visible = this.projects$$().filter(
+    const visible = this.scopedProjects$$().filter(
       (project) =>
         this.allowedStatuses.has(project.status || '') &&
         this.matchesSearch(project, query),
@@ -887,7 +900,7 @@ export class ManagerPageComponent implements OnDestroy {
     if (!this.mapsLoaded$$()) return;
     if (this.projectsLoading$$()) return;
     if (this.projectsTotal$$() === 0) return;
-    if (this.projects$$().length >= this.projectsTotal$$()) return;
+    if (this.scopedProjects$$().length >= this.projectsTotal$$()) return;
     if (this.countVisibleProjects() >= 50) return;
     const expectedLoaded = this.projectsPage$$() * this.projectsLimit$$();
     if (expectedLoaded >= this.projectsTotal$$()) return;
@@ -1211,11 +1224,20 @@ export class ManagerPageComponent implements OnDestroy {
 
   private countVisibleProjects(): number {
     const query = (this.searchQuery$$() || '').trim().toLowerCase();
-    return this.projects$$().filter(
+    return this.scopedProjects$$().filter(
       (project) =>
         this.allowedStatuses.has(project.status || '') &&
         this.matchesSearch(project, query),
     ).length;
+  }
+
+  private resetCompanyScopedState(reason: string): void {
+    this.mapRefreshToken += 1;
+    this.clearProjectMarkerListeners();
+    this.projectMarkers$$.set([]);
+    this.companyMarker$$.set(null);
+    this.companyAddress$$.set(null);
+    this.closeProjectInfo(reason);
   }
 
   private async geocodeAddress(

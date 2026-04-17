@@ -10,6 +10,8 @@ import { ProjectFormTab } from './manager.state';
 export const ManagerProjectsActions = createActionGroup({
   source: 'Manager Projects',
   events: {
+    'Reset Projects State': emptyProps(),
+
     'Set Projects Search Query': props<{ query: string }>(),
 
     'Load Projects': props<{ page: number }>(),
