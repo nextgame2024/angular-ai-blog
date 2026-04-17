@@ -6,6 +6,7 @@ import {
   effect,
   inject,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { CdkDrag, CdkDragEnd, CdkDragHandle } from '@angular/cdk/drag-drop';
@@ -261,9 +262,10 @@ export class ManagerPageComponent implements OnDestroy {
     { initialValue: [] as BmProject[] },
   );
   private readonly scopedProjects$$ = computed(() => {
-    const companyId = this.currentCompanyId$$();
-    if (!companyId) return [] as BmProject[];
-    return this.projects$$().filter((project) => project.companyId === companyId);
+    if (!this.currentCompanyId$$()) return [] as BmProject[];
+    return this.projects$$().filter((project) =>
+      this.projectBelongsToCurrentCompany(project),
+    );
   });
   private readonly projectsPage$$ = toSignal(
     this.store.select(selectManagerProjectsPage),
@@ -357,7 +359,9 @@ export class ManagerPageComponent implements OnDestroy {
     if (this.searchCtrl.value !== next) {
       this.searchCtrl.setValue(next, { emitEvent: false });
     }
-    this.refreshMapMarkers();
+    untracked(() => {
+      void this.refreshMapMarkers();
+    });
   });
 
   private readonly searchInputEffect = effect((onCleanup) => {
@@ -374,8 +378,10 @@ export class ManagerPageComponent implements OnDestroy {
 
   private readonly projectsEffect = effect(() => {
     this.scopedProjects$$();
-    this.refreshMapMarkers();
-    this.maybeLoadMoreProjectsForMap();
+    untracked(() => {
+      void this.refreshMapMarkers();
+      this.maybeLoadMoreProjectsForMap();
+    });
   });
 
   private readonly projectsMetaEffect = effect(() => {
@@ -383,7 +389,9 @@ export class ManagerPageComponent implements OnDestroy {
     this.projectsLimit$$();
     this.projectsTotal$$();
     this.projectsLoading$$();
-    this.maybeLoadMoreProjectsForMap();
+    untracked(() => {
+      this.maybeLoadMoreProjectsForMap();
+    });
   });
 
   private readonly currentUserEffect = effect(() => {
@@ -398,13 +406,15 @@ export class ManagerPageComponent implements OnDestroy {
 
   private readonly currentCompanyScopeEffect = effect(() => {
     const companyId = this.currentCompanyId$$();
-    this.resetCompanyScopedState(
-      companyId ? 'company-scope-changed' : 'company-scope-cleared',
-    );
-    this.store.dispatch(ManagerProjectsActions.resetProjectsState());
-    if (!companyId) return;
-    void this.loadCompanyAddress();
-    this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
+    untracked(() => {
+      this.resetCompanyScopedState(
+        companyId ? 'company-scope-changed' : 'company-scope-cleared',
+      );
+      this.store.dispatch(ManagerProjectsActions.resetProjectsState());
+      if (!companyId) return;
+      void this.loadCompanyAddress();
+      this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
+    });
   });
 
   private readonly routeEffect = effect(() => {
@@ -414,7 +424,9 @@ export class ManagerPageComponent implements OnDestroy {
 
   private readonly companyAddressEffect = effect(() => {
     this.companyAddress$$();
-    this.refreshMapMarkers();
+    untracked(() => {
+      void this.refreshMapMarkers();
+    });
   });
 
   private readonly debugInteractionProbeEffect = effect((onCleanup) => {
@@ -1229,6 +1241,12 @@ export class ManagerPageComponent implements OnDestroy {
         this.allowedStatuses.has(project.status || '') &&
         this.matchesSearch(project, query),
     ).length;
+  }
+
+  private projectBelongsToCurrentCompany(project: BmProject): boolean {
+    const companyId = this.currentCompanyId$$();
+    if (!companyId) return false;
+    return !project.companyId || project.companyId === companyId;
   }
 
   private resetCompanyScopedState(reason: string): void {

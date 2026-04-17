@@ -35,7 +35,8 @@ export class ManagerProjectsEffects {
             const currentCompanyId = currentUser?.companyId ?? null;
             const items = currentCompanyId
               ? (result.items ?? []).filter(
-                  (project) => project.companyId === currentCompanyId,
+                  (project) =>
+                    !project.companyId || project.companyId === currentCompanyId,
                 )
               : [];
 
