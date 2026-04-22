@@ -119,7 +119,12 @@
           </span>
           Cancel
         </button>
-        <button class="btn primary" type="button" (click)="saveUserAndClose()">
+        <button
+          class="btn primary"
+          type="button"
+          (click)="saveUserAndClose()"
+          [disabled]="isUploadingAvatar"
+        >
           <span class="btn-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
               <path d="M5 5h11l3 3v11H5z"></path>
@@ -311,7 +316,12 @@
           </span>
           Cancel
         </button>
-        <button class="btn primary" type="button" (click)="saveUserAndClose()">
+        <button
+          class="btn primary"
+          type="button"
+          (click)="saveUserAndClose()"
+          [disabled]="isUploadingAvatar"
+        >
           <span class="btn-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
               <path d="M5 5h11l3 3v11H5z"></path>
@@ -507,7 +517,7 @@
         @if (isSuperAdmin) {
         <div class="cell muted">{{ u.companyName || '—' }}</div>
         }
-        <div class="cell muted">{{ u.type || '—' }}</div>
+        <div class="cell muted">{{ formatUserType(u.type) }}</div>
         <div class="cell">
           <span class="badge" [class.archived]="u.status === 'archived'">
             {{ u.status || 'active' }}
@@ -565,7 +575,7 @@
           @if (isSuperAdmin) {
           <div><span>Company:</span> {{ u.companyName || '—' }}</div>
           }
-          <div><span>Type:</span> {{ u.type || '—' }}</div>
+          <div><span>Type:</span> {{ formatUserType(u.type) }}</div>
           <div><span>Mobile:</span> {{ u.cel || '—' }}</div>
         </div>
         <div class="card-actions">

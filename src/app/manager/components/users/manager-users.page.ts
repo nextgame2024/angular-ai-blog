@@ -103,9 +103,9 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   ];
 
   typeOptions = [
-    { value: 'employee', label: 'employee' },
-    { value: 'supplier', label: 'supplier' },
-    { value: 'client', label: 'client' },
+    { value: 'employee', label: 'Employee' },
+    { value: 'supplier', label: 'Supplier' },
+    { value: 'client', label: 'Client' },
   ];
 
   defaultAvatar =
@@ -325,6 +325,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   saveUser(): void {
+    if (!this.ensureAvatarUploadComplete()) return;
+
     if (this.userForm.invalid) {
       this.userForm.markAllAsTouched();
       return;
@@ -350,6 +352,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   saveUserAndClose(): void {
+    if (!this.ensureAvatarUploadComplete()) return;
+
     if (this.userForm.invalid) {
       this.userForm.markAllAsTouched();
       return;
@@ -377,6 +381,12 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
 
   isArchiveDisabled(u: BmUser): boolean {
     return (u.status ?? 'active') === 'archived';
+  }
+
+  formatUserType(type?: string | null): string {
+    const normalized = String(type || '').trim().toLowerCase();
+    const match = this.typeOptions.find((option) => option.value === normalized);
+    return match?.label || '—';
   }
 
   get avatarSrc(): string {
@@ -482,26 +492,53 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   uploadAvatar(): void {
     if (!this.selectedFile || this.isUploadingAvatar) return;
     this.isUploadingAvatar = true;
-    this.avatarUpload.uploadViaPresigned(this.selectedFile).subscribe({
-      next: ({ url }) => {
-        this.userForm.controls.image.setValue(url);
-        this.revokePreview();
-        this.selectedFile = undefined;
-        this.isUploadingAvatar = false;
-      },
-      error: (err) => {
-        this.isUploadingAvatar = false;
-        const raw =
-          err?.error?.error ||
-          err?.error ||
-          err?.message ||
-          'Failed to upload image';
-        this.uploadError =
-          typeof raw === 'string' && raw.includes('EntityTooLarge')
-            ? 'Image is too large. Max size is 5 MB.'
-            : raw;
-      },
-    });
+    this.avatarUpload
+      .uploadViaPresigned(this.selectedFile)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: ({ url }) => {
+          const uploadedUrl = String(url || '').trim();
+          if (!uploadedUrl) {
+            this.uploadError = 'Image upload completed but no image URL was returned.';
+            this.isUploadingAvatar = false;
+            return;
+          }
+
+          this.userForm.controls.image.setValue(uploadedUrl);
+          this.userForm.controls.image.markAsDirty();
+          this.revokePreview();
+          this.selectedFile = undefined;
+          this.isUploadingAvatar = false;
+        },
+        error: (err) => {
+          this.isUploadingAvatar = false;
+          const raw =
+            err?.error?.error ||
+            err?.error ||
+            err?.message ||
+            'Failed to upload image';
+          this.uploadError =
+            typeof raw === 'string' && raw.includes('EntityTooLarge')
+              ? 'Image is too large. Max size is 5 MB.'
+              : raw;
+        },
+      });
+  }
+
+  private ensureAvatarUploadComplete(): boolean {
+    if (this.isUploadingAvatar) {
+      this.uploadError = 'Please wait until the image upload finishes before saving.';
+      return false;
+    }
+
+    if (this.selectedFile) {
+      this.uploadError =
+        this.uploadError ||
+        'Image upload did not finish. Please upload the image again before saving.';
+      return false;
+    }
+
+    return true;
   }
 
   private revokePreview(): void {

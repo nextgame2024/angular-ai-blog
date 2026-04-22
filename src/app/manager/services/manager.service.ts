@@ -55,7 +55,7 @@ export interface BmClientContact {
 ========================= */
 
 export type UserStatus = 'active' | 'archived' | string;
-export type UserType = 'client' | 'supplier' | 'employee' | string;
+export type UserType = 'employee' | 'supplier' | 'client' | string;
 
 export interface BmUser {
   id: string; // UUID
@@ -68,7 +68,7 @@ export interface BmUser {
   tel?: string | null;
   contacts?: any | null;
 
-  type?: UserType | null; // admin | employee | supplier | client ...
+  type?: UserType | null;
   status?: UserStatus | null;
 
   image?: string | null;
