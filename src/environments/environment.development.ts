@@ -5,6 +5,30 @@ export const environment = {
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia.mp4',
   bannerVideo:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmClients:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_clients.mp4',
+  bmPricing:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_pricing.mp4',
+  bmLabor:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_labor.mp4',
+  bmMaterials:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_materials.mp4',
+  bmSuppliers:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_suppliers.mp4',
+  bmCompany:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_company.mp4',
+  bmUsers:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_users.mp4',
+  bmProjects:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_projects.mp4',
+  bmProjectTypes:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_project_types.mp4',
+  bmBookProjects:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_scheduling.mp4',
+  bmQuotes:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_quotes.mp4',
+  bmInvoices:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_invoices.mp4',
   bannerVideoMobile:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/mobileBanner.mp4',
   defaultAvatar:

@@ -1,0 +1,388 @@
+<main class="explore-page">
+  <section class="explore-hero" [style.--header-h.px]="headerH$$() || null">
+    <video
+      #heroVideo
+      class="explore-hero__video"
+      [attr.src]="heroVideoSrc$$()"
+      autoplay
+      [muted]="isHeroMuted$$()"
+      loop
+      playsinline
+      preload="metadata"
+      (loadedmetadata)="onHeroVideoMeta()"
+      (play)="onHeroVideoPlay()"
+      (pause)="onHeroVideoPause()"
+      (ended)="onHeroVideoEnded()"
+    ></video>
+    <div class="explore-hero__overlay"></div>
+
+    <div class="explore-hero__inner">
+      <div class="explore-hero__copy">
+        <span class="explore-hero__eyebrow">Business Manager training library</span>
+        <h1>Explore the workflows, tools, and videos behind every core module.</h1>
+        <p class="explore-hero__subtitle">
+          Search by functionality, module, or keyword, then open each lesson in
+          a polished full-size player built for guided training.
+        </p>
+
+        <div class="explore-hero__stats">
+          @for (stat of heroStats; track stat.label) {
+            <div class="explore-hero__stat">
+              <strong>{{ stat.value }}</strong>
+              <span>{{ stat.label }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="explore-hero__search-panel">
+        <p class="explore-hero__search-label">Find training faster</p>
+        <label class="explore-search" for="manager-explore-search">
+          <span class="explore-search__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="M20 20l-3.5-3.5"></path>
+            </svg>
+          </span>
+          <input
+            id="manager-explore-search"
+            #searchInput
+            type="search"
+            [value]="searchQuery$$()"
+            placeholder="Search by module, keyword, or functionality"
+            aria-label="Search Business Manager videos"
+            (input)="onSearchInput(searchInput.value)"
+          />
+          @if (searchQuery$$()) {
+            <button
+              type="button"
+              class="explore-search__clear"
+              aria-label="Clear search"
+              (click)="clearSearch()"
+            >
+              <svg viewBox="0 0 24 24">
+                <path d="M6 6l12 12"></path>
+                <path d="M18 6l-12 12"></path>
+              </svg>
+            </button>
+          }
+        </label>
+
+        <div class="explore-hero__chip-row">
+          @for (quickFilter of quickFilters; track quickFilter) {
+            <button
+              type="button"
+              class="explore-hero__chip"
+              [class.explore-hero__chip--active]="
+                searchQuery$$().toLowerCase() === quickFilter.toLowerCase()
+              "
+              (click)="applyQuickFilter(quickFilter)"
+            >
+              {{ quickFilter }}
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="explore-hero__controls">
+      <button
+        class="explore-hero__control-btn"
+        type="button"
+        (click)="playHeroVideo()"
+        [disabled]="isHeroPlaying$$()"
+        aria-label="Play"
+        title="Play"
+      >
+        <i class="pi pi-play"></i>
+      </button>
+      <button
+        class="explore-hero__control-btn"
+        type="button"
+        (click)="pauseHeroVideo()"
+        [disabled]="!isHeroPlaying$$()"
+        aria-label="Pause"
+        title="Pause"
+      >
+        <i class="pi pi-pause"></i>
+      </button>
+      <button
+        class="explore-hero__control-btn"
+        type="button"
+        (click)="stopHeroVideo()"
+        aria-label="Stop"
+        title="Stop"
+      >
+        <i class="pi pi-stop"></i>
+      </button>
+      <button
+        class="explore-hero__control-btn"
+        type="button"
+        (click)="toggleHeroMute()"
+        [attr.aria-pressed]="!isHeroMuted$$()"
+        [attr.aria-label]="isHeroMuted$$() ? 'Unmute' : 'Mute'"
+        [title]="isHeroMuted$$() ? 'Unmute' : 'Mute'"
+      >
+        <i
+          class="pi"
+          [ngClass]="isHeroMuted$$() ? 'pi-volume-off' : 'pi-volume-up'"
+        ></i>
+      </button>
+    </div>
+  </section>
+
+  <section class="explore-content">
+    @if (error$$(); as errorMessage) {
+      <div class="explore-content__error" role="alert">
+        <span>{{ errorMessage }}</span>
+      </div>
+    }
+
+    @if (showInitialLoader$$()) {
+      <div class="screen-loader" aria-live="polite" aria-busy="true">
+        <div class="loader-card">
+          <div class="loader-ring" aria-hidden="true"></div>
+          <div class="loader-bar" aria-hidden="true"></div>
+          <div class="loader-text">Loading training videos...</div>
+        </div>
+      </div>
+    } @else {
+      <div class="explore-content__toolbar">
+        <div>
+          <h2>Featured walkthroughs</h2>
+          <p>{{ loadedCountLabel$$() }}</p>
+        </div>
+
+        <div class="explore-content__toolbar-actions">
+          @if (searchQuery$$()) {
+            <button
+              type="button"
+              class="explore-btn explore-btn--ghost"
+              (click)="clearSearch()"
+            >
+              Reset search
+            </button>
+          }
+          <button
+            type="button"
+            class="explore-btn"
+            [disabled]="!canLoadMore$$()"
+            (click)="loadNextPage()"
+          >
+            Load more
+          </button>
+        </div>
+      </div>
+
+      @if (showEmptyState$$()) {
+        <section class="explore-content__empty">
+          <div class="explore-content__empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="M20 20l-3.5-3.5"></path>
+            </svg>
+          </div>
+          <h3>No training videos found</h3>
+          <p>Try a different module name, feature keyword, or reset the current search.</p>
+        </section>
+      } @else {
+        <section class="explore-grid" aria-label="Business Manager training videos">
+          @for (video of exploreVideos$$(); track trackByVideo($index, video); let i = $index) {
+            <article
+              class="explore-card"
+              [style.--card-accent]="video.accentGradient"
+              [style.animation-delay.ms]="(i % 6) * 90"
+            >
+              <div
+                class="explore-card__media"
+                (mouseenter)="startPreview(previewVideo)"
+                (mouseleave)="stopPreview(previewVideo)"
+                (focusin)="startPreview(previewVideo)"
+                (focusout)="stopPreview(previewVideo)"
+              >
+                <video
+                  #previewVideo
+                  class="explore-card__video"
+                  muted
+                  loop
+                  playsinline
+                  preload="metadata"
+                  [src]="video.videoUrl"
+                ></video>
+
+                <div class="explore-card__scrim"></div>
+
+                <div class="explore-card__meta-row">
+                  <span class="explore-card__pill">{{ video.category }}</span>
+                  <span class="explore-card__pill explore-card__pill--quiet">
+                    {{ video.durationLabel }}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  class="explore-card__expand"
+                  [attr.aria-label]="'Open ' + video.title"
+                  (click)="openVideo(video.videoId)"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 9V4h5"></path>
+                    <path d="M20 9V4h-5"></path>
+                    <path d="M4 15v5h5"></path>
+                    <path d="M20 15v5h-5"></path>
+                  </svg>
+                </button>
+
+                <div class="explore-card__play-indicator" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="m9 7 8 5-8 5V7Z"></path>
+                  </svg>
+                </div>
+              </div>
+
+              <div class="explore-card__body">
+                <div class="explore-card__header">
+                  <div>
+                    <span class="explore-card__module">{{ video.module }}</span>
+                    <h3>{{ video.title }}</h3>
+                  </div>
+                  <span class="explore-card__level">{{ video.level }}</span>
+                </div>
+
+                <p>{{ video.description }}</p>
+
+                <div class="explore-card__keywords">
+                  @for (keyword of video.keywords.slice(0, 3); track keyword) {
+                    <span>{{ keyword }}</span>
+                  }
+                </div>
+
+                <div class="explore-card__footer">
+                  <button
+                    type="button"
+                    class="explore-btn"
+                    (click)="openVideo(video.videoId)"
+                  >
+                    Watch video
+                  </button>
+                </div>
+              </div>
+            </article>
+          }
+        </section>
+
+        @if (loading$$() && exploreVideos$$().length) {
+          <div class="explore-content__loading-more" aria-live="polite">
+            <span class="loader-ring loader-ring--inline" aria-hidden="true"></span>
+            <span>Loading more videos...</span>
+          </div>
+        }
+
+        <div #infiniteSentinel class="explore-content__sentinel" aria-hidden="true"></div>
+      }
+    }
+  </section>
+
+  @if (selectedVideo$$(); as selectedVideo) {
+    <div class="explore-modal" role="presentation" (click)="closeVideo()">
+      <section
+        class="explore-modal__dialog"
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="selectedVideo.title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="explore-modal__header">
+          <div>
+            <span class="explore-modal__eyebrow">{{ selectedVideo.module }}</span>
+            <h3>{{ selectedVideo.title }}</h3>
+            <p>{{ selectedVideo.description }}</p>
+          </div>
+
+          <button
+            type="button"
+            class="explore-modal__close"
+            aria-label="Close video"
+            (click)="closeVideo()"
+          >
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12"></path>
+              <path d="M18 6l-12 12"></path>
+            </svg>
+          </button>
+        </header>
+
+        <div class="explore-player" #playerSurface>
+          <video
+            #modalVideo
+            class="explore-player__video"
+            playsinline
+            preload="metadata"
+            [src]="selectedVideo.videoUrl"
+            (loadedmetadata)="onPlayerMetadataLoaded()"
+            (timeupdate)="onPlayerTimeUpdate()"
+            (play)="onPlayerPlay()"
+            (pause)="onPlayerPause()"
+            (volumechange)="onPlayerVolumeChange()"
+          ></video>
+
+          <div class="explore-player__controls">
+            <div class="explore-player__timeline">
+              <span>{{ playerCurrentTimeLabel$$() }}</span>
+              <input
+                #progressInput
+                type="range"
+                min="0"
+                max="100"
+                step="0.1"
+                [value]="playerProgressPercent$$()"
+                [disabled]="!isPlayerReady$$()"
+                aria-label="Video progress"
+                (input)="seekToProgress(progressInput.value)"
+              />
+              <span>{{ playerDurationLabel$$() }}</span>
+            </div>
+
+            <div class="explore-player__actions">
+              <button
+                type="button"
+                class="explore-player__button"
+                (click)="playSelectedVideo()"
+              >
+                Play
+              </button>
+              <button
+                type="button"
+                class="explore-player__button"
+                (click)="pauseSelectedVideo()"
+              >
+                Pause
+              </button>
+              <button
+                type="button"
+                class="explore-player__button"
+                (click)="stopSelectedVideo()"
+              >
+                Stop
+              </button>
+              <button
+                type="button"
+                class="explore-player__button"
+                (click)="toggleMute()"
+              >
+                {{ isPlayerMuted$$() ? 'Unmute' : 'Mute' }}
+              </button>
+              <button
+                type="button"
+                class="explore-player__button"
+                (click)="toggleFullscreen()"
+              >
+                {{ isPlayerFullscreen$$() ? 'Exit full view' : 'Full view' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  }
+</main>

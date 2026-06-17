@@ -1,4 +1,13 @@
+import { provideEffects } from '@ngrx/effects';
+import { provideState } from '@ngrx/store';
 import { Route } from '@angular/router';
+
+import { ManagerExploreService } from './manager/services/manager.explore.service';
+import { ManagerExploreEffects } from './manager/store/explore/manager.effects';
+import {
+  MANAGER_EXPLORE_FEATURE_KEY,
+  managerExploreReducer,
+} from './manager/store/explore/manager.reducer';
 
 export const appRoutes: Route[] = [
   {
@@ -69,6 +78,19 @@ export const appRoutes: Route[] = [
       import('src/app/townplanner/townplanner.routes').then(
         (m) => m.TOWNPLANNER_ROUTES
       ),
+  },
+  {
+    path: 'manager/explore',
+    loadComponent: () =>
+      import('./manager/components/explore/manager-explore.page').then(
+        (m) => m.ManagerExplorePageComponent
+      ),
+    providers: [
+      ManagerExploreService,
+      provideEffects(ManagerExploreEffects),
+      provideState(MANAGER_EXPLORE_FEATURE_KEY, managerExploreReducer),
+    ],
+    data: { title: 'Explore Business Manager' },
   },
   {
     path: 'manager',

@@ -26,9 +26,8 @@
               @for (item of items; track item.label) {
                 <a
                   [routerLink]="item.route"
-                  routerLinkActive="active"
-                  [routerLinkActiveOptions]="item.route === '/' ? { exact: true } : { exact: false }"
                   class="topbar-link"
+                  [class.active]="isHeaderItemActive(item)"
                   (click)="closeMobileMenu()"
                   >
                   {{ item.label }}
@@ -82,9 +81,8 @@
               @for (item of items; track item.label) {
                 <a
                   [routerLink]="item.route"
-                  routerLinkActive="active"
-                  [routerLinkActiveOptions]="item.route === '/' ? { exact: true } : { exact: false }"
                   class="topbar-mobile-link"
+                  [class.active]="isHeaderItemActive(item)"
                   (click)="closeMobileMenu()"
                   >
                   {{ item.label }}

@@ -238,6 +238,33 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
 
   trackByLabel = (_: number, option: NavigationLabelOption) => option.value;
 
+  private getAllowedNavigationLabelSet(
+    type: NavigationType | null | undefined,
+  ): Set<string> {
+    const nextType: NavigationType = type === 'menu' ? 'menu' : 'header';
+    const options =
+      nextType === 'menu'
+        ? MENU_NAVIGATION_LABEL_OPTIONS
+        : HEADER_NAVIGATION_LABEL_OPTIONS;
+
+    return new Set(options.map((option) => option.value));
+  }
+
+  private sanitizeSelectedNavigationLabels(
+    labels: Iterable<string>,
+    type: NavigationType | null | undefined,
+  ): Set<string> {
+    const allowedLabels = this.getAllowedNavigationLabelSet(type);
+    const sanitizedLabels = new Set<string>();
+
+    for (const label of labels) {
+      if (!allowedLabels.has(label)) continue;
+      sanitizedLabels.add(label);
+    }
+
+    return sanitizedLabels;
+  }
+
   get selectedLabelsCount(): number {
     return this.selectedNavigationLabels.size;
   }
@@ -278,10 +305,16 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
 
     const raw = this.navigationLinkForm.getRawValue();
     const navigationType = (raw.navigation_type || 'header') as NavigationType;
+    const selectedNavigationLabels = this.sanitizeSelectedNavigationLabels(
+      this.selectedNavigationLabels,
+      navigationType,
+    );
+
+    this.selectedNavigationLabels = selectedNavigationLabels;
 
     const payload: any = {
       navigation_type: navigationType,
-      navigation_labels: Array.from(this.selectedNavigationLabels),
+      navigation_labels: Array.from(selectedNavigationLabels),
     };
 
     if (this.isSuperAdmin) {
@@ -348,10 +381,9 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
         ? MENU_NAVIGATION_LABEL_OPTIONS
         : HEADER_NAVIGATION_LABEL_OPTIONS;
 
-    this.selectedNavigationLabels = new Set(
-      Array.from(this.selectedNavigationLabels).filter((label) =>
-        this.navigationLabelOptions.some((option) => option.value === label),
-      ),
+    this.selectedNavigationLabels = this.sanitizeSelectedNavigationLabels(
+      this.selectedNavigationLabels,
+      nextType,
     );
   }
 
@@ -392,7 +424,10 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
             selected.add(item.navigationLabel);
           }
 
-          this.selectedNavigationLabels = selected;
+          this.selectedNavigationLabels = this.sanitizeSelectedNavigationLabels(
+            selected,
+            navigationType,
+          );
           this.labelsLoading = false;
         },
         error: () => {

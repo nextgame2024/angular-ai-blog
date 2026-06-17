@@ -5,6 +5,30 @@ export const environment = {
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia.mp4',
   bannerVideo:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmClients:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_clients.mp4',
+  bmPricing:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmLabor:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmMaterials:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmSuppliers:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmCompany:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmUsers:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmProjects:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmProjectTypes:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmBookProjects:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmQuotes:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+  bmInvoices:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
   bannerVideoMobile:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/mobileBanner.mp4',
   defaultAvatar:

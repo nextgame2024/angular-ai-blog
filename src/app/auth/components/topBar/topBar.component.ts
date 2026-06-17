@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { combineLatest, catchError, map, of, switchMap } from 'rxjs';
 import { Store } from '@ngrx/store';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { selectCurrentUser, selectIsLoading } from '../../store/reducers';
@@ -14,13 +14,15 @@ import { CompanyBrandingService } from 'src/app/shared/services/company-branding
 type HeaderItem = {
   label: string;
   route: string;
+  matchMode?: 'exact' | 'prefix';
+  excludePrefixes?: string[];
 };
 
 @Component({
   selector: 'mc-topbar',
   templateUrl: './topBar.component.html',
   styleUrls: ['./topBar.component.css'],
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterLink],
 })
 export class TopBarComponent {
   isMobileMenuOpen = false;
@@ -95,6 +97,7 @@ export class TopBarComponent {
   constructor(
     private store: Store,
     private http: HttpClient,
+    private router: Router,
     private theme: ThemeService,
     private navigationLinksApi: NavigationLinksProjectsService,
     private branding: CompanyBrandingService,
@@ -121,13 +124,42 @@ export class TopBarComponent {
     img.src = this.defaultLogo;
   }
 
+  isHeaderItemActive(item: HeaderItem): boolean {
+    const currentUrl = this.router.url.split('?')[0] || '/';
+    const route = item.route || '/';
+
+    if (item.matchMode === 'exact') {
+      return currentUrl === route;
+    }
+
+    const matchesRoute =
+      currentUrl === route || currentUrl.startsWith(`${route}/`);
+    if (!matchesRoute) return false;
+
+    return !(item.excludePrefixes || []).some((prefix) => {
+      return currentUrl === prefix || currentUrl.startsWith(`${prefix}/`);
+    });
+  }
+
   private buildHeaderItems(isLoggedIn: boolean): HeaderItem[] {
-    const items: HeaderItem[] = [{ label: 'Home', route: '/' }];
+    const items: HeaderItem[] = [
+      { label: 'Home', route: '/', matchMode: 'exact' },
+    ];
     if (!isLoggedIn) return items;
     items.push(
-      { label: 'Business manager', route: '/manager' },
-      { label: 'Town planner', route: '/townplanner' },
-      { label: 'Settings', route: '/settings' },
+      { label: 'Town planner', route: '/townplanner', matchMode: 'prefix' },
+      {
+        label: 'Business manager',
+        route: '/manager',
+        matchMode: 'prefix',
+        excludePrefixes: ['/manager/explore'],
+      },
+      {
+        label: 'Explore Business Manager',
+        route: '/manager/explore',
+        matchMode: 'prefix',
+      },
+      { label: 'Settings', route: '/settings', matchMode: 'prefix' },
     );
     return items;
   }
