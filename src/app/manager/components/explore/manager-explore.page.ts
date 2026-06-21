@@ -58,7 +58,7 @@ export class ManagerExplorePageComponent {
   readonly heroStats: ExploreStat[] = [
     { value: '12', label: 'guided videos' },
     { value: '4', label: 'training categories' },
-    { value: '100%', label: 'frontend driven' },
+    { value: '100%', label: 'effectiveness' },
   ];
   readonly quickFilters = [
     'Clients',
