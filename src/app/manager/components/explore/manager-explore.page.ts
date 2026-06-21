@@ -52,7 +52,7 @@ export class ManagerExplorePageComponent {
 
   readonly heroVideoSrc$$ = signal(environment.bannerVideo);
   readonly headerH$$ = signal(0);
-  readonly isHeroMuted$$ = signal(true);
+  readonly isHeroMuted$$ = signal(false);
   readonly isHeroPlaying$$ = signal(false);
 
   readonly heroStats: ExploreStat[] = [

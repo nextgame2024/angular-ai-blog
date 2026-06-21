@@ -50,6 +50,72 @@
     </div>
   </section>
 
+  <section class="section agents-section" id="agents" aria-labelledby="agents-title">
+    <div class="section-title-row">
+      <div>
+        <h2 id="agents-title">AI Agents</h2>
+        <p>Specialised agents that think, act, and automate for you.</p>
+      </div>
+      <!-- <a href="#contact">Explore all agents →</a> -->
+    </div>
+    <div class="agent-grid">
+      @for (agent of agents; track agent.name) {
+        <article class="agent-card">
+          <div class="agent-icon">{{ agent.icon }}</div>
+          <h3>{{ agent.name }}</h3>
+          <p>{{ agent.copy }}</p>
+          <a href="#contact">Activate →</a>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="process" aria-labelledby="process-title">
+    <h2 id="process-title">How Sophia Ai Works</h2>
+    <div class="process-steps">
+      @for (step of processSteps; track step.title; let i = $index) {
+        <article [style.--step-index]="i">
+          <div class="step-icon">
+            <span class="step-number">{{ i + 1 }}</span>
+            <span class="step-symbol" aria-hidden="true">{{ step.icon }}</span>
+          </div>
+          <h3>{{ i + 1 }}. {{ step.title }}</h3>
+          <p>{{ step.copy }}</p>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="section avatar-section" aria-labelledby="avatar-title">
+    <div class="avatar-copy">
+      <h2 id="avatar-title">Create AI Avatars</h2>
+      <p>Design photorealistic avatars that represent your brand, team, or vision.</p>
+      <ul>
+        <li>Realistic, studio-quality avatars</li>
+        <li>Custom outfits, poses, and scenes</li>
+        <li>Perfect for videos, training, and more</li>
+      </ul>
+      <a class="btn btn-primary" href="#contact">Create your avatar →</a>
+    </div>
+    <div class="avatar-lab">
+      <div class="style-tabs" aria-label="Avatar styles">
+        <span>Choose style</span>
+        <button type="button" class="active">Professional</button>
+        <button type="button">Executive</button>
+        <button type="button">Creative</button>
+        <button type="button">Techwear</button>
+      </div>
+      <div class="avatar-strip">
+        @for (style of avatarStyles; track style.name) {
+          <figure>
+            <img [src]="style.image" [alt]="style.name + ' SophiaAi avatar'" />
+            <figcaption>{{ style.name }}</figcaption>
+          </figure>
+        }
+      </div>
+    </div>
+  </section>
+
   <section class="section news-section" aria-labelledby="news-title">
     <div class="section-title-row">
       <div>
@@ -112,72 +178,6 @@
       </div>
     </div>
   }
-
-  <section class="section agents-section" id="agents" aria-labelledby="agents-title">
-    <div class="section-title-row">
-      <div>
-        <h2 id="agents-title">AI Agents</h2>
-        <p>Specialised agents that think, act, and automate for you.</p>
-      </div>
-      <!-- <a href="#contact">Explore all agents →</a> -->
-    </div>
-    <div class="agent-grid">
-      @for (agent of agents; track agent.name) {
-        <article class="agent-card">
-          <div class="agent-icon">{{ agent.icon }}</div>
-          <h3>{{ agent.name }}</h3>
-          <p>{{ agent.copy }}</p>
-          <a href="#contact">Activate →</a>
-        </article>
-      }
-    </div>
-  </section>
-
-  <section class="section avatar-section" aria-labelledby="avatar-title">
-    <div class="avatar-copy">
-      <h2 id="avatar-title">Create AI Avatars</h2>
-      <p>Design photorealistic avatars that represent your brand, team, or vision.</p>
-      <ul>
-        <li>Realistic, studio-quality avatars</li>
-        <li>Custom outfits, poses, and scenes</li>
-        <li>Perfect for videos, training, and more</li>
-      </ul>
-      <a class="btn btn-primary" href="#contact">Create your avatar →</a>
-    </div>
-    <div class="avatar-lab">
-      <div class="style-tabs" aria-label="Avatar styles">
-        <span>Choose style</span>
-        <button type="button" class="active">Professional</button>
-        <button type="button">Executive</button>
-        <button type="button">Creative</button>
-        <button type="button">Techwear</button>
-      </div>
-      <div class="avatar-strip">
-        @for (style of avatarStyles; track style.name) {
-          <figure>
-            <img [src]="style.image" [alt]="style.name + ' SophiaAi avatar'" />
-            <figcaption>{{ style.name }}</figcaption>
-          </figure>
-        }
-      </div>
-    </div>
-  </section>
-
-  <section class="process" aria-labelledby="process-title">
-    <h2 id="process-title">How Sophia Ai Works</h2>
-    <div class="process-steps">
-      @for (step of processSteps; track step.title; let i = $index) {
-        <article [style.--step-index]="i">
-          <div class="step-icon">
-            <span class="step-number">{{ i + 1 }}</span>
-            <span class="step-symbol" aria-hidden="true">{{ step.icon }}</span>
-          </div>
-          <h3>{{ i + 1 }}. {{ step.title }}</h3>
-          <p>{{ step.copy }}</p>
-        </article>
-      }
-    </div>
-  </section>
 
   <section class="section contact-section" id="contact" aria-labelledby="contact-title">
     <div class="contact-copy">
