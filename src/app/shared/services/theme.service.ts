@@ -6,13 +6,14 @@ type Mode = 'light' | 'dark';
 
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
-  private readonly storageKey = 'theme';
+  private readonly storageKey = 'sophiaAi.theme';
+  private readonly legacyStorageKey = 'theme';
 
   private _mode$ = new BehaviorSubject<Mode>(this.initMode());
   mode$ = this._mode$.asObservable();
 
   constructor() {
-    this.apply(this._mode$.value); // will be 'light' first time
+    this.apply(this._mode$.value);
   }
 
   toggle(): void {
@@ -24,17 +25,21 @@ export class ThemeService {
     if (mode !== this._mode$.value) {
       this._mode$.next(mode);
       this.apply(mode);
-      localStorage.setItem(this.storageKey, mode);
     }
+    localStorage.setItem(this.storageKey, mode);
+    localStorage.setItem(this.legacyStorageKey, mode);
   }
 
   private initMode(): Mode {
     const saved = localStorage.getItem(this.storageKey) as Mode | null;
-    return saved === 'dark' || saved === 'light' ? saved : 'light';
+    if (saved === 'dark' || saved === 'light') return saved;
+
+    return 'dark';
   }
 
   private apply(mode: Mode): void {
     const root = document.documentElement; // <html>
     root.classList.toggle('dark', mode === 'dark');
+    root.style.colorScheme = mode;
   }
 }

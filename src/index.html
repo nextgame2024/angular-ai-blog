@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="utf-8" />
     <title>sophiaAi</title>
@@ -11,6 +11,19 @@
       rel="stylesheet"
       href="assets/primeicons/primeicons.css"
     />
+    <script>
+      (() => {
+        try {
+          const mode = localStorage.getItem('sophiaAi.theme');
+          document.documentElement.classList.toggle('dark', mode !== 'light');
+          document.documentElement.style.colorScheme =
+            mode === 'light' ? 'light' : 'dark';
+        } catch {
+          document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = 'dark';
+        }
+      })();
+    </script>
   </head>
   <body>
     <app-root></app-root>

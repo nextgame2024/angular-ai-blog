@@ -22,7 +22,7 @@ export class ManagerExploreEffects {
         this.api
           .listExploreVideos({
             page,
-            limit: 6,
+            limit: 8,
             q: query || undefined,
           })
           .pipe(

@@ -1226,6 +1226,165 @@
   color: #ff9aa7;
 }
 
+:host-context(html:not(.dark)) {
+  --bg: #f5f8ff;
+  --panel: rgba(255, 255, 255, 0.9);
+  --panel-strong: rgba(255, 255, 255, 0.96);
+  --line: rgba(37, 99, 235, 0.18);
+  --muted: rgba(51, 65, 85, 0.76);
+  --text: #0f172a;
+  --shadow: 0 22px 60px rgba(15, 23, 42, 0.1);
+}
+
+:host-context(html:not(.dark)) .landing {
+  background:
+    radial-gradient(circle at 16% 8%, rgba(45, 168, 255, 0.12), transparent 28rem),
+    radial-gradient(circle at 88% 18%, rgba(124, 92, 255, 0.1), transparent 26rem),
+    #f5f8ff;
+  color: var(--text);
+}
+
+:host-context(html:not(.dark)) .landing::before {
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.08) 1px, transparent 1px);
+  opacity: 0.52;
+}
+
+:host-context(html:not(.dark)) .video-card {
+  background: #030816;
+}
+
+:host-context(html:not(.dark)) .hero-copy {
+  left: clamp(18px, 4vw, 58px);
+}
+
+:host-context(html:not(.dark)) .hero h1,
+:host-context(html:not(.dark)) .hero-text {
+  color: #fff;
+}
+
+:host-context(html:not(.dark)) .section-title-row h2,
+:host-context(html:not(.dark)) .avatar-copy h2,
+:host-context(html:not(.dark)) .process h2,
+:host-context(html:not(.dark)) .contact-copy h2,
+:host-context(html:not(.dark)) .news-body h3,
+:host-context(html:not(.dark)) .agent-card h3,
+:host-context(html:not(.dark)) .process h3,
+:host-context(html:not(.dark)) .contact-highlights strong {
+  color: #0f172a;
+}
+
+:host-context(html:not(.dark)) .news-card,
+:host-context(html:not(.dark)) .agent-card,
+:host-context(html:not(.dark)) .avatar-lab,
+:host-context(html:not(.dark)) .contact-form,
+:host-context(html:not(.dark)) .contact-highlights div {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 247, 255, 0.9));
+  border-color: rgba(37, 99, 235, 0.18);
+  box-shadow: var(--shadow);
+}
+
+:host-context(html:not(.dark)) .news-body small,
+:host-context(html:not(.dark)) .avatar-strip figcaption,
+:host-context(html:not(.dark)) .contact-highlights span,
+:host-context(html:not(.dark)) .field span {
+  color: rgba(51, 65, 85, 0.72);
+}
+
+:host-context(html:not(.dark)) .contact-copy .eyebrow {
+  color: #075985;
+  background: linear-gradient(120deg, rgba(219, 234, 254, 0.98), rgba(207, 250, 254, 0.92));
+  border-color: rgba(14, 165, 233, 0.42);
+}
+
+:host-context(html:not(.dark)) .btn-ghost {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(226, 232, 240, 0.5);
+  color: #fff;
+}
+
+:host-context(html:not(.dark)) .agent-card {
+  background:
+    radial-gradient(circle at 50% 12%, rgba(45, 168, 255, 0.13), transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 247, 255, 0.9));
+}
+
+:host-context(html:not(.dark)) .agent-card:hover,
+:host-context(html:not(.dark)) .contact-highlights div:hover {
+  background:
+    radial-gradient(circle at 42% 18%, rgba(16, 224, 199, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(231, 241, 255, 0.96));
+  box-shadow:
+    0 22px 62px rgba(37, 99, 235, 0.16),
+    0 0 40px rgba(16, 224, 199, 0.12);
+}
+
+:host-context(html:not(.dark)) .agent-card::before {
+  opacity: 0.18;
+}
+
+:host-context(html:not(.dark)) .style-tabs span,
+:host-context(html:not(.dark)) .style-tabs button {
+  background: rgba(241, 247, 255, 0.78);
+  color: rgba(51, 65, 85, 0.76);
+  border-color: rgba(37, 99, 235, 0.16);
+}
+
+:host-context(html:not(.dark)) .style-tabs .active {
+  color: #0f766e;
+  background: rgba(20, 184, 166, 0.1);
+  border-color: rgba(20, 184, 166, 0.42);
+}
+
+:host-context(html:not(.dark)) .avatar-strip figure {
+  background: #e8f0ff;
+  border-color: rgba(37, 99, 235, 0.18);
+}
+
+:host-context(html:not(.dark)) .avatar-strip figure::after {
+  background: linear-gradient(180deg, transparent 58%, rgba(15, 23, 42, 0.6) 100%);
+}
+
+:host-context(html:not(.dark)) .avatar-strip figcaption,
+:host-context(html:not(.dark)) .avatar-strip figure:hover figcaption {
+  color: #f8fafc;
+}
+
+:host-context(html:not(.dark)) .process {
+  border-color: rgba(37, 99, 235, 0.18);
+  background:
+    radial-gradient(circle at 15% 50%, rgba(45, 168, 255, 0.14), transparent 19rem),
+    radial-gradient(circle at 80% 46%, rgba(124, 92, 255, 0.1), transparent 23rem),
+    rgba(255, 255, 255, 0.42);
+}
+
+:host-context(html:not(.dark)) .process::before {
+  opacity: 0.58;
+}
+
+:host-context(html:not(.dark)) .step-number {
+  background: #e8f1ff;
+  color: #1e3a8a;
+}
+
+:host-context(html:not(.dark)) .field input,
+:host-context(html:not(.dark)) .field textarea {
+  background: rgba(248, 250, 252, 0.94);
+  border-color: rgba(37, 99, 235, 0.18);
+  color: #0f172a;
+}
+
+:host-context(html:not(.dark)) .field input::placeholder,
+:host-context(html:not(.dark)) .field textarea::placeholder {
+  color: rgba(51, 65, 85, 0.54);
+}
+
+:host-context(html:not(.dark)) .toast {
+  background: rgba(37, 99, 235, 0.08);
+}
+
 @media (min-width: 700px) {
   .news-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

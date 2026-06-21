@@ -15,6 +15,7 @@ type HeaderItem = {
   label: string;
   route: string;
   matchMode?: 'exact' | 'prefix';
+  activeRoutes?: string[];
   excludePrefixes?: string[];
 };
 
@@ -133,7 +134,13 @@ export class TopBarComponent {
     }
 
     const matchesRoute =
-      currentUrl === route || currentUrl.startsWith(`${route}/`);
+      currentUrl === route ||
+      currentUrl.startsWith(`${route}/`) ||
+      (item.activeRoutes || []).some(
+        (activeRoute) =>
+          currentUrl === activeRoute ||
+          currentUrl.startsWith(`${activeRoute}/`),
+      );
     if (!matchesRoute) return false;
 
     return !(item.excludePrefixes || []).some((prefix) => {
@@ -144,6 +151,12 @@ export class TopBarComponent {
   private buildHeaderItems(isLoggedIn: boolean): HeaderItem[] {
     const items: HeaderItem[] = [
       { label: 'Home', route: '/', matchMode: 'exact' },
+      {
+        label: 'Explore Business Manager',
+        route: '/explore',
+        matchMode: 'prefix',
+        activeRoutes: ['/manager/explore'],
+      },
     ];
     if (!isLoggedIn) return items;
     items.push(
@@ -153,11 +166,6 @@ export class TopBarComponent {
         route: '/manager',
         matchMode: 'prefix',
         excludePrefixes: ['/manager/explore'],
-      },
-      {
-        label: 'Explore Business Manager',
-        route: '/manager/explore',
-        matchMode: 'prefix',
       },
       { label: 'Settings', route: '/settings', matchMode: 'prefix' },
     );

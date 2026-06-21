@@ -197,7 +197,7 @@ export class ManagerExploreService {
     q?: string;
   }): Observable<ExploreVideosResult> {
     const page = Math.max(1, params.page || 1);
-    const limit = Math.max(1, params.limit || 6);
+    const limit = Math.max(1, params.limit || 8);
     const query = normalizeToken(params.q);
     const filteredVideos = this.videos.filter((video) =>
       this.matchesQuery(video, query),

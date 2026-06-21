@@ -16,6 +16,6 @@ export const initialManagerExploreState: ManagerExploreState = {
   exploreLoading: false,
   exploreError: null,
   explorePage: 1,
-  exploreLimit: 6,
+  exploreLimit: 8,
   exploreTotal: 0,
 };

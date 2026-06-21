@@ -80,6 +80,19 @@ export const appRoutes: Route[] = [
       ),
   },
   {
+    path: 'explore',
+    loadComponent: () =>
+      import('./manager/components/explore/manager-explore.page').then(
+        (m) => m.ManagerExplorePageComponent
+      ),
+    providers: [
+      ManagerExploreService,
+      provideEffects(ManagerExploreEffects),
+      provideState(MANAGER_EXPLORE_FEATURE_KEY, managerExploreReducer),
+    ],
+    data: { title: 'Explore Business Manager' },
+  },
+  {
     path: 'manager/explore',
     loadComponent: () =>
       import('./manager/components/explore/manager-explore.page').then(
