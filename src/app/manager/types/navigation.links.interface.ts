@@ -55,6 +55,8 @@ export const HEADER_NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = [
 
 export const MENU_NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = [
   { value: 'Clients', label: 'Clients' },
+  { value: 'Sites', label: 'Sites' },
+  { value: 'Pallets', label: 'Pallets' },
   { value: 'Projects', label: 'Projects' },
   { value: 'Project types', label: 'Project types' },
   { value: 'Scheduling', label: 'Scheduling' },

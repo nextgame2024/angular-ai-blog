@@ -14,6 +14,8 @@ export interface CurrentUserInterface {
   status?: string | null;
   companyId?: string | null;
   companyName?: string | null;
+  siteId?: string | null;
+  siteName?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }

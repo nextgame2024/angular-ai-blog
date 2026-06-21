@@ -1,0 +1,66 @@
+.pallet-tabs {
+  margin-top: 0.75rem;
+}
+
+.pallets-site-head,
+.pallets-site-table .thead,
+.pallets-site-table .trow {
+  grid-template-columns: 1.1fr 1fr 1.45fr 1fr 0.85fr 0.7fr;
+}
+
+.pallets-movement-head,
+.pallets-movement-table .thead,
+.pallets-movement-table .trow {
+  grid-template-columns: 1.1fr 1fr 1.45fr 1fr 0.85fr 0.75fr 0.8fr;
+}
+
+.pallets-shell .table {
+  min-width: 1060px;
+}
+
+.move-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.send-action {
+  display: flex;
+  align-items: end;
+}
+
+.send-action .btn {
+  width: 100%;
+}
+
+@media (min-width: 980px) {
+  .move-card {
+    padding: 0.85rem 1rem;
+  }
+
+  .move-grid {
+    grid-template-columns: minmax(220px, 330px) minmax(260px, 380px) 132px 86px;
+    justify-content: start;
+    gap: 0.75rem;
+  }
+
+  .move-grid label {
+    min-width: 0;
+  }
+
+  .move-grid input,
+  .move-grid app-manager-select {
+    width: 100%;
+  }
+
+  .send-action .btn {
+    width: 100%;
+    min-width: 0;
+    padding-inline: 0.85rem;
+  }
+
+  .pallets-shell .cards {
+    display: none;
+  }
+}

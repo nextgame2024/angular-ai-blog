@@ -4,7 +4,8 @@ export const environment = {
   introVideo:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia.mp4',
   bannerVideo:
-    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+    // 'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_ai.mp4',
   bmClients:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bm_videos/bm_clients.mp4',
   bmPricing:
@@ -30,7 +31,8 @@ export const environment = {
   bmInvoices:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia_planner.mp4',
   bannerVideoMobile:
-    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/mobileBanner.mp4',
+    // 'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/mobileBanner.mp4',
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/mobileSophiaAi.mp4',
   defaultAvatar:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png',
   logoUrl:

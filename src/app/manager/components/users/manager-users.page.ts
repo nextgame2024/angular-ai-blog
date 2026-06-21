@@ -42,6 +42,7 @@ import {
 import { selectCurrentUser } from '../../../auth/store/reducers';
 import type { CurrentUserInterface } from '../../../shared/types/currentUser.interface';
 import { ManagerCompanyService } from '../../services/manager.company.service';
+import { ManagerSitesService } from '../../services/manager.sites.service';
 
 import type { BmUser } from '../../services/manager.service';
 
@@ -87,6 +88,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   currentUser: CurrentUserInterface | null = null;
   isSuperAdmin = false;
   companyOptions: ManagerSelectOption[] = [];
+  siteOptions: ManagerSelectOption[] = [];
 
   @ViewChild('usersList') usersListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
@@ -117,6 +119,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
 
   userForm = this.fb.group({
     companyId: [''],
+    siteId: [''],
     username: ['', [Validators.required, Validators.maxLength(80)]],
     email: [
       '',
@@ -139,6 +142,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     private townPlanner: TownPlannerV2Service,
     private avatarUpload: AvatarUploadService,
     private companyApi: ManagerCompanyService,
+    private sitesApi: ManagerSitesService,
     private actions$: Actions,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
@@ -156,6 +160,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
             u.name?.toLowerCase().includes(q) ||
             u.email?.toLowerCase().includes(q) ||
             u.companyName?.toLowerCase().includes(q) ||
+            u.siteName?.toLowerCase().includes(q) ||
             u.type?.toLowerCase().includes(q) ||
             u.status?.toLowerCase().includes(q)
           );
@@ -209,6 +214,9 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         if (this.isSuperAdmin && !wasSuperAdmin) {
           this.loadCompaniesForSuperAdmin();
         }
+        if (!this.isSuperAdmin && user?.companyId) {
+          this.loadSitesForCompany();
+        }
       });
 
     this.searchQuery$.pipe(takeUntil(this.destroy$)).subscribe((query) => {
@@ -250,11 +258,18 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         cel: u.cel ?? '',
         tel: u.tel ?? '',
         companyId: u.companyId ?? '',
+        siteId: u.siteId ?? '',
         type: u.type ?? 'employee',
         status: u.status ?? 'active',
         image: u.image ?? '',
         bio: u.bio ?? '',
       });
+      if (this.isSuperAdmin) {
+        this.loadSitesForCompany(u.companyId ?? undefined);
+        this.userForm.controls.siteId.setValue(u.siteId ?? '', {
+          emitEvent: false,
+        });
+      }
 
       this.userForm.controls.password.clearValidators();
       this.userForm.controls.password.setValidators([Validators.minLength(8)]);
@@ -264,6 +279,14 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     });
 
     this.setupAddressAutocomplete();
+
+    this.userForm.controls.companyId.valueChanges
+      .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((companyId) => {
+        if (!this.isSuperAdmin) return;
+        this.userForm.controls.siteId.setValue('', { emitEvent: false });
+        this.loadSitesForCompany(companyId || undefined);
+      });
   }
 
   ngOnDestroy(): void {
@@ -290,6 +313,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       : '';
     this.userForm.reset({
       companyId: defaultCompanyId,
+      siteId: '',
       username: '',
       email: '',
       password: '',
@@ -335,6 +359,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     const payload: any = this.userForm.getRawValue();
 
     if (!payload.password) delete payload.password;
+    if (!payload.siteId) delete payload.siteId;
 
     if (this.isSuperAdmin) {
       payload.companyId = String(payload.companyId || '').trim();
@@ -688,9 +713,42 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
           ) {
             this.userForm.controls.companyId.setValue(this.companyOptions[0].value);
           }
+          if (this.isSuperAdmin) {
+            this.loadSitesForCompany(this.userForm.controls.companyId.value || undefined);
+          }
         },
         error: () => {
           this.companyOptions = [];
+        },
+      });
+  }
+
+  private loadSitesForCompany(companyId?: string): void {
+    this.sitesApi
+      .listSites({
+        page: 1,
+        limit: 100,
+        status: 'active',
+        companyId: this.isSuperAdmin ? companyId : undefined,
+      })
+      .pipe(take(1))
+      .subscribe({
+        next: ({ items }) => {
+          this.siteOptions = (items || []).map((site) => ({
+            value: site.siteId,
+            label: site.siteName,
+          }));
+          const currentSiteId = this.userForm.controls.siteId.value;
+          if (
+            currentSiteId &&
+            !this.siteOptions.some((option) => option.value === currentSiteId)
+          ) {
+            this.userForm.controls.siteId.setValue('', { emitEvent: false });
+          }
+        },
+        error: () => {
+          this.siteOptions = [];
+          this.userForm.controls.siteId.setValue('', { emitEvent: false });
         },
       });
   }

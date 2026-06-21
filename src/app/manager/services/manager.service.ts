@@ -80,6 +80,8 @@ export interface BmUser {
   // IMPORTANT: company_id exists in DB but NOT used in UI
   companyId?: string | null;
   companyName?: string | null;
+  siteId?: string | null;
+  siteName?: string | null;
   hasProcesses?: boolean;
 }
 
@@ -224,6 +226,7 @@ export class ManagerService {
     const safe = { ...payload };
     delete safe.company_id;
     if (!safe.companyId) delete safe.companyId;
+    if (!safe.siteId) delete safe.siteId;
     return this.http.post<{ user: BmUser }>(this.usersBase, { user: safe }).pipe(
       map((res) => res.user),
     );
@@ -233,6 +236,7 @@ export class ManagerService {
     const safe = { ...payload };
     delete safe.company_id;
     if (!safe.companyId) delete safe.companyId;
+    if (!safe.siteId) safe.siteId = null;
     const target = userId ? `${this.usersBase}/${userId}` : this.userBase;
     return this.http.put<{ user: BmUser }>(target, { user: safe }).pipe(
       map((res) => res.user),

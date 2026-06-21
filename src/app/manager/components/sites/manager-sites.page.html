@@ -1,0 +1,139 @@
+<div class="clients-shell sites-shell">
+  @if ((viewMode$ | async) === 'list') {
+    <div class="list-header">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/manager/menu">Menu</a>
+        <span class="sep">/</span>
+        <span>Sites</span>
+      </nav>
+      <div class="clients-toolbar">
+        <div class="title">
+          <h3>Sites</h3>
+          <p class="sub">Manage site details and pallet inventory.</p>
+        </div>
+        <div class="actions">
+          <button type="button" class="btn primary" (click)="openCreate()">
+            <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span>
+            Create
+          </button>
+        </div>
+      </div>
+      <div class="toolbar-row">
+        <label class="search-field">
+          <span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span>
+          <input type="search" [formControl]="searchCtrl" placeholder="Search by site, administrator, address, email, mobile" aria-label="Search sites" />
+          @if (searchCtrl.value) {
+            <button class="icon-btn" type="button" (click)="clearSearch()" aria-label="Clear search"><svg viewBox="0 0 24 24"><path d="M6 6l12 12"></path><path d="M18 6l-12 12"></path></svg></button>
+          }
+        </label>
+      </div>
+      <div class="table-head sites-head" aria-hidden="true">
+        <div>Site name</div><div>Administrator</div><div>Address</div><div>Email</div><div>Mobile</div><div>Pallets onsite</div><div class="actions-col">Actions</div>
+      </div>
+    </div>
+  }
+
+  @if ((error$ | async); as err) { @if (!isErrorDismissed(err)) {
+    <div class="error"><span>{{ err }}</span><button type="button" class="error-dismiss" (click)="dismissError(err)" aria-label="Dismiss error">x</button></div>
+  } }
+
+  @if (loading$ | async) {
+    <div class="screen-loader" aria-live="polite" aria-busy="true"><div class="loader-card"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading...</div></div></div>
+  }
+
+  @if ((viewMode$ | async) === 'form') {
+    <div class="form-header">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a routerLink="/manager/menu">Menu</a><span class="sep">/</span><a href="#" (click)="$event.preventDefault(); closeForm()">Sites</a><span class="sep">/</span><span>{{ (editingSite$ | async) ? 'Edit' : 'Create' }}</span>
+      </nav>
+      <div class="form-header-mainrow">
+        <div class="header-main"><h3>{{ (editingSite$ | async) ? 'Site Details' : 'Create Site' }}</h3><p class="sub">Review and update site contact details.</p></div>
+        <div class="header-actions">
+          <button class="btn" type="button" (click)="closeForm()"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 6l12 12"></path><path d="M18 6l-12 12"></path></svg></span>Cancel</button>
+          <button class="btn primary" type="button" (click)="saveSiteAndClose()"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h11l3 3v11H5z"></path><path d="M9 5v6h6V5"></path></svg></span>Save & Finish</button>
+        </div>
+      </div>
+    </div>
+    <section class="card">
+      <form class="form" [formGroup]="siteForm" autocomplete="off">
+        <div class="grid-2">
+          <label><span>Site name *</span><input formControlName="site_name" placeholder="Site name" /></label>
+          <label><span>Administrator</span><input formControlName="administrator" placeholder="Administrator" /></label>
+        </div>
+        <label class="address-label">
+          <span>Address</span>
+          <div class="address-field">
+            <input formControlName="address" placeholder="Address" (focus)="onAddressFocus()" (blur)="onAddressBlur()" (keydown)="onAddressKeydown($event)" autocomplete="off" />
+            @if (showAddressSuggestions && addressSuggestions.length) {
+              <div class="address-suggestions">
+                @for (s of addressSuggestions; track s; let i = $index) {
+                  <button type="button" class="address-suggestion" [class.is-active]="i === addressActiveIndex" (mousedown)="onAddressSelect(s)">{{ s.description }}</button>
+                }
+              </div>
+            }
+          </div>
+        </label>
+        <div class="grid-2">
+          <label><span>Email</span><input formControlName="email" placeholder="email@example.com" /></label>
+          <label><span>Mobile</span><input formControlName="mobile" placeholder="0412..." /></label>
+        </div>
+        <div class="grid-2">
+          <label><span>Pallets onsite</span><input type="number" min="0" formControlName="pallets_onsite" placeholder="0" /></label>
+          <label><span>Status</span><app-manager-select formControlName="status" [options]="statusOptions" placeholder="Select status"></app-manager-select></label>
+        </div>
+      </form>
+      <div class="card-actions right-actions">
+        <button class="btn" type="button" (click)="closeForm()">Cancel</button>
+        <button class="btn primary" type="button" (click)="saveSite()">Save</button>
+      </div>
+    </section>
+  }
+
+  @if ((viewMode$ | async) === 'list') {
+    <section class="list" #sitesList>
+      @if (sites$ | async; as sites) {
+        @if (sites.length) {
+          <div class="table sites-table">
+            <div class="thead"><div>Site name</div><div>Administrator</div><div>Address</div><div>Email</div><div>Mobile</div><div>Pallets onsite</div><div class="actions-col">Actions</div></div>
+            @for (site of sites; track trackBySite($index, site)) {
+              <div class="trow">
+                <div class="cell strong">{{ site.siteName }}</div>
+                <div class="cell muted">{{ site.administrator || '-' }}</div>
+                <div class="cell muted">{{ site.address || '-' }}</div>
+                <div class="cell muted">{{ site.email || '-' }}</div>
+                <div class="cell muted">{{ site.mobile || '-' }}</div>
+                <div class="cell strong">{{ site.palletsOnsite || 0 }}</div>
+                <div class="cell actions-col">
+                  <button class="btn small secondary" type="button" (click)="openEdit(site)">Edit</button>
+                  <button class="btn small danger" type="button" [disabled]="site.status === 'archived'" (click)="removeSite(site)">Archive</button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+        @if (sites.length) {
+          <div class="cards">
+            @for (site of sites; track trackBySite($index, site)) {
+              <article class="client-card">
+                <div class="row"><div class="name">{{ site.siteName }}</div><span class="badge" [class.archived]="site.status === 'archived'">{{ site.status || 'active' }}</span></div>
+                <div class="meta"><div><span>Administrator:</span> {{ site.administrator || '-' }}</div><div><span>Address:</span> {{ site.address || '-' }}</div><div><span>Email:</span> {{ site.email || '-' }}</div><div><span>Mobile:</span> {{ site.mobile || '-' }}</div><div><span>Pallets onsite:</span> {{ site.palletsOnsite || 0 }}</div></div>
+                <div class="card-actions"><button class="btn small secondary" type="button" (click)="openEdit(site)">Edit</button><button class="btn small danger" type="button" [disabled]="site.status === 'archived'" (click)="removeSite(site)">Archive</button></div>
+              </article>
+            }
+          </div>
+        }
+        @if (!sites.length && !(loading$ | async)) { <div class="empty">No sites found.</div> }
+        <div class="infinite-sentinel" #infiniteSentinel></div>
+      }
+    </section>
+  }
+
+  @if (isConfirmModalOpen) {
+    <div class="status-modal-backdrop" (click)="onConfirmModalBackdrop()">
+      <div class="status-modal" [class.tone-warning]="confirmModalTone === 'warning'" [class.tone-danger]="confirmModalTone === 'danger'" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+        <div class="status-modal-header"><span class="status-modal-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v6"></path><path d="M12 16.5h.01"></path></svg></span><div class="status-modal-text"><h4>{{ confirmModalTitle }}</h4><p>{{ confirmModalMessage }}</p></div></div>
+        <div class="status-modal-actions"><button type="button" class="btn secondary" (click)="onConfirmModalCancel()">{{ confirmModalCancelLabel }}</button><button type="button" class="btn primary" (click)="onConfirmModalConfirm()">{{ confirmModalConfirmLabel }}</button></div>
+      </div>
+    </div>
+  }
+</div>

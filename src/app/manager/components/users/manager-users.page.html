@@ -67,6 +67,7 @@
       @if (isSuperAdmin) {
       <div>Company</div>
       }
+      <div>Site</div>
       <div>Type</div>
       <div>Status</div>
       <div class="actions-col">Actions</div>
@@ -266,6 +267,14 @@
       </label>
       <div class="grid-2">
         <label>
+          <span>Site</span>
+          <app-manager-select
+            formControlName="siteId"
+            [options]="siteOptions"
+            placeholder="Select site"
+          ></app-manager-select>
+        </label>
+        <label>
           <span>Type *</span>
           <app-manager-select
             formControlName="type"
@@ -463,6 +472,14 @@
       </label>
       <div class="grid-2">
         <label>
+          <span>Site</span>
+          <app-manager-select
+            formControlName="siteId"
+            [options]="siteOptions"
+            placeholder="Select site"
+          ></app-manager-select>
+        </label>
+        <label>
           <span>Type *</span>
           <app-manager-select
             formControlName="type"
@@ -505,6 +522,7 @@
         @if (isSuperAdmin) {
         <div>Company</div>
         }
+        <div>Site</div>
         <div>Type</div>
         <div>Status</div>
         <div class="actions-col">Actions</div>
@@ -517,6 +535,7 @@
         @if (isSuperAdmin) {
         <div class="cell muted">{{ u.companyName || '—' }}</div>
         }
+        <div class="cell muted">{{ u.siteName || '—' }}</div>
         <div class="cell muted">{{ formatUserType(u.type) }}</div>
         <div class="cell">
           <span class="badge" [class.archived]="u.status === 'archived'">
@@ -575,6 +594,7 @@
           @if (isSuperAdmin) {
           <div><span>Company:</span> {{ u.companyName || '—' }}</div>
           }
+          <div><span>Site:</span> {{ u.siteName || '—' }}</div>
           <div><span>Type:</span> {{ formatUserType(u.type) }}</div>
           <div><span>Mobile:</span> {{ u.cel || '—' }}</div>
         </div>

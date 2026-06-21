@@ -12,6 +12,7 @@ import {
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Store } from '@ngrx/store';
 import { finalize } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -23,6 +24,16 @@ import {
   type LoginRedirectTarget,
 } from '../shared/services/post-login-redirect.service';
 
+interface NewsItem {
+  videoId: string;
+  title: string;
+  source: string;
+  youtubeUrl: string;
+  thumbnailUrl: string;
+  embedUrl: SafeResourceUrl;
+  autoplayEmbedUrl: SafeResourceUrl;
+}
+
 @Component({
     selector: 'app-landing',
     imports: [CommonModule, ReactiveFormsModule],
@@ -31,11 +42,12 @@ import {
 })
 export class LandingComponent {
   private readonly mobileMaxWidth = 680;
-  private readonly revealThresholdSeconds = 2;
+  private readonly revealThresholdSeconds = 1;
 
   private readonly fb = inject(FormBuilder);
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
+  private readonly sanitizer = inject(DomSanitizer);
   private readonly store = inject(Store);
   private readonly renderer = inject(Renderer2);
   private readonly rendererFactory = inject(RendererFactory2);
@@ -54,10 +66,126 @@ export class LandingComponent {
   readonly toast$$ = signal<{ type: 'success' | 'error'; message: string } | null>(
     null
   );
+  readonly expandedNews$$ = signal<NewsItem | null>(null);
+  readonly playingNewsVideoId$$ = signal<string | null>(null);
   private readonly toastTimer$$ = signal<number | null>(null);
   private readonly headerObserver$$ = signal<ResizeObserver | null>(null);
 
   readonly videoRef$$ = viewChild<ElementRef<HTMLVideoElement>>('heroVideo');
+
+  readonly newsItems = [
+    {
+      videoId: 'aNkjgE0SNwI',
+      title: 'Stark warning AI could make white collar jobs obsolete',
+      source: '9 News Australia',
+      youtubeUrl: 'https://www.youtube.com/watch?v=aNkjgE0SNwI',
+      thumbnailUrl: this.youtubeThumbnail('aNkjgE0SNwI'),
+      embedUrl: this.safeYoutubeEmbed('aNkjgE0SNwI'),
+      autoplayEmbedUrl: this.safeYoutubeEmbed('aNkjgE0SNwI', true),
+    },
+    {
+      videoId: 'eXdVDhOGqoE',
+      title: "AI won't kill us all, but that doesn't make it trustworthy",
+      source: 'TED',
+      youtubeUrl: 'https://www.youtube.com/watch?v=eXdVDhOGqoE',
+      thumbnailUrl: this.youtubeThumbnail('eXdVDhOGqoE'),
+      embedUrl: this.safeYoutubeEmbed('eXdVDhOGqoE'),
+      autoplayEmbedUrl: this.safeYoutubeEmbed('eXdVDhOGqoE', true),
+    },
+    {
+      videoId: 'f3c4mQty_so',
+      title: 'I Tried the First Humanoid Home Robot. It Got Weird.',
+      source: 'Wall Street Journal',
+      youtubeUrl: 'https://www.youtube.com/watch?v=f3c4mQty_so',
+      thumbnailUrl: this.youtubeThumbnail('f3c4mQty_so'),
+      embedUrl: this.safeYoutubeEmbed('f3c4mQty_so'),
+      autoplayEmbedUrl: this.safeYoutubeEmbed('f3c4mQty_so', true),
+    },
+    {
+      videoId: '3oXphIUOoRQ',
+      title: 'SpaceX, OpenAI, Anthropic IPOs could trigger the biggest market crash yet',
+      source: 'ABC News',
+      youtubeUrl: 'https://www.youtube.com/watch?v=3oXphIUOoRQ',
+      thumbnailUrl: this.youtubeThumbnail('3oXphIUOoRQ'),
+      embedUrl: this.safeYoutubeEmbed('3oXphIUOoRQ'),
+      autoplayEmbedUrl: this.safeYoutubeEmbed('3oXphIUOoRQ', true),
+    },
+  ];
+
+  readonly agents = [
+    {
+      name: 'Research Agent',
+      icon: '◎',
+      copy: 'Find, analyze, and summarize information faster.',
+    },
+    {
+      name: 'Workflow Agent',
+      icon: '⌘',
+      copy: 'Automate multi-step processes across your tools.',
+    },
+    {
+      name: 'Support Agent',
+      icon: '◌',
+      copy: 'Deliver 24/7 support with human-like responses.',
+    },
+    {
+      name: 'Content Agent',
+      icon: '✦',
+      copy: 'Create high-quality content tailored to your brand.',
+    },
+    {
+      name: 'Growth Agent',
+      icon: '↗',
+      copy: 'Identify opportunities and drive business growth.',
+    },
+  ];
+
+  readonly avatarStyles = [
+    {
+      name: 'Professional',
+      image: 'assets/avatars/professional.png',
+    },
+    {
+      name: 'Executive',
+      image: 'assets/avatars/executive.png',
+    },
+    {
+      name: 'Creative',
+      image: 'assets/avatars/creative.png',
+    },
+    {
+      name: 'Techwear',
+      image: 'assets/avatars/tech.png',
+    },
+  ];
+
+  readonly processSteps = [
+    {
+      title: 'Goal',
+      icon: '◎',
+      copy: 'Define your objective and desired outcome.',
+    },
+    {
+      title: 'Plan',
+      icon: '▣',
+      copy: 'We design the right AI strategy and agents.',
+    },
+    {
+      title: 'Tools',
+      icon: '⚒',
+      copy: 'Integrate tools and connect your data.',
+    },
+    {
+      title: 'Action',
+      icon: 'ϟ',
+      copy: 'Agents execute and automate the work.',
+    },
+    {
+      title: 'Done',
+      icon: '✓',
+      copy: 'Deliver results and continuous improvement.',
+    },
+  ];
 
   readonly contactForm = this.fb.nonNullable.group({
     name: ['', [Validators.required, Validators.maxLength(80)]],
@@ -137,6 +265,29 @@ export class LandingComponent {
     const nextMuted = !this.isMuted$$();
     this.isMuted$$.set(nextMuted);
     this.renderer.setProperty(v, 'muted', nextMuted);
+  }
+
+  expandNewsVideo(item: NewsItem): void {
+    this.expandedNews$$.set(item);
+  }
+
+  closeNewsVideo(): void {
+    this.expandedNews$$.set(null);
+  }
+
+  playNewsVideo(item: NewsItem): void {
+    this.playingNewsVideoId$$.set(item.videoId);
+  }
+
+  private safeYoutubeEmbed(videoId: string, autoplay = false): SafeResourceUrl {
+    const query = autoplay ? 'rel=0&autoplay=1' : 'rel=0';
+    return this.sanitizer.bypassSecurityTrustResourceUrl(
+      `https://www.youtube.com/embed/${videoId}?${query}`
+    );
+  }
+
+  private youtubeThumbnail(videoId: string): string {
+    return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
   }
 
   private syncVideoMuted(): void {

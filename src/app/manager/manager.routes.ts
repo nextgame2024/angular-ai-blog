@@ -10,6 +10,8 @@ import { ManagerLaborPageComponent } from './components/labor/manager-labor.page
 import { ManagerPricingPageComponent } from './components/pricing/manager-pricing.page';
 import { ManagerQuotesPageComponent } from './components/quotes/manager-quotes.page';
 import { ManagerInvoicesPageComponent } from './components/invoices/manager-invoices.page';
+import { ManagerSitesPageComponent } from './components/sites/manager-sites.page';
+import { ManagerPalletsPageComponent } from './components/pallets/manager-pallets.page';
 import { ManagerSuppliersPageComponent } from './components/suppliers/manager-suppliers.page';
 import { ManagerUsersPageComponent } from './components/users/manager-users.page';
 import { ManagerProjectsPageComponent } from './components/projects/manager-projects.page';
@@ -21,6 +23,8 @@ import { ManagerLaborService } from './services/manager.labor.service';
 import { ManagerPricingService } from './services/manager.pricing.service';
 import { ManagerDocumentsService } from './services/manager.documents.service';
 import { ManagerProjectsService } from './services/manager.projects.service';
+import { ManagerSitesService } from './services/manager.sites.service';
+import { ManagerPalletsService } from './services/manager.pallets.service';
 import { ManagerProjectTypesService } from './services/manager.project.types.service';
 import { ManagerSuppliersService } from './services/manager.suppliers.service';
 import { ManagerCompanyService } from './services/manager.company.service';
@@ -68,6 +72,16 @@ import {
 } from './store/navigationLinks/manager.reducer';
 import { ManagerEffects } from './store/manager.effects';
 import { MANAGER_FEATURE_KEY, managerReducer } from './store/manager.reducer';
+import { ManagerSitesEffects } from './store/sites/manager.effects';
+import {
+  MANAGER_SITES_FEATURE_KEY,
+  managerSitesReducer,
+} from './store/sites/manager.reducer';
+import { ManagerPalletsEffects } from './store/pallets/manager.effects';
+import {
+  MANAGER_PALLETS_FEATURE_KEY,
+  managerPalletsReducer,
+} from './store/pallets/manager.reducer';
 import { MANAGER_SCHEDULE_ROUTE } from './schedule.routes';
 
 export const MANAGER_ROUTES: Route[] = [
@@ -97,6 +111,26 @@ export const MANAGER_ROUTES: Route[] = [
         path: 'clients',
         component: ManagerClientsPageComponent,
         data: { title: 'Clients', fullscreen: true },
+      },
+      {
+        path: 'sites',
+        component: ManagerSitesPageComponent,
+        providers: [
+          ManagerSitesService,
+          provideEffects(ManagerSitesEffects),
+          provideState(MANAGER_SITES_FEATURE_KEY, managerSitesReducer),
+        ],
+        data: { title: 'Sites', fullscreen: true },
+      },
+      {
+        path: 'pallets',
+        component: ManagerPalletsPageComponent,
+        providers: [
+          ManagerPalletsService,
+          provideEffects(ManagerPalletsEffects),
+          provideState(MANAGER_PALLETS_FEATURE_KEY, managerPalletsReducer),
+        ],
+        data: { title: 'Pallets', fullscreen: true },
       },
 
       // keep placeholders for now
@@ -131,6 +165,7 @@ export const MANAGER_ROUTES: Route[] = [
       {
         path: 'users',
         component: ManagerUsersPageComponent,
+        providers: [ManagerSitesService],
         data: { title: 'Users', fullscreen: true },
       },
       {

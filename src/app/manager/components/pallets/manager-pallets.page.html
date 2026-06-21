@@ -1,0 +1,137 @@
+<div class="clients-shell pallets-shell">
+  <div class="list-header">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a>
+      <span class="sep">/</span>
+      <span>Pallets</span>
+    </nav>
+    <div class="clients-toolbar">
+      <div class="title">
+        <h3>Pallets</h3>
+        <p class="sub">Track pallets onsite, sent, and received between sites.</p>
+      </div>
+    </div>
+    <div class="form-tabs pallet-tabs">
+      <button type="button" class="tab" [class.active]="(activeTab$ | async) === 'onSite'" (click)="setTab('onSite')">On Site</button>
+      <button type="button" class="tab" [class.active]="(activeTab$ | async) === 'move'" (click)="setTab('move')">Move Pallet</button>
+      <button type="button" class="tab" [class.active]="(activeTab$ | async) === 'inTransit'" (click)="setTab('inTransit')">In Transit</button>
+    </div>
+    @if ((activeTab$ | async) === 'onSite') {
+      <div class="toolbar-row">
+        <label class="search-field">
+          <span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span>
+          <input type="search" [formControl]="searchCtrl" placeholder="Search by site, administrator, address, email, mobile" aria-label="Search pallet sites" />
+          @if (searchCtrl.value) {
+            <button class="icon-btn" type="button" (click)="clearSearch()" aria-label="Clear search"><svg viewBox="0 0 24 24"><path d="M6 6l12 12"></path><path d="M18 6l-12 12"></path></svg></button>
+          }
+        </label>
+      </div>
+    }
+  </div>
+
+  @if ((error$ | async); as err) { @if (!isErrorDismissed(err)) {
+    <div class="error"><span>{{ err }}</span><button type="button" class="error-dismiss" (click)="dismissError(err)" aria-label="Dismiss error">x</button></div>
+  } }
+  @if (loading$ | async) {
+    <div class="screen-loader" aria-live="polite" aria-busy="true"><div class="loader-card"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading...</div></div></div>
+  }
+
+  @if ((activeTab$ | async) === 'onSite') {
+    <section class="list" #onSiteList>
+      @if (onSite$ | async; as sites) {
+        @if (sites.length) {
+          <div class="table-head pallets-site-head" aria-hidden="true">
+            <div>Site name</div><div>Administrator</div><div>Address</div><div>Email</div><div>Mobile</div><div>Pallets onsite</div>
+          </div>
+          <div class="table pallets-site-table">
+            <div class="thead"><div>Site name</div><div>Administrator</div><div>Address</div><div>Email</div><div>Mobile</div><div>Pallets onsite</div></div>
+            @for (site of sites; track trackBySite($index, site)) {
+              <div class="trow">
+                <div class="cell strong">{{ site.siteName }}</div><div class="cell muted">{{ site.administrator || '-' }}</div><div class="cell muted">{{ site.address || '-' }}</div><div class="cell muted">{{ site.email || '-' }}</div><div class="cell muted">{{ site.mobile || '-' }}</div><div class="cell strong">{{ site.palletsOnsite || 0 }}</div>
+              </div>
+            }
+          </div>
+          <div class="cards">
+            @for (site of sites; track trackBySite($index, site)) {
+              <article class="client-card"><div class="row"><div class="name">{{ site.siteName }}</div><span class="badge">{{ site.palletsOnsite || 0 }}</span></div><div class="meta"><div><span>Administrator:</span> {{ site.administrator || '-' }}</div><div><span>Address:</span> {{ site.address || '-' }}</div><div><span>Email:</span> {{ site.email || '-' }}</div><div><span>Mobile:</span> {{ site.mobile || '-' }}</div></div></article>
+            }
+          </div>
+        }
+        @if (!sites.length && !(loading$ | async)) { <div class="empty">No sites found.</div> }
+        <div class="infinite-sentinel" #onSiteSentinel></div>
+      }
+    </section>
+  }
+
+  @if ((activeTab$ | async) === 'move') {
+    @if (context$ | async; as context) {
+      <section class="card move-card">
+        <form class="form" [formGroup]="moveForm" autocomplete="off">
+          <div class="move-grid">
+            <label><span>Origin Site</span><input [value]="context.originSite?.siteName || 'No site assigned'" disabled /></label>
+            <label><span>Destination Site</span><app-manager-select formControlName="destination_site_id" [options]="destinationOptions" placeholder="Select destination"></app-manager-select></label>
+            <label><span>No. of Pallets</span><input type="number" min="1" formControlName="pallets" placeholder="1" /></label>
+            <div class="send-action"><button class="btn primary" type="button" (click)="sendPallets(context.originSite)">Send</button></div>
+          </div>
+        </form>
+        @if (formMessage) { <div class="warning-banner">{{ formMessage }}</div> }
+      </section>
+      <section class="list" #sentList>
+        @if (sent$ | async; as sent) {
+        @if (sent.length) {
+            <div class="table-head pallets-movement-head" aria-hidden="true">
+              <div>Destination site</div><div>Administrator</div><div>Address</div><div>Email</div><div>Mobile</div><div>Pallets sent</div><div class="actions-col">Actions</div>
+            </div>
+            <div class="table pallets-movement-table">
+              <div class="thead"><div>Destination site</div><div>Administrator</div><div>Address</div><div>Email</div><div>Mobile</div><div>Pallets sent</div><div class="actions-col">Actions</div></div>
+              @for (movement of sent; track trackByMovement($index, movement)) {
+                <div class="trow"><div class="cell strong">{{ movement.destinationSiteName || '-' }}</div><div class="cell muted">{{ movement.destinationAdministrator || '-' }}</div><div class="cell muted">{{ movement.destinationAddress || '-' }}</div><div class="cell muted">{{ movement.destinationEmail || '-' }}</div><div class="cell muted">{{ movement.destinationMobile || '-' }}</div><div class="cell strong">{{ movement.pallets }}</div><div class="cell actions-col"><button class="btn small danger" type="button" (click)="deleteMovement(movement)">Delete</button></div></div>
+              }
+            </div>
+            <div class="cards">
+              @for (movement of sent; track trackByMovement($index, movement)) {
+                <article class="client-card"><div class="row"><div class="name">{{ movement.destinationSiteName || '-' }}</div><span class="badge">{{ movement.pallets }}</span></div><div class="meta"><div><span>Administrator:</span> {{ movement.destinationAdministrator || '-' }}</div><div><span>Address:</span> {{ movement.destinationAddress || '-' }}</div><div><span>Email:</span> {{ movement.destinationEmail || '-' }}</div><div><span>Mobile:</span> {{ movement.destinationMobile || '-' }}</div></div><div class="card-actions"><button class="btn small danger" type="button" (click)="deleteMovement(movement)">Delete</button></div></article>
+              }
+            </div>
+          }
+          @if (!sent.length && !(loading$ | async)) { <div class="empty">No movements sent.</div> }
+          <div class="infinite-sentinel" #sentSentinel></div>
+        }
+      </section>
+    }
+  }
+
+  @if ((activeTab$ | async) === 'inTransit') {
+    <section class="list" #incomingList>
+      @if (incoming$ | async; as incoming) {
+        @if (incoming.length) {
+          <div class="table-head pallets-movement-head" aria-hidden="true">
+            <div>Origin site</div><div>Administrator</div><div>Address</div><div>Email</div><div>Mobile</div><div>Pallets in transit</div><div class="actions-col">Actions</div>
+          </div>
+          <div class="table pallets-movement-table">
+            <div class="thead"><div>Origin site</div><div>Administrator</div><div>Address</div><div>Email</div><div>Mobile</div><div>Pallets in transit</div><div class="actions-col">Actions</div></div>
+            @for (movement of incoming; track trackByMovement($index, movement)) {
+              <div class="trow"><div class="cell strong">{{ movement.originSiteName || '-' }}</div><div class="cell muted">{{ movement.originAdministrator || '-' }}</div><div class="cell muted">{{ movement.originAddress || '-' }}</div><div class="cell muted">{{ movement.originEmail || '-' }}</div><div class="cell muted">{{ movement.originMobile || '-' }}</div><div class="cell strong">{{ movement.pallets }}</div><div class="cell actions-col"><button class="btn small primary" type="button" (click)="receiveMovement(movement)">Received</button></div></div>
+            }
+          </div>
+          <div class="cards">
+            @for (movement of incoming; track trackByMovement($index, movement)) {
+              <article class="client-card"><div class="row"><div class="name">{{ movement.originSiteName || '-' }}</div><span class="badge">{{ movement.pallets }}</span></div><div class="meta"><div><span>Administrator:</span> {{ movement.originAdministrator || '-' }}</div><div><span>Address:</span> {{ movement.originAddress || '-' }}</div><div><span>Email:</span> {{ movement.originEmail || '-' }}</div><div><span>Mobile:</span> {{ movement.originMobile || '-' }}</div></div><div class="card-actions"><button class="btn small primary" type="button" (click)="receiveMovement(movement)">Received</button></div></article>
+            }
+          </div>
+        }
+        @if (!incoming.length && !(loading$ | async)) { <div class="empty">No pallets in transit.</div> }
+        <div class="infinite-sentinel" #incomingSentinel></div>
+      }
+    </section>
+  }
+
+  @if (isConfirmModalOpen) {
+    <div class="status-modal-backdrop" (click)="onConfirmModalBackdrop()">
+      <div class="status-modal" [class.tone-warning]="confirmModalTone === 'warning'" [class.tone-danger]="confirmModalTone === 'danger'" (click)="$event.stopPropagation()" role="dialog" aria-modal="true">
+        <div class="status-modal-header"><span class="status-modal-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v6"></path><path d="M12 16.5h.01"></path></svg></span><div class="status-modal-text"><h4>{{ confirmModalTitle }}</h4><p>{{ confirmModalMessage }}</p></div></div>
+        <div class="status-modal-actions"><button type="button" class="btn secondary" (click)="onConfirmModalCancel()">{{ confirmModalCancelLabel }}</button><button type="button" class="btn primary" (click)="onConfirmModalConfirm()">{{ confirmModalConfirmLabel }}</button></div>
+      </div>
+    </div>
+  }
+</div>
