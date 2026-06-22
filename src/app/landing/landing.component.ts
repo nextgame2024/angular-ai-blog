@@ -212,6 +212,12 @@ export class LandingComponent {
     });
   });
 
+  private readonly contentVideoPauseEffect = effect(() => {
+    if (this.hasActiveContentVideo()) {
+      this.pauseVideo();
+    }
+  });
+
   onVideoPlay(): void {
     if (this.hasActiveContentVideo()) {
       this.pauseVideo();
@@ -310,7 +316,7 @@ export class LandingComponent {
 
   private syncHeroReveal(): void {
     const v = this.videoRef$$()?.nativeElement;
-    if (!this.isMobileViewport()) {
+    if (!this.isMobilePortraitViewport()) {
       this.heroReveal$$.set(true);
       return;
     }
@@ -324,9 +330,9 @@ export class LandingComponent {
   }
 
   private updateVideoSource(): void {
-    const isMobile = this.isMobileViewport();
+    const isMobileVideo = this.shouldUseMobileVideo();
     const nextSrc =
-      isMobile && environment.bannerVideoMobile
+      isMobileVideo && environment.bannerVideoMobile
         ? environment.bannerVideoMobile
         : environment.bannerVideo;
     if (nextSrc === this.videoSrc$$()) return;
@@ -352,6 +358,17 @@ export class LandingComponent {
       window.matchMedia(`(max-width: ${this.mobileMaxWidth}px)`).matches ||
       window.matchMedia('(hover: none) and (pointer: coarse)').matches
     );
+  }
+
+  private isMobilePortraitViewport(): boolean {
+    return (
+      window.matchMedia(`(max-width: ${this.mobileMaxWidth}px)`).matches &&
+      window.matchMedia('(orientation: portrait)').matches
+    );
+  }
+
+  private shouldUseMobileVideo(): boolean {
+    return window.matchMedia(`(max-width: ${this.mobileMaxWidth}px)`).matches;
   }
 
   private measureHeader(): void {

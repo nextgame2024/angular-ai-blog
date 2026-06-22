@@ -1,6 +1,3 @@
-@import "@fontsource/manrope/latin-300.css";
-@import "@fontsource/manrope/latin-400.css";
-@import "@fontsource/manrope/latin-500.css";
 @import "@fontsource/manrope/latin-600.css";
 @import "@fontsource/manrope/latin-700.css";
 @import "@fontsource/space-grotesk/latin-500.css";
@@ -1027,6 +1024,48 @@
 }
 
 @media (hover: none) and (pointer: coarse) {
+  :host {
+    --explore-content-width: 94vw;
+  }
+
+  .explore-hero {
+    width: 100%;
+    max-height: none;
+  }
+
+  .explore-hero__video {
+    object-fit: cover;
+    object-position: center center;
+  }
+
+  .explore-hero__overlay {
+    opacity: 0;
+    background:
+      linear-gradient(180deg, rgba(3, 8, 18, 0) 0%, rgba(3, 8, 18, 0.08) 28%, rgba(3, 8, 18, 0.82) 66%, rgba(3, 8, 18, 0.98) 100%);
+    transition: opacity 480ms ease;
+  }
+
+  .explore-hero__overlay.is-visible {
+    opacity: 1;
+  }
+
+  .explore-hero__inner {
+    width: var(--explore-content-width);
+    margin-inline: auto;
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    transition:
+      opacity 420ms ease,
+      transform 420ms ease;
+  }
+
+  .explore-hero__inner.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
   .explore-modal {
     padding: 0;
     background: #020617;
@@ -1076,5 +1115,123 @@
     max-width: 100vw;
     max-height: 100dvh;
     aspect-ratio: auto;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  .explore-hero {
+    height: calc(100svh - var(--header-h, 62px));
+    min-height: 280px;
+  }
+
+  .explore-hero__inner {
+    grid-template-columns: minmax(0, 0.92fr) minmax(260px, 0.72fr);
+    gap: 0.9rem;
+    align-items: end;
+    padding: 38px 0 44px;
+  }
+
+  .explore-hero h1 {
+    max-width: 520px;
+    font-size: clamp(1.8rem, 8svh, 3rem);
+    line-height: 0.98;
+  }
+
+  .explore-hero__subtitle {
+    max-width: 430px;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .explore-hero__stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  .explore-hero__stat {
+    min-height: 58px;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .explore-hero__stat strong {
+    font-size: 1.25rem;
+  }
+
+  .explore-hero__search-panel {
+    padding: 0.75rem;
+    border-radius: 18px;
+  }
+
+  .explore-search {
+    min-height: 42px;
+  }
+
+  .explore-hero__chip-row {
+    gap: 0.45rem;
+  }
+
+  .explore-hero__chip {
+    min-height: 34px;
+    padding: 0 0.75rem;
+    font-size: 0.78rem;
+  }
+
+  .explore-hero__controls {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: 14px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .explore-hero {
+    width: 100%;
+    height: calc(100svh - var(--header-h, 62px));
+    min-height: 260px;
+    max-height: none;
+  }
+
+  .explore-hero__video {
+    object-fit: contain;
+    object-position: right center;
+  }
+
+  .explore-hero__overlay {
+    background:
+      linear-gradient(90deg, rgba(3, 8, 18, 0.96) 0%, rgba(3, 8, 18, 0.82) 42%, rgba(3, 8, 18, 0.24) 72%, rgba(3, 8, 18, 0.04) 100%),
+      linear-gradient(180deg, rgba(3, 8, 18, 0.04) 0%, rgba(3, 8, 18, 0.34) 100%);
+  }
+
+  .explore-hero__inner {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    width: 80vw;
+    padding: 28px 0 34px;
+  }
+
+  .explore-hero__copy {
+    max-width: min(600px, 68vw);
+  }
+
+  .explore-hero h1 {
+    max-width: 600px;
+    font-size: clamp(1.75rem, 8svh, 2.7rem);
+    line-height: 0.98;
+  }
+
+  .explore-hero__subtitle {
+    max-width: 520px;
+    font-size: 0.82rem;
+    line-height: 1.45;
+  }
+
+  .explore-hero__stats,
+  .explore-hero__search-panel {
+    display: none;
+  }
+
+  .explore-hero__controls {
+    right: max(16px, env(safe-area-inset-right));
+    bottom: 14px;
   }
 }

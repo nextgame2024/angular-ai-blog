@@ -1,6 +1,3 @@
-@import "@fontsource/manrope/latin-300.css";
-@import "@fontsource/manrope/latin-400.css";
-@import "@fontsource/manrope/latin-500.css";
 @import "@fontsource/manrope/latin-600.css";
 @import "@fontsource/manrope/latin-700.css";
 @import "@fontsource/space-grotesk/latin-400.css";
@@ -1744,6 +1741,61 @@
 }
 
 @media (hover: none) and (pointer: coarse) {
+  :host {
+    --content-width: 94vw;
+  }
+
+  .hero {
+    width: 100%;
+  }
+
+  .hero-media {
+    width: 100%;
+    height: auto;
+    max-height: none;
+  }
+
+  .video-card,
+  .hero-video {
+    max-height: none;
+  }
+
+  .hero-video {
+    object-fit: cover;
+    object-position: center center;
+  }
+
+  .hero-shade {
+    opacity: 0;
+    background:
+      linear-gradient(180deg, rgba(3, 8, 18, 0) 0%, rgba(3, 8, 18, 0.08) 28%, rgba(3, 8, 18, 0.82) 66%, rgba(3, 8, 18, 0.98) 100%);
+    transition: opacity 480ms ease;
+  }
+
+  .hero-shade.is-visible {
+    opacity: 1;
+  }
+
+  .hero-copy {
+    top: auto;
+    left: 16px;
+    bottom: 24px;
+    transform: none;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 480ms ease;
+  }
+
+  .hero-copy.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .eyebrow,
+  .trusted {
+    display: none;
+  }
+
   .video-modal {
     padding: 0;
     align-items: stretch;
@@ -1781,6 +1833,133 @@
   .video-modal-frame {
     height: 100%;
     aspect-ratio: auto;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  .video-card,
+  .hero-video {
+    height: calc(100svh - 62px);
+    min-height: 280px;
+  }
+
+  .hero-copy {
+    left: max(18px, env(safe-area-inset-left));
+    bottom: 14px;
+    width: min(430px, 58vw);
+  }
+
+  .hero h1 {
+    max-width: 430px;
+    font-size: clamp(2rem, 9svh, 3.2rem);
+    line-height: 0.98;
+  }
+
+  .hero-text {
+    max-width: 390px;
+    margin-top: 8px;
+    font-size: 0.82rem;
+    line-height: 1.42;
+  }
+
+  .hero-actions {
+    margin-top: 10px;
+    gap: 8px;
+  }
+
+  .hero-actions .btn {
+    min-height: 34px;
+    padding-inline: 12px;
+    font-size: 0.76rem;
+  }
+
+  .hero-controls {
+    top: auto;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: 14px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .video-card,
+  .hero-video {
+    height: calc(100svh - 62px);
+    min-height: 260px;
+    max-height: none;
+  }
+
+  .hero-video {
+    object-fit: contain;
+    object-position: right center;
+  }
+
+  .hero-shade {
+    background:
+      linear-gradient(90deg, rgba(3, 8, 18, 0.96) 0%, rgba(3, 8, 18, 0.82) 34%, rgba(3, 8, 18, 0.22) 64%, rgba(3, 8, 18, 0.04) 100%),
+      linear-gradient(180deg, rgba(3, 8, 18, 0.04) 0%, rgba(3, 8, 18, 0.34) 100%);
+  }
+
+  .hero-copy {
+    top: 50%;
+    bottom: auto;
+    left: max(7vw, env(safe-area-inset-left));
+    width: min(430px, 52vw);
+    transform: translateY(-50%);
+  }
+
+  .hero-copy.is-visible {
+    transform: translateY(-50%);
+  }
+
+  .hero h1 {
+    max-width: 430px;
+    font-size: clamp(2rem, 9svh, 3.1rem);
+    line-height: 0.98;
+  }
+
+  .hero-text {
+    max-width: 390px;
+    margin-top: 8px;
+    font-size: 0.82rem;
+    line-height: 1.42;
+  }
+
+  .hero-actions {
+    margin-top: 10px;
+    gap: 8px;
+  }
+
+  .hero-actions .btn {
+    min-height: 34px;
+    padding-inline: 12px;
+    font-size: 0.76rem;
+  }
+
+  .hero-controls {
+    top: auto;
+    right: max(16px, env(safe-area-inset-right));
+    bottom: 14px;
+  }
+
+  .agent-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .process {
+    width: 100%;
+    padding-inline: 24px;
+  }
+
+  .process article {
+    grid-template-columns: 90px 1fr;
+  }
+
+  .process article:not(:last-child)::after {
+    left: 58px;
+  }
+
+  .step-icon {
+    margin-left: 24px;
   }
 }
 

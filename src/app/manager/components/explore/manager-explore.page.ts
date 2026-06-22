@@ -184,6 +184,12 @@ export class ManagerExplorePageComponent {
     }
   });
 
+  private readonly contentVideoPauseEffect = effect(() => {
+    if (this.hasActiveContentVideo()) {
+      this.pauseHeroVideo();
+    }
+  });
+
   private readonly modalSyncEffect = effect(() => {
     if (!this.selectedVideo$$()) {
       this.resetPlayerState();
@@ -495,7 +501,7 @@ export class ManagerExplorePageComponent {
 
   private syncHeroReveal(): void {
     const videoElement = this.heroVideoRef$$()?.nativeElement;
-    if (!this.isMobileViewport()) {
+    if (!this.isMobilePortraitViewport()) {
       this.heroReveal$$.set(true);
       return;
     }
@@ -521,20 +527,29 @@ export class ManagerExplorePageComponent {
     );
   }
 
+  private isMobilePortraitViewport(): boolean {
+    const view = this.document.defaultView;
+    return !!(
+      view?.matchMedia(`(max-width: ${this.mobileMaxWidth}px)`).matches &&
+      view?.matchMedia('(orientation: portrait)').matches
+    );
+  }
+
   private updateHeroVideoSource(): void {
     const view = this.document.defaultView;
     if (!view) return;
 
     const isMobile = this.isMobileViewport();
+    const isMobileVideo = this.shouldUseMobileVideo();
     const nextSrc =
-      isMobile && environment.bannerVideoMobile
+      isMobileVideo && environment.bannerVideoMobile
         ? environment.bannerVideoMobile
         : environment.bannerVideo;
 
     if (nextSrc === this.heroVideoSrc$$()) return;
 
     this.heroVideoSrc$$.set(nextSrc);
-    this.heroReveal$$.set(!isMobile);
+    this.heroReveal$$.set(!this.isMobilePortraitViewport());
     const videoElement = this.heroVideoRef$$()?.nativeElement;
     if (!videoElement) return;
 
@@ -551,6 +566,11 @@ export class ManagerExplorePageComponent {
 
   private hasActiveContentVideo(): boolean {
     return !!this.selectedVideoId$$() || !!this.inlinePlayingVideoId$$();
+  }
+
+  private shouldUseMobileVideo(): boolean {
+    const view = this.document.defaultView;
+    return !!view?.matchMedia(`(max-width: ${this.mobileMaxWidth}px)`).matches;
   }
 
   private measureHeader(): void {
