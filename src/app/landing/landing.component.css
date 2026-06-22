@@ -1743,6 +1743,47 @@
   }
 }
 
+@media (hover: none) and (pointer: coarse) {
+  .video-modal {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .video-modal-panel {
+    width: 100vw;
+    height: 100svh;
+    min-height: 100svh;
+    border: 0;
+    border-radius: 0;
+    display: grid;
+    grid-template-rows: 1fr;
+  }
+
+  .video-modal-header {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 2;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  .video-modal-header > div {
+    display: none;
+  }
+
+  .video-modal-close {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    pointer-events: auto;
+  }
+
+  .video-modal-frame {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

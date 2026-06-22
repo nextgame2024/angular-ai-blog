@@ -213,6 +213,11 @@ export class LandingComponent {
   });
 
   onVideoPlay(): void {
+    if (this.hasActiveContentVideo()) {
+      this.pauseVideo();
+      return;
+    }
+
     this.isPlaying$$.set(true);
     this.syncHeroReveal();
   }
@@ -237,6 +242,8 @@ export class LandingComponent {
   }
 
   playVideo(): void {
+    if (this.hasActiveContentVideo()) return;
+
     const v = this.videoRef$$()?.nativeElement;
     if (!v) return;
     if (Number.isFinite(v.duration) && (v.ended || v.currentTime >= v.duration - 0.05)) {
@@ -303,6 +310,11 @@ export class LandingComponent {
 
   private syncHeroReveal(): void {
     const v = this.videoRef$$()?.nativeElement;
+    if (!this.isMobileViewport()) {
+      this.heroReveal$$.set(true);
+      return;
+    }
+
     if (!v || !Number.isFinite(v.duration) || v.duration <= 0) {
       this.heroReveal$$.set(false);
       return;
@@ -312,9 +324,7 @@ export class LandingComponent {
   }
 
   private updateVideoSource(): void {
-    const isMobile = window.matchMedia(
-      `(max-width: ${this.mobileMaxWidth}px)`
-    ).matches;
+    const isMobile = this.isMobileViewport();
     const nextSrc =
       isMobile && environment.bannerVideoMobile
         ? environment.bannerVideoMobile
@@ -328,9 +338,20 @@ export class LandingComponent {
     v.pause();
     this.renderer.setProperty(v, 'currentTime', 0);
     v.load();
-    if (wasPlaying) {
+    if (wasPlaying && !this.hasActiveContentVideo()) {
       v.play().catch(() => {});
     }
+  }
+
+  private hasActiveContentVideo(): boolean {
+    return !!this.expandedNews$$() || !!this.playingNewsVideoId$$();
+  }
+
+  private isMobileViewport(): boolean {
+    return (
+      window.matchMedia(`(max-width: ${this.mobileMaxWidth}px)`).matches ||
+      window.matchMedia('(hover: none) and (pointer: coarse)').matches
+    );
   }
 
   private measureHeader(): void {

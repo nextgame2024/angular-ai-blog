@@ -240,6 +240,11 @@ export class ManagerExplorePageComponent {
   }
 
   onHeroVideoPlay(): void {
+    if (this.hasActiveContentVideo()) {
+      this.pauseHeroVideo();
+      return;
+    }
+
     this.isHeroPlaying$$.set(true);
     this.syncHeroReveal();
   }
@@ -259,6 +264,8 @@ export class ManagerExplorePageComponent {
   }
 
   playHeroVideo(): void {
+    if (this.hasActiveContentVideo()) return;
+
     const videoElement = this.heroVideoRef$$()?.nativeElement;
     if (!videoElement) return;
 
@@ -508,7 +515,10 @@ export class ManagerExplorePageComponent {
 
   private isMobileViewport(): boolean {
     const view = this.document.defaultView;
-    return !!view?.matchMedia(`(max-width: ${this.mobileMaxWidth}px)`).matches;
+    return !!(
+      view?.matchMedia(`(max-width: ${this.mobileMaxWidth}px)`).matches ||
+      view?.matchMedia('(hover: none) and (pointer: coarse)').matches
+    );
   }
 
   private updateHeroVideoSource(): void {
@@ -533,10 +543,14 @@ export class ManagerExplorePageComponent {
     videoElement.currentTime = 0;
     videoElement.load();
 
-    if (wasPlaying) {
+    if (wasPlaying && !this.hasActiveContentVideo()) {
       void videoElement.play().catch(() => undefined);
     }
     this.syncHeroReveal();
+  }
+
+  private hasActiveContentVideo(): boolean {
+    return !!this.selectedVideoId$$() || !!this.inlinePlayingVideoId$$();
   }
 
   private measureHeader(): void {

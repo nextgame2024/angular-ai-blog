@@ -1025,3 +1025,56 @@
     aspect-ratio: auto;
   }
 }
+
+@media (hover: none) and (pointer: coarse) {
+  .explore-modal {
+    padding: 0;
+    background: #020617;
+    backdrop-filter: none;
+  }
+
+  .explore-modal__dialog {
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-height: none;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #020617;
+  }
+
+  .explore-modal__header {
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 3;
+    display: block;
+    padding: 0;
+    background: transparent;
+    pointer-events: none;
+  }
+
+  .explore-modal__title {
+    display: none;
+  }
+
+  .explore-modal__close {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    right: max(12px, env(safe-area-inset-right));
+    width: 42px;
+    height: 42px;
+    pointer-events: auto;
+  }
+
+  .explore-player {
+    height: 100%;
+  }
+
+  .explore-player__video {
+    height: 100%;
+    max-width: 100vw;
+    max-height: 100dvh;
+    aspect-ratio: auto;
+  }
+}
