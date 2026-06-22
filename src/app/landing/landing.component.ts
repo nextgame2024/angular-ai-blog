@@ -268,6 +268,7 @@ export class LandingComponent {
   }
 
   expandNewsVideo(item: NewsItem): void {
+    this.pauseVideo();
     this.expandedNews$$.set(item);
   }
 
@@ -276,6 +277,7 @@ export class LandingComponent {
   }
 
   playNewsVideo(item: NewsItem): void {
+    this.pauseVideo();
     this.playingNewsVideoId$$.set(item.videoId);
   }
 

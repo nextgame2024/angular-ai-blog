@@ -8,8 +8,9 @@ import type {
   ExploreVideosResult,
 } from '../types/explore.interface';
 
-type ExploreVideoSeed = Omit<BmExploreVideo, 'videoId'> & {
+type ExploreVideoSeed = Omit<BmExploreVideo, 'videoId' | 'posterUrl'> & {
   videoId: string;
+  posterUrl?: string;
 };
 
 function normalizeToken(value: string | null | undefined): string {
@@ -19,6 +20,7 @@ function normalizeToken(value: string | null | undefined): string {
 @Injectable({ providedIn: 'root' })
 export class ManagerExploreService {
   private readonly pageDelayMs = 220;
+  private readonly defaultPosterUrl = 'assets/avatars/sophiaAi_frame.png';
 
   private readonly videos: readonly ExploreVideoSeed[] = [
     {
@@ -203,17 +205,20 @@ export class ManagerExploreService {
       this.matchesQuery(video, query),
     );
     const start = (page - 1) * limit;
-    const items = filteredVideos.slice(start, start + limit);
+    const items = filteredVideos.slice(start, start + limit).map((video) => ({
+      ...video,
+      posterUrl: video.posterUrl || this.defaultPosterUrl,
+    }));
 
     return of({
-      items: [...items],
+      items,
       page,
       limit,
       total: filteredVideos.length,
     }).pipe(delay(this.pageDelayMs));
   }
 
-  private matchesQuery(video: BmExploreVideo, query: string): boolean {
+  private matchesQuery(video: ExploreVideoSeed, query: string): boolean {
     if (!query) return true;
 
     const haystack = [

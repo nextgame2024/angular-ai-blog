@@ -19,6 +19,7 @@ export interface BmExploreVideo {
   keywords: string[];
   durationLabel: string;
   videoUrl: string;
+  posterUrl: string;
   accentGradient: string;
 }
 

@@ -37,6 +37,7 @@ type ExploreStat = {
 })
 export class ManagerExplorePageComponent {
   private readonly mobileMaxWidth = 680;
+  private readonly revealThresholdSeconds = 1;
   private readonly store = inject(Store);
   private readonly document = inject(DOCUMENT);
 
@@ -54,6 +55,7 @@ export class ManagerExplorePageComponent {
   readonly headerH$$ = signal(0);
   readonly isHeroMuted$$ = signal(false);
   readonly isHeroPlaying$$ = signal(false);
+  readonly heroReveal$$ = signal(true);
 
   readonly heroStats: ExploreStat[] = [
     { value: '12', label: 'guided videos' },
@@ -91,6 +93,7 @@ export class ManagerExplorePageComponent {
   });
 
   readonly selectedVideoId$$ = signal<string | null>(null);
+  readonly inlinePlayingVideoId$$ = signal<string | null>(null);
   readonly isLoadingMore$$ = signal(false);
   readonly isPlayerReady$$ = signal(false);
   readonly isPlayerPlaying$$ = signal(false);
@@ -233,18 +236,26 @@ export class ManagerExplorePageComponent {
 
   onHeroVideoMeta(): void {
     this.syncHeroMutedState();
+    this.syncHeroReveal();
   }
 
   onHeroVideoPlay(): void {
     this.isHeroPlaying$$.set(true);
+    this.syncHeroReveal();
   }
 
   onHeroVideoPause(): void {
     this.isHeroPlaying$$.set(false);
+    this.syncHeroReveal();
   }
 
   onHeroVideoEnded(): void {
     this.isHeroPlaying$$.set(false);
+    this.heroReveal$$.set(true);
+  }
+
+  onHeroVideoTimeUpdate(): void {
+    this.syncHeroReveal();
   }
 
   playHeroVideo(): void {
@@ -259,6 +270,7 @@ export class ManagerExplorePageComponent {
     }
 
     this.syncHeroMutedState();
+    this.syncHeroReveal();
     void videoElement.play().catch(() => undefined);
   }
 
@@ -273,6 +285,7 @@ export class ManagerExplorePageComponent {
     videoElement.pause();
     videoElement.currentTime = 0;
     this.isHeroPlaying$$.set(false);
+    this.syncHeroReveal();
   }
 
   toggleHeroMute(): void {
@@ -309,7 +322,17 @@ export class ManagerExplorePageComponent {
   }
 
   openVideo(videoId: string): void {
+    this.pauseHeroVideo();
     this.selectedVideoId$$.set(videoId);
+    this.inlinePlayingVideoId$$.set(null);
+    setTimeout(() => {
+      const videoElement = this.getModalVideoElement();
+      if (!videoElement) return;
+
+      videoElement.controls = true;
+      videoElement.muted = false;
+      void videoElement.play().catch(() => undefined);
+    });
   }
 
   closeVideo(): void {
@@ -327,14 +350,35 @@ export class ManagerExplorePageComponent {
   }
 
   startPreview(videoElement: HTMLVideoElement): void {
+    if (this.inlinePlayingVideoId$$()) return;
     videoElement.muted = true;
     videoElement.playsInline = true;
+    videoElement.loop = true;
     void videoElement.play().catch(() => undefined);
   }
 
   stopPreview(videoElement: HTMLVideoElement): void {
+    if (this.inlinePlayingVideoId$$()) return;
     videoElement.pause();
     videoElement.currentTime = 0;
+  }
+
+  playInlineVideo(videoElement: HTMLVideoElement, videoId: string): void {
+    this.pauseHeroVideo();
+    this.inlinePlayingVideoId$$.set(videoId);
+    videoElement.controls = true;
+    videoElement.loop = false;
+    videoElement.muted = false;
+    if (videoElement.ended) {
+      videoElement.currentTime = 0;
+    }
+    void videoElement.play().catch(() => undefined);
+  }
+
+  onInlineVideoEnded(videoId: string): void {
+    if (this.inlinePlayingVideoId$$() === videoId) {
+      this.inlinePlayingVideoId$$.set(null);
+    }
   }
 
   playSelectedVideo(): void {
@@ -442,13 +486,36 @@ export class ManagerExplorePageComponent {
     }
   }
 
+  private syncHeroReveal(): void {
+    const videoElement = this.heroVideoRef$$()?.nativeElement;
+    if (!this.isMobileViewport()) {
+      this.heroReveal$$.set(true);
+      return;
+    }
+
+    if (
+      !videoElement ||
+      !Number.isFinite(videoElement.duration) ||
+      videoElement.duration <= 0
+    ) {
+      this.heroReveal$$.set(false);
+      return;
+    }
+
+    const remaining = videoElement.duration - videoElement.currentTime;
+    this.heroReveal$$.set(remaining <= this.revealThresholdSeconds);
+  }
+
+  private isMobileViewport(): boolean {
+    const view = this.document.defaultView;
+    return !!view?.matchMedia(`(max-width: ${this.mobileMaxWidth}px)`).matches;
+  }
+
   private updateHeroVideoSource(): void {
     const view = this.document.defaultView;
     if (!view) return;
 
-    const isMobile = view.matchMedia(
-      `(max-width: ${this.mobileMaxWidth}px)`,
-    ).matches;
+    const isMobile = this.isMobileViewport();
     const nextSrc =
       isMobile && environment.bannerVideoMobile
         ? environment.bannerVideoMobile
@@ -457,6 +524,7 @@ export class ManagerExplorePageComponent {
     if (nextSrc === this.heroVideoSrc$$()) return;
 
     this.heroVideoSrc$$.set(nextSrc);
+    this.heroReveal$$.set(!isMobile);
     const videoElement = this.heroVideoRef$$()?.nativeElement;
     if (!videoElement) return;
 
@@ -468,6 +536,7 @@ export class ManagerExplorePageComponent {
     if (wasPlaying) {
       void videoElement.play().catch(() => undefined);
     }
+    this.syncHeroReveal();
   }
 
   private measureHeader(): void {

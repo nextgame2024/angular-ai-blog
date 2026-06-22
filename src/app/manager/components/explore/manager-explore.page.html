@@ -12,10 +12,11 @@
       (play)="onHeroVideoPlay()"
       (pause)="onHeroVideoPause()"
       (ended)="onHeroVideoEnded()"
+      (timeupdate)="onHeroVideoTimeUpdate()"
     ></video>
-    <div class="explore-hero__overlay"></div>
+    <div class="explore-hero__overlay" [class.is-visible]="heroReveal$$()"></div>
 
-    <div class="explore-hero__inner">
+    <div class="explore-hero__inner" [class.is-visible]="heroReveal$$()">
       <div class="explore-hero__copy">
         <span class="explore-hero__eyebrow">Business Manager training library</span>
         <h1>Explore the workflows, tools, and videos behind every core module.</h1>
@@ -207,6 +208,10 @@
                   playsinline
                   preload="metadata"
                   [src]="video.videoUrl"
+                  [poster]="video.posterUrl"
+                  [loop]="inlinePlayingVideoId$$() !== video.videoId"
+                  [attr.controls]="inlinePlayingVideoId$$() === video.videoId ? '' : null"
+                  (ended)="onInlineVideoEnded(video.videoId)"
                 ></video>
 
                 <div class="explore-card__scrim"></div>
@@ -232,11 +237,17 @@
                   </svg>
                 </button>
 
-                <div class="explore-card__play-indicator" aria-hidden="true">
+                <button
+                  type="button"
+                  class="explore-card__play-indicator"
+                  [class.is-hidden]="inlinePlayingVideoId$$() === video.videoId"
+                  [attr.aria-label]="'Play ' + video.title"
+                  (click)="playInlineVideo(previewVideo, video.videoId)"
+                >
                   <svg viewBox="0 0 24 24">
                     <path d="m9 7 8 5-8 5V7Z"></path>
                   </svg>
-                </div>
+                </button>
               </div>
 
               <div class="explore-card__body">
@@ -259,10 +270,11 @@
                 <div class="explore-card__footer">
                   <button
                     type="button"
-                    class="explore-btn"
+                    class="explore-expand-link"
                     (click)="openVideo(video.videoId)"
                   >
-                    Watch video
+                    Expand video
+                    <span aria-hidden="true">↗</span>
                   </button>
                 </div>
               </div>
@@ -292,10 +304,9 @@
         (click)="$event.stopPropagation()"
       >
         <header class="explore-modal__header">
-          <div>
+          <div class="explore-modal__title">
             <span class="explore-modal__eyebrow">{{ selectedVideo.module }}</span>
             <h3>{{ selectedVideo.title }}</h3>
-            <p>{{ selectedVideo.description }}</p>
           </div>
 
           <button
@@ -315,71 +326,17 @@
           <video
             #modalVideo
             class="explore-player__video"
-            playsinline
+            controls
+            autoplay
             preload="metadata"
             [src]="selectedVideo.videoUrl"
+            [poster]="selectedVideo.posterUrl"
             (loadedmetadata)="onPlayerMetadataLoaded()"
             (timeupdate)="onPlayerTimeUpdate()"
             (play)="onPlayerPlay()"
             (pause)="onPlayerPause()"
             (volumechange)="onPlayerVolumeChange()"
           ></video>
-
-          <div class="explore-player__controls">
-            <div class="explore-player__timeline">
-              <span>{{ playerCurrentTimeLabel$$() }}</span>
-              <input
-                #progressInput
-                type="range"
-                min="0"
-                max="100"
-                step="0.1"
-                [value]="playerProgressPercent$$()"
-                [disabled]="!isPlayerReady$$()"
-                aria-label="Video progress"
-                (input)="seekToProgress(progressInput.value)"
-              />
-              <span>{{ playerDurationLabel$$() }}</span>
-            </div>
-
-            <div class="explore-player__actions">
-              <button
-                type="button"
-                class="explore-player__button"
-                (click)="playSelectedVideo()"
-              >
-                Play
-              </button>
-              <button
-                type="button"
-                class="explore-player__button"
-                (click)="pauseSelectedVideo()"
-              >
-                Pause
-              </button>
-              <button
-                type="button"
-                class="explore-player__button"
-                (click)="stopSelectedVideo()"
-              >
-                Stop
-              </button>
-              <button
-                type="button"
-                class="explore-player__button"
-                (click)="toggleMute()"
-              >
-                {{ isPlayerMuted$$() ? 'Unmute' : 'Mute' }}
-              </button>
-              <button
-                type="button"
-                class="explore-player__button"
-                (click)="toggleFullscreen()"
-              >
-                {{ isPlayerFullscreen$$() ? 'Exit full view' : 'Full view' }}
-              </button>
-            </div>
-          </div>
         </div>
       </section>
     </div>
