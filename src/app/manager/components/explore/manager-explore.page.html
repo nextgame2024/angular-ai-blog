@@ -260,23 +260,6 @@
                 </div>
 
                 <p>{{ video.description }}</p>
-
-                <div class="explore-card__keywords">
-                  @for (keyword of video.keywords.slice(0, 3); track keyword) {
-                    <span>{{ keyword }}</span>
-                  }
-                </div>
-
-                <div class="explore-card__footer">
-                  <button
-                    type="button"
-                    class="explore-expand-link"
-                    (click)="openVideo(video.videoId)"
-                  >
-                    Expand video
-                    <span aria-hidden="true">↗</span>
-                  </button>
-                </div>
               </div>
             </article>
           }

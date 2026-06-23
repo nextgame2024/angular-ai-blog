@@ -226,8 +226,7 @@
   cursor: pointer;
 }
 
-.explore-hero__chip-row,
-.explore-card__keywords {
+.explore-hero__chip-row {
   display: flex;
   flex-wrap: wrap;
   gap: 0.6rem;
@@ -418,8 +417,7 @@
 }
 
 .explore-card__pill,
-.explore-card__level,
-.explore-card__keywords span {
+.explore-card__level {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -545,39 +543,6 @@
   margin: 0;
   color: var(--explore-muted);
   line-height: 1.65;
-}
-
-.explore-card__keywords span {
-  padding: 0.42rem 0.7rem;
-  background: rgba(15, 23, 42, 0.04);
-  color: rgba(15, 23, 42, 0.7);
-}
-
-.explore-card__footer {
-  display: flex;
-}
-
-.explore-expand-link {
-  width: fit-content;
-  border: 0;
-  background: transparent;
-  color: #69a8ff;
-  padding: 0;
-  font: inherit;
-  font-weight: 800;
-  cursor: pointer;
-  text-decoration: none;
-  transition:
-    color 180ms ease,
-    transform 180ms ease,
-    text-shadow 180ms ease;
-}
-
-.explore-expand-link:hover,
-.explore-expand-link:focus-visible {
-  color: #9fffe3;
-  transform: translateX(3px);
-  text-shadow: 0 0 18px rgba(16, 224, 199, 0.32);
 }
 
 .explore-content__loading-more,
@@ -849,8 +814,7 @@
 }
 
 :host-context(html.dark) .explore-btn--ghost,
-:host-context(html.dark) .explore-card__level,
-:host-context(html.dark) .explore-card__keywords span {
+:host-context(html.dark) .explore-card__level {
   background: rgba(15, 23, 42, 0.82);
   color: rgba(226, 232, 240, 0.86);
 }
@@ -915,7 +879,8 @@
   .explore-hero__overlay {
     opacity: 0;
     background:
-      linear-gradient(180deg, rgba(3, 8, 18, 0) 0%, rgba(3, 8, 18, 0.08) 28%, rgba(3, 8, 18, 0.82) 66%, rgba(3, 8, 18, 0.98) 100%);
+      linear-gradient(180deg, rgba(3, 8, 18, 0.38) 0%, rgba(3, 8, 18, 0.52) 34%, rgba(3, 8, 18, 0.82) 68%, rgba(3, 8, 18, 0.98) 100%),
+      linear-gradient(90deg, rgba(3, 8, 18, 0.72) 0%, rgba(3, 8, 18, 0.38) 58%, rgba(3, 8, 18, 0.18) 100%);
     transition: opacity 480ms ease;
   }
 
@@ -1041,7 +1006,8 @@
   .explore-hero__overlay {
     opacity: 0;
     background:
-      linear-gradient(180deg, rgba(3, 8, 18, 0) 0%, rgba(3, 8, 18, 0.08) 28%, rgba(3, 8, 18, 0.82) 66%, rgba(3, 8, 18, 0.98) 100%);
+      linear-gradient(180deg, rgba(3, 8, 18, 0.38) 0%, rgba(3, 8, 18, 0.52) 34%, rgba(3, 8, 18, 0.82) 68%, rgba(3, 8, 18, 0.98) 100%),
+      linear-gradient(90deg, rgba(3, 8, 18, 0.72) 0%, rgba(3, 8, 18, 0.38) 58%, rgba(3, 8, 18, 0.18) 100%);
     transition: opacity 480ms ease;
   }
 

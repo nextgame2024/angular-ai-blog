@@ -538,6 +538,10 @@ export class ManagerExplorePageComponent {
   private updateHeroVideoSource(): void {
     const view = this.document.defaultView;
     if (!view) return;
+    if (this.hasActiveContentVideo()) {
+      this.pauseHeroVideo();
+      return;
+    }
 
     const isMobile = this.isMobileViewport();
     const isMobileVideo = this.shouldUseMobileVideo();

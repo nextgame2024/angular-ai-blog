@@ -29,7 +29,6 @@ interface NewsItem {
   title: string;
   source: string;
   youtubeUrl: string;
-  thumbnailUrl: string;
   embedUrl: SafeResourceUrl;
   autoplayEmbedUrl: SafeResourceUrl;
 }
@@ -79,7 +78,6 @@ export class LandingComponent {
       title: 'Stark warning AI could make white collar jobs obsolete',
       source: '9 News Australia',
       youtubeUrl: 'https://www.youtube.com/watch?v=aNkjgE0SNwI',
-      thumbnailUrl: this.youtubeThumbnail('aNkjgE0SNwI'),
       embedUrl: this.safeYoutubeEmbed('aNkjgE0SNwI'),
       autoplayEmbedUrl: this.safeYoutubeEmbed('aNkjgE0SNwI', true),
     },
@@ -88,7 +86,6 @@ export class LandingComponent {
       title: "AI won't kill us all, but that doesn't make it trustworthy",
       source: 'TED',
       youtubeUrl: 'https://www.youtube.com/watch?v=eXdVDhOGqoE',
-      thumbnailUrl: this.youtubeThumbnail('eXdVDhOGqoE'),
       embedUrl: this.safeYoutubeEmbed('eXdVDhOGqoE'),
       autoplayEmbedUrl: this.safeYoutubeEmbed('eXdVDhOGqoE', true),
     },
@@ -97,7 +94,6 @@ export class LandingComponent {
       title: 'I Tried the First Humanoid Home Robot. It Got Weird.',
       source: 'Wall Street Journal',
       youtubeUrl: 'https://www.youtube.com/watch?v=f3c4mQty_so',
-      thumbnailUrl: this.youtubeThumbnail('f3c4mQty_so'),
       embedUrl: this.safeYoutubeEmbed('f3c4mQty_so'),
       autoplayEmbedUrl: this.safeYoutubeEmbed('f3c4mQty_so', true),
     },
@@ -106,7 +102,6 @@ export class LandingComponent {
       title: 'SpaceX, OpenAI, Anthropic IPOs could trigger the biggest market crash yet',
       source: 'ABC News',
       youtubeUrl: 'https://www.youtube.com/watch?v=3oXphIUOoRQ',
-      thumbnailUrl: this.youtubeThumbnail('3oXphIUOoRQ'),
       embedUrl: this.safeYoutubeEmbed('3oXphIUOoRQ'),
       autoplayEmbedUrl: this.safeYoutubeEmbed('3oXphIUOoRQ', true),
     },
@@ -291,6 +286,12 @@ export class LandingComponent {
 
   playNewsVideo(item: NewsItem): void {
     this.pauseVideo();
+    if (!this.isMobileViewport()) {
+      this.playingNewsVideoId$$.set(null);
+      this.expandedNews$$.set(item);
+      return;
+    }
+
     this.playingNewsVideoId$$.set(item.videoId);
   }
 
@@ -299,10 +300,6 @@ export class LandingComponent {
     return this.sanitizer.bypassSecurityTrustResourceUrl(
       `https://www.youtube.com/embed/${videoId}?${query}`
     );
-  }
-
-  private youtubeThumbnail(videoId: string): string {
-    return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
   }
 
   private syncVideoMuted(): void {
@@ -330,6 +327,11 @@ export class LandingComponent {
   }
 
   private updateVideoSource(): void {
+    if (this.hasActiveContentVideo()) {
+      this.pauseVideo();
+      return;
+    }
+
     const isMobileVideo = this.shouldUseMobileVideo();
     const nextSrc =
       isMobileVideo && environment.bannerVideoMobile

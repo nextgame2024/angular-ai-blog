@@ -137,8 +137,14 @@
                 allowfullscreen
               ></iframe>
             } @else {
+              <iframe
+                [src]="item.embedUrl"
+                [title]="item.title"
+                loading="lazy"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
+                allowfullscreen
+              ></iframe>
               <button class="news-thumbnail" type="button" (click)="playNewsVideo(item)" [attr.aria-label]="'Play ' + item.title">
-                <img [src]="item.thumbnailUrl" [alt]="item.title" loading="lazy" />
                 <span class="news-play" aria-hidden="true"></span>
               </button>
             }
@@ -146,10 +152,6 @@
           <div class="news-body">
             <small>{{ item.source }}</small>
             <h3>{{ item.title }}</h3>
-            <button class="news-expand" type="button" (click)="expandNewsVideo(item)">
-              Expand video
-              <span aria-hidden="true">↗</span>
-            </button>
           </div>
         </article>
       }
@@ -169,7 +171,7 @@
         </div>
         <div class="video-modal-frame">
           <iframe
-            [src]="expandedNews.embedUrl"
+            [src]="expandedNews.autoplayEmbedUrl"
             [title]="expandedNews.title"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
             allowfullscreen
