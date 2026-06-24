@@ -58,9 +58,9 @@ export class ManagerExplorePageComponent {
   readonly heroReveal$$ = signal(true);
 
   readonly heroStats: ExploreStat[] = [
-    { value: '12', label: 'guided videos' },
-    { value: '4', label: 'training categories' },
-    { value: '100%', label: 'effectiveness' },
+    { value: '12', label: 'Guided videos' },
+    // { value: '4', label: 'training categories' },
+    { value: 'Free for 6 months!', label: 'Send us a message: hello@sophiaAi.com.au' },
   ];
   readonly quickFilters = [
     'Clients',
@@ -546,8 +546,8 @@ export class ManagerExplorePageComponent {
     const isMobile = this.isMobileViewport();
     const isMobileVideo = this.shouldUseMobileVideo();
     const nextSrc =
-      isMobileVideo && environment.bannerVideoMobile
-        ? environment.bannerVideoMobile
+      isMobileVideo && environment.bannerBusinessMobile
+        ? environment.bannerBusinessMobile
         : environment.bannerVideo;
 
     if (nextSrc === this.heroVideoSrc$$()) return;

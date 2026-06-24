@@ -33,6 +33,8 @@ export const environment = {
   bannerVideoMobile:
     // 'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/mobileBanner.mp4',
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/mobileSophiaAi.mp4',
+  bannerBusinessMobile:
+    'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/bannerBusinessMobile.mp4',
   defaultAvatar:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatar-user.png',
   logoUrl:

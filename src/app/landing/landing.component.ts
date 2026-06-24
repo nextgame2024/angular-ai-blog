@@ -296,7 +296,9 @@ export class LandingComponent {
   }
 
   private safeYoutubeEmbed(videoId: string, autoplay = false): SafeResourceUrl {
-    const query = autoplay ? 'rel=0&autoplay=1' : 'rel=0';
+    const query = autoplay
+      ? 'rel=0&playsinline=1&autoplay=1'
+      : 'rel=0&playsinline=1';
     return this.sanitizer.bypassSecurityTrustResourceUrl(
       `https://www.youtube.com/embed/${videoId}?${query}`
     );

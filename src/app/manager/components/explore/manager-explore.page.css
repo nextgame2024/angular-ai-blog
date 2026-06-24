@@ -912,6 +912,10 @@
     display: grid;
   }
 
+  .explore-hero__search-panel {
+    display: none;
+  }
+
   .explore-content {
     padding: 28px 0 72px;
   }
