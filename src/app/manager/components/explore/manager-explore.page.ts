@@ -1,6 +1,7 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
+  AfterViewInit,
   Component,
   ElementRef,
   HostListener,
@@ -35,7 +36,7 @@ type ExploreStat = {
   templateUrl: './manager-explore.page.html',
   styleUrls: ['./manager-explore.page.css'],
 })
-export class ManagerExplorePageComponent {
+export class ManagerExplorePageComponent implements AfterViewInit {
   private readonly mobileMaxWidth = 680;
   private readonly revealThresholdSeconds = 1;
   private readonly store = inject(Store);
@@ -203,6 +204,10 @@ export class ManagerExplorePageComponent {
     this.isPlayerMuted$$.set(false);
   });
 
+  ngAfterViewInit(): void {
+    this.requestHeroAutoplay();
+  }
+
   private readonly fullscreenListenerEffect = effect((onCleanup) => {
     const onFullscreenChange = () => {
       this.isPlayerFullscreen$$.set(!!this.document.fullscreenElement);
@@ -243,6 +248,7 @@ export class ManagerExplorePageComponent {
   onHeroVideoMeta(): void {
     this.syncHeroMutedState();
     this.syncHeroReveal();
+    this.requestHeroAutoplay();
   }
 
   onHeroVideoPlay(): void {
@@ -270,7 +276,7 @@ export class ManagerExplorePageComponent {
   }
 
   playHeroVideo(): void {
-    if (this.hasActiveContentVideo()) return;
+    this.clearActiveContentVideoForHero();
 
     const videoElement = this.heroVideoRef$$()?.nativeElement;
     if (!videoElement) return;
@@ -543,7 +549,6 @@ export class ManagerExplorePageComponent {
       return;
     }
 
-    const isMobile = this.isMobileViewport();
     const isMobileVideo = this.shouldUseMobileVideo();
     const nextSrc =
       isMobileVideo && environment.bannerBusinessMobile
@@ -557,19 +562,64 @@ export class ManagerExplorePageComponent {
     const videoElement = this.heroVideoRef$$()?.nativeElement;
     if (!videoElement) return;
 
-    const wasPlaying = !videoElement.paused && !videoElement.ended;
     videoElement.pause();
     videoElement.currentTime = 0;
     videoElement.load();
-
-    if (wasPlaying && !this.hasActiveContentVideo()) {
-      void videoElement.play().catch(() => undefined);
-    }
+    this.requestHeroAutoplay();
     this.syncHeroReveal();
+  }
+
+  private requestHeroAutoplay(): void {
+    const view = this.document.defaultView;
+    if (!view) return;
+
+    view.setTimeout(() => {
+      if (this.hasActiveContentVideo()) return;
+
+      const videoElement = this.heroVideoRef$$()?.nativeElement;
+      if (!videoElement) return;
+
+      videoElement.playsInline = true;
+      if (
+        Number.isFinite(videoElement.duration) &&
+        (videoElement.ended || videoElement.currentTime >= videoElement.duration - 0.05)
+      ) {
+        videoElement.currentTime = 0;
+      }
+
+      this.syncHeroMutedState();
+      videoElement.volume = 1;
+      void videoElement.play().catch(() => undefined);
+    }, 0);
   }
 
   private hasActiveContentVideo(): boolean {
     return !!this.selectedVideoId$$() || !!this.inlinePlayingVideoId$$();
+  }
+
+  private clearActiveContentVideoForHero(): void {
+    const modalVideoElement = this.getModalVideoElement();
+    if (modalVideoElement) {
+      modalVideoElement.pause();
+      modalVideoElement.currentTime = 0;
+    }
+
+    this.document
+      .querySelectorAll<HTMLVideoElement>('.explore-card__video')
+      .forEach((videoElement) => {
+        videoElement.pause();
+        videoElement.controls = false;
+        videoElement.loop = true;
+        videoElement.muted = true;
+      });
+
+    if (this.document.fullscreenElement && this.document.exitFullscreen) {
+      void this.document.exitFullscreen();
+    }
+
+    this.selectedVideoId$$.set(null);
+    this.inlinePlayingVideoId$$.set(null);
+    this.resetPlayerState();
   }
 
   private shouldUseMobileVideo(): boolean {

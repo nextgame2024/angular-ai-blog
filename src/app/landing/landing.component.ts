@@ -1,5 +1,6 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
 import {
+  AfterViewInit,
   Component,
   ElementRef,
   Renderer2,
@@ -39,7 +40,7 @@ interface NewsItem {
     templateUrl: './landing.component.html',
     styleUrls: ['./landing.component.css']
 })
-export class LandingComponent {
+export class LandingComponent implements AfterViewInit {
   private readonly mobileMaxWidth = 680;
   private readonly revealThresholdSeconds = 1;
 
@@ -213,6 +214,10 @@ export class LandingComponent {
     }
   });
 
+  ngAfterViewInit(): void {
+    this.requestHeroAutoplay();
+  }
+
   onVideoPlay(): void {
     if (this.hasActiveContentVideo()) {
       this.pauseVideo();
@@ -236,6 +241,7 @@ export class LandingComponent {
   onVideoMeta(): void {
     this.syncVideoMuted();
     this.syncHeroReveal();
+    this.requestHeroAutoplay();
   }
 
   onVideoTimeUpdate(): void {
@@ -243,7 +249,7 @@ export class LandingComponent {
   }
 
   playVideo(): void {
-    if (this.hasActiveContentVideo()) return;
+    this.clearActiveContentVideoForHero();
 
     const v = this.videoRef$$()?.nativeElement;
     if (!v) return;
@@ -344,17 +350,37 @@ export class LandingComponent {
     this.videoSrc$$.set(nextSrc);
     const v = this.videoRef$$()?.nativeElement;
     if (!v) return;
-    const wasPlaying = !v.paused && !v.ended;
     v.pause();
     this.renderer.setProperty(v, 'currentTime', 0);
     v.load();
-    if (wasPlaying && !this.hasActiveContentVideo()) {
+    this.requestHeroAutoplay();
+  }
+
+  private requestHeroAutoplay(): void {
+    window.setTimeout(() => {
+      if (this.hasActiveContentVideo()) return;
+
+      const v = this.videoRef$$()?.nativeElement;
+      if (!v) return;
+
+      this.renderer.setProperty(v, 'playsInline', true);
+      if (Number.isFinite(v.duration) && (v.ended || v.currentTime >= v.duration - 0.05)) {
+        this.renderer.setProperty(v, 'currentTime', 0);
+      }
+
+      this.syncVideoMuted();
+      this.renderer.setProperty(v, 'volume', 1);
       v.play().catch(() => {});
-    }
+    }, 0);
   }
 
   private hasActiveContentVideo(): boolean {
     return !!this.expandedNews$$() || !!this.playingNewsVideoId$$();
+  }
+
+  private clearActiveContentVideoForHero(): void {
+    this.expandedNews$$.set(null);
+    this.playingNewsVideoId$$.set(null);
   }
 
   private isMobileViewport(): boolean {
