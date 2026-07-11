@@ -12,6 +12,7 @@ import { ManagerQuotesPageComponent } from './components/quotes/manager-quotes.p
 import { ManagerInvoicesPageComponent } from './components/invoices/manager-invoices.page';
 import { ManagerSitesPageComponent } from './components/sites/manager-sites.page';
 import { ManagerPalletsPageComponent } from './components/pallets/manager-pallets.page';
+import { ManagerToolkitDashboardPageComponent } from './components/dashboard/manager-toolkit-dashboard.page';
 import { ManagerSuppliersPageComponent } from './components/suppliers/manager-suppliers.page';
 import { ManagerUsersPageComponent } from './components/users/manager-users.page';
 import { ManagerProjectsPageComponent } from './components/projects/manager-projects.page';
@@ -25,6 +26,7 @@ import { ManagerDocumentsService } from './services/manager.documents.service';
 import { ManagerProjectsService } from './services/manager.projects.service';
 import { ManagerSitesService } from './services/manager.sites.service';
 import { ManagerPalletsService } from './services/manager.pallets.service';
+import { ManagerToolkitService } from './services/manager.toolkit.service';
 import { ManagerProjectTypesService } from './services/manager.project.types.service';
 import { ManagerSuppliersService } from './services/manager.suppliers.service';
 import { ManagerCompanyService } from './services/manager.company.service';
@@ -82,6 +84,11 @@ import {
   MANAGER_PALLETS_FEATURE_KEY,
   managerPalletsReducer,
 } from './store/pallets/manager.reducer';
+import { ManagerToolkitEffects } from './store/toolkit/manager.effects';
+import {
+  MANAGER_TOOLKIT_FEATURE_KEY,
+  managerToolkitReducer,
+} from './store/toolkit/manager.reducer';
 import { MANAGER_SCHEDULE_ROUTE } from './schedule.routes';
 
 export const MANAGER_ROUTES: Route[] = [
@@ -107,6 +114,16 @@ export const MANAGER_ROUTES: Route[] = [
         data: { title: 'Business manager' },
       },
 
+      {
+        path: 'dashboard',
+        component: ManagerToolkitDashboardPageComponent,
+        providers: [
+          ManagerToolkitService,
+          provideEffects(ManagerToolkitEffects),
+          provideState(MANAGER_TOOLKIT_FEATURE_KEY, managerToolkitReducer),
+        ],
+        data: { title: 'Dashboard', fullscreen: true, hideShellHeader: true },
+      },
       {
         path: 'clients',
         component: ManagerClientsPageComponent,

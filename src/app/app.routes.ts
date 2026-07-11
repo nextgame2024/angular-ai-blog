@@ -73,6 +73,38 @@ export const appRoutes: Route[] = [
       ),
   },
   {
+    path: 'ai-toolkit/dashboard',
+    loadComponent: () =>
+      import('./ai-toolkit/dashboard/ai-toolkit-dashboard.component').then(
+        (m) => m.AiToolkitDashboardComponent
+      ),
+    data: { title: 'Ai Toolkit Dashboard' },
+  },
+  {
+    path: 'ai-toolkit/checkout',
+    loadComponent: () =>
+      import('./ai-toolkit/checkout/ai-toolkit-checkout.component').then(
+        (m) => m.AiToolkitCheckoutComponent
+      ),
+    data: { title: 'Ai Toolkit Checkout' },
+  },
+  {
+    path: 'ai-toolkit/member-dashboard',
+    loadComponent: () =>
+      import(
+        './ai-toolkit/member-dashboard/ai-toolkit-member-dashboard.component'
+      ).then((m) => m.AiToolkitMemberDashboardComponent),
+    data: { title: 'Ai Toolkit Member Dashboard' },
+  },
+  {
+    path: 'ai-toolkit',
+    loadComponent: () =>
+      import('./ai-toolkit/ai-toolkit.component').then(
+        (m) => m.AiToolkitComponent
+      ),
+    data: { title: 'Ai Toolkit' },
+  },
+  {
     path: 'townplanner',
     loadChildren: () =>
       import('src/app/townplanner/townplanner.routes').then(

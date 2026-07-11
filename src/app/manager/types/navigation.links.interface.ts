@@ -50,6 +50,8 @@ export const HEADER_NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = [
     value: 'Explore Business Manager',
     label: 'Explore Business Manager',
   },
+  { value: 'Ai Toolkit', label: 'Ai Toolkit' },
+  { value: 'Dashboard', label: 'Dashboard' },
   { value: 'Settings', label: 'Settings' },
 ];
 

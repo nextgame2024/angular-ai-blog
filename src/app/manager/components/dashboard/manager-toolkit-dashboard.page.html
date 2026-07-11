@@ -1,0 +1,403 @@
+<div class="toolkit-shell">
+  <aside class="toolkit-sidebar" aria-label="Toolkit navigation">
+    <button class="nav-item" type="button" [class.active]="(view$ | async) === 'home'" (click)="setView('home')">
+      <span class="nav-icon icon-warm"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'home' }"></ng-container></span>
+      Home
+    </button>
+    <button class="nav-item" type="button" [class.active]="(view$ | async) === 'start'" (click)="setView('start')">
+      <span class="nav-icon icon-cyan"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'book' }"></ng-container></span>
+      Start Here Guide
+    </button>
+    <button class="nav-item" type="button" [class.active]="(view$ | async) === 'recipes'" (click)="setView('recipes')">
+      <span class="nav-icon icon-purple"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'library' }"></ng-container></span>
+      All Recipes
+    </button>
+    <button class="nav-item" type="button" [class.active]="(view$ | async) === 'categories'" (click)="setView('categories')">
+      <span class="nav-icon icon-cyan"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'grid' }"></ng-container></span>
+      Categories
+    </button>
+    <button class="nav-item" type="button" [class.active]="(view$ | async) === 'favorites'" (click)="setView('favorites')">
+      <span class="nav-icon icon-purple"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'heart' }"></ng-container></span>
+      Favorites
+    </button>
+    <!-- <button class="nav-item muted" type="button">
+      <span class="nav-icon icon-blue"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'user' }"></ng-container></span>
+      My Account
+    </button> -->
+  </aside>
+
+  <main class="toolkit-main">
+    <header class="toolkit-header">
+      <div>
+        <h1>{{ greetingText$ | async }}</h1>
+        <p>Let's save you some time today.</p>
+      </div>
+      <label class="search-field">
+        <span aria-hidden="true"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'search' }"></ng-container></span>
+        <input type="search" [formControl]="searchCtrl" placeholder="Search recipes..." />
+      </label>
+    </header>
+
+    @if (error$ | async; as error) {
+      <div class="error-banner">{{ error }}</div>
+    }
+
+    @if (loading$ | async) {
+      <div class="screen-loader" aria-live="polite" aria-busy="true">
+        <div class="loader-card">
+          <div class="loader-ring" aria-hidden="true"></div>
+          <div class="loader-bar" aria-hidden="true"></div>
+          <div class="loader-text">Loading...</div>
+        </div>
+      </div>
+    }
+
+    @if ((view$ | async) === 'home') {
+      <section class="dashboard-grid">
+        <div class="stack">
+          <section class="panel continue-panel">
+            <div class="panel-title-row">
+              <h2>Recommended for You</h2>
+              <button class="circle-btn" type="button" (click)="setView('recipes')" aria-label="View all recipes">›</button>
+            </div>
+            <div class="recipe-card-grid compact">
+              @for (recipe of featuredRecipes$ | async; track trackBySlug($index, recipe)) {
+                <button class="recipe-card" type="button" (click)="openRecipe(recipe)">
+                  <span class="recipe-card-heading">
+                    <span class="tile-icon"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: recipeIcon(recipe) }"></ng-container></span>
+                    <strong>{{ recipe.title }}</strong>
+                  </span>
+                  <span>{{ recipe.description }}</span>
+                </button>
+              }
+            </div>
+          </section>
+
+          <section class="panel">
+            <h2>Quick Actions</h2>
+            <div class="quick-grid">
+              @for (action of quickActions$ | async; track trackByLabel($index, action)) {
+                <button class="quick-card" type="button" (click)="openRecipe(action)">
+                  <span class="tile-icon"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: action.icon }"></ng-container></span>
+                  <strong>{{ action.label }}</strong>
+                </button>
+              }
+            </div>
+          </section>
+        </div>
+
+        <div class="stack side-stack">
+          <section class="panel progress-panel">
+            <h2>Your Progress</h2>
+            @if (progress$ | async; as progress) {
+              <div class="metric"><span>Recipes Used</span><strong>{{ progress.recipesUsed }}</strong></div>
+              <div class="metric"><span>Favourite Recipes</span><strong>{{ progress.favoriteRecipes }}</strong></div>
+              <div class="metric"><span>Time Saved</span><strong>{{ (progress.timeSavedMinutes / 60) | number:'1.0-1' }} Hours</strong></div>
+              @if (completion$ | async; as completion) {
+                <div class="completion-widget">
+                  <div class="completion-heading">
+                    <span>Toolkit progress</span>
+                    <strong>{{ completion.percent }}%</strong>
+                  </div>
+                  <div
+                    class="completion-track"
+                    role="progressbar"
+                    aria-label="Toolkit recipes completed"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    [attr.aria-valuenow]="completion.percent"
+                  >
+                    <span [style.width.%]="completion.percent"></span>
+                  </div>
+                  <p>{{ completion.recipesUsed }} of {{ completion.totalRecipes }} recipes used</p>
+                </div>
+              }
+            }
+          </section>
+
+          <section class="panel tip-panel">
+            <h2>Sophia Tip of the Day</h2>
+            <div class="tip-content">
+              <p>Don't ask AI to write. Ask AI to solve a business problem.</p>
+              <span class="tip-icon" aria-hidden="true"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'lightbulb' }"></ng-container></span>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section class="panel popular-panel">
+        <div class="panel-title-row">
+          <h2>Popular This Week</h2>
+          <button class="circle-btn" type="button" (click)="setView('recipes')" aria-label="View all recipes">›</button>
+        </div>
+        <div class="popular-grid">
+          @for (recipe of popularRecipes$ | async; track trackBySlug($index, recipe)) {
+            <button class="popular-card" type="button" (click)="openRecipe(recipe)">
+              <span class="popular-card-meta">
+                <span class="tile-icon"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: recipeIcon(recipe) }"></ng-container></span>
+                <span class="rating"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'star' }"></ng-container> {{ recipe.rating }}</span>
+              </span>
+              <strong>{{ recipe.title }}</strong>
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    @if ((view$ | async) === 'start') {
+      <section class="start-guide-grid">
+        <article class="panel start-hero">
+          <span class="eyebrow">Start with confidence</span>
+          <h2>{{ startHereGuide.title }}</h2>
+          <p>
+            Learn the simple way to use AI for real business tasks, then try
+            the copy prompt flow before you open a recipe.
+          </p>
+          <!-- <div class="guide-actions">
+            <button class="primary-btn" type="button" (click)="copyStarterPrompt()">
+              <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'copy' }"></ng-container>
+              Copy Starter Prompt
+            </button>
+            @if (guideCopyMessage) { <span>{{ guideCopyMessage }}</span> }
+          </div> -->
+        </article>
+
+        <div class="guide-step-list">
+          @for (section of startHereGuide.sections; track section.heading) {
+            <article class="panel guide-step">
+              <span class="guide-step__icon">
+                <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: section.icon }"></ng-container>
+              </span>
+              <div>
+                <small>Step {{ $index + 1 }}</small>
+                <h3>{{ section.heading }}</h3>
+                <p>{{ section.body }}</p>
+              </div>
+            </article>
+          }
+        </div>
+
+        <article class="panel prompt-practice">
+          <div class="panel-title-row">
+            <div>
+              <h2>Try Copy Prompt</h2>
+              <p>Paste this into ChatGPT, Claude or Gemini and replace the bracketed text.</p>
+            </div>
+          </div>
+          <pre>{{ starterPrompt }}</pre>
+          <div class="copy-row">
+            <button class="primary-btn" type="button" (click)="copyStarterPrompt()">
+              <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'copy' }"></ng-container>
+              Copy Starter Prompt
+            </button>
+            @if (guideCopyMessage) { <span>{{ guideCopyMessage }}</span> }
+          </div>
+        </article>
+
+        <aside class="panel guide-note">
+          <h3>Before you use AI output</h3>
+          <ul>
+            <li>Check names, dates, prices, and promises.</li>
+            <li>Remove private information before pasting messages.</li>
+            <li>Adjust the tone so it sounds like your business.</li>
+          </ul>
+        </aside>
+      </section>
+    }
+
+    @if ((view$ | async) === 'recipes') {
+      <section class="panel library-panel">
+        <div class="panel-title-row library-title">
+          <div>
+            <h2>All Recipes</h2>
+            <p>{{ recipeTotal$ | async }} recipes</p>
+          </div>
+        </div>
+        <div class="recipe-list-grid">
+          @for (recipe of recipes$ | async; track trackBySlug($index, recipe)) {
+            <button class="list-recipe" type="button" (click)="openRecipe(recipe)">
+              <span class="badge">{{ recipe.category }}</span>
+              <strong>{{ recipe.title }}</strong>
+              <span>{{ recipe.description }}</span>
+              <small>{{ recipe.difficulty }} | {{ recipe.timeSavedMinutes }} min saved | {{ recipe.bestTool }}</small>
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    @if ((view$ | async) === 'favorites') {
+      <section class="panel library-panel">
+        <div class="panel-title-row library-title">
+          <div>
+            <h2>Favorites</h2>
+            <p>Your saved recipe shortcuts.</p>
+          </div>
+        </div>
+        <div class="recipe-list-grid">
+          @for (recipe of favoriteRecipes$ | async; track trackBySlug($index, recipe)) {
+            <article class="list-recipe favorite-list-recipe">
+              <div class="favorite-list-header">
+                <span class="badge">{{ recipe.category }}</span>
+                <button
+                  type="button"
+                  class="favorite-btn is-favorited"
+                  (click)="toggleFavorite(recipe)"
+                >
+                  <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'heart' }"></ng-container>
+                  Favorited
+                </button>
+              </div>
+              <button class="favorite-list-open" type="button" (click)="openRecipe(recipe)">
+                <strong>{{ recipe.title }}</strong>
+                <span>{{ recipe.description }}</span>
+                <small>{{ recipe.difficulty }} | {{ recipe.timeSavedMinutes }} min saved | {{ recipe.bestTool }}</small>
+              </button>
+            </article>
+          }
+        </div>
+      </section>
+    }
+
+    @if ((view$ | async) === 'categories') {
+      <section class="panel library-panel">
+        <div class="panel-title-row library-title">
+          <div>
+            <h2>Categories</h2>
+            <p>Choose a business area to browse its recipes.</p>
+          </div>
+        </div>
+        <div class="category-grid categories-only-grid">
+          @for (category of categories$ | async; track trackBySlug($index, category)) {
+            <button class="category-card" type="button" (click)="openCategory(category)">
+              <span class="tile-icon"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: category.icon }"></ng-container></span>
+              <strong>{{ category.name }}</strong>
+              <span>{{ category.recipeCount }} recipes</span>
+            </button>
+          }
+        </div>
+      </section>
+    }
+
+    @if ((view$ | async) === 'category') {
+      @if (selectedCategory$ | async; as category) {
+        <section class="panel category-detail">
+          <nav class="breadcrumb" aria-label="Breadcrumb">
+            <button type="button" (click)="setView('recipes')">All Recipes</button>
+            <span>›</span>
+            <strong>{{ category.name }}</strong>
+          </nav>
+          <div class="panel-title-row">
+            <div><h2>{{ category.name }}</h2><p>{{ category.recipeCount }} recipes</p></div>
+            <button class="secondary-btn" type="button" (click)="setView('recipes')">Back</button>
+          </div>
+          <div class="category-recipe-list">
+            @for (recipe of category.recipes; track trackBySlug($index, recipe)) {
+              <button class="category-row" type="button" (click)="openRecipe(recipe)">
+                <span>{{ $index + 1 }}</span>
+                <strong>{{ recipe.title }}</strong>
+                <em>{{ recipe.description }}</em>
+                <small>{{ recipe.timeSavedMinutes }} min</small>
+              </button>
+            }
+          </div>
+        </section>
+      }
+    }
+
+    @if ((view$ | async) === 'recipe') {
+      @if (selectedRecipe$ | async; as recipe) {
+        <section class="recipe-detail-grid">
+          <article class="panel recipe-detail">
+            <nav class="breadcrumb" aria-label="Breadcrumb">
+              <button type="button" (click)="setView('recipes')">All Recipes</button>
+              <span>›</span>
+              <button type="button" (click)="openCategory({ slug: recipe.categorySlug, name: recipe.category, description: '', icon: '', recipeCount: 0 })">{{ recipe.category }}</button>
+            </nav>
+            <div class="recipe-heading">
+              <h2>{{ recipe.sourceId }}. {{ recipe.title }}</h2>
+              <span class="difficulty">{{ recipe.difficulty }}</span>
+            </div>
+            <div class="recipe-meta">
+              <span>{{ recipe.timeSavedMinutes }} min saved</span>
+              <span>Best tool: {{ recipe.bestTool }}</span>
+              <button
+                type="button"
+                class="favorite-btn"
+                [class.is-favorited]="recipe.isFavorite"
+                (click)="toggleFavorite(recipe)"
+              >
+                <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'heart' }"></ng-container>
+                {{ recipe.isFavorite ? 'Favorited' : 'Favorite' }}
+              </button>
+            </div>
+            <h3>Purpose</h3>
+            <p>{{ recipe.purpose }}</p>
+            <h3>When to use</h3>
+            <p>{{ recipe.whenToUse }}</p>
+            <h3>Copy & Paste Prompt</h3>
+            <pre>{{ recipe.prompt }}</pre>
+            <div class="copy-row">
+              <button class="primary-btn" type="button" (click)="copyPrompt(recipe)">
+                <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'copy' }"></ng-container>
+                Copy Prompt
+              </button>
+              @if (copyMessage) { <span>{{ copyMessage }}</span> }
+            </div>
+          </article>
+
+          <aside class="recipe-aside">
+            <section class="panel">
+              <h3>Before you use it</h3>
+              <ul>
+                @for (item of recipe.beforeUse; track item) { <li>{{ item }}</li> }
+              </ul>
+            </section>
+            <section class="panel">
+              <h3>Tags</h3>
+              <div class="tag-list">
+                @for (tag of recipe.tags; track tag) { <span>{{ tag }}</span> }
+              </div>
+            </section>
+            <section class="panel">
+              <h3>Related Recipes</h3>
+              <div class="related-list">
+                @for (related of recipe.relatedRecipes || []; track related.slug) {
+                  <button type="button" (click)="openRecipeSlug(related.slug)">{{ related.title }}</button>
+                }
+              </div>
+            </section>
+          </aside>
+        </section>
+      }
+    }
+  </main>
+</div>
+
+<ng-template #iconTpl let-icon="icon">
+  @switch (iconKey(icon)) {
+    @case ("home") { <svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"></path><path d="M6 10v9h12v-9"></path></svg> }
+    @case ("library") { <svg viewBox="0 0 24 24"><path d="M5 5h5v14H5z"></path><path d="M14 5h5v14h-5z"></path></svg> }
+    @case ("grid") { <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg> }
+    @case ("heart") { <svg viewBox="0 0 24 24"><path d="M20.8 5.6c-1.6-1.8-4.3-1.9-6-.2L12 8.2 9.2 5.4c-1.7-1.7-4.4-1.6-6 .2-1.7 1.9-1.5 4.8.4 6.5L12 20l8.4-7.9c1.9-1.7 2.1-4.6.4-6.5z"></path></svg> }
+    @case ("book") { <svg viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"></path><path d="M8 4v16"></path></svg> }
+    @case ("sparkles") { <svg viewBox="0 0 24 24"><path d="M12 3l1.4 4.2L18 9l-4.6 1.8L12 15l-1.4-4.2L6 9l4.6-1.8z"></path><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"></path><path d="M5 14l.6 1.6L7 16l-1.4.4L5 18l-.6-1.6L3 16l1.4-.4z"></path></svg> }
+    @case ("check-circle") { <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M8 12l2.5 2.5L16 9"></path></svg> }
+    @case ("shield") { <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.8-2.8 8.2-7 10-4.2-1.8-7-5.2-7-10V6z"></path><path d="M9 12l2 2 4-5"></path></svg> }
+    @case ("user") { <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M5 21a7 7 0 0 1 14 0"></path></svg> }
+    @case ("search") { <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg> }
+    @case ("mail") { <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"></rect><path d="M4 8l8 6 8-6"></path></svg> }
+    @case ("message-circle") { <svg viewBox="0 0 24 24"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.6L4 20l1-4.2A8.5 8.5 0 1 1 21 11.5z"></path></svg> }
+    @case ("file-text") { <svg viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"></path><path d="M14 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h6"></path></svg> }
+    @case ("megaphone") { <svg viewBox="0 0 24 24"><path d="M4 13h3l10 4V7L7 11H4z"></path><path d="M7 13l2 6"></path></svg> }
+    @case ("clipboard-list") { <svg viewBox="0 0 24 24"><path d="M9 4h6l1 2h3v15H5V6h3z"></path><path d="M9 12h6"></path><path d="M9 16h6"></path></svg> }
+    @case ("list-checks") { <svg viewBox="0 0 24 24"><path d="M5 7l2 2 4-4"></path><path d="M13 8h6"></path><path d="M5 15l2 2 4-4"></path><path d="M13 16h6"></path></svg> }
+    @case ("receipt") { <svg viewBox="0 0 24 24"><path d="M7 3h10v18l-2-1-2 1-2-1-2 1-2-1z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path><path d="M9 16h4"></path></svg> }
+    @case ("star") { <svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.9z"></path></svg> }
+    @case ("lightbulb") { <svg viewBox="0 0 24 24"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M8 14a6 6 0 1 1 8 0c-.8.7-1 1.6-1 2H9c0-.4-.2-1.3-1-2z"></path><path d="M12 2V1"></path><path d="M4 10H3"></path><path d="M21 10h-1"></path></svg> }
+    @case ("copy") { <svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"></path></svg> }
+    @case ("dollar-sign") { <svg viewBox="0 0 24 24"><path d="M12 2v20"></path><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"></path></svg> }
+    @case ("settings") { <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a8 8 0 0 0 .1-6l2-1.5-2-3.5-2.5 1a8 8 0 0 0-5-3l-.4-2.5h-4l-.4 2.5a8 8 0 0 0-5 3l-2.5-1-2 3.5 2 1.5a8 8 0 0 0 .1 6l-2 1.5 2 3.5 2.5-1a8 8 0 0 0 5 3l.4 2.5h4l.4-2.5a8 8 0 0 0 5-3l2.5 1 2-3.5z"></path></svg> }
+    @default { <svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3"></rect></svg> }
+  }
+</ng-template>

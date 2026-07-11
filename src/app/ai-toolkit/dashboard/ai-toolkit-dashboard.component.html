@@ -1,0 +1,343 @@
+<main class="dashboard-page">
+  <section class="dashboard-shell" aria-labelledby="dashboard-title">
+    <aside class="dashboard-sidebar" aria-label="Toolkit preview navigation">
+      <nav class="dashboard-nav" aria-label="Public dashboard menu">
+        @for (item of navigationItems$$(); track item.label; let i = $index) {
+          @if (isAllRecipesItem(item)) {
+            <button
+              class="dashboard-nav__item"
+              type="button"
+              [class.is-active]="view$$() === 'recipes'"
+              (click)="setView('recipes')"
+            >
+              <span class="icon-badge icon-badge--sm" [ngClass]="'tone-' + iconTone(item.icon, i)" aria-hidden="true">
+                <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: item.icon }"></ng-container>
+              </span>
+              {{ item.label }}
+            </button>
+          } @else if (isHomeItem(item)) {
+            <button
+              class="dashboard-nav__item"
+              type="button"
+              [class.is-active]="view$$() === 'home'"
+              (click)="handleHomeClick()"
+            >
+              <span class="icon-badge icon-badge--sm" [ngClass]="'tone-' + iconTone(item.icon, i)" aria-hidden="true">
+                <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: item.icon }"></ng-container>
+              </span>
+              {{ item.label }}
+            </button>
+          } @else {
+            <button class="dashboard-nav__item" type="button" disabled>
+              <span class="icon-badge icon-badge--sm" [ngClass]="'tone-' + iconTone(item.icon, i)" aria-hidden="true">
+                <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: item.icon }"></ng-container>
+              </span>
+              {{ item.label }}
+            </button>
+          }
+        }
+      </nav>
+
+      <article class="checkout-card" aria-labelledby="checkout-title">
+        <h2 id="checkout-title">Get Full Access</h2>
+        <p>One-time payment. Lifetime access.</p>
+        <div class="checkout-price">
+          <strong>${{ toolkit.metadata.price }}</strong>
+          <span>{{ toolkit.metadata.currency }}</span>
+        </div>
+        <ul>
+          <li>50+ Business Recipes</li>
+          <li>All Business Areas</li>
+          <li>All Workflows</li>
+          <li>AI Toolbox Guides</li>
+          <li>Regular Updates</li>
+        </ul>
+        <button class="checkout-card__button" type="button" (click)="startCheckout()">
+          Pay ${{ toolkit.metadata.price }} Now
+        </button>
+        <p class="checkout-card__secure">Secure payment by Stripe</p>
+        <div class="payment-row" aria-label="Payment methods">
+          <span>VISA</span>
+          <span>MC</span>
+          <span>AMEX</span>
+          <span>Pay</span>
+          <span>G Pay</span>
+        </div>
+        <p class="checkout-card__guarantee">No subscriptions. No hidden fees.</p>
+      </article>
+    </aside>
+
+    <div class="dashboard-main">
+      <header class="dashboard-header">
+        <div>
+          <h1 id="dashboard-title">Hello,</h1>
+          <p>Let's save you some time today.</p>
+        </div>
+        <label class="dashboard-search" aria-label="Search recipes disabled">
+          <span class="search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"></circle><path d="M16 16l4 4"></path></svg>
+          </span>
+          <input type="search" placeholder="Search recipes..." disabled />
+        </label>
+      </header>
+
+      @if (view$$() === 'home') {
+        <div class="dashboard-grid">
+          <div class="dashboard-stack dashboard-stack--main">
+            <section class="dashboard-panel continue-panel" aria-labelledby="continue-title">
+              <div class="panel-heading">
+                <h2 id="continue-title">Recommended for You</h2>
+                <button type="button" disabled aria-label="Next featured recipe">&rsaquo;</button>
+              </div>
+              <div class="featured-row">
+                @for (recipe of featuredRecipes$$(); track recipe.slug; let i = $index) {
+                  <article class="mini-recipe is-disabled">
+                    <span class="icon-badge" [ngClass]="'tone-' + iconTone(recipe.categorySlug, i)" aria-hidden="true">
+                    <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: getCategoryIcon(recipe.categorySlug) }"></ng-container>
+                  </span>
+                  <strong>{{ recipe.title }}</strong>
+                  <small>{{ recipe.description }}</small>
+                </article>
+              }
+              </div>
+            </section>
+
+            <section class="dashboard-panel actions-panel" aria-labelledby="actions-title">
+              <h2 id="actions-title">Quick Actions</h2>
+              <div class="quick-grid">
+                @for (action of quickActions$$(); track action.label; let i = $index) {
+                  <button class="quick-action" type="button" disabled>
+                    <span class="icon-badge" [ngClass]="'tone-' + iconTone(action.icon, i)" aria-hidden="true">
+                      <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: action.icon }"></ng-container>
+                    </span>
+                    {{ action.label }}
+                  </button>
+                }
+              </div>
+            </section>
+          </div>
+
+          <div class="dashboard-stack dashboard-stack--side">
+            <section class="dashboard-panel progress-panel" aria-labelledby="progress-title">
+              <h2 id="progress-title">Your Progress</h2>
+              <dl class="progress-list">
+                <div>
+                  <dt>Recipes Used</dt>
+                  <dd>{{ recipeCount$$() }}</dd>
+                </div>
+                <!-- <div>
+                  <dt>Estimated Time Saved</dt>
+                  <dd>{{ totalHoursSaved$$() }} Hours</dd>
+                </div> -->
+                <div>
+                  <dt>Favourite Recipes</dt>
+                  <dd>{{ favouriteCount$$() }}</dd>
+                </div>
+              </dl>
+              <div class="progress-line-chart" aria-hidden="true">
+                <svg viewBox="0 0 240 92" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="progressLine" x1="0" x2="1" y1="0" y2="0">
+                      <stop offset="0%" stop-color="#22d3ee"></stop>
+                      <stop offset="58%" stop-color="#6366f1"></stop>
+                      <stop offset="100%" stop-color="#8b5cf6"></stop>
+                    </linearGradient>
+                    <linearGradient id="progressFill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.22"></stop>
+                      <stop offset="100%" stop-color="#22d3ee" stop-opacity="0"></stop>
+                    </linearGradient>
+                  </defs>
+                  <path class="line-area" d="M10 66 L45 48 L80 54 L115 34 L150 60 L185 44 L230 24 L230 84 L10 84 Z"></path>
+                  <path class="line-path" d="M10 66 L45 48 L80 54 L115 34 L150 60 L185 44 L230 24"></path>
+                  <g class="line-points">
+                    <circle cx="10" cy="66" r="4"></circle>
+                    <circle cx="45" cy="48" r="4"></circle>
+                    <circle cx="80" cy="54" r="4"></circle>
+                    <circle cx="115" cy="34" r="4"></circle>
+                    <circle cx="150" cy="60" r="4"></circle>
+                    <circle cx="185" cy="44" r="4"></circle>
+                    <circle cx="230" cy="24" r="4"></circle>
+                  </g>
+                </svg>
+              </div>
+            </section>
+
+            <section class="dashboard-panel tip-panel" aria-labelledby="tip-title">
+              <h2 id="tip-title">Sophia Tip of the Day</h2>
+              <div class="tip-panel__body">
+                <blockquote>
+                  Don't ask AI to write. Ask AI to solve a business problem.
+                </blockquote>
+                <span class="tip-panel__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M9 18h6"></path><path d="M10 22h4"></path><path d="M8.5 14.5A6 6 0 1 1 15.5 14c-.9.6-1.5 1.6-1.5 2.7V17h-4v-.3c0-1-.6-1.8-1.5-2.2z"></path><path d="M12 2v2"></path><path d="M4.9 4.9l1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="M17.7 6.3l1.4-1.4"></path></svg>
+                </span>
+              </div>
+            </section>
+          </div>
+
+          <section class="dashboard-panel popular-panel" aria-labelledby="popular-title">
+            <div class="panel-heading">
+              <h2 id="popular-title">Popular This Week</h2>
+              <button type="button" disabled aria-label="Next popular recipe">&rsaquo;</button>
+            </div>
+            <div class="popular-row">
+              @for (recipe of popularRecipes$$(); track recipe.slug; let i = $index) {
+                <article class="popular-card is-disabled">
+                  <span class="icon-badge" [ngClass]="'tone-' + iconTone(recipe.categorySlug, i)" aria-hidden="true">
+                    <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: getCategoryIcon(recipe.categorySlug) }"></ng-container>
+                  </span>
+                  <strong>{{ recipe.title }}</strong>
+                  <small class="rating-row">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"></path></svg>
+                    {{ recipe.rating }}
+                  </small>
+                </article>
+              }
+            </div>
+          </section>
+        </div>
+      } @else {
+        <section class="dashboard-panel recipes-panel" aria-labelledby="all-recipes-title">
+          <div class="recipes-heading">
+            <div>
+              <h2 id="all-recipes-title">All Recipes</h2>
+              <p>Preview all categories and recipe cards. Full prompts unlock after checkout.</p>
+            </div>
+            <div class="recipes-heading__actions">
+              <span class="readonly-badge">Read-only Preview</span>
+              <button type="button" disabled aria-label="Next category">&rsaquo;</button>
+            </div>
+          </div>
+
+          <div class="category-grid">
+            @for (category of previewCategories$$(); track category.slug; let i = $index) {
+              <article class="category-card">
+                <span class="icon-badge" [ngClass]="'tone-' + iconTone(category.icon, i)" aria-hidden="true">
+                  <ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: category.icon }"></ng-container>
+                </span>
+                <strong>{{ category.name }}</strong>
+                <p>{{ category.description }}</p>
+                <small>{{ category.recipeCount }} recipes</small>
+              </article>
+            }
+          </div>
+
+          <div class="all-recipes-grid">
+            @for (recipe of toolkit.recipes; track recipe.slug; let i = $index) {
+              <article class="recipe-preview-card is-disabled">
+                <div>
+                  <span class="recipe-preview-card__category">{{ recipe.category }}</span>
+                  <strong>{{ recipe.title }}</strong>
+                  <p>{{ recipe.description }}</p>
+                </div>
+                <small>{{ recipe.difficulty }} | {{ recipe.timeSavedMinutes }} min saved | {{ recipe.bestTool }}</small>
+              </article>
+            }
+          </div>
+        </section>
+      }
+    </div>
+  </section>
+
+  @if (accountModalOpen$$()) {
+    <div class="account-modal" role="presentation" (click)="closeAccountModal()">
+      <section
+        class="account-modal__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="account-modal-title"
+        (click)="$event.stopPropagation()"
+      >
+        <button
+          class="account-modal__close"
+          type="button"
+          aria-label="Close account modal"
+          (click)="closeAccountModal()"
+        >
+          ×
+        </button>
+        <h2 id="account-modal-title">Create your account</h2>
+        <p>
+          Sign up to unlock the Sophia AI Toolkit. Already have an account?
+          Sign in and we will take you straight to checkout.
+        </p>
+        <div class="account-modal__actions">
+          <a routerLink="/register" [queryParams]="{ target: 'ai-toolkit-checkout' }">
+            Sign Up
+          </a>
+          <a routerLink="/login" [queryParams]="{ target: 'ai-toolkit-checkout' }" class="secondary">
+            Sign In
+          </a>
+        </div>
+      </section>
+    </div>
+  }
+</main>
+
+<ng-template #iconTpl let-icon="icon">
+  @switch (iconKey(icon)) {
+    @case ("home") {
+      <svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"></path><path d="M6 10v9h12v-9"></path><path d="M10 19v-5h4v5"></path></svg>
+    }
+    @case ("library") {
+      <svg viewBox="0 0 24 24"><path d="M5 5h5v14H5z"></path><path d="M14 5h5v14h-5z"></path><path d="M10 8h4"></path><path d="M10 16h4"></path></svg>
+    }
+    @case ("grid") {
+      <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg>
+    }
+    @case ("zap") {
+      <svg viewBox="0 0 24 24"><path d="M13 3L5 14h6l-1 7 9-12h-6l1-6z"></path></svg>
+    }
+    @case ("tool") {
+      <svg viewBox="0 0 24 24"><path d="M14 7l3-3 3 3-3 3"></path><path d="M17 10L8 19l-3-3 9-9"></path></svg>
+    }
+    @case ("heart") {
+      <svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg>
+    }
+    @case ("book-open") {
+      <svg viewBox="0 0 24 24"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H20v17H7.5A3.5 3.5 0 0 0 4 22z"></path><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H20"></path></svg>
+    }
+    @case ("user") {
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M5 21a7 7 0 0 1 14 0"></path></svg>
+    }
+    @case ("mail") {
+      <svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"></rect><path d="M4 8l8 6 8-6"></path></svg>
+    }
+    @case ("message-circle") {
+      <svg viewBox="0 0 24 24"><path d="M20 11.5a7.5 7.5 0 0 1-11 6.6L4 20l1.9-4.7A7.5 7.5 0 1 1 20 11.5z"></path></svg>
+    }
+    @case ("file-text") {
+      <svg viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v5h5"></path><path d="M9 13h6"></path><path d="M9 17h6"></path></svg>
+    }
+    @case ("megaphone") {
+      <svg viewBox="0 0 24 24"><path d="M4 13h4l10 4V7L8 11H4z"></path><path d="M8 13l2 6"></path></svg>
+    }
+    @case ("clipboard-list") {
+      <svg viewBox="0 0 24 24"><path d="M9 4h6l1 3H8z"></path><path d="M7 6H5v15h14V6h-2"></path><path d="M8 12h.01"></path><path d="M11 12h5"></path><path d="M8 16h.01"></path><path d="M11 16h5"></path></svg>
+    }
+    @case ("list-checks") {
+      <svg viewBox="0 0 24 24"><path d="M4 7l2 2 4-4"></path><path d="M12 8h8"></path><path d="M4 15l2 2 4-4"></path><path d="M12 16h8"></path></svg>
+    }
+    @case ("receipt") {
+      <svg viewBox="0 0 24 24"><path d="M6 3l2 1 2-1 2 1 2-1 2 1 2-1v18l-2-1-2 1-2-1-2 1-2-1-2 1z"></path><path d="M9 9h6"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg>
+    }
+    @case ("star") {
+      <svg viewBox="0 0 24 24"><path d="M12 3l2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"></path></svg>
+    }
+    @case ("dollar-sign") {
+      <svg viewBox="0 0 24 24"><path d="M12 3v18"></path><path d="M17 7.5A4 4 0 0 0 12 6c-3 0-5 1.3-5 3s2 2.7 5 3 5 1.3 5 3-2 3-5 3a6 6 0 0 1-5-2"></path></svg>
+    }
+    @case ("settings") {
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 3.1a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3.1h5l.3-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1z"></path></svg>
+    }
+    @case ("coins") {
+      <svg viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"></ellipse><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"></path><path d="M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"></path></svg>
+    }
+    @case ("users") {
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.5"></circle><path d="M3 20a6 6 0 0 1 12 0"></path><path d="M14 20a5 5 0 0 1 7 0"></path></svg>
+    }
+    @default {
+      <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"></rect><path d="M8 8h8"></path><path d="M8 12h6"></path><path d="M8 16h4"></path></svg>
+    }
+  }
+</ng-template>

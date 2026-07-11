@@ -46,12 +46,12 @@ export const registerEffect = createEffect(
   ) => {
     return actions$.pipe(
       ofType(authActions.register),
-      switchMap(({ request }) => {
+      switchMap(({ request, redirectTarget }) => {
         return authService.register(request).pipe(
           map((currentUser: CurrentUserInterface) => {
             persistanceService.set('accessToken', currentUser.token);
             // window.localStorage.setItem('accessToken', currentUser.token)
-            return authActions.registerSuccess({ currentUser });
+            return authActions.registerSuccess({ currentUser, redirectTarget });
           }),
           catchError((errorResponse: HttpErrorResponse) => {
             return of(
@@ -68,12 +68,32 @@ export const registerEffect = createEffect(
 );
 
 export const afterRegisterEffect = createEffect(
-  (actions$ = inject(Actions), router = inject(Router)) => {
+  (
+    actions$ = inject(Actions),
+    router = inject(Router),
+    postLoginRedirect = inject(PostLoginRedirectService),
+  ) => {
     return actions$.pipe(
       ofType(authActions.registerSuccess),
-      tap(() => {
-        router.navigateByUrl('/');
-      })
+      switchMap(({ currentUser, redirectTarget }) =>
+        redirectTarget
+          ? postLoginRedirect
+              .resolvePostLoginRoute(currentUser, redirectTarget)
+              .pipe(
+                tap((route) => {
+                  void router.navigateByUrl(route);
+                }),
+                catchError(() => {
+                  void router.navigateByUrl('/');
+                  return EMPTY;
+                }),
+              )
+          : of('/').pipe(
+              tap((route) => {
+                void router.navigateByUrl(route);
+              }),
+            ),
+      ),
     );
   },
   { functional: true, dispatch: false }

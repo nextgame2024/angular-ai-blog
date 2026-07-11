@@ -2,13 +2,14 @@ import { Component } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { authActions } from '../store/actions';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { selectIsSubmitting, selectValidationErrors } from '../store/reducers';
 import { CommonModule } from '@angular/common';
 import { combineLatest } from 'rxjs';
 import { BackendErrorMessages } from '../../shared/components/backendErrorMessages.component';
 import { RegisterRequestInterface } from './../types/registerRequest.interface';
 import { environment } from 'src/environments/environment';
+import { LOGIN_REDIRECT_TARGET_QUERY_PARAM } from '../../shared/services/post-login-redirect.service';
 
 /* PrimeNG */
 import { CardModule } from 'primeng/card';
@@ -51,7 +52,11 @@ export class RegisterComponent {
     backendErrors: this.store.select(selectValidationErrors),
   });
 
-  constructor(private fb: FormBuilder, private store: Store) {}
+  constructor(
+    private fb: FormBuilder,
+    private store: Store,
+    private route: ActivatedRoute
+  ) {}
 
   onSubmit() {
     if (this.form.invalid) return;
@@ -61,6 +66,9 @@ export class RegisterComponent {
         companyId: environment.registerCompanyId,
       },
     };
-    this.store.dispatch(authActions.register({ request }));
+    const redirectTarget =
+      this.route.snapshot.queryParamMap.get(LOGIN_REDIRECT_TARGET_QUERY_PARAM);
+
+    this.store.dispatch(authActions.register({ request, redirectTarget }));
   }
 }

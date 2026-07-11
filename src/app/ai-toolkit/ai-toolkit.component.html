@@ -1,0 +1,88 @@
+<main class="toolkit-page">
+  <section class="toolkit-hero" aria-labelledby="toolkit-title">
+    <div class="toolkit-hero__copy">
+      <p class="eyebrow">Sophia AI Toolkit</p>
+      <h1 id="toolkit-title">Save 10+ hours every week with AI.</h1>
+      <p class="toolkit-hero__intro">
+        Ready-to-use AI prompts and systems for small business owners. Get results in minutes, not hours.
+      </p>
+
+      <ul class="toolkit-checks" aria-label="Toolkit benefits">
+        @for (item of checklist; track item) {
+          <li>
+            <span aria-hidden="true">✓</span>
+            {{ item }}
+          </li>
+        }
+      </ul>
+
+      <div class="toolkit-actions" aria-label="Toolkit actions">
+        <button class="btn btn-primary" type="button" (click)="startCheckout()">
+          Get Access Now - ${{ toolkit.metadata.price }} AUD
+          <span aria-hidden="true">→</span>
+        </button>
+        <a class="btn btn-secondary" routerLink="/ai-toolkit/dashboard">
+          Preview Recipes
+        </a>
+      </div>
+    </div>
+
+    <div class="toolkit-proof" aria-label="Toolkit proof points">
+      @for (feature of features; track feature.title) {
+        <article class="proof-card">
+          <span class="proof-card__icon" aria-hidden="true">
+            @switch (feature.icon) {
+              @case ("shield") {
+                <svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.8-2.8 8.2-7 10-4.2-1.8-7-5.2-7-10V6l7-3z"></path><path d="M9 12l2 2 4-5"></path></svg>
+              }
+              @case ("card") {
+                <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="2"></rect><path d="M8 8h8"></path><path d="M8 12h6"></path><path d="M8 16h4"></path></svg>
+              }
+              @default {
+                <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="2"></rect><path d="M9 20h6"></path><path d="M12 16v4"></path></svg>
+              }
+            }
+          </span>
+          <div>
+            <h2>{{ feature.title }}</h2>
+            <p>{{ feature.copy }}</p>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+
+  @if (accountModalOpen$$()) {
+    <div class="account-modal" role="presentation" (click)="closeAccountModal()">
+      <section
+        class="account-modal__panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="account-modal-title"
+        (click)="$event.stopPropagation()"
+      >
+        <button
+          class="account-modal__close"
+          type="button"
+          aria-label="Close account modal"
+          (click)="closeAccountModal()"
+        >
+          ×
+        </button>
+        <h2 id="account-modal-title">Create your account</h2>
+        <p>
+          Sign up to unlock the Sophia AI Toolkit. Already have an account?
+          Sign in and we will take you straight to checkout.
+        </p>
+        <div class="account-modal__actions">
+          <a routerLink="/register" [queryParams]="{ target: 'ai-toolkit-checkout' }">
+            Sign Up
+          </a>
+          <a routerLink="/login" [queryParams]="{ target: 'ai-toolkit-checkout' }" class="secondary">
+            Sign In
+          </a>
+        </div>
+      </section>
+    </div>
+  }
+</main>

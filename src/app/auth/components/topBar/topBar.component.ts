@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
-import { combineLatest, catchError, map, of, switchMap } from 'rxjs';
+import { combineLatest, catchError, filter, map, of, startWith, switchMap } from 'rxjs';
 import { Store } from '@ngrx/store';
-import { Router, RouterLink } from '@angular/router';
+import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { selectCurrentUser, selectIsLoading } from '../../store/reducers';
@@ -37,24 +37,41 @@ export class TopBarComponent {
       isAuthResolved: currentUser !== undefined && !isAuthLoading,
     })),
   );
-  menuItems$ = this.store.select(selectCurrentUser).pipe(
-    switchMap((currentUser) => {
-      const baseItems = this.buildHeaderItems(!!currentUser);
+  menuItems$ = combineLatest({
+    currentUser: this.store.select(selectCurrentUser),
+    routeEvent: this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      startWith(null),
+    ),
+  }).pipe(
+    switchMap(({ currentUser }) => {
+      const baseItems = this.buildHeaderItems(!!currentUser, false);
 
       if (currentUser === undefined) return of([]);
       if (!currentUser) return of(baseItems);
 
-      return this.navigationLinksApi
-        .listActiveNavigationLinks({ navigationType: 'header' })
-        .pipe(
-          map((links) => {
+      return combineLatest({
+        links: this.navigationLinksApi.listActiveNavigationLinks({
+          navigationType: 'header',
+        }),
+        toolkitAccess: this.http
+          .get<{ hasAccess: boolean }>(`${environment.apiUrl}/ai-toolkit/access`)
+          .pipe(catchError(() => of({ hasAccess: false }))),
+      }).pipe(
+          map(({ links, toolkitAccess }) => {
+            const nextBaseItems = this.buildHeaderItems(
+              true,
+              !!toolkitAccess?.hasAccess,
+            );
             const allowedLabels = new Set(
               (links || [])
                 .map((link) => link.navigationLabel)
                 .filter((label): label is string => !!label),
             );
 
-            return baseItems.filter((item) => allowedLabels.has(item.label));
+            return nextBaseItems.filter((item) =>
+              allowedLabels.has(item.label),
+            );
           }),
           catchError(() => of([])),
         );
@@ -148,14 +165,31 @@ export class TopBarComponent {
     });
   }
 
-  private buildHeaderItems(isLoggedIn: boolean): HeaderItem[] {
+  private buildHeaderItems(
+    isLoggedIn: boolean,
+    hasAiToolkitAccess: boolean,
+  ): HeaderItem[] {
     const items: HeaderItem[] = [
       { label: 'Home', route: '/', matchMode: 'exact' },
+      ...(isLoggedIn && hasAiToolkitAccess
+        ? [
+            {
+              label: 'Dashboard',
+              route: '/manager/dashboard',
+              matchMode: 'prefix' as const,
+            },
+          ]
+        : []),
       {
         label: 'Explore Business Manager',
         route: '/explore',
         matchMode: 'prefix',
         activeRoutes: ['/manager/explore'],
+      },
+      {
+        label: 'Ai Toolkit',
+        route: '/ai-toolkit',
+        matchMode: 'prefix',
       },
     ];
     if (!isLoggedIn) return items;
@@ -165,7 +199,7 @@ export class TopBarComponent {
         label: 'Business manager',
         route: '/manager',
         matchMode: 'prefix',
-        excludePrefixes: ['/manager/explore'],
+        excludePrefixes: ['/manager/explore', '/manager/dashboard'],
       },
       { label: 'Settings', route: '/settings', matchMode: 'prefix' },
     );

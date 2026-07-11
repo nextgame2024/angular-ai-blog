@@ -193,41 +193,44 @@
     [class.mobile-open]="panelOpenMobile$$()"
     [class.collapsed]="panelCollapsed$$() && !isMobile$$()"
     [class.fullscreen]="panelFullscreen$$()"
+    [class.hide-shell-header]="hideShellHeader$$()"
     >
-    <div class="panel-header">
-      <div class="panel-title">
-        <!-- Back appears in fullscreen mode -->
-        @if (panelFullscreen$$()) {
-          <button
-            class="panel-toggle"
-            type="button"
-            (click)="goBackToMenu()"
-            aria-label="Back to menu"
-            >
-            ←
-          </button>
-        }
+    @if (!hideShellHeader$$()) {
+      <div class="panel-header">
+        <div class="panel-title">
+          <!-- Back appears in fullscreen mode -->
+          @if (panelFullscreen$$()) {
+            <button
+              class="panel-toggle"
+              type="button"
+              (click)="goBackToMenu()"
+              aria-label="Back to menu"
+              >
+              ←
+            </button>
+          }
 
-        <!-- Default toggle only when NOT fullscreen -->
-        @if (!panelFullscreen$$()) {
-          <button
-            class="panel-toggle"
-            type="button"
-            (click)="isMobile$$() ? togglePanelMobile() : togglePanelCollapsed()"
-            aria-label="Toggle menu panel"
-            >
-            @if (!isMobile$$()) {
-              <span>‹</span>
-            }
-            @if (isMobile$$()) {
-              <span>{{ panelOpenMobile$$() ? 'Close' : 'Menu' }}</span>
-            }
-          </button>
-        }
+          <!-- Default toggle only when NOT fullscreen -->
+          @if (!panelFullscreen$$()) {
+            <button
+              class="panel-toggle"
+              type="button"
+              (click)="isMobile$$() ? togglePanelMobile() : togglePanelCollapsed()"
+              aria-label="Toggle menu panel"
+              >
+              @if (!isMobile$$()) {
+                <span>‹</span>
+              }
+              @if (isMobile$$()) {
+                <span>{{ panelOpenMobile$$() ? 'Close' : 'Menu' }}</span>
+              }
+            </button>
+          }
 
-        <h2>{{ panelTitle$$() }}</h2>
+          <h2>{{ panelTitle$$() }}</h2>
+        </div>
       </div>
-    </div>
+    }
 
     <div class="panel-body" [class.no-menu]="panelFullscreen$$()">
       <!-- Hide the menu when fullscreen -->

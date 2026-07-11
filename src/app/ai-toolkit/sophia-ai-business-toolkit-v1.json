@@ -1,0 +1,1926 @@
+{
+  "metadata": {
+    "productName": "Sophia AI Business Toolkit",
+    "version": "1.0.0",
+    "description": "A practical AI recipe library for small business owners.",
+    "currency": "AUD",
+    "price": 9,
+    "lastUpdated": "2026-07-08"
+  },
+  "navigation": [
+    {
+      "label": "Home",
+      "route": "/home",
+      "icon": "home"
+    },
+    {
+      "label": "All Recipes",
+      "route": "/recipes",
+      "icon": "library"
+    },
+    {
+      "label": "Business Areas",
+      "route": "/business-areas",
+      "icon": "grid"
+    },
+    {
+      "label": "Workflows",
+      "route": "/workflows",
+      "icon": "zap"
+    },
+    {
+      "label": "AI Toolbox",
+      "route": "/tools",
+      "icon": "tool"
+    },
+    {
+      "label": "Favorites",
+      "route": "/favorites",
+      "icon": "heart"
+    },
+    {
+      "label": "Start Here Guide",
+      "route": "/start-here",
+      "icon": "book-open"
+    },
+    {
+      "label": "My Account",
+      "route": "/account",
+      "icon": "user"
+    }
+  ],
+  "categories": [
+    {
+      "slug": "customer-communication",
+      "name": "Customer Communication",
+      "description": "Emails, customer replies, follow-ups, reviews and more.",
+      "icon": "mail",
+      "recipeCount": 10
+    },
+    {
+      "slug": "sales-quotes",
+      "name": "Sales & Quotes",
+      "description": "Quotes, proposals, offers, follow-ups and sales scripts.",
+      "icon": "dollar-sign",
+      "recipeCount": 10
+    },
+    {
+      "slug": "marketing",
+      "name": "Marketing",
+      "description": "Social media, website copy, newsletters and campaigns.",
+      "icon": "megaphone",
+      "recipeCount": 10
+    },
+    {
+      "slug": "operations-admin",
+      "name": "Operations & Admin",
+      "description": "Meetings, SOPs, checklists, planning and internal processes.",
+      "icon": "settings",
+      "recipeCount": 10
+    },
+    {
+      "slug": "finance-payments",
+      "name": "Finance & Payments",
+      "description": "Invoice reminders, pricing explanations, budgets and expense review.",
+      "icon": "coins",
+      "recipeCount": 5
+    },
+    {
+      "slug": "hr-team",
+      "name": "HR & Team",
+      "description": "Job descriptions, interviews, feedback, training and team updates.",
+      "icon": "users",
+      "recipeCount": 5
+    }
+  ],
+  "tools": [
+    {
+      "slug": "chatgpt",
+      "name": "ChatGPT",
+      "bestFor": [
+        "Emails",
+        "quotes",
+        "customer replies",
+        "SOPs",
+        "planning"
+      ],
+      "difficulty": "Easy",
+      "freeVersion": true,
+      "description": "Best general-purpose AI tool for everyday business writing and task support."
+    },
+    {
+      "slug": "claude",
+      "name": "Claude",
+      "bestFor": [
+        "Long documents",
+        "policies",
+        "reports",
+        "detailed writing"
+      ],
+      "difficulty": "Easy",
+      "freeVersion": true,
+      "description": "Useful for longer documents and careful writing tasks."
+    },
+    {
+      "slug": "gemini",
+      "name": "Gemini",
+      "bestFor": [
+        "Google Workspace tasks",
+        "brainstorming",
+        "business writing"
+      ],
+      "difficulty": "Easy",
+      "freeVersion": true,
+      "description": "Useful for businesses already using Google tools."
+    },
+    {
+      "slug": "perplexity",
+      "name": "Perplexity",
+      "bestFor": [
+        "Research",
+        "current information",
+        "competitor checks"
+      ],
+      "difficulty": "Easy",
+      "freeVersion": true,
+      "description": "Best for research-style tasks where current sources matter."
+    },
+    {
+      "slug": "canva-ai",
+      "name": "Canva AI",
+      "bestFor": [
+        "Social graphics",
+        "flyers",
+        "presentations",
+        "visual marketing"
+      ],
+      "difficulty": "Easy",
+      "freeVersion": true,
+      "description": "Useful for creating simple business visuals without design experience."
+    }
+  ],
+  "workflows": [
+    {
+      "slug": "prepare-a-quote",
+      "title": "Prepare a Quote",
+      "description": "Go from customer enquiry to quote and follow-up.",
+      "estimatedMinutes": 12,
+      "recipeSlugs": [
+        "reply-to-a-customer-enquiry",
+        "write-a-quote",
+        "improve-a-quote",
+        "create-a-follow-up-sequence"
+      ]
+    },
+    {
+      "slug": "reply-to-unhappy-customer",
+      "title": "Reply to an Unhappy Customer",
+      "description": "Handle a complaint professionally and protect your reputation.",
+      "estimatedMinutes": 8,
+      "recipeSlugs": [
+        "reply-to-a-customer-complaint",
+        "make-an-email-more-friendly",
+        "reply-to-a-negative-review"
+      ]
+    },
+    {
+      "slug": "create-weekly-marketing",
+      "title": "Create Weekly Marketing",
+      "description": "Plan and write useful marketing content for the week.",
+      "estimatedMinutes": 15,
+      "recipeSlugs": [
+        "create-30-social-media-ideas",
+        "create-a-content-calendar",
+        "write-a-facebook-post",
+        "write-an-instagram-caption"
+      ]
+    },
+    {
+      "slug": "chase-overdue-payment",
+      "title": "Chase an Overdue Payment",
+      "description": "Send payment reminders without damaging the customer relationship.",
+      "estimatedMinutes": 7,
+      "recipeSlugs": [
+        "write-an-invoice-reminder",
+        "write-a-stronger-payment-reminder",
+        "explain-pricing-to-a-customer"
+      ]
+    },
+    {
+      "slug": "document-a-process",
+      "title": "Document a Business Process",
+      "description": "Turn repeatable work into a simple SOP or checklist.",
+      "estimatedMinutes": 15,
+      "recipeSlugs": [
+        "create-an-sop",
+        "create-a-checklist",
+        "write-internal-instructions",
+        "create-training-instructions"
+      ]
+    }
+  ],
+  "quickActions": [
+    {
+      "label": "Write an Email",
+      "recipeSlug": "write-a-professional-email",
+      "icon": "mail"
+    },
+    {
+      "label": "Reply to Customer",
+      "recipeSlug": "reply-to-a-customer-enquiry",
+      "icon": "message-circle"
+    },
+    {
+      "label": "Create a Quote",
+      "recipeSlug": "write-a-quote",
+      "icon": "file-text"
+    },
+    {
+      "label": "Social Media Post",
+      "recipeSlug": "write-a-facebook-post",
+      "icon": "megaphone"
+    },
+    {
+      "label": "Write SOP",
+      "recipeSlug": "create-an-sop",
+      "icon": "clipboard-list"
+    },
+    {
+      "label": "Summarise Meeting",
+      "recipeSlug": "summarise-meeting-notes",
+      "icon": "list-checks"
+    },
+    {
+      "label": "Invoice Reminder",
+      "recipeSlug": "write-an-invoice-reminder",
+      "icon": "receipt"
+    },
+    {
+      "label": "Ask for Review",
+      "recipeSlug": "ask-for-a-review",
+      "icon": "star"
+    }
+  ],
+  "startHereGuide": {
+    "title": "Start Here Guide",
+    "sections": [
+      {
+        "heading": "Welcome",
+        "body": "This toolkit is designed for busy small business owners who want to use AI in a practical way, without becoming AI experts."
+      },
+      {
+        "heading": "What You Need",
+        "body": "A device, internet access, a free ChatGPT, Claude or Gemini account, and a real business task you want to complete."
+      },
+      {
+        "heading": "Your First AI Win",
+        "body": "Open ChatGPT, Claude or Gemini choose one recipe, paste your business context, review the result, and use it."
+      },
+      {
+        "heading": "The Sophia Formula",
+        "body": "Role, context, goal, constraints, and output. This structure helps AI give better business-ready responses."
+      },
+      {
+        "heading": "Before You Send Anything",
+        "body": "Always check names, dates, prices, tone, promises, and private information before sending AI-generated content."
+      }
+    ]
+  },
+  "recipes": [
+    {
+      "id": 1,
+      "slug": "reply-to-a-customer-enquiry",
+      "title": "Reply to a Customer Enquiry",
+      "category": "Customer Communication",
+      "categorySlug": "customer-communication",
+      "description": "Reply quickly and professionally to a new customer.",
+      "purpose": "Reply quickly and professionally to a new customer.",
+      "whenToUse": "When someone asks about your service, pricing, or availability.",
+      "prompt": "Act as a professional customer service assistant.\n\nMy business is: [BUSINESS TYPE]\nThe customer message is: [PASTE MESSAGE]\n\nWrite a friendly and professional reply.\nAnswer their question clearly.\nAsk for any missing information I need to help them.\nKeep it simple and easy to understand.",
+      "beforeUse": [
+        "Check pricing, dates, and availability.",
+        "Add the customer name.",
+        "Personalise the final message before sending."
+      ],
+      "tags": [
+        "email",
+        "customer",
+        "enquiry",
+        "reply",
+        "communication"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 10,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": true,
+      "isFeatured": true,
+      "relatedRecipeSlugs": [
+        "reply-to-a-customer-complaint",
+        "ask-for-a-review"
+      ]
+    },
+    {
+      "id": 2,
+      "slug": "reply-to-a-customer-complaint",
+      "title": "Reply to a Customer Complaint",
+      "category": "Customer Communication",
+      "categorySlug": "customer-communication",
+      "description": "Respond calmly to an unhappy customer.",
+      "purpose": "Respond calmly to an unhappy customer.",
+      "whenToUse": "When a customer complains by email, message, review, or social media.",
+      "prompt": "Act as a professional customer service manager.\n\nA customer has sent this complaint: [PASTE COMPLAINT]\n\nWrite a polite response.\nAcknowledge the issue.\nApologise for the inconvenience.\nDo not admit legal responsibility.\nDo not offer a refund unless I clearly include one.\nKeep the tone calm, respectful, and professional.",
+      "beforeUse": [
+        "Confirm what actually happened before sending.",
+        "Do not make promises you cannot keep.",
+        "Escalate serious legal or safety issues."
+      ],
+      "tags": [
+        "complaint",
+        "customer",
+        "reply",
+        "support",
+        "reputation"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": true,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "reply-to-a-customer-enquiry",
+        "follow-up-with-a-lead"
+      ]
+    },
+    {
+      "id": 3,
+      "slug": "follow-up-with-a-lead",
+      "title": "Follow Up With a Lead",
+      "category": "Customer Communication",
+      "categorySlug": "customer-communication",
+      "description": "Follow up with someone who showed interest but has not replied.",
+      "purpose": "Follow up with someone who showed interest but has not replied.",
+      "whenToUse": "When a potential customer has gone quiet after an enquiry, call, or quote.",
+      "prompt": "Act as a sales assistant.\n\nWrite a short follow-up message to this potential customer: [PASTE CONTEXT]\n\nThe goal is to politely check if they are still interested.\nKeep it friendly, not pushy.\nInclude a simple call to action.",
+      "beforeUse": [
+        "Add the customer name.",
+        "Mention the specific product or service.",
+        "Keep it short."
+      ],
+      "tags": [
+        "lead",
+        "follow-up",
+        "sales",
+        "customer",
+        "message"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 10,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "reply-to-a-customer-complaint",
+        "write-a-professional-email",
+        "reply-to-a-customer-enquiry"
+      ]
+    },
+    {
+      "id": 4,
+      "slug": "write-a-professional-email",
+      "title": "Write a Professional Email",
+      "category": "Customer Communication",
+      "categorySlug": "customer-communication",
+      "description": "Turn rough notes into a polished business email.",
+      "purpose": "Turn rough notes into a polished business email.",
+      "whenToUse": "When you know what to say but need help making it clear and professional.",
+      "prompt": "Rewrite the following notes as a clear, professional email:\n\n[PASTE NOTES]\n\nKeep the tone: [friendly / formal / direct]\nMake it easy to read.\nRemove unnecessary words.\nDo not change the meaning.",
+      "beforeUse": [
+        "Review the final tone.",
+        "Check names, attachments, and dates.",
+        "Confirm the message still says what you intended."
+      ],
+      "tags": [
+        "email",
+        "professional",
+        "rewrite",
+        "communication"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 10,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "follow-up-with-a-lead",
+        "shorten-an-email",
+        "reply-to-a-customer-enquiry"
+      ]
+    },
+    {
+      "id": 5,
+      "slug": "shorten-an-email",
+      "title": "Shorten an Email",
+      "category": "Customer Communication",
+      "categorySlug": "customer-communication",
+      "description": "Make a long email shorter and clearer.",
+      "purpose": "Make a long email shorter and clearer.",
+      "whenToUse": "When an email is too long, repetitive, or hard to read.",
+      "prompt": "Shorten this email while keeping it professional and clear:\n\n[PASTE EMAIL]\n\nKeep the main message.\nRemove repetition.\nMake it easier to read.",
+      "beforeUse": [
+        "Check nothing important was removed.",
+        "Keep required details like dates and prices.",
+        "Use your own greeting and sign-off."
+      ],
+      "tags": [
+        "email",
+        "shorten",
+        "clarity",
+        "communication"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 5,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-a-professional-email",
+        "make-an-email-more-friendly",
+        "reply-to-a-customer-enquiry"
+      ]
+    },
+    {
+      "id": 6,
+      "slug": "make-an-email-more-friendly",
+      "title": "Make an Email More Friendly",
+      "category": "Customer Communication",
+      "categorySlug": "customer-communication",
+      "description": "Improve the tone of an email without sounding too casual.",
+      "purpose": "Improve the tone of an email without sounding too casual.",
+      "whenToUse": "When an email sounds too cold, direct, or formal.",
+      "prompt": "Rewrite this email to sound warmer, friendlier, and still professional:\n\n[PASTE EMAIL]\n\nKeep the same meaning.\nDo not make it too long.",
+      "beforeUse": [
+        "Make sure it still matches your brand voice.",
+        "Avoid over-apologising.",
+        "Check the message is still clear."
+      ],
+      "tags": [
+        "email",
+        "tone",
+        "friendly",
+        "communication"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 5,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "shorten-an-email",
+        "write-an-appointment-reminder",
+        "reply-to-a-customer-enquiry"
+      ]
+    },
+    {
+      "id": 7,
+      "slug": "write-an-appointment-reminder",
+      "title": "Write an Appointment Reminder",
+      "category": "Customer Communication",
+      "categorySlug": "customer-communication",
+      "description": "Remind customers about appointments.",
+      "purpose": "Remind customers about appointments.",
+      "whenToUse": "Before appointments, bookings, consultations, inspections, or service visits.",
+      "prompt": "Write a short appointment reminder message.\n\nBusiness: [BUSINESS NAME]\nCustomer: [CUSTOMER NAME]\nAppointment date/time: [DATE/TIME]\nLocation or link: [LOCATION/LINK]\n\nKeep it friendly and clear.\nInclude what the customer needs to prepare, if anything.",
+      "beforeUse": [
+        "Confirm the date and time.",
+        "Include location or meeting link.",
+        "Mention cancellation rules if relevant."
+      ],
+      "tags": [
+        "appointment",
+        "reminder",
+        "customer",
+        "booking"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 5,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "make-an-email-more-friendly",
+        "ask-a-customer-for-missing-information",
+        "reply-to-a-customer-enquiry"
+      ]
+    },
+    {
+      "id": 8,
+      "slug": "ask-a-customer-for-missing-information",
+      "title": "Ask a Customer for Missing Information",
+      "category": "Customer Communication",
+      "categorySlug": "customer-communication",
+      "description": "Request missing details without sounding difficult.",
+      "purpose": "Request missing details without sounding difficult.",
+      "whenToUse": "When you cannot proceed because the customer has not provided enough information.",
+      "prompt": "Write a polite message asking the customer for the following missing information:\n\n[MISSING INFORMATION]\n\nContext: [EXPLAIN SITUATION]\n\nKeep it clear, friendly, and easy to reply to.",
+      "beforeUse": [
+        "List only the information you really need.",
+        "Make it easy for the customer to answer.",
+        "Avoid sounding like the customer made a mistake."
+      ],
+      "tags": [
+        "customer",
+        "information",
+        "request",
+        "email"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 10,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-an-appointment-reminder",
+        "reply-to-a-price-objection",
+        "reply-to-a-customer-enquiry"
+      ]
+    },
+    {
+      "id": 9,
+      "slug": "reply-to-a-price-objection",
+      "title": "Reply to a Price Objection",
+      "category": "Customer Communication",
+      "categorySlug": "customer-communication",
+      "description": "Handle “too expensive” responses professionally.",
+      "purpose": "Handle “too expensive” responses professionally.",
+      "whenToUse": "When a customer questions the price or compares you to a cheaper option.",
+      "prompt": "Act as a sales consultant.\n\nA customer says our price is too expensive.\n\nOur service/product is: [SERVICE/PRODUCT]\nPrice: [PRICE]\nValue/benefits: [BENEFITS]\n\nWrite a professional reply that explains the value, stays respectful, and does not sound defensive.",
+      "beforeUse": [
+        "Do not argue with the customer.",
+        "Focus on value and outcomes.",
+        "Only offer discounts if approved."
+      ],
+      "tags": [
+        "price",
+        "objection",
+        "sales",
+        "value",
+        "customer"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "ask-a-customer-for-missing-information",
+        "ask-for-a-review",
+        "reply-to-a-customer-enquiry"
+      ]
+    },
+    {
+      "id": 10,
+      "slug": "ask-for-a-review",
+      "title": "Ask for a Review",
+      "category": "Customer Communication",
+      "categorySlug": "customer-communication",
+      "description": "Ask a happy customer to leave a review.",
+      "purpose": "Ask a happy customer to leave a review.",
+      "whenToUse": "After completing a job, delivery, service, or sale successfully.",
+      "prompt": "Write a short message asking a happy customer to leave a review.\n\nBusiness: [BUSINESS NAME]\nCustomer experience: [WHAT HAPPENED]\nReview link: [LINK]\n\nKeep it warm, grateful, and simple.",
+      "beforeUse": [
+        "Send only to satisfied customers.",
+        "Include the correct review link.",
+        "Keep the message short."
+      ],
+      "tags": [
+        "review",
+        "google",
+        "customer",
+        "reputation"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 5,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "reply-to-a-price-objection",
+        "reply-to-a-customer-enquiry"
+      ]
+    },
+    {
+      "id": 11,
+      "slug": "write-a-quote",
+      "title": "Write a Quote",
+      "category": "Sales & Quotes",
+      "categorySlug": "sales-quotes",
+      "description": "Create a clear quotation for a customer.",
+      "purpose": "Create a clear quotation for a customer.",
+      "whenToUse": "When a customer asks for pricing or approves a scope discussion.",
+      "prompt": "Act as a professional business assistant.\n\nCreate a customer quote using this information:\n\nCustomer: [CUSTOMER NAME]\nService/product: [SERVICE]\nScope: [SCOPE]\nPrice: [PRICE]\nInclusions: [INCLUSIONS]\nExclusions: [EXCLUSIONS]\nValidity: [VALIDITY PERIOD]\n\nMake it clear, professional, and easy for the customer to understand.",
+      "beforeUse": [
+        "Check all prices carefully.",
+        "Include exclusions to avoid confusion.",
+        "Confirm GST/tax treatment if relevant."
+      ],
+      "tags": [
+        "quote",
+        "pricing",
+        "sales",
+        "customer"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 20,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": true,
+      "isFeatured": true,
+      "relatedRecipeSlugs": [
+        "improve-a-quote",
+        "create-an-offer"
+      ]
+    },
+    {
+      "id": 12,
+      "slug": "improve-a-quote",
+      "title": "Improve a Quote",
+      "category": "Sales & Quotes",
+      "categorySlug": "sales-quotes",
+      "description": "Make a quote easier to understand and approve.",
+      "purpose": "Make a quote easier to understand and approve.",
+      "whenToUse": "When your quote feels too technical, unclear, or unpersuasive.",
+      "prompt": "Improve this quote so it is clearer and more professional:\n\n[PASTE QUOTE]\n\nMake the value easy to understand.\nKeep the wording simple.\nDo not change prices or terms.",
+      "beforeUse": [
+        "Confirm AI did not change prices.",
+        "Check scope, exclusions, and validity.",
+        "Keep legally required terms unchanged."
+      ],
+      "tags": [
+        "quote",
+        "improve",
+        "sales",
+        "clarity"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-a-quote",
+        "write-a-proposal"
+      ]
+    },
+    {
+      "id": 13,
+      "slug": "write-a-proposal",
+      "title": "Write a Proposal",
+      "category": "Sales & Quotes",
+      "categorySlug": "sales-quotes",
+      "description": "Create a simple business proposal.",
+      "purpose": "Create a simple business proposal.",
+      "whenToUse": "When a customer needs more detail than a quote.",
+      "prompt": "Act as a business proposal writer.\n\nCreate a proposal for:\n\nClient: [CLIENT]\nProblem: [PROBLEM]\nRecommended solution: [SOLUTION]\nScope: [SCOPE]\nTimeline: [TIMELINE]\nPrice: [PRICE]\nNext step: [NEXT STEP]\n\nUse clear sections and professional language.",
+      "beforeUse": [
+        "Check technical details.",
+        "Confirm timeline and price.",
+        "Add your terms and conditions if required."
+      ],
+      "tags": [
+        "proposal",
+        "sales",
+        "client",
+        "scope"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "improve-a-quote",
+        "create-a-service-description",
+        "write-a-quote"
+      ]
+    },
+    {
+      "id": 14,
+      "slug": "create-a-service-description",
+      "title": "Create a Service Description",
+      "category": "Sales & Quotes",
+      "categorySlug": "sales-quotes",
+      "description": "Explain what your service includes.",
+      "purpose": "Explain what your service includes.",
+      "whenToUse": "When creating website copy, brochures, proposals, or product pages.",
+      "prompt": "Write a clear service description for:\n\nService: [SERVICE NAME]\nBusiness: [BUSINESS TYPE]\nTarget customer: [CUSTOMER TYPE]\nMain benefits: [BENEFITS]\n\nMake it suitable for a website or brochure.",
+      "beforeUse": [
+        "Avoid overpromising.",
+        "Use customer-friendly language.",
+        "Add service limitations if needed."
+      ],
+      "tags": [
+        "service",
+        "description",
+        "website",
+        "sales"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-a-proposal",
+        "create-a-sales-script",
+        "write-a-quote"
+      ]
+    },
+    {
+      "id": 15,
+      "slug": "create-a-sales-script",
+      "title": "Create a Sales Script",
+      "category": "Sales & Quotes",
+      "categorySlug": "sales-quotes",
+      "description": "Prepare for a customer call.",
+      "purpose": "Prepare for a customer call.",
+      "whenToUse": "Before discovery calls, phone enquiries, demos, or sales meetings.",
+      "prompt": "Create a simple sales call script for my business.\n\nBusiness: [BUSINESS]\nService/product: [SERVICE]\nTarget customer: [CUSTOMER]\nMain problem solved: [PROBLEM]\n\nInclude opening, questions, value explanation, objection handling, and closing.",
+      "beforeUse": [
+        "Do not read it like a robot.",
+        "Adapt it to the customer.",
+        "Prepare answers for common questions."
+      ],
+      "tags": [
+        "sales",
+        "script",
+        "call",
+        "objections"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-service-description",
+        "create-a-follow-up-sequence",
+        "write-a-quote"
+      ]
+    },
+    {
+      "id": 16,
+      "slug": "create-a-follow-up-sequence",
+      "title": "Create a Follow-Up Sequence",
+      "category": "Sales & Quotes",
+      "categorySlug": "sales-quotes",
+      "description": "Follow up after sending a quote.",
+      "purpose": "Follow up after sending a quote.",
+      "whenToUse": "When a customer has received a quote but has not replied.",
+      "prompt": "Create a 3-message follow-up sequence for a customer who received a quote but has not replied.\n\nService: [SERVICE]\nTone: friendly and professional\nGoal: encourage a response without being pushy\n\nInclude messages for day 2, day 5, and day 10.",
+      "beforeUse": [
+        "Set reminders to send each follow-up.",
+        "Keep messages short.",
+        "Stop if the customer declines."
+      ],
+      "tags": [
+        "follow-up",
+        "quote",
+        "sales",
+        "sequence"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 20,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-sales-script",
+        "write-a-discount-response",
+        "write-a-quote"
+      ]
+    },
+    {
+      "id": 17,
+      "slug": "write-a-discount-response",
+      "title": "Write a Discount Response",
+      "category": "Sales & Quotes",
+      "categorySlug": "sales-quotes",
+      "description": "Reply when a customer asks for a discount.",
+      "purpose": "Reply when a customer asks for a discount.",
+      "whenToUse": "When a customer asks for a lower price or special deal.",
+      "prompt": "Write a professional response to a customer asking for a discount.\n\nContext: [CONTEXT]\nCan we offer discount? [YES/NO]\nAlternative value we can offer: [OPTIONAL]\n\nKeep the response respectful and business-focused.",
+      "beforeUse": [
+        "Confirm discount policy.",
+        "Offer value instead of price cuts where possible.",
+        "Do not sound defensive."
+      ],
+      "tags": [
+        "discount",
+        "pricing",
+        "sales",
+        "customer"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-follow-up-sequence",
+        "create-a-product-or-service-comparison",
+        "write-a-quote"
+      ]
+    },
+    {
+      "id": 18,
+      "slug": "create-a-product-or-service-comparison",
+      "title": "Create a Product or Service Comparison",
+      "category": "Sales & Quotes",
+      "categorySlug": "sales-quotes",
+      "description": "Help customers choose between options.",
+      "purpose": "Help customers choose between options.",
+      "whenToUse": "When you offer multiple packages, products, or service levels.",
+      "prompt": "Create a simple comparison table for these options:\n\n[OPTION 1]\n[OPTION 2]\n[OPTION 3]\n\nCompare price, best for, features, limitations, and recommendation.",
+      "beforeUse": [
+        "Check all features and prices.",
+        "Make recommendations clear.",
+        "Avoid unfair competitor claims."
+      ],
+      "tags": [
+        "comparison",
+        "products",
+        "services",
+        "sales"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 20,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-a-discount-response",
+        "write-a-why-choose-us-section",
+        "write-a-quote"
+      ]
+    },
+    {
+      "id": 19,
+      "slug": "write-a-why-choose-us-section",
+      "title": "Write a Why Choose Us Section",
+      "category": "Sales & Quotes",
+      "categorySlug": "sales-quotes",
+      "description": "Improve website or proposal copy.",
+      "purpose": "Improve website or proposal copy.",
+      "whenToUse": "When explaining why customers should choose your business.",
+      "prompt": "Write a “Why Choose Us” section for my business.\n\nBusiness: [BUSINESS]\nTarget customer: [CUSTOMER]\nStrengths: [STRENGTHS]\nTone: professional, simple, trustworthy",
+      "beforeUse": [
+        "Use real strengths only.",
+        "Avoid generic claims.",
+        "Add proof where possible."
+      ],
+      "tags": [
+        "why-choose-us",
+        "website",
+        "trust",
+        "sales"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-product-or-service-comparison",
+        "create-an-offer",
+        "write-a-quote"
+      ]
+    },
+    {
+      "id": 20,
+      "slug": "create-an-offer",
+      "title": "Create an Offer",
+      "category": "Sales & Quotes",
+      "categorySlug": "sales-quotes",
+      "description": "Package a service into a clear offer.",
+      "purpose": "Package a service into a clear offer.",
+      "whenToUse": "When you want to sell a service with a clear promise and inclusions.",
+      "prompt": "Help me create a clear business offer.\n\nBusiness: [BUSINESS]\nService/product: [SERVICE]\nTarget customer: [CUSTOMER]\nProblem solved: [PROBLEM]\nPrice: [PRICE]\n\nInclude offer name, promise, inclusions, bonuses, guarantee idea, and call to action.",
+      "beforeUse": [
+        "Make sure the offer is profitable.",
+        "Do not include guarantees you cannot support.",
+        "Keep the promise specific."
+      ],
+      "tags": [
+        "offer",
+        "sales",
+        "package",
+        "pricing"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-a-why-choose-us-section",
+        "write-a-quote"
+      ]
+    },
+    {
+      "id": 21,
+      "slug": "create-30-social-media-ideas",
+      "title": "Create 30 Social Media Ideas",
+      "category": "Marketing",
+      "categorySlug": "marketing",
+      "description": "Generate simple content ideas quickly.",
+      "purpose": "Generate simple content ideas quickly.",
+      "whenToUse": "When you do not know what to post.",
+      "prompt": "Create 30 social media post ideas for my business.\n\nBusiness: [BUSINESS]\nTarget audience: [AUDIENCE]\nGoal: [awareness / leads / trust / sales]\nPlatform: [Facebook / Instagram / TikTok / LinkedIn]\n\nMake the ideas simple, practical, and easy to create.",
+      "beforeUse": [
+        "Choose ideas you can actually produce.",
+        "Adapt to your local market.",
+        "Do not post inaccurate claims."
+      ],
+      "tags": [
+        "social-media",
+        "content",
+        "ideas",
+        "marketing"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": true,
+      "isFeatured": true,
+      "relatedRecipeSlugs": [
+        "write-a-facebook-post",
+        "create-a-simple-marketing-campaign"
+      ]
+    },
+    {
+      "id": 22,
+      "slug": "write-a-facebook-post",
+      "title": "Write a Facebook Post",
+      "category": "Marketing",
+      "categorySlug": "marketing",
+      "description": "Create a simple Facebook post.",
+      "purpose": "Create a simple Facebook post.",
+      "whenToUse": "When promoting an offer, sharing an update, or building awareness.",
+      "prompt": "Write a Facebook post for my business.\n\nBusiness: [BUSINESS]\nTopic/offer: [TOPIC]\nAudience: [AUDIENCE]\nGoal: [GOAL]\n\nUse simple language, a friendly tone, and a clear call to action.",
+      "beforeUse": [
+        "Add images or links if needed.",
+        "Check the call to action.",
+        "Make it sound like your brand."
+      ],
+      "tags": [
+        "facebook",
+        "social-media",
+        "post",
+        "marketing"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 10,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-30-social-media-ideas",
+        "write-an-instagram-caption"
+      ]
+    },
+    {
+      "id": 23,
+      "slug": "write-an-instagram-caption",
+      "title": "Write an Instagram Caption",
+      "category": "Marketing",
+      "categorySlug": "marketing",
+      "description": "Create a short Instagram caption.",
+      "purpose": "Create a short Instagram caption.",
+      "whenToUse": "When posting a photo, reel, carousel, or business update.",
+      "prompt": "Write an Instagram caption for:\n\nBusiness: [BUSINESS]\nPost topic: [TOPIC]\nAudience: [AUDIENCE]\n\nMake it short, engaging, and natural.\nInclude a call to action and relevant hashtags.",
+      "beforeUse": [
+        "Check hashtags are relevant.",
+        "Avoid too many emojis if not on brand.",
+        "Match the caption to the image or video."
+      ],
+      "tags": [
+        "instagram",
+        "caption",
+        "social-media",
+        "marketing"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 10,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-a-facebook-post",
+        "create-a-content-calendar",
+        "create-30-social-media-ideas"
+      ]
+    },
+    {
+      "id": 24,
+      "slug": "create-a-content-calendar",
+      "title": "Create a Content Calendar",
+      "category": "Marketing",
+      "categorySlug": "marketing",
+      "description": "Plan 4 weeks of content.",
+      "purpose": "Plan 4 weeks of content.",
+      "whenToUse": "When you want a simple posting plan for the month.",
+      "prompt": "Create a 4-week content calendar for my business.\n\nBusiness: [BUSINESS]\nAudience: [AUDIENCE]\nMain services/products: [SERVICES]\nPlatforms: [PLATFORMS]\n\nInclude post topic, caption idea, content format, and goal.",
+      "beforeUse": [
+        "Adjust dates to your schedule.",
+        "Batch similar content together.",
+        "Reuse ideas across platforms."
+      ],
+      "tags": [
+        "content-calendar",
+        "marketing",
+        "social-media",
+        "planning"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 60,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": true,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-an-instagram-caption",
+        "rewrite-website-homepage-copy",
+        "create-30-social-media-ideas"
+      ]
+    },
+    {
+      "id": 25,
+      "slug": "rewrite-website-homepage-copy",
+      "title": "Rewrite Website Homepage Copy",
+      "category": "Marketing",
+      "categorySlug": "marketing",
+      "description": "Make homepage copy clearer and more persuasive.",
+      "purpose": "Make homepage copy clearer and more persuasive.",
+      "whenToUse": "When your website does not clearly explain what you do.",
+      "prompt": "Rewrite my homepage copy to make it clearer and more persuasive.\n\nCurrent copy: [PASTE COPY]\nBusiness: [BUSINESS]\nTarget customer: [CUSTOMER]\nMain offer: [OFFER]\n\nMake it simple, trustworthy, and action-focused.",
+      "beforeUse": [
+        "Check all claims are true.",
+        "Add location and services where relevant.",
+        "Keep important SEO terms."
+      ],
+      "tags": [
+        "website",
+        "homepage",
+        "copywriting",
+        "marketing"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 45,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-content-calendar",
+        "create-a-google-business-profile-description",
+        "create-30-social-media-ideas"
+      ]
+    },
+    {
+      "id": 26,
+      "slug": "create-a-google-business-profile-description",
+      "title": "Create a Google Business Profile Description",
+      "category": "Marketing",
+      "categorySlug": "marketing",
+      "description": "Write a local business description.",
+      "purpose": "Write a local business description.",
+      "whenToUse": "When setting up or improving your Google Business Profile.",
+      "prompt": "Write a Google Business Profile description.\n\nBusiness name: [NAME]\nBusiness type: [TYPE]\nLocation: [LOCATION]\nServices: [SERVICES]\nIdeal customer: [CUSTOMER]\n\nKeep it professional, local, and easy to understand.",
+      "beforeUse": [
+        "Check character limits.",
+        "Include location naturally.",
+        "Do not keyword-stuff."
+      ],
+      "tags": [
+        "google-business",
+        "local-seo",
+        "description",
+        "marketing"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "rewrite-website-homepage-copy",
+        "reply-to-a-positive-review",
+        "create-30-social-media-ideas"
+      ]
+    },
+    {
+      "id": 27,
+      "slug": "reply-to-a-positive-review",
+      "title": "Reply to a Positive Review",
+      "category": "Marketing",
+      "categorySlug": "marketing",
+      "description": "Respond warmly to good reviews.",
+      "purpose": "Respond warmly to good reviews.",
+      "whenToUse": "When a customer leaves a positive review online.",
+      "prompt": "Write a warm reply to this positive review:\n\n[PASTE REVIEW]\n\nBusiness: [BUSINESS NAME]\nKeep it short, grateful, and personal.",
+      "beforeUse": [
+        "Use the customer's name if appropriate.",
+        "Mention something specific from the review.",
+        "Do not sound automated."
+      ],
+      "tags": [
+        "review",
+        "positive-review",
+        "reputation",
+        "marketing"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 5,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-google-business-profile-description",
+        "reply-to-a-negative-review",
+        "create-30-social-media-ideas"
+      ]
+    },
+    {
+      "id": 28,
+      "slug": "reply-to-a-negative-review",
+      "title": "Reply to a Negative Review",
+      "category": "Marketing",
+      "categorySlug": "marketing",
+      "description": "Respond professionally to negative reviews.",
+      "purpose": "Respond professionally to negative reviews.",
+      "whenToUse": "When your business receives a public complaint or bad review.",
+      "prompt": "Write a professional reply to this negative review:\n\n[PASTE REVIEW]\n\nAcknowledge the concern.\nStay calm.\nDo not argue.\nInvite the customer to contact us privately.\nProtect the business reputation.",
+      "beforeUse": [
+        "Stay calm and factual.",
+        "Do not share private details publicly.",
+        "Ask a manager to review serious cases."
+      ],
+      "tags": [
+        "review",
+        "negative-review",
+        "reputation",
+        "marketing"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "reply-to-a-positive-review",
+        "create-an-email-newsletter",
+        "create-30-social-media-ideas"
+      ]
+    },
+    {
+      "id": 29,
+      "slug": "create-an-email-newsletter",
+      "title": "Create an Email Newsletter",
+      "category": "Marketing",
+      "categorySlug": "marketing",
+      "description": "Write a simple email newsletter.",
+      "purpose": "Write a simple email newsletter.",
+      "whenToUse": "When you want to update customers or promote something by email.",
+      "prompt": "Write a simple email newsletter.\n\nBusiness: [BUSINESS]\nTopic: [TOPIC]\nAudience: [AUDIENCE]\nGoal: [GOAL]\n\nInclude subject line, short intro, main message, and call to action.",
+      "beforeUse": [
+        "Check links and offers.",
+        "Keep it short.",
+        "Send only to people who opted in where required."
+      ],
+      "tags": [
+        "newsletter",
+        "email-marketing",
+        "marketing"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "reply-to-a-negative-review",
+        "create-a-simple-marketing-campaign",
+        "create-30-social-media-ideas"
+      ]
+    },
+    {
+      "id": 30,
+      "slug": "create-a-simple-marketing-campaign",
+      "title": "Create a Simple Marketing Campaign",
+      "category": "Marketing",
+      "categorySlug": "marketing",
+      "description": "Plan a short promotional campaign.",
+      "purpose": "Plan a short promotional campaign.",
+      "whenToUse": "When launching an offer, event, product, or service.",
+      "prompt": "Create a simple 7-day marketing campaign for my business.\n\nBusiness: [BUSINESS]\nOffer: [OFFER]\nAudience: [AUDIENCE]\nPlatform: [PLATFORM]\n\nInclude daily message idea, content format, and call to action.",
+      "beforeUse": [
+        "Confirm offer details.",
+        "Prepare assets before launch.",
+        "Track enquiries or clicks."
+      ],
+      "tags": [
+        "campaign",
+        "marketing",
+        "promotion",
+        "social-media"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 60,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-an-email-newsletter",
+        "create-30-social-media-ideas"
+      ]
+    },
+    {
+      "id": 31,
+      "slug": "summarise-meeting-notes",
+      "title": "Summarise Meeting Notes",
+      "category": "Operations & Admin",
+      "categorySlug": "operations-admin",
+      "description": "Turn messy notes into a clear summary.",
+      "purpose": "Turn messy notes into a clear summary.",
+      "whenToUse": "After meetings, calls, workshops, or site visits.",
+      "prompt": "Summarise these meeting notes:\n\n[PASTE NOTES]\n\nInclude:\n- Key points\n- Decisions made\n- Action items\n- Owner for each action\n- Deadlines, if mentioned",
+      "beforeUse": [
+        "Check action owners.",
+        "Confirm deadlines.",
+        "Share with attendees if needed."
+      ],
+      "tags": [
+        "meeting",
+        "summary",
+        "notes",
+        "actions"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 20,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": true,
+      "isFeatured": true,
+      "relatedRecipeSlugs": [
+        "create-a-meeting-agenda",
+        "create-a-business-decision-summary"
+      ]
+    },
+    {
+      "id": 32,
+      "slug": "create-a-meeting-agenda",
+      "title": "Create a Meeting Agenda",
+      "category": "Operations & Admin",
+      "categorySlug": "operations-admin",
+      "description": "Prepare a clear agenda for a meeting.",
+      "purpose": "Prepare a clear agenda for a meeting.",
+      "whenToUse": "Before team meetings, client meetings, planning sessions, or reviews.",
+      "prompt": "Create a meeting agenda.\n\nMeeting topic: [TOPIC]\nAttendees: [ATTENDEES]\nGoal: [GOAL]\nTime available: [TIME]\n\nInclude agenda items, estimated time, and desired outcome.",
+      "beforeUse": [
+        "Keep agenda realistic for the time available.",
+        "Share before the meeting.",
+        "Add required documents or links."
+      ],
+      "tags": [
+        "meeting",
+        "agenda",
+        "planning",
+        "admin"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "summarise-meeting-notes",
+        "create-an-sop"
+      ]
+    },
+    {
+      "id": 33,
+      "slug": "create-an-sop",
+      "title": "Create an SOP",
+      "category": "Operations & Admin",
+      "categorySlug": "operations-admin",
+      "description": "Create a simple Standard Operating Procedure.",
+      "purpose": "Create a simple Standard Operating Procedure.",
+      "whenToUse": "When you need a repeatable process for your team.",
+      "prompt": "Create a simple Standard Operating Procedure for this task:\n\nTask: [TASK]\nBusiness: [BUSINESS]\nWho performs it: [ROLE]\nTools needed: [TOOLS]\n\nInclude purpose, steps, quality checks, and common mistakes.",
+      "beforeUse": [
+        "Test the SOP with a real task.",
+        "Ask the team to review it.",
+        "Update it after mistakes or changes."
+      ],
+      "tags": [
+        "sop",
+        "process",
+        "operations",
+        "training"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 45,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": true,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-meeting-agenda",
+        "improve-an-existing-process",
+        "summarise-meeting-notes"
+      ]
+    },
+    {
+      "id": 34,
+      "slug": "improve-an-existing-process",
+      "title": "Improve an Existing Process",
+      "category": "Operations & Admin",
+      "categorySlug": "operations-admin",
+      "description": "Find ways to save time and reduce mistakes.",
+      "purpose": "Find ways to save time and reduce mistakes.",
+      "whenToUse": "When a current process feels slow, manual, or confusing.",
+      "prompt": "Review this business process and suggest improvements:\n\n[PASTE PROCESS]\n\nBusiness: [BUSINESS]\nGoal: save time, reduce mistakes, and improve customer experience.\n\nGive practical recommendations.",
+      "beforeUse": [
+        "Validate suggestions with your team.",
+        "Prioritise simple improvements first.",
+        "Do not automate a broken process too early."
+      ],
+      "tags": [
+        "process",
+        "improvement",
+        "operations",
+        "efficiency"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-an-sop",
+        "create-a-checklist",
+        "summarise-meeting-notes"
+      ]
+    },
+    {
+      "id": 35,
+      "slug": "create-a-checklist",
+      "title": "Create a Checklist",
+      "category": "Operations & Admin",
+      "categorySlug": "operations-admin",
+      "description": "Create a practical checklist for repeatable tasks.",
+      "purpose": "Create a practical checklist for repeatable tasks.",
+      "whenToUse": "When you want a task done consistently.",
+      "prompt": "Create a checklist for this business task:\n\nTask: [TASK]\nBusiness: [BUSINESS]\nFrequency: [daily / weekly / monthly / per customer]\n\nMake it clear, practical, and easy to follow.",
+      "beforeUse": [
+        "Keep the checklist short enough to use.",
+        "Use clear action words.",
+        "Test it on a real job."
+      ],
+      "tags": [
+        "checklist",
+        "operations",
+        "quality",
+        "admin"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 20,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "improve-an-existing-process",
+        "create-a-weekly-plan",
+        "summarise-meeting-notes"
+      ]
+    },
+    {
+      "id": 36,
+      "slug": "create-a-weekly-plan",
+      "title": "Create a Weekly Plan",
+      "category": "Operations & Admin",
+      "categorySlug": "operations-admin",
+      "description": "Organise business priorities for the week.",
+      "purpose": "Organise business priorities for the week.",
+      "whenToUse": "At the start of the week or when work feels scattered.",
+      "prompt": "Create a weekly business plan.\n\nBusiness: [BUSINESS]\nMain priorities: [PRIORITIES]\nTasks to complete: [TASKS]\nTime available: [TIME]\n\nOrganise tasks by day and priority.",
+      "beforeUse": [
+        "Be realistic about available time.",
+        "Move unfinished tasks forward.",
+        "Protect time for important work."
+      ],
+      "tags": [
+        "weekly-plan",
+        "planning",
+        "productivity",
+        "operations"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-checklist",
+        "prioritise-tasks",
+        "summarise-meeting-notes"
+      ]
+    },
+    {
+      "id": 37,
+      "slug": "prioritise-tasks",
+      "title": "Prioritise Tasks",
+      "category": "Operations & Admin",
+      "categorySlug": "operations-admin",
+      "description": "Decide what to do first.",
+      "purpose": "Decide what to do first.",
+      "whenToUse": "When you have too many tasks and need focus.",
+      "prompt": "Help me prioritise this task list:\n\n[PASTE TASKS]\n\nUse urgency, business impact, and effort required.\nCreate a clear priority order.",
+      "beforeUse": [
+        "Add deadlines where possible.",
+        "Separate urgent from important.",
+        "Do not ignore customer-impacting work."
+      ],
+      "tags": [
+        "prioritisation",
+        "tasks",
+        "productivity",
+        "planning"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-weekly-plan",
+        "write-internal-instructions",
+        "summarise-meeting-notes"
+      ]
+    },
+    {
+      "id": 38,
+      "slug": "write-internal-instructions",
+      "title": "Write Internal Instructions",
+      "category": "Operations & Admin",
+      "categorySlug": "operations-admin",
+      "description": "Create clear instructions for your team.",
+      "purpose": "Create clear instructions for your team.",
+      "whenToUse": "When delegating or explaining how to complete a task.",
+      "prompt": "Write clear internal instructions for my team.\n\nTask/process: [TASK]\nAudience: [TEAM/ROLE]\nImportant rules: [RULES]\n\nUse simple steps and clear language.",
+      "beforeUse": [
+        "Check instructions with someone new.",
+        "Avoid assumptions.",
+        "Add examples if needed."
+      ],
+      "tags": [
+        "instructions",
+        "team",
+        "operations",
+        "process"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 20,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "prioritise-tasks",
+        "create-a-handover-note",
+        "summarise-meeting-notes"
+      ]
+    },
+    {
+      "id": 39,
+      "slug": "create-a-handover-note",
+      "title": "Create a Handover Note",
+      "category": "Operations & Admin",
+      "categorySlug": "operations-admin",
+      "description": "Help someone else continue your work.",
+      "purpose": "Help someone else continue your work.",
+      "whenToUse": "When passing work to another person, shift, contractor, or team member.",
+      "prompt": "Create a handover note.\n\nContext: [CONTEXT]\nCurrent status: [STATUS]\nPending tasks: [PENDING]\nRisks/issues: [RISKS]\nNext steps: [NEXT STEPS]\n\nMake it clear for someone else to continue the work.",
+      "beforeUse": [
+        "Include links or files if relevant.",
+        "Be clear about blockers.",
+        "Mention the next immediate action."
+      ],
+      "tags": [
+        "handover",
+        "operations",
+        "team",
+        "status"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 20,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-internal-instructions",
+        "create-a-business-decision-summary",
+        "summarise-meeting-notes"
+      ]
+    },
+    {
+      "id": 40,
+      "slug": "create-a-business-decision-summary",
+      "title": "Create a Business Decision Summary",
+      "category": "Operations & Admin",
+      "categorySlug": "operations-admin",
+      "description": "Structure a business decision clearly.",
+      "purpose": "Structure a business decision clearly.",
+      "whenToUse": "When comparing options or deciding what to do next.",
+      "prompt": "Help me make a business decision.\n\nDecision: [DECISION]\nOptions: [OPTIONS]\nPros and cons: [DETAILS]\nImportant constraints: [CONSTRAINTS]\n\nCreate a summary with recommendation, risks, and next steps.",
+      "beforeUse": [
+        "Use your own judgement.",
+        "Check financial or legal details separately.",
+        "Ask advisors for high-risk decisions."
+      ],
+      "tags": [
+        "decision",
+        "summary",
+        "business",
+        "planning"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-handover-note",
+        "summarise-meeting-notes"
+      ]
+    },
+    {
+      "id": 41,
+      "slug": "write-an-invoice-reminder",
+      "title": "Write an Invoice Reminder",
+      "category": "Finance & Payments",
+      "categorySlug": "finance-payments",
+      "description": "Send a friendly payment reminder.",
+      "purpose": "Send a friendly payment reminder.",
+      "whenToUse": "When an invoice is due or close to due.",
+      "prompt": "Write a friendly payment reminder.\n\nCustomer: [CUSTOMER]\nInvoice number: [INVOICE]\nAmount: [AMOUNT]\nDue date: [DUE DATE]\n\nKeep it polite, professional, and clear.",
+      "beforeUse": [
+        "Check invoice details.",
+        "Attach or link the invoice.",
+        "Use the correct payment details."
+      ],
+      "tags": [
+        "invoice",
+        "payment",
+        "reminder",
+        "finance"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 10,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": true,
+      "isFeatured": true,
+      "relatedRecipeSlugs": [
+        "write-a-stronger-payment-reminder",
+        "analyse-expenses"
+      ]
+    },
+    {
+      "id": 42,
+      "slug": "write-a-stronger-payment-reminder",
+      "title": "Write a Stronger Payment Reminder",
+      "category": "Finance & Payments",
+      "categorySlug": "finance-payments",
+      "description": "Send a firmer overdue payment reminder.",
+      "purpose": "Send a firmer overdue payment reminder.",
+      "whenToUse": "When payment is overdue and previous reminders were ignored.",
+      "prompt": "Write a firm but professional overdue payment reminder.\n\nCustomer: [CUSTOMER]\nInvoice: [INVOICE]\nAmount: [AMOUNT]\nDays overdue: [DAYS]\n\nKeep it respectful but clear that payment is overdue.",
+      "beforeUse": [
+        "Check payment was not already received.",
+        "Follow your payment terms.",
+        "Escalate long overdue debts appropriately."
+      ],
+      "tags": [
+        "overdue",
+        "payment",
+        "invoice",
+        "finance"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-an-invoice-reminder",
+        "explain-pricing-to-a-customer"
+      ]
+    },
+    {
+      "id": 43,
+      "slug": "explain-pricing-to-a-customer",
+      "title": "Explain Pricing to a Customer",
+      "category": "Finance & Payments",
+      "categorySlug": "finance-payments",
+      "description": "Explain your pricing clearly.",
+      "purpose": "Explain your pricing clearly.",
+      "whenToUse": "When a customer asks why something costs what it costs.",
+      "prompt": "Help me explain my pricing clearly.\n\nService/product: [SERVICE]\nPrice: [PRICE]\nWhat is included: [INCLUSIONS]\nWhy it is valuable: [VALUE]\n\nWrite a customer-friendly explanation.",
+      "beforeUse": [
+        "Avoid sounding defensive.",
+        "Explain value, not just cost.",
+        "Keep technical details simple."
+      ],
+      "tags": [
+        "pricing",
+        "customer",
+        "finance",
+        "value"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 15,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-a-stronger-payment-reminder",
+        "create-a-simple-budget",
+        "write-an-invoice-reminder"
+      ]
+    },
+    {
+      "id": 44,
+      "slug": "create-a-simple-budget",
+      "title": "Create a Simple Budget",
+      "category": "Finance & Payments",
+      "categorySlug": "finance-payments",
+      "description": "Create a basic business budget structure.",
+      "purpose": "Create a basic business budget structure.",
+      "whenToUse": "When planning monthly income, costs, and profit.",
+      "prompt": "Create a simple monthly budget structure for my business.\n\nBusiness type: [BUSINESS]\nIncome sources: [INCOME]\nMain expenses: [EXPENSES]\n\nOrganise it into income, fixed costs, variable costs, and profit estimate.",
+      "beforeUse": [
+        "This is not financial advice.",
+        "Verify formulas and numbers.",
+        "Ask an accountant for tax or compliance decisions."
+      ],
+      "tags": [
+        "budget",
+        "finance",
+        "expenses",
+        "planning"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "explain-pricing-to-a-customer",
+        "analyse-expenses",
+        "write-an-invoice-reminder"
+      ]
+    },
+    {
+      "id": 45,
+      "slug": "analyse-expenses",
+      "title": "Analyse Expenses",
+      "category": "Finance & Payments",
+      "categorySlug": "finance-payments",
+      "description": "Organise expenses and identify review areas.",
+      "purpose": "Organise expenses and identify review areas.",
+      "whenToUse": "When reviewing spending or preparing information for your accountant.",
+      "prompt": "Review these business expenses and organise them into categories:\n\n[PASTE EXPENSES]\n\nGroup them by category and identify possible areas to review or reduce.\n\nDo not provide financial advice. Keep it practical.",
+      "beforeUse": [
+        "Check categories with your accountant.",
+        "Do not rely on AI for tax treatment.",
+        "Confirm amounts and dates."
+      ],
+      "tags": [
+        "expenses",
+        "finance",
+        "categories",
+        "costs"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-a-simple-budget",
+        "write-an-invoice-reminder"
+      ]
+    },
+    {
+      "id": 46,
+      "slug": "write-a-job-description",
+      "title": "Write a Job Description",
+      "category": "HR & Team",
+      "categorySlug": "hr-team",
+      "description": "Create a clear job description.",
+      "purpose": "Create a clear job description.",
+      "whenToUse": "When hiring a new employee, contractor, or casual worker.",
+      "prompt": "Write a job description.\n\nRole: [ROLE]\nBusiness: [BUSINESS]\nResponsibilities: [RESPONSIBILITIES]\nRequired skills: [SKILLS]\nLocation/work type: [LOCATION]\n\nMake it clear, professional, and attractive to candidates.",
+      "beforeUse": [
+        "Check employment requirements.",
+        "Include accurate hours and location.",
+        "Avoid discriminatory language."
+      ],
+      "tags": [
+        "job-description",
+        "hiring",
+        "hr",
+        "team"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-interview-questions",
+        "write-a-team-announcement"
+      ]
+    },
+    {
+      "id": 47,
+      "slug": "create-interview-questions",
+      "title": "Create Interview Questions",
+      "category": "HR & Team",
+      "categorySlug": "hr-team",
+      "description": "Prepare practical interview questions.",
+      "purpose": "Prepare practical interview questions.",
+      "whenToUse": "Before interviewing candidates.",
+      "prompt": "Create interview questions for this role:\n\nRole: [ROLE]\nBusiness: [BUSINESS]\nKey skills needed: [SKILLS]\n\nInclude practical, behavioural, and role-specific questions.",
+      "beforeUse": [
+        "Ask consistent questions across candidates.",
+        "Avoid inappropriate personal questions.",
+        "Score answers fairly."
+      ],
+      "tags": [
+        "interview",
+        "questions",
+        "hiring",
+        "hr"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 25,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-a-job-description",
+        "write-employee-feedback"
+      ]
+    },
+    {
+      "id": 48,
+      "slug": "write-employee-feedback",
+      "title": "Write Employee Feedback",
+      "category": "HR & Team",
+      "categorySlug": "hr-team",
+      "description": "Write respectful and constructive feedback.",
+      "purpose": "Write respectful and constructive feedback.",
+      "whenToUse": "When giving performance feedback or addressing an issue.",
+      "prompt": "Help me write constructive employee feedback.\n\nEmployee situation: [SITUATION]\nWhat went well: [POSITIVE]\nWhat needs improvement: [IMPROVEMENT]\nDesired outcome: [OUTCOME]\n\nKeep it respectful, clear, and professional.",
+      "beforeUse": [
+        "Be specific and fair.",
+        "Keep records when appropriate.",
+        "Seek HR/legal advice for serious matters."
+      ],
+      "tags": [
+        "feedback",
+        "employee",
+        "hr",
+        "team"
+      ],
+      "difficulty": "Medium",
+      "timeSavedMinutes": 20,
+      "bestTool": "ChatGPT",
+      "rating": 4.9,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-interview-questions",
+        "create-training-instructions",
+        "write-a-job-description"
+      ]
+    },
+    {
+      "id": 49,
+      "slug": "create-training-instructions",
+      "title": "Create Training Instructions",
+      "category": "HR & Team",
+      "categorySlug": "hr-team",
+      "description": "Create simple training material for a team member.",
+      "purpose": "Create simple training material for a team member.",
+      "whenToUse": "When onboarding someone or teaching a task.",
+      "prompt": "Create simple training instructions for a new team member.\n\nRole: [ROLE]\nTask: [TASK]\nBusiness: [BUSINESS]\n\nInclude step-by-step instructions, common mistakes, and quality checks.",
+      "beforeUse": [
+        "Test instructions with a real person.",
+        "Add screenshots or examples if possible.",
+        "Update after feedback."
+      ],
+      "tags": [
+        "training",
+        "instructions",
+        "onboarding",
+        "hr"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 30,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "write-employee-feedback",
+        "write-a-team-announcement",
+        "write-a-job-description"
+      ]
+    },
+    {
+      "id": 50,
+      "slug": "write-a-team-announcement",
+      "title": "Write a Team Announcement",
+      "category": "HR & Team",
+      "categorySlug": "hr-team",
+      "description": "Write a clear team update or announcement.",
+      "purpose": "Write a clear team update or announcement.",
+      "whenToUse": "When informing your team about changes, updates, reminders, or actions.",
+      "prompt": "Write a team announcement.\n\nTopic: [TOPIC]\nAudience: [TEAM]\nMain message: [MESSAGE]\nAction required: [ACTION]\n\nKeep it clear, professional, and easy to understand.",
+      "beforeUse": [
+        "Make the action required obvious.",
+        "Keep it short.",
+        "Choose the right channel to send it."
+      ],
+      "tags": [
+        "announcement",
+        "team",
+        "communication",
+        "hr"
+      ],
+      "difficulty": "Easy",
+      "timeSavedMinutes": 10,
+      "bestTool": "ChatGPT",
+      "rating": 4.8,
+      "isPopular": false,
+      "isFeatured": false,
+      "relatedRecipeSlugs": [
+        "create-training-instructions",
+        "write-a-job-description"
+      ]
+    }
+  ]
+}

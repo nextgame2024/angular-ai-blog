@@ -13,8 +13,14 @@ import { LoginRequestInterface } from '../types/loginRequest.interface';
 export const authActions = createActionGroup({
   source: 'auth',
   events: {
-    Register: props<{ request: RegisterRequestInterface }>(),
-    'Register success': props<{ currentUser: CurrentUserInterface }>(),
+    Register: props<{
+      request: RegisterRequestInterface;
+      redirectTarget?: string | null;
+    }>(),
+    'Register success': props<{
+      currentUser: CurrentUserInterface;
+      redirectTarget?: string | null;
+    }>(),
     'Register failure': props<{ errors: BackendErrorsInterface }>(),
 
     Login: props<{
