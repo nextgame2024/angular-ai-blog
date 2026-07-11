@@ -12,9 +12,9 @@ input {
 
 .toolkit-shell {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   min-height: 100%;
-  padding: 16px;
+  padding: 8px;
   background:
     linear-gradient(rgba(111, 167, 255, 0.06) 1px, transparent 1px),
     linear-gradient(90deg, rgba(111, 167, 255, 0.06) 1px, transparent 1px),
@@ -32,24 +32,29 @@ input {
 }
 
 .toolkit-sidebar {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  overflow-x: auto;
-  padding: 12px;
+  padding: 10px;
 }
 
 .nav-item {
   display: inline-flex;
-  min-width: max-content;
+  min-width: 0;
   align-items: center;
-  gap: 9px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 9px 10px;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: #64748b;
+  font-size: 0.88rem;
   font-weight: 900;
   cursor: pointer;
+}
+
+.nav-item--home {
+  grid-column: 1 / -1;
 }
 
 .nav-item.active {
@@ -121,16 +126,20 @@ input {
 
 .icon-purple,
 .tile-icon:nth-child(3n) {
-  color: #7657ff;
+  color: #7c3aed;
 }
 
 .icon-cyan,
 .tile-icon:nth-child(3n + 2) {
-  color: #1aa6b7;
+  color: #0891b2;
 }
 
 .icon-blue {
-  color: #4f8dff;
+  color: #2563eb;
+}
+
+.icon-warm {
+  color: #ea580c;
 }
 
 .recipe-card:nth-child(3n + 2) .tile-icon,
@@ -155,7 +164,7 @@ input {
 
 .toolkit-main {
   min-width: 0;
-  padding: clamp(16px, 3vw, 26px);
+  padding: clamp(14px, 3vw, 26px);
 }
 
 .toolkit-header {
@@ -934,6 +943,20 @@ input {
   }
 }
 
+@media (max-width: 480px) {
+  .nav-item {
+    gap: 7px;
+    padding: 8px 9px;
+    font-size: 0.78rem;
+    line-height: 1.2;
+  }
+
+  .nav-icon {
+    width: 32px;
+    height: 32px;
+  }
+}
+
 :host-context(html.dark) .toolkit-shell {
   background:
     linear-gradient(rgba(103, 127, 255, 0.08) 1px, transparent 1px),
@@ -1066,16 +1089,28 @@ input {
 @media (min-width: 760px) {
   .toolkit-shell {
     grid-template-columns: 280px minmax(0, 1fr);
+    gap: 16px;
     padding: 24px;
+  }
+
+  .nav-item {
+    gap: 9px;
+    padding: 10px 12px;
+    font-size: 1rem;
   }
 
   .toolkit-sidebar {
     position: sticky;
     top: 16px;
     display: grid;
+    grid-template-columns: 1fr;
     align-content: start;
     height: calc(100svh - 48px);
     overflow-x: visible;
+  }
+
+  .nav-item--home {
+    grid-column: auto;
   }
 
   .toolkit-header {

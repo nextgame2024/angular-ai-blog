@@ -1,12 +1,12 @@
 <div class="toolkit-shell">
   <aside class="toolkit-sidebar" aria-label="Toolkit navigation">
-    <button class="nav-item" type="button" [class.active]="(view$ | async) === 'home'" (click)="setView('home')">
+    <button class="nav-item nav-item--home" type="button" [class.active]="(view$ | async) === 'home'" (click)="setView('home')">
       <span class="nav-icon icon-warm"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'home' }"></ng-container></span>
       Home
     </button>
     <button class="nav-item" type="button" [class.active]="(view$ | async) === 'start'" (click)="setView('start')">
       <span class="nav-icon icon-cyan"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'book' }"></ng-container></span>
-      Start Here Guide
+      Start Here
     </button>
     <button class="nav-item" type="button" [class.active]="(view$ | async) === 'recipes'" (click)="setView('recipes')">
       <span class="nav-icon icon-purple"><ng-container [ngTemplateOutlet]="iconTpl" [ngTemplateOutletContext]="{ icon: 'library' }"></ng-container></span>

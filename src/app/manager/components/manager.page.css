@@ -7,6 +7,11 @@
   background: #f8fafc;
 }
 
+.manager-shell.edge-to-edge-content {
+  overflow: auto;
+  background: transparent;
+}
+
 /* Map fills entire canvas */
 .map-container {
   position: absolute;
@@ -413,6 +418,29 @@
   max-height: none;
   height: calc(100dvh - 2rem);
   transform: none;
+}
+
+.manager-shell.edge-to-edge-content .right-panel.fullscreen {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+.manager-shell.edge-to-edge-content .right-panel.mobile.fullscreen {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
+.manager-shell.edge-to-edge-content .panel-body,
+.manager-shell.edge-to-edge-content .right-panel .content,
+.manager-shell.edge-to-edge-content .content {
+  height: 100%;
 }
 
 @media (min-width: 769px) {

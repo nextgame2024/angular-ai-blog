@@ -122,7 +122,12 @@ export const MANAGER_ROUTES: Route[] = [
           provideEffects(ManagerToolkitEffects),
           provideState(MANAGER_TOOLKIT_FEATURE_KEY, managerToolkitReducer),
         ],
-        data: { title: 'Dashboard', fullscreen: true, hideShellHeader: true },
+        data: {
+          title: 'Dashboard',
+          fullscreen: true,
+          hideShellHeader: true,
+          edgeToEdgeContent: true,
+        },
       },
       {
         path: 'clients',

@@ -1,7 +1,8 @@
-<div class="manager-shell">
+<div class="manager-shell" [class.edge-to-edge-content]="edgeToEdgeContent$$()">
   <!-- Map layer -->
-  <div class="map-container">
-    @if (mapsLoaded$$()) {
+  @if (!edgeToEdgeContent$$()) {
+    <div class="map-container">
+      @if (mapsLoaded$$()) {
       <google-map
         #googleMapRef
         height="100%"
@@ -46,16 +47,17 @@
             [options]="routePolylineOptions"
           ></map-polyline>
         }
-      </google-map>
-    } @else {
-      <div class="maps-fallback">
-        <p class="title">Map unavailable</p>
-        <p class="msg">{{ mapsError$$() || 'Google Maps is still loading...' }}</p>
-      </div>
-    }
-  </div>
+        </google-map>
+      } @else {
+        <div class="maps-fallback">
+          <p class="title">Map unavailable</p>
+          <p class="msg">{{ mapsError$$() || 'Google Maps is still loading...' }}</p>
+        </div>
+      }
+    </div>
+  }
 
-  @if (activeProject$$(); as activeProject) {
+  @if (!edgeToEdgeContent$$() && activeProject$$(); as activeProject) {
     <div
       class="map-static-info"
       cdkDrag
@@ -174,17 +176,19 @@
   }
 
   <!-- Search bar -->
-  <div class="search-bar">
-    <div class="search-inner">
-      <span class="icon">🔎</span>
-      <input
-        type="text"
-        [formControl]="searchCtrl"
-        placeholder="Search by project, client, or address"
-        aria-label="Search"
-        />
+  @if (!edgeToEdgeContent$$()) {
+    <div class="search-bar">
+      <div class="search-inner">
+        <span class="icon">🔎</span>
+        <input
+          type="text"
+          [formControl]="searchCtrl"
+          placeholder="Search by project, client, or address"
+          aria-label="Search"
+          />
+      </div>
     </div>
-  </div>
+  }
 
   <!-- Right panel -->
   <aside

@@ -147,6 +147,7 @@ export class ManagerPageComponent implements OnDestroy {
   readonly panelFullscreen$$ = signal(false);
   readonly panelTitle$$ = signal('Business manager');
   readonly hideShellHeader$$ = signal(false);
+  readonly edgeToEdgeContent$$ = signal(false);
 
   // Keep the search field now; autocomplete + geocoding can come later
   readonly searchCtrl = new FormControl<string>('', { nonNullable: true });
@@ -1440,6 +1441,7 @@ export class ManagerPageComponent implements OnDestroy {
     this.panelTitle$$.set(data['title'] || 'Business manager');
     this.panelFullscreen$$.set(!!data['fullscreen']);
     this.hideShellHeader$$.set(!!data['hideShellHeader']);
+    this.edgeToEdgeContent$$.set(!!data['edgeToEdgeContent']);
 
     // In fullscreen mode, menu is hidden so we keep panel expanded/open.
     if (this.panelFullscreen$$()) {
