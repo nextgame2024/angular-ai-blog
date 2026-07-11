@@ -109,9 +109,13 @@ export class SettingsComponent {
   readonly imageUrl$$ = toSignal(this.imageControl.valueChanges, {
     initialValue: this.imageControl.value,
   });
-  readonly avatarUrl$$ = computed(
-    () => this.previewUrl$$() ?? this.imageUrl$$() ?? this.defaultAvatar
-  );
+  readonly avatarUrl$$ = computed(() => {
+    const preview = this.previewUrl$$();
+    if (preview) return preview;
+
+    const imageUrl = String(this.imageUrl$$() || '').trim();
+    return imageUrl || this.defaultAvatar;
+  });
 
   private readonly initFormEffect = effect(() => {
     const currentUser = this.currentUser$$();
@@ -142,6 +146,11 @@ export class SettingsComponent {
 
   logout(): void {
     this.store.dispatch(authActions.logout());
+  }
+
+  onAvatarError(event: Event): void {
+    const image = event.target as HTMLImageElement;
+    image.src = this.defaultAvatar;
   }
 
   // ===== Avatar upload handlers =====
