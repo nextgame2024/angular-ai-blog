@@ -36,6 +36,7 @@ import type {
   ToolkitQuickAction,
   ToolkitRecipe,
 } from '../../types/toolkit.interface';
+import { AnalyticsService } from 'src/app/shared/services/analytics.service';
 
 @Component({
   selector: 'app-manager-toolkit-dashboard-page',
@@ -117,13 +118,23 @@ Give me a clear, useful first draft.
 Keep the tone professional and easy to understand.
 Ask me for any missing details before making assumptions.`;
 
-  constructor(private store: Store) {}
+  constructor(
+    private store: Store,
+    private analytics: AnalyticsService,
+  ) {}
 
   ngOnInit(): void {
     this.store.dispatch(ManagerToolkitActions.loadDashboard());
     this.searchCtrl.valueChanges
       .pipe(debounceTime(220), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((query) => {
+        const trimmedQuery = query.trim();
+        if (trimmedQuery) {
+          this.analytics.trackEvent('search', {
+            search_term: trimmedQuery,
+            context: 'member_toolkit',
+          });
+        }
         this.store.dispatch(ManagerToolkitActions.setSearchQuery({ query }));
         this.store.dispatch(ManagerToolkitActions.loadRecipes({ page: 1 }));
         this.store.dispatch(ManagerToolkitActions.setView({ view: 'recipes' }));
@@ -173,12 +184,21 @@ Ask me for any missing details before making assumptions.`;
 
   openRecipe(recipe: ToolkitRecipe | ToolkitQuickAction): void {
     const slug = 'slug' in recipe ? recipe.slug : recipe.recipeSlug;
+    this.analytics.trackEvent('view_recipe', {
+      recipe_slug: slug,
+      recipe_title: 'title' in recipe ? recipe.title : recipe.recipeTitle,
+      source: 'member_toolkit',
+    });
     this.copyMessage = null;
     this.store.dispatch(ManagerToolkitActions.setView({ view: 'recipe' }));
     this.store.dispatch(ManagerToolkitActions.loadRecipe({ slug }));
   }
 
   openRecipeSlug(slug: string): void {
+    this.analytics.trackEvent('view_recipe', {
+      recipe_slug: slug,
+      source: 'member_toolkit_related_recipe',
+    });
     this.copyMessage = null;
     this.store.dispatch(ManagerToolkitActions.setView({ view: 'recipe' }));
     this.store.dispatch(ManagerToolkitActions.loadRecipe({ slug }));
@@ -196,6 +216,12 @@ Ask me for any missing details before making assumptions.`;
   async copyPrompt(recipe: ToolkitRecipe): Promise<void> {
     try {
       await navigator.clipboard.writeText(recipe.prompt);
+      this.analytics.trackEvent('copy_prompt', {
+        recipe_slug: recipe.slug,
+        recipe_title: recipe.title,
+        category: recipe.category,
+        source: 'member_toolkit',
+      });
       this.copyMessage = 'Prompt copied';
       this.store.dispatch(
         ManagerToolkitActions.markRecipeUsed({ recipeSlug: recipe.slug }),

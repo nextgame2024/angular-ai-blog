@@ -8,6 +8,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import toolkitJson from '../sophia-ai-business-toolkit-v1.json';
 import { selectCurrentUser } from '../../auth/store/reducers';
 import { environment } from 'src/environments/environment';
+import { AnalyticsService } from 'src/app/shared/services/analytics.service';
 
 interface ToolkitMetadata {
   currency: string;
@@ -67,6 +68,7 @@ export class AiToolkitDashboardComponent {
   private readonly router = inject(Router);
   private readonly store = inject(Store);
   private readonly http = inject(HttpClient);
+  private readonly analytics = inject(AnalyticsService);
 
   readonly toolkit = toolkitJson as ToolkitData;
   readonly view$$ = signal<DashboardView>('home');
@@ -130,6 +132,11 @@ export class AiToolkitDashboardComponent {
   readonly previewCategories$$ = computed(() => this.toolkit.categories.slice(0, 3));
 
   startCheckout(): void {
+    this.analytics.trackEvent('payment_button_click', {
+      source: 'ai_toolkit_public_dashboard',
+      product: 'sophia_ai_business_toolkit',
+    });
+
     if (this.currentUser$$()) {
       this.http
         .get<{ hasAccess: boolean }>(`${environment.apiUrl}/ai-toolkit/access`)

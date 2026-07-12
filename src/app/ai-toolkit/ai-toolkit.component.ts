@@ -8,6 +8,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import toolkitJson from './sophia-ai-business-toolkit-v1.json';
 import { selectCurrentUser } from '../auth/store/reducers';
 import { environment } from 'src/environments/environment';
+import { AnalyticsService } from '../shared/services/analytics.service';
 
 interface ToolkitFeature {
   title: string;
@@ -33,6 +34,7 @@ export class AiToolkitComponent {
   private readonly router = inject(Router);
   private readonly store = inject(Store);
   private readonly http = inject(HttpClient);
+  private readonly analytics = inject(AnalyticsService);
 
   readonly toolkit = toolkitJson as ToolkitData;
   readonly accountModalOpen$$ = signal(false);
@@ -66,6 +68,11 @@ export class AiToolkitComponent {
   ];
 
   startCheckout(): void {
+    this.analytics.trackEvent('payment_button_click', {
+      source: 'ai_toolkit_landing',
+      product: 'sophia_ai_business_toolkit',
+    });
+
     if (this.currentUser$$()) {
       this.http
         .get<{ hasAccess: boolean }>(`${environment.apiUrl}/ai-toolkit/access`)

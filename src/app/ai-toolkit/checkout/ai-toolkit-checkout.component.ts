@@ -7,6 +7,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 
 import { selectCurrentUser } from '../../auth/store/reducers';
 import { environment } from 'src/environments/environment';
+import { AnalyticsService } from 'src/app/shared/services/analytics.service';
 
 @Component({
   selector: 'app-ai-toolkit-checkout',
@@ -75,6 +76,7 @@ export class AiToolkitCheckoutComponent {
   private readonly http = inject(HttpClient);
   private readonly router = inject(Router);
   private readonly store = inject(Store);
+  private readonly analytics = inject(AnalyticsService);
 
   readonly currentUser$$ = toSignal(this.store.select(selectCurrentUser), {
     initialValue: undefined,
@@ -96,7 +98,7 @@ export class AiToolkitCheckoutComponent {
     this.http
       .post<{ sessionUrl?: string; redirectUrl?: string; hasAccess?: boolean }>(
         `${environment.apiUrl}/ai-toolkit/create-checkout-session`,
-        {}
+        this.analytics.getAnalyticsPayload()
       )
       .subscribe({
         next: ({ sessionUrl, redirectUrl, hasAccess }) => {
