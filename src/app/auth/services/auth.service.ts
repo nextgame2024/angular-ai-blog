@@ -8,6 +8,10 @@ import { environment } from 'src/environments/environment.development';
 import { LoginRequestInterface } from '../types/loginRequest.interface';
 import { CurrentUserRequestInterface } from 'src/app/shared/types/currentUserRequest.interface';
 
+export interface PasswordResetMessageResponse {
+  message: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -32,14 +36,31 @@ export class AuthService {
 
   login(data: LoginRequestInterface): Observable<CurrentUserInterface> {
     const url = environment.apiUrl + '/users/login';
-    console.log('url ---->>>>', url);
     return this.http
       .post<AuthResponseInterface>(url, data)
       .pipe(map(this.getUser));
   }
 
+  requestPasswordReset(
+    email: string,
+  ): Observable<PasswordResetMessageResponse> {
+    const url = environment.apiUrl + '/users/password/forgot';
+    return this.http.post<PasswordResetMessageResponse>(url, { email });
+  }
+
+  resetPassword(
+    token: string,
+    password: string,
+  ): Observable<PasswordResetMessageResponse> {
+    const url = environment.apiUrl + '/users/password/reset';
+    return this.http.post<PasswordResetMessageResponse>(url, {
+      token,
+      password,
+    });
+  }
+
   updateCurrentUser(
-    currentUserRequest: CurrentUserRequestInterface
+    currentUserRequest: CurrentUserRequestInterface,
   ): Observable<CurrentUserInterface> {
     const url = environment.apiUrl + '/user';
     return this.http

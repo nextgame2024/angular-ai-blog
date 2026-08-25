@@ -3,67 +3,127 @@
   <!-- Main area centers content and can scroll a tiny bit if the keyboard opens -->
   <main
     class="flex-1 flex items-center justify-center px-3 sm:px-4 overflow-y-auto"
-    >
+  >
     <!-- Width owner: snug on phones, grows responsibly -->
     <div class="w-full max-w-[23rem] sm:max-w-md md:max-w-lg">
-      <p-card header="Sign In" styleClass="w-full m-0">
-        <div class="text-center mb-3">
-          <a routerLink="/register" class="text-sm">Need an account?</a>
-        </div>
+      <p-card
+        [header]="mode$$() === 'login' ? 'Sign In' : 'Reset Password'"
+        styleClass="w-full m-0 auth-card"
+      >
+        @if (mode$$() === "login") {
+          <div class="text-center mb-3">
+            <a routerLink="/register" class="text-sm">Need an account?</a>
+          </div>
+        } @else {
+          <div class="forgot-copy">
+            <p>
+              Enter the email for your account and we will send you a secure
+              link to reset your password.
+            </p>
+          </div>
+        }
 
         @if (backendErrors$$()) {
-          <div
-            class="login-error"
-            [class.closing]="backendErrorsClosing$$()"
-            >
+          <div class="login-error" [class.closing]="backendErrorsClosing$$()">
             <mc-backend-error-messages
               [backendErrors]="backendErrors$$()"
             ></mc-backend-error-messages>
           </div>
         }
 
-        <form
-          [formGroup]="form"
-          (ngSubmit)="onSubmit()"
-          class="space-y-4 mt-4"
+        @if (mode$$() === "login") {
+          <form
+            [formGroup]="form"
+            (ngSubmit)="onSubmit()"
+            class="space-y-4 mt-4"
           >
-          <!-- EMAIL -->
-          <p-inputgroup>
-            <p-inputgroup-addon>
-              <i class="pi pi-envelope"></i>
-            </p-inputgroup-addon>
-            <input
-              pInputText
-              type="email"
-              formControlName="email"
-              placeholder="Email"
-              class="w-full flex-auto"
+            <!-- EMAIL -->
+            <p-inputgroup>
+              <p-inputgroup-addon>
+                <i class="pi pi-envelope"></i>
+              </p-inputgroup-addon>
+              <input
+                pInputText
+                type="email"
+                formControlName="email"
+                placeholder="Email"
+                class="w-full flex-auto"
               />
-          </p-inputgroup>
+            </p-inputgroup>
 
-          <!-- PASSWORD -->
-          <p-inputgroup>
-            <p-inputgroup-addon><i class="pi pi-lock"></i></p-inputgroup-addon>
-            <p-password
-              formControlName="password"
-              [feedback]="false"
-              [toggleMask]="true"
-              styleClass="w-full flex-auto block"
-              inputStyleClass="p-inputtext w-full"
-              [inputStyle]="{ width: '100%' }"
-              placeholder="Password"
+            <!-- PASSWORD -->
+            <p-inputgroup>
+              <p-inputgroup-addon
+                ><i class="pi pi-lock"></i
+              ></p-inputgroup-addon>
+              <p-password
+                formControlName="password"
+                [feedback]="false"
+                [toggleMask]="true"
+                styleClass="w-full flex-auto block"
+                inputStyleClass="p-inputtext w-full"
+                [inputStyle]="{ width: '100%' }"
+                placeholder="Password"
               >
-            </p-password>
-          </p-inputgroup>
+              </p-password>
+            </p-inputgroup>
 
-          <button
-            pButton
-            type="submit"
-            label="Sign In"
-            class="w-full"
-            [disabled]="form.invalid || isSubmitting$$()"
-          ></button>
-        </form>
+            <button
+              class="forgot-link"
+              type="button"
+              (click)="showForgotPassword()"
+            >
+              Forgot your password?
+            </button>
+
+            <button
+              pButton
+              type="submit"
+              label="Sign In"
+              class="w-full"
+              [disabled]="form.invalid || isSubmitting$$()"
+            ></button>
+          </form>
+        } @else {
+          <form
+            [formGroup]="forgotForm"
+            (ngSubmit)="onForgotSubmit()"
+            class="space-y-4 mt-4"
+          >
+            <p-inputgroup>
+              <p-inputgroup-addon>
+                <i class="pi pi-envelope"></i>
+              </p-inputgroup-addon>
+              <input
+                pInputText
+                type="email"
+                formControlName="email"
+                placeholder="Account email"
+                class="w-full flex-auto"
+              />
+            </p-inputgroup>
+
+            @if (resetMessage$$()) {
+              <div class="reset-notice success">{{ resetMessage$$() }}</div>
+            }
+
+            @if (resetError$$()) {
+              <div class="reset-notice error">{{ resetError$$() }}</div>
+            }
+
+            <button
+              pButton
+              type="submit"
+              label="Send reset link"
+              class="w-full"
+              [disabled]="forgotForm.invalid || isResetSubmitting$$()"
+            ></button>
+
+            <button class="back-link" type="button" (click)="showLogin()">
+              Back to sign in
+            </button>
+          </form>
+        }
       </p-card>
     </div>
   </main>
