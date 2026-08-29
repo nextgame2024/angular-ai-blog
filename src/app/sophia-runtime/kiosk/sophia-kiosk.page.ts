@@ -1,8 +1,20 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject, signal } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  OnDestroy,
+  ViewChild,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { finalize } from 'rxjs';
+import { firstValueFrom, finalize } from 'rxjs';
 
+import {
+  SophiaRealtimeClientService,
+  type SophiaRealtimeToolCall,
+} from '../services/sophia-realtime-client.service';
 import { SophiaRuntimeSessionService } from '../services/sophia-runtime-session.service';
 import type {
   InventoryToolOutput,
@@ -17,8 +29,11 @@ type RuntimeViewState = 'idle' | 'starting' | 'active' | 'closing' | 'error';
   templateUrl: './sophia-kiosk.page.html',
   styleUrls: ['./sophia-kiosk.page.css'],
 })
-export class SophiaKioskPageComponent {
+export class SophiaKioskPageComponent implements OnDestroy {
   private readonly runtime = inject(SophiaRuntimeSessionService);
+  private readonly realtime = inject(SophiaRealtimeClientService);
+
+  @ViewChild('remoteAudio') private readonly remoteAudio?: ElementRef<HTMLAudioElement>;
 
   readonly state$$ = signal<RuntimeViewState>('idle');
   readonly error$$ = signal<string | null>(null);
@@ -27,6 +42,9 @@ export class SophiaKioskPageComponent {
   readonly productId$$ = signal('demo-product');
   readonly colour$$ = signal('black');
   readonly isToolRunning$$ = signal(false);
+  readonly isVoiceConnected$$ = signal(false);
+  readonly voiceStatus$$ = signal('Voice disconnected');
+  readonly realtimeEvents$$ = signal<string[]>([]);
 
   readonly session$$ = computed(() => this.sessionResponse$$()?.session ?? null);
   readonly providerSummary$$ = computed(() => {
@@ -36,6 +54,10 @@ export class SophiaKioskPageComponent {
   });
   readonly canStart$$ = computed(() => this.state$$() === 'idle' || this.state$$() === 'error');
   readonly canUseTools$$ = computed(() => this.session$$()?.status === 'active');
+  readonly canConnectVoice$$ = computed(() => {
+    const response = this.sessionResponse$$();
+    return Boolean(response?.ai.clientSecret && this.canUseTools$$() && !this.isVoiceConnected$$());
+  });
 
   startSession(): void {
     if (!this.canStart$$()) return;
@@ -54,9 +76,48 @@ export class SophiaKioskPageComponent {
         next: (response) => {
           this.sessionResponse$$.set(response);
           this.state$$.set('active');
+          this.voiceStatus$$.set(
+            response.ai.clientSecret
+              ? 'Ready to connect microphone'
+              : 'OpenAI client secret missing',
+          );
         },
         error: (error) => this.handleError(error, 'Could not start Sophia Runtime session.'),
       });
+  }
+
+  async connectVoice(): Promise<void> {
+    const response = this.sessionResponse$$();
+    const session = response?.session;
+    const clientSecret = response?.ai.clientSecret;
+    if (!session || !clientSecret || this.isVoiceConnected$$()) return;
+
+    this.error$$.set(null);
+
+    try {
+      await this.realtime.connect({
+        clientSecret,
+        onRemoteStream: (stream) => this.attachRemoteAudio(stream),
+        onEvent: (event) => this.recordRealtimeEvent(event),
+        onStatus: (status) => {
+          this.voiceStatus$$.set(status);
+          if (status === 'connected' || status === 'Realtime connected') {
+            this.isVoiceConnected$$.set(true);
+          }
+        },
+        onToolCall: (toolCall) => this.executeRealtimeTool(session.sessionId, toolCall),
+      });
+    } catch (error) {
+      await this.realtime.disconnect();
+      this.isVoiceConnected$$.set(false);
+      this.handleError(error, 'Could not connect microphone to OpenAI Realtime.');
+    }
+  }
+
+  async disconnectVoice(): Promise<void> {
+    await this.realtime.disconnect();
+    this.isVoiceConnected$$.set(false);
+    this.voiceStatus$$.set('Voice disconnected');
   }
 
   runInventoryCheck(): void {
@@ -90,6 +151,8 @@ export class SophiaKioskPageComponent {
     this.error$$.set(null);
     this.state$$.set('closing');
 
+    void this.disconnectVoice();
+
     this.runtime.closeSession(session.sessionId).subscribe({
       next: ({ session: closedSession }) => {
         const current = this.sessionResponse$$();
@@ -100,6 +163,10 @@ export class SophiaKioskPageComponent {
       },
       error: (error) => this.handleError(error, 'Could not close the runtime session.'),
     });
+  }
+
+  ngOnDestroy(): void {
+    void this.realtime.disconnect();
   }
 
   setProductId(value: string): void {
@@ -117,5 +184,43 @@ export class SophiaKioskPageComponent {
         : fallback;
     this.error$$.set(message || fallback);
     this.state$$.set('error');
+  }
+
+  private attachRemoteAudio(stream: MediaStream): void {
+    const audio = this.remoteAudio?.nativeElement;
+    if (!audio) return;
+
+    audio.srcObject = stream;
+    void audio.play().catch(() => {
+      this.voiceStatus$$.set('Tap the page to allow audio playback');
+    });
+  }
+
+  private recordRealtimeEvent(event: unknown): void {
+    const type =
+      typeof event === 'object' && event && 'type' in event
+        ? String((event as { type: unknown }).type)
+        : 'event';
+
+    const next = [`${new Date().toLocaleTimeString()} ${type}`, ...this.realtimeEvents$$()];
+    this.realtimeEvents$$.set(next.slice(0, 6));
+  }
+
+  private async executeRealtimeTool(
+    sessionId: string,
+    toolCall: SophiaRealtimeToolCall,
+  ): Promise<unknown> {
+    const response = await firstValueFrom(
+      this.runtime.executeTool(sessionId, {
+        toolName: toolCall.name,
+        input: toolCall.arguments,
+      }),
+    );
+
+    if (toolCall.name === 'getInventory') {
+      this.inventoryResult$$.set(response.output as InventoryToolOutput);
+    }
+
+    return response.output;
   }
 }

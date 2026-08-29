@@ -3,6 +3,7 @@
     <div class="avatar-panel">
       <div class="avatar-video">
         <img src="assets/avatars/sophiaAi_frame.png" alt="Sophia AI avatar" />
+        <audio #remoteAudio autoplay></audio>
         <div class="signal" [class.live]="state$$() === 'active'">
           <span></span>
           {{ state$$() === 'active' ? 'Live' : 'Standby' }}
@@ -32,6 +33,29 @@
           <button type="button" [disabled]="!canUseTools$$()" (click)="closeSession()">
             Close
           </button>
+        </div>
+
+        <div class="voice-actions">
+          <button
+            type="button"
+            class="primary"
+            [disabled]="!canConnectVoice$$()"
+            (click)="connectVoice()"
+          >
+            Connect voice
+          </button>
+          <button
+            type="button"
+            [disabled]="!isVoiceConnected$$()"
+            (click)="disconnectVoice()"
+          >
+            Disconnect
+          </button>
+        </div>
+
+        <div class="voice-status">
+          <span [class.live]="isVoiceConnected$$()"></span>
+          {{ voiceStatus$$() }}
         </div>
 
         <dl class="session-meta" *ngIf="session$$() as session">
@@ -92,6 +116,16 @@
       </div>
 
       <p class="error" *ngIf="error$$()">{{ error$$() }}</p>
+
+      <div class="panel-section events" *ngIf="realtimeEvents$$().length">
+        <div class="section-heading">
+          <p>Realtime Events</p>
+          <span>{{ realtimeEvents$$().length }}</span>
+        </div>
+        <ol>
+          <li *ngFor="let event of realtimeEvents$$()">{{ event }}</li>
+        </ol>
+      </div>
     </aside>
   </section>
 </main>
