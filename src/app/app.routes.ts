@@ -112,6 +112,13 @@ export const appRoutes: Route[] = [
       ),
   },
   {
+    path: 'sophia',
+    loadChildren: () =>
+      import('src/app/sophia-runtime/sophia-runtime.routes').then(
+        (m) => m.SOPHIA_RUNTIME_ROUTES
+      ),
+  },
+  {
     path: 'explore',
     loadComponent: () =>
       import('./manager/components/explore/manager-explore.page').then(

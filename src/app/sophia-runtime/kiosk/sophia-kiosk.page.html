@@ -1,0 +1,97 @@
+<main class="sophia-runtime-shell">
+  <section class="stage" aria-label="Sophia runtime kiosk">
+    <div class="avatar-panel">
+      <div class="avatar-video">
+        <img src="assets/avatars/sophiaAi_frame.png" alt="Sophia AI avatar" />
+        <div class="signal" [class.live]="state$$() === 'active'">
+          <span></span>
+          {{ state$$() === 'active' ? 'Live' : 'Standby' }}
+        </div>
+      </div>
+
+      <div class="conversation-strip">
+        <p class="eyebrow">Sophia Runtime</p>
+        <h1>Retail assistant prototype</h1>
+        <p class="summary">
+          {{ providerSummary$$() }}
+        </p>
+      </div>
+    </div>
+
+    <aside class="control-panel" aria-label="Runtime controls">
+      <div class="panel-section">
+        <div class="section-heading">
+          <p>Session</p>
+          <span>{{ session$$()?.status || 'idle' }}</span>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="primary" [disabled]="!canStart$$()" (click)="startSession()">
+            Start
+          </button>
+          <button type="button" [disabled]="!canUseTools$$()" (click)="closeSession()">
+            Close
+          </button>
+        </div>
+
+        <dl class="session-meta" *ngIf="session$$() as session">
+          <div>
+            <dt>Session</dt>
+            <dd>{{ session.sessionId }}</dd>
+          </div>
+          <div>
+            <dt>Store</dt>
+            <dd>{{ session.storeId || 'demo-store' }}</dd>
+          </div>
+          <div>
+            <dt>Started</dt>
+            <dd>{{ session.startedAt | date: 'short' }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="panel-section">
+        <div class="section-heading">
+          <p>Mock Scanner</p>
+          <span>getInventory</span>
+        </div>
+
+        <label>
+          Product
+          <input
+            type="text"
+            [ngModel]="productId$$()"
+            (ngModelChange)="setProductId($event)"
+            autocomplete="off"
+          />
+        </label>
+
+        <label>
+          Colour
+          <input
+            type="text"
+            [ngModel]="colour$$()"
+            (ngModelChange)="setColour($event)"
+            autocomplete="off"
+          />
+        </label>
+
+        <button
+          type="button"
+          class="tool-button"
+          [disabled]="!canUseTools$$() || isToolRunning$$()"
+          (click)="runInventoryCheck()"
+        >
+          {{ isToolRunning$$() ? 'Checking' : 'Check inventory' }}
+        </button>
+
+        <div class="tool-result" *ngIf="inventoryResult$$() as result">
+          <strong>{{ result.status }}</strong>
+          <span>{{ result.quantityAvailable }} available at {{ result.storeId }}</span>
+        </div>
+      </div>
+
+      <p class="error" *ngIf="error$$()">{{ error$$() }}</p>
+    </aside>
+  </section>
+</main>
