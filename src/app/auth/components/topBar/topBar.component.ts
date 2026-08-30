@@ -1,5 +1,14 @@
 import { Component } from '@angular/core';
-import { combineLatest, catchError, filter, map, of, startWith, switchMap } from 'rxjs';
+import {
+  combineLatest,
+  catchError,
+  distinctUntilChanged,
+  filter,
+  map,
+  of,
+  startWith,
+  switchMap,
+} from 'rxjs';
 import { Store } from '@ngrx/store';
 import { NavigationEnd, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -27,6 +36,16 @@ type HeaderItem = {
 })
 export class TopBarComponent {
   isMobileMenuOpen = false;
+  readonly isSophiaRoute$ = this.router.events.pipe(
+    filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+    map((event) => event.urlAfterRedirects),
+    startWith(this.router.url),
+    map((url) => {
+      const path = url.split(/[?#]/, 1)[0];
+      return path === '/sophia' || path.startsWith('/sophia/');
+    }),
+    distinctUntilChanged(),
+  );
 
   data$ = combineLatest({
     currentUser: this.store.select(selectCurrentUser),

@@ -22,6 +22,7 @@ export class SophiaRealtimeClientService {
   private dataChannel: RTCDataChannel | null = null;
   private localStream: MediaStream | null = null;
   private handledToolCallIds = new Set<string>();
+  private microphoneResumeTimer: number | null = null;
 
   async connect(request: SophiaRealtimeConnectRequest): Promise<void> {
     await this.disconnect();
@@ -31,7 +32,8 @@ export class SophiaRealtimeClientService {
       audio: {
         echoCancellation: true,
         noiseSuppression: true,
-        autoGainControl: true,
+        autoGainControl: false,
+        channelCount: 1,
       },
     });
 
@@ -86,6 +88,7 @@ export class SophiaRealtimeClientService {
 
   async disconnect(): Promise<void> {
     this.handledToolCallIds.clear();
+    this.clearMicrophoneResumeTimer();
 
     this.dataChannel?.close();
     this.dataChannel = null;
@@ -105,6 +108,7 @@ export class SophiaRealtimeClientService {
     if (!event) return;
 
     request.onEvent(event);
+    this.updateMicrophoneState(event);
 
     const audioDelta = extractAudioDelta(event);
     if (audioDelta) {
@@ -152,6 +156,44 @@ export class SophiaRealtimeClientService {
   private sendEvent(event: Record<string, unknown>): void {
     if (this.dataChannel?.readyState !== 'open') return;
     this.dataChannel.send(JSON.stringify(event));
+  }
+
+  private updateMicrophoneState(event: Record<string, unknown>): void {
+    const type = event['type'];
+    if (type === 'output_audio_buffer.started') {
+      this.clearMicrophoneResumeTimer();
+      this.setMicrophoneEnabled(false);
+      return;
+    }
+
+    if (
+      type === 'output_audio_buffer.stopped' ||
+      type === 'response.done' ||
+      type === 'response.cancelled' ||
+      type === 'error'
+    ) {
+      this.scheduleMicrophoneResume();
+    }
+  }
+
+  private scheduleMicrophoneResume(): void {
+    this.clearMicrophoneResumeTimer();
+    this.microphoneResumeTimer = window.setTimeout(() => {
+      this.microphoneResumeTimer = null;
+      this.setMicrophoneEnabled(true);
+    }, 500);
+  }
+
+  private clearMicrophoneResumeTimer(): void {
+    if (this.microphoneResumeTimer === null) return;
+    window.clearTimeout(this.microphoneResumeTimer);
+    this.microphoneResumeTimer = null;
+  }
+
+  private setMicrophoneEnabled(enabled: boolean): void {
+    this.localStream?.getAudioTracks().forEach((track) => {
+      track.enabled = enabled;
+    });
   }
 }
 

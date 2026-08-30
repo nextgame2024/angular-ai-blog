@@ -63,6 +63,10 @@
   scrollbar-width: none;
 }
 
+.topbar-spacer {
+  flex: 1 1 auto;
+}
+
 .topbar-nav::-webkit-scrollbar {
   display: none;
 }
@@ -211,5 +215,27 @@
   :host-context(html.dark) .topbar-mobile-link.active {
     color: #f8fafc;
     background: rgba(45, 212, 191, 0.2);
+  }
+
+  .sophia-topbar .topbar-inner {
+    gap: 0.3rem;
+  }
+
+  .sophia-topbar .brand-logo {
+    height: 2.15rem;
+  }
+
+  .sophia-topbar .topbar-actions {
+    gap: 0.15rem;
+  }
+
+  .sophia-topbar .icon-btn {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .sophia-topbar .ghost-link {
+    padding-inline: 0.2rem;
+    font-size: 0.82rem;
   }
 }

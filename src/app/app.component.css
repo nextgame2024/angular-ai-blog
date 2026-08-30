@@ -1,0 +1,15 @@
+.app-shell.sophia-layout {
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sophia-layout > mc-topbar,
+.sophia-layout > mc-footer {
+  flex: 0 0 auto;
+}
+
+.sophia-layout > main {
+  min-height: 0;
+  overflow: hidden;
+}

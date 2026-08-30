@@ -1,6 +1,9 @@
-<div class="min-h-screen flex flex-col">
+<div
+  class="app-shell min-h-screen flex flex-col"
+  [class.sophia-layout]="isSophiaRoute$ | async"
+>
   <mc-topbar></mc-topbar>
-  <main class="flex-1">
+  <main class="min-h-0 flex-1">
     <router-outlet></router-outlet>
   </main>
   <mc-footer></mc-footer>

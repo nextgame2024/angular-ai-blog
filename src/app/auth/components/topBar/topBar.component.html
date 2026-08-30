@@ -1,6 +1,9 @@
 @if (data$ | async; as data) {
   @if (data.isAuthResolved) {
-    <header class="topbar">
+    <header
+      class="topbar"
+      [class.sophia-topbar]="isSophiaRoute$ | async"
+    >
       <div class="container mx-auto px-4">
         <div class="topbar-inner">
           <a
@@ -21,34 +24,38 @@
             <span class="sr-only">sophiaAi</span>
           </a>
 
-          <nav class="topbar-nav">
-            @if (menuItems$ | async; as items) {
-              @for (item of items; track item.label) {
-                <a
-                  [routerLink]="item.route"
-                  class="topbar-link"
-                  [class.active]="isHeaderItemActive(item)"
-                  (click)="closeMobileMenu()"
-                  >
-                  {{ item.label }}
-                </a>
+          @if (!(isSophiaRoute$ | async)) {
+            <nav class="topbar-nav">
+              @if (menuItems$ | async; as items) {
+                @for (item of items; track item.label) {
+                  <a
+                    [routerLink]="item.route"
+                    class="topbar-link"
+                    [class.active]="isHeaderItemActive(item)"
+                    (click)="closeMobileMenu()"
+                    >
+                    {{ item.label }}
+                  </a>
+                }
               }
-            }
-          </nav>
+            </nav>
 
-          <button
-            type="button"
-            class="mobile-menu-btn"
-            (click)="toggleMobileMenu()"
-            [attr.aria-expanded]="isMobileMenuOpen"
-            aria-label="Toggle navigation menu"
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16"></path>
-              <path d="M4 12h16"></path>
-              <path d="M4 17h16"></path>
-            </svg>
-          </button>
+            <button
+              type="button"
+              class="mobile-menu-btn"
+              (click)="toggleMobileMenu()"
+              [attr.aria-expanded]="isMobileMenuOpen"
+              aria-label="Toggle navigation menu"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16"></path>
+                <path d="M4 12h16"></path>
+                <path d="M4 17h16"></path>
+              </svg>
+            </button>
+          } @else {
+            <span class="topbar-spacer" aria-hidden="true"></span>
+          }
 
           <div class="topbar-actions">
             <button
@@ -75,7 +82,7 @@
           </div>
         </div>
 
-        @if (isMobileMenuOpen) {
+        @if (isMobileMenuOpen && !(isSophiaRoute$ | async)) {
           <nav class="topbar-mobile-nav">
             @if (menuItems$ | async; as items) {
               @for (item of items; track item.label) {

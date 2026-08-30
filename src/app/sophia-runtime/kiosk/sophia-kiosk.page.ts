@@ -9,8 +9,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { firstValueFrom, finalize } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 
 import {
   SophiaRealtimeClientService,
@@ -22,16 +21,13 @@ import {
 } from '../services/sophia-runtime-config.service';
 import { SophiaRuntimeSessionService } from '../services/sophia-runtime-session.service';
 import { SophiaSimliClientService } from '../services/sophia-simli-client.service';
-import type {
-  InventoryToolOutput,
-  SophiaRuntimeSessionResponse,
-} from '../types/sophia-runtime.types';
+import type { SophiaRuntimeSessionResponse } from '../types/sophia-runtime.types';
 
 type RuntimeViewState = 'idle' | 'starting' | 'active' | 'closing' | 'error';
 
 @Component({
   selector: 'app-sophia-kiosk-page',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule],
   templateUrl: './sophia-kiosk.page.html',
   styleUrls: ['./sophia-kiosk.page.css'],
 })
@@ -49,73 +45,120 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly state$$ = signal<RuntimeViewState>('idle');
   readonly error$$ = signal<string | null>(null);
   readonly sessionResponse$$ = signal<SophiaRuntimeSessionResponse | null>(null);
-  readonly inventoryResult$$ = signal<InventoryToolOutput | null>(null);
-  readonly productId$$ = signal('demo-product');
-  readonly colour$$ = signal('black');
-  readonly isToolRunning$$ = signal(false);
   readonly isVoiceConnected$$ = signal(false);
   readonly voiceStatus$$ = signal('Voice disconnected');
   readonly avatarStatus$$ = signal('Avatar disconnected');
   readonly avatarAudioBridge$$ = signal<SophiaAvatarAudioBridge>('webrtc-track');
   readonly isAvatarConnected$$ = signal(false);
+  readonly isAvatarUnavailable$$ = signal(false);
   readonly realtimeEvents$$ = signal<string[]>([]);
 
   readonly session$$ = computed(() => this.sessionResponse$$()?.session ?? null);
-  readonly providerSummary$$ = computed(() => {
-    const response = this.sessionResponse$$();
-    if (!response) return 'Runtime not connected';
-    return `${response.ai.provider} / ${response.avatar.provider}`;
+  readonly canStart$$ = computed(() => {
+    const state = this.state$$();
+    return (state === 'idle' || state === 'error') && this.session$$()?.status !== 'active';
   });
-  readonly canStart$$ = computed(() => this.state$$() === 'idle' || this.state$$() === 'error');
-  readonly canUseTools$$ = computed(() => this.session$$()?.status === 'active');
-  readonly canConnectVoice$$ = computed(() => {
-    const response = this.sessionResponse$$();
-    return Boolean(response?.ai.clientSecret && this.canUseTools$$() && !this.isVoiceConnected$$());
+  readonly canFinish$$ = computed(() => {
+    const state = this.state$$();
+    return this.session$$()?.status === 'active' && (state === 'active' || state === 'error');
   });
-  readonly canConnectAvatar$$ = computed(() => {
-    const response = this.sessionResponse$$();
-    return Boolean(response?.avatar.sessionToken && this.canUseTools$$() && !this.isAvatarConnected$$());
+  readonly runtimeStatus$$ = computed(() => {
+    const state = this.state$$();
+    if (state === 'starting') return 'Starting Sophia';
+    if (state === 'closing') return 'Finishing session';
+    if (state === 'error') return 'Connection needs attention';
+    if (this.isVoiceConnected$$() && this.isAvatarConnected$$()) {
+      return 'Sophia is ready';
+    }
+    if (this.isVoiceConnected$$() && this.isAvatarUnavailable$$()) {
+      return 'Voice ready - avatar unavailable';
+    }
+    if (state === 'active') return 'Connecting voice';
+    return 'Ready to start';
   });
 
-  startSession(): void {
+  async startSession(): Promise<void> {
     if (!this.canStart$$()) return;
 
     this.error$$.set(null);
-    this.inventoryResult$$.set(null);
+    this.isAvatarUnavailable$$.set(false);
+    this.realtimeEvents$$.set([]);
     this.state$$.set('starting');
 
-    this.runtime
-      .createSession({
-        deviceId: '22222222-2222-4222-8222-222222222222',
-        storeId: 'demo-store',
-        createdByUserId: 'angular-kiosk',
-      })
-      .subscribe({
-        next: (response) => {
-          this.sessionResponse$$.set(response);
-          this.state$$.set('active');
-          this.voiceStatus$$.set(
-            response.ai.clientSecret
-              ? 'Ready to connect microphone'
-              : 'OpenAI client secret missing',
-          );
-          this.avatarStatus$$.set(
-            response.avatar.sessionToken
-              ? 'Ready to connect avatar'
-              : 'Simli session token missing',
-          );
-        },
-        error: (error) => this.handleError(error, 'Could not start Sophia Runtime session.'),
-      });
+    try {
+      const response = await firstValueFrom(
+        this.runtime.createSession({
+          deviceId: '22222222-2222-4222-8222-222222222222',
+          storeId: 'demo-store',
+          createdByUserId: 'angular-kiosk',
+        }),
+      );
+
+      this.sessionResponse$$.set(response);
+      this.voiceStatus$$.set(
+        response.ai.clientSecret
+          ? 'Connecting microphone'
+          : 'OpenAI client secret missing',
+      );
+      this.avatarStatus$$.set(
+        response.avatar.sessionToken
+          ? 'Connecting avatar'
+          : 'Simli session token missing',
+      );
+
+      const [voiceConnection, avatarConnection] = await Promise.allSettled([
+        this.connectVoice(),
+        this.connectAvatar(),
+      ]);
+
+      if (voiceConnection.status === 'rejected') {
+        if (avatarConnection.status === 'fulfilled') {
+          await this.disconnectAvatar();
+        }
+        throw new Error(formatError(voiceConnection.reason));
+      }
+
+      if (avatarConnection.status === 'rejected') {
+        this.isAvatarUnavailable$$.set(true);
+        this.avatarStatus$$.set('Avatar unavailable');
+      }
+
+      this.state$$.set('active');
+    } catch (error) {
+      this.handleError(error, 'Could not start Sophia.');
+    }
   }
 
-  async connectVoice(): Promise<void> {
+  async finishSession(): Promise<void> {
+    const session = this.session$$();
+    if (!session || !this.canFinish$$()) return;
+
+    this.error$$.set(null);
+    this.state$$.set('closing');
+
+    await Promise.allSettled([
+      this.disconnectVoice(),
+      this.disconnectAvatar(),
+    ]);
+
+    try {
+      await firstValueFrom(this.runtime.closeSession(session.sessionId));
+      this.sessionResponse$$.set(null);
+      this.isAvatarUnavailable$$.set(false);
+      this.realtimeEvents$$.set([]);
+      this.state$$.set('idle');
+    } catch (error) {
+      this.handleError(error, 'Could not finish the runtime session.');
+    }
+  }
+
+  private async connectVoice(): Promise<void> {
     const response = this.sessionResponse$$();
     const session = response?.session;
     const clientSecret = response?.ai.clientSecret;
-    if (!session || !clientSecret || this.isVoiceConnected$$()) return;
-
-    this.error$$.set(null);
+    if (!session || !clientSecret) {
+      throw new Error('OpenAI voice connection is not configured.');
+    }
 
     try {
       await this.realtime.connect({
@@ -133,20 +176,19 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     } catch (error) {
       await this.realtime.disconnect();
       this.isVoiceConnected$$.set(false);
-      this.handleError(error, 'Could not connect microphone to OpenAI Realtime.');
+      this.voiceStatus$$.set('Voice connection failed');
+      throw new Error(`Voice: ${formatError(error)}`);
     }
   }
 
-  async connectAvatar(): Promise<void> {
+  private async connectAvatar(): Promise<void> {
     const response = this.sessionResponse$$();
     const videoElement = this.simliVideo?.nativeElement;
     const audioElement = this.simliAudio?.nativeElement;
     const sessionToken = response?.avatar.sessionToken;
-    if (!sessionToken || !videoElement || !audioElement || this.isAvatarConnected$$()) {
-      return;
+    if (!sessionToken || !videoElement || !audioElement) {
+      throw new Error('Simli avatar connection is not configured.');
     }
-
-    this.error$$.set(null);
 
     try {
       await this.simli.connect({
@@ -169,18 +211,19 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     } catch (error) {
       await this.simli.disconnect();
       this.isAvatarConnected$$.set(false);
-      this.handleError(error, 'Could not connect Simli avatar.');
+      this.avatarStatus$$.set('Avatar connection failed');
+      throw new Error(`Avatar: ${formatError(error)}`);
     }
   }
 
-  async disconnectAvatar(): Promise<void> {
+  private async disconnectAvatar(): Promise<void> {
     await this.simli.disconnect();
     this.isAvatarConnected$$.set(false);
     this.avatarStatus$$.set('Avatar disconnected');
     this.syncAudioPlaybackRoute();
   }
 
-  async disconnectVoice(): Promise<void> {
+  private async disconnectVoice(): Promise<void> {
     await this.realtime.disconnect();
     this.remoteOutputStream = null;
     this.simli.clearBuffer();
@@ -188,50 +231,22 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.voiceStatus$$.set('Voice disconnected');
   }
 
-  runInventoryCheck(): void {
-    const session = this.session$$();
-    if (!session || this.isToolRunning$$()) return;
+  /*
+    Runtime tool calls remain available to OpenAI even though the scanner controls
+    are intentionally hidden from the kiosk UI.
+  */
+  private async executeRealtimeTool(
+    sessionId: string,
+    toolCall: SophiaRealtimeToolCall,
+  ): Promise<unknown> {
+    const response = await firstValueFrom(
+      this.runtime.executeTool(sessionId, {
+        toolName: toolCall.name,
+        input: toolCall.arguments,
+      }),
+    );
 
-    this.error$$.set(null);
-    this.isToolRunning$$.set(true);
-
-    this.runtime
-      .executeTool(session.sessionId, {
-        toolName: 'getInventory',
-        input: {
-          productId: this.productId$$().trim(),
-          colour: this.colour$$().trim() || undefined,
-        },
-      })
-      .pipe(finalize(() => this.isToolRunning$$.set(false)))
-      .subscribe({
-        next: (response) => {
-          this.inventoryResult$$.set(response.output as InventoryToolOutput);
-        },
-        error: (error) => this.handleError(error, 'Inventory tool call failed.'),
-      });
-  }
-
-  closeSession(): void {
-    const session = this.session$$();
-    if (!session || this.state$$() === 'closing') return;
-
-    this.error$$.set(null);
-    this.state$$.set('closing');
-
-    void this.disconnectVoice();
-    void this.disconnectAvatar();
-
-    this.runtime.closeSession(session.sessionId).subscribe({
-      next: ({ session: closedSession }) => {
-        const current = this.sessionResponse$$();
-        if (current) {
-          this.sessionResponse$$.set({ ...current, session: closedSession });
-        }
-        this.state$$.set('idle');
-      },
-      error: (error) => this.handleError(error, 'Could not close the runtime session.'),
-    });
+    return response.output;
   }
 
   ngOnDestroy(): void {
@@ -247,14 +262,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         this.attachRemoteStreamToAvatar(this.remoteOutputStream);
       }
     });
-  }
-
-  setProductId(value: string): void {
-    this.productId$$.set(value);
-  }
-
-  setColour(value: string): void {
-    this.colour$$.set(value);
   }
 
   private handleError(error: unknown, fallback: string): void {
@@ -318,21 +325,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.realtimeEvents$$.set(next.slice(0, 6));
   }
 
-  private async executeRealtimeTool(
-    sessionId: string,
-    toolCall: SophiaRealtimeToolCall,
-  ): Promise<unknown> {
-    const response = await firstValueFrom(
-      this.runtime.executeTool(sessionId, {
-        toolName: toolCall.name,
-        input: toolCall.arguments,
-      }),
-    );
+}
 
-    if (toolCall.name === 'getInventory') {
-      this.inventoryResult$$.set(response.output as InventoryToolOutput);
-    }
-
-    return response.output;
-  }
+function formatError(error: unknown): string {
+  return error instanceof Error && error.message
+    ? error.message
+    : 'Unknown connection error.';
 }
