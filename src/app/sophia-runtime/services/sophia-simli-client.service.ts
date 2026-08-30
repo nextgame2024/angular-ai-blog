@@ -19,6 +19,10 @@ interface SimliRuntimeModule {
   };
 }
 
+type SimliRuntimeImport = SimliRuntimeModule & {
+  default?: Partial<SimliRuntimeModule>;
+};
+
 interface SimliClientInstance {
   start(): Promise<void>;
   stop(): Promise<void>;
@@ -45,19 +49,27 @@ export class SophiaSimliClientService {
   async connect(request: SophiaSimliConnectRequest): Promise<void> {
     await this.disconnect();
 
-    const { SimliClient, LogLevel } = await import('simli-client/dist/client');
+    const simliModule = (await import(
+      'simli-client/dist/client'
+    )) as SimliRuntimeImport;
+    const SimliClient = simliModule.SimliClient || simliModule.default?.SimliClient;
+    const logLevel = simliModule.LogLevel || simliModule.default?.LogLevel;
     const transportMode = request.transportMode || 'livekit';
+
+    if (!SimliClient) {
+      throw new Error('Simli client module did not expose SimliClient.');
+    }
 
     request.audioElement.muted = false;
     request.videoElement.muted = true;
     request.videoElement.playsInline = true;
 
-    const client = new (SimliClient as SimliRuntimeModule['SimliClient'])(
+    const client = new SimliClient(
       request.sessionToken,
       request.videoElement,
       request.audioElement,
       null,
-      LogLevel.INFO,
+      logLevel?.INFO ?? logLevel?.ERROR ?? 2,
       transportMode,
     );
 
@@ -84,6 +96,10 @@ export class SophiaSimliClientService {
   sendAudioDataImmediate(audioData: Uint8Array): void {
     if (!this.client || !audioData.byteLength) return;
     this.client.sendAudioDataImmediate(audioData);
+  }
+
+  sendOpenAiPcm16AudioDataImmediate(audioData: Uint8Array): void {
+    this.sendAudioDataImmediate(downsamplePcm16(audioData, 24_000, 16_000));
   }
 
   async disconnect(): Promise<void> {
@@ -122,6 +138,35 @@ export class SophiaSimliClientService {
       });
     }
   }
+}
+
+function downsamplePcm16(
+  audioData: Uint8Array,
+  inputRate: number,
+  outputRate: number,
+): Uint8Array {
+  if (inputRate === outputRate || audioData.byteLength < 4) return audioData;
+
+  const inputSamples = new Int16Array(
+    audioData.buffer,
+    audioData.byteOffset,
+    Math.floor(audioData.byteLength / 2),
+  );
+  const ratio = inputRate / outputRate;
+  const outputLength = Math.max(1, Math.floor(inputSamples.length / ratio));
+  const output = new Int16Array(outputLength);
+
+  for (let index = 0; index < outputLength; index += 1) {
+    const sourceIndex = index * ratio;
+    const leftIndex = Math.floor(sourceIndex);
+    const rightIndex = Math.min(leftIndex + 1, inputSamples.length - 1);
+    const weight = sourceIndex - leftIndex;
+    output[index] = Math.round(
+      inputSamples[leftIndex] * (1 - weight) + inputSamples[rightIndex] * weight,
+    );
+  }
+
+  return new Uint8Array(output.buffer);
 }
 
 function formatSimliError(args: unknown[]): string {

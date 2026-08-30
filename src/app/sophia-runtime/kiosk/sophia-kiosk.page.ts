@@ -282,7 +282,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   private forwardRealtimeAudioToAvatar(audioData: Uint8Array): void {
     if (this.avatarAudioBridge$$() !== 'direct-simli') return;
-    this.simli.sendAudioDataImmediate(audioData);
+    this.simli.sendOpenAiPcm16AudioDataImmediate(audioData);
   }
 
   private syncAudioPlaybackRoute(): void {
