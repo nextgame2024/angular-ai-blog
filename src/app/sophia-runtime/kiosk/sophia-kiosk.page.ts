@@ -121,7 +121,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       await this.realtime.connect({
         clientSecret,
         onRemoteStream: (stream) => this.attachRemoteAudio(stream),
-        onAudioDelta: (audioData) => this.forwardRealtimeAudioToAvatar(audioData),
         onEvent: (event) => this.recordRealtimeEvent(event),
         onStatus: (status) => {
           this.voiceStatus$$.set(status);
@@ -153,6 +152,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       await this.simli.connect({
         sessionToken,
         transportMode: response?.avatar.transportMode,
+        playAudio: this.avatarAudioBridge$$() === 'webrtc-track',
         videoElement,
         audioElement,
         onStatus: (status) => {
@@ -242,6 +242,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     void this.runtimeConfig.resolveAvatarAudioBridge().then((bridge) => {
       this.avatarAudioBridge$$.set(bridge);
+      this.syncAudioPlaybackRoute();
+      if (this.remoteOutputStream && this.isAvatarConnected$$()) {
+        this.attachRemoteStreamToAvatar(this.remoteOutputStream);
+      }
     });
   }
 
@@ -276,19 +280,23 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private attachRemoteStreamToAvatar(stream: MediaStream): void {
-    if (this.avatarAudioBridge$$() !== 'webrtc-track') return;
-    this.simli.attachAudioStream(stream);
-  }
+    if (this.avatarAudioBridge$$() === 'webrtc-track') {
+      this.simli.attachAudioStream(stream);
+      return;
+    }
 
-  private forwardRealtimeAudioToAvatar(audioData: Uint8Array): void {
-    if (this.avatarAudioBridge$$() !== 'direct-simli') return;
-    this.simli.sendOpenAiPcm16AudioDataImmediate(audioData);
+    void this.simli.attachPcmAudioStream(stream).catch((error: unknown) => {
+      const message =
+        error instanceof Error ? error.message : 'Unknown audio bridge error';
+      this.avatarStatus$$.set(`Avatar audio bridge failed: ${message}`);
+    });
   }
 
   private syncAudioPlaybackRoute(): void {
     const remoteAudio = this.remoteAudio?.nativeElement;
     const simliAudio = this.simliAudio?.nativeElement;
-    const useAvatarAudio = this.isAvatarConnected$$();
+    const useAvatarAudio =
+      this.isAvatarConnected$$() && this.avatarAudioBridge$$() === 'webrtc-track';
 
     if (remoteAudio) {
       remoteAudio.muted = useAvatarAudio;

@@ -28,6 +28,7 @@ interface SimliClientInstance {
   stop(): Promise<void>;
   listenToMediastreamTrack(track: MediaStreamTrack): void;
   ClearBuffer(): void;
+  sendAudioData(audioData: Uint8Array): void;
   sendAudioDataImmediate(audioData: Uint8Array): void;
   on(event: string, callback: (...args: unknown[]) => void): void;
 }
@@ -35,6 +36,7 @@ interface SimliClientInstance {
 export interface SophiaSimliConnectRequest {
   sessionToken: string;
   transportMode?: SimliTransportMode;
+  playAudio?: boolean;
   videoElement: HTMLVideoElement;
   audioElement: HTMLAudioElement;
   onStatus(status: string): void;
@@ -45,6 +47,11 @@ export interface SophiaSimliConnectRequest {
 export class SophiaSimliClientService {
   private client: SimliClientInstance | null = null;
   private connectedTrackId: string | null = null;
+  private pcmBridgeTrackId: string | null = null;
+  private pcmAudioContext: AudioContext | null = null;
+  private pcmSourceNode: MediaStreamAudioSourceNode | null = null;
+  private pcmWorkletNode: AudioWorkletNode | null = null;
+  private pcmSilentGain: GainNode | null = null;
 
   async connect(request: SophiaSimliConnectRequest): Promise<void> {
     await this.disconnect();
@@ -60,7 +67,7 @@ export class SophiaSimliClientService {
       throw new Error('Simli client module did not expose SimliClient.');
     }
 
-    request.audioElement.muted = false;
+    request.audioElement.muted = request.playAudio === false;
     request.videoElement.muted = true;
     request.videoElement.playsInline = true;
 
@@ -89,6 +96,60 @@ export class SophiaSimliClientService {
     this.client.listenToMediastreamTrack(audioTrack);
   }
 
+  async attachPcmAudioStream(stream: MediaStream): Promise<void> {
+    const audioTrack = stream.getAudioTracks()[0];
+    if (!this.client || !audioTrack) return;
+    if (this.pcmBridgeTrackId === audioTrack.id) return;
+
+    await this.stopPcmAudioBridge();
+    const client = this.client;
+    if (!client) return;
+
+    const audioContext = new AudioContext();
+    const workletUrl = new URL(
+      'assets/sophia-pcm16-worklet.js',
+      document.baseURI,
+    ).toString();
+    await audioContext.audioWorklet.addModule(workletUrl);
+
+    if (this.client !== client) {
+      await audioContext.close();
+      return;
+    }
+
+    const sourceNode = audioContext.createMediaStreamSource(
+      new MediaStream([audioTrack]),
+    );
+    const workletNode = new AudioWorkletNode(
+      audioContext,
+      'sophia-pcm16-processor',
+      {
+        processorOptions: {
+          targetSampleRate: 16_000,
+          frameSamples: 3_000,
+        },
+      },
+    );
+    const silentGain = audioContext.createGain();
+    silentGain.gain.value = 0;
+
+    workletNode.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+      if (this.client !== client || !(event.data instanceof ArrayBuffer)) return;
+      client.sendAudioData(new Uint8Array(event.data));
+    };
+
+    sourceNode.connect(workletNode);
+    workletNode.connect(silentGain);
+    silentGain.connect(audioContext.destination);
+
+    this.pcmBridgeTrackId = audioTrack.id;
+    this.pcmAudioContext = audioContext;
+    this.pcmSourceNode = sourceNode;
+    this.pcmWorkletNode = workletNode;
+    this.pcmSilentGain = silentGain;
+    await audioContext.resume();
+  }
+
   clearBuffer(): void {
     this.client?.ClearBuffer();
   }
@@ -103,12 +164,29 @@ export class SophiaSimliClientService {
   }
 
   async disconnect(): Promise<void> {
+    await this.stopPcmAudioBridge();
     this.connectedTrackId = null;
     const client = this.client;
     this.client = null;
 
     if (client) {
       await client.stop();
+    }
+  }
+
+  private async stopPcmAudioBridge(): Promise<void> {
+    this.pcmBridgeTrackId = null;
+    this.pcmSourceNode?.disconnect();
+    this.pcmWorkletNode?.disconnect();
+    this.pcmSilentGain?.disconnect();
+    this.pcmWorkletNode = null;
+    this.pcmSourceNode = null;
+    this.pcmSilentGain = null;
+
+    const audioContext = this.pcmAudioContext;
+    this.pcmAudioContext = null;
+    if (audioContext && audioContext.state !== 'closed') {
+      await audioContext.close();
     }
   }
 
