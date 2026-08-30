@@ -1,3 +1,4 @@
 {
-  "googleMapsApiKey": "__GOOGLE_MAPS_API_KEY__"
+  "googleMapsApiKey": "__GOOGLE_MAPS_API_KEY__",
+  "sophiaAvatarAudioBridge": "__SOPHIA_AVATAR_AUDIO_BRIDGE__"
 }

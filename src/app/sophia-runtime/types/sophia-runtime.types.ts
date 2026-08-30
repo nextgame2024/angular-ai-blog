@@ -29,6 +29,8 @@ export interface SophiaRuntimeSessionResponse {
   };
   avatar: {
     provider: string;
+    sessionToken?: string;
+    transportMode?: 'livekit' | 'p2p';
     streamUrl?: string;
     expiresAt?: string;
   };

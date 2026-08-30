@@ -3,6 +3,8 @@ import { Injectable } from '@angular/core';
 export interface SophiaRealtimeConnectRequest {
   clientSecret: string;
   onRemoteStream(stream: MediaStream): void;
+  onAudioDelta?(audioData: Uint8Array): void;
+  onAudioDone?(): void;
   onEvent(event: unknown): void;
   onToolCall(toolCall: SophiaRealtimeToolCall): Promise<unknown>;
   onStatus(status: string): void;
@@ -19,6 +21,7 @@ export class SophiaRealtimeClientService {
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
   private localStream: MediaStream | null = null;
+  private handledToolCallIds = new Set<string>();
 
   async connect(request: SophiaRealtimeConnectRequest): Promise<void> {
     await this.disconnect();
@@ -82,6 +85,8 @@ export class SophiaRealtimeClientService {
   }
 
   async disconnect(): Promise<void> {
+    this.handledToolCallIds.clear();
+
     this.dataChannel?.close();
     this.dataChannel = null;
 
@@ -101,8 +106,19 @@ export class SophiaRealtimeClientService {
 
     request.onEvent(event);
 
+    const audioDelta = extractAudioDelta(event);
+    if (audioDelta) {
+      request.onAudioDelta?.(audioDelta);
+    }
+
+    if (isAudioDoneEvent(event)) {
+      request.onAudioDone?.();
+    }
+
     const toolCall = extractToolCall(event);
     if (!toolCall) return;
+    if (this.handledToolCallIds.has(toolCall.callId)) return;
+    this.handledToolCallIds.add(toolCall.callId);
 
     try {
       const output = await request.onToolCall(toolCall);
@@ -136,6 +152,33 @@ export class SophiaRealtimeClientService {
   private sendEvent(event: Record<string, unknown>): void {
     if (this.dataChannel?.readyState !== 'open') return;
     this.dataChannel.send(JSON.stringify(event));
+  }
+}
+
+function extractAudioDelta(event: Record<string, unknown>): Uint8Array | null {
+  const type = event['type'];
+  const delta = event['delta'];
+  if (typeof type !== 'string' || typeof delta !== 'string') return null;
+  if (!type.includes('audio') || !type.endsWith('.delta')) return null;
+
+  return decodeBase64(delta);
+}
+
+function isAudioDoneEvent(event: Record<string, unknown>): boolean {
+  const type = event['type'];
+  return typeof type === 'string' && type.includes('audio') && type.endsWith('.done');
+}
+
+function decodeBase64(value: string): Uint8Array | null {
+  try {
+    const binary = window.atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {
+      bytes[index] = binary.charCodeAt(index);
+    }
+    return bytes;
+  } catch {
+    return null;
   }
 }
 

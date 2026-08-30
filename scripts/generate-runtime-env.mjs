@@ -18,7 +18,18 @@ if (!apiKey) {
 }
 
 const raw = fs.readFileSync(templatePath, "utf8");
-const out = raw.replace(/__GOOGLE_MAPS_API_KEY__/g, apiKey);
+const avatarAudioBridge = (
+  process.env.SOPHIA_AVATAR_AUDIO_BRIDGE || "webrtc-track"
+).trim();
+const normalizedAvatarAudioBridge =
+  avatarAudioBridge === "direct-simli" ? "direct-simli" : "webrtc-track";
+
+const out = raw
+  .replace(/__GOOGLE_MAPS_API_KEY__/g, apiKey)
+  .replace(
+    /__SOPHIA_AVATAR_AUDIO_BRIDGE__/g,
+    normalizedAvatarAudioBridge,
+  );
 
 fs.writeFileSync(outputPath, out, "utf8");
 console.log(`Generated ${outputPath}`);

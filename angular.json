@@ -30,6 +30,10 @@
             ],
             "styles": ["src/styles.css"],
             "scripts": [],
+            "allowedCommonJsDependencies": [
+              "simli-client/dist/client",
+              "livekit-client"
+            ],
             "browser": "src/main.ts"
           },
           "configurations": {

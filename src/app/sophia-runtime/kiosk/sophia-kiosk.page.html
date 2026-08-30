@@ -2,8 +2,20 @@
   <section class="stage" aria-label="Sophia runtime kiosk">
     <div class="avatar-panel">
       <div class="avatar-video">
-        <img src="assets/avatars/sophiaAi_frame.png" alt="Sophia AI avatar" />
+        <video
+          #simliVideo
+          autoplay
+          playsinline
+          muted
+          [class.connected]="isAvatarConnected$$()"
+        ></video>
+        <img
+          *ngIf="!isAvatarConnected$$()"
+          src="assets/avatars/sophiaAi_frame.png"
+          alt="Sophia AI avatar"
+        />
         <audio #remoteAudio autoplay></audio>
+        <audio #simliAudio autoplay muted></audio>
         <div class="signal" [class.live]="state$$() === 'active'">
           <span></span>
           {{ state$$() === 'active' ? 'Live' : 'Standby' }}
@@ -56,6 +68,29 @@
         <div class="voice-status">
           <span [class.live]="isVoiceConnected$$()"></span>
           {{ voiceStatus$$() }}
+        </div>
+
+        <div class="voice-actions">
+          <button
+            type="button"
+            class="primary"
+            [disabled]="!canConnectAvatar$$()"
+            (click)="connectAvatar()"
+          >
+            Connect avatar
+          </button>
+          <button
+            type="button"
+            [disabled]="!isAvatarConnected$$()"
+            (click)="disconnectAvatar()"
+          >
+            Stop avatar
+          </button>
+        </div>
+
+        <div class="voice-status">
+          <span [class.live]="isAvatarConnected$$()"></span>
+          {{ avatarStatus$$() }} - {{ avatarAudioBridge$$() }}
         </div>
 
         <dl class="session-meta" *ngIf="session$$() as session">

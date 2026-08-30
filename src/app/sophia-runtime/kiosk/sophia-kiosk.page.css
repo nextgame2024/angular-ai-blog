@@ -37,12 +37,26 @@
     linear-gradient(180deg, #0c1f22 0%, #061012 100%);
 }
 
-.avatar-video img {
+.avatar-video img,
+.avatar-video video {
   width: min(58vh, 440px);
   max-width: 78%;
   height: auto;
   object-fit: contain;
+}
+
+.avatar-video img {
   filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.42));
+}
+
+.avatar-video video {
+  display: none;
+  aspect-ratio: 3 / 4;
+  background: transparent;
+}
+
+.avatar-video video.connected {
+  display: block;
 }
 
 .signal {

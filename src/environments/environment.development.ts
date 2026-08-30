@@ -1,6 +1,7 @@
 export const environment = {
   apiUrl: 'https://nodejs-api-hft7.onrender.com/api',
   sophiaRuntimeApiUrl: 'https://sophia-runtime-api.onrender.com/api/runtime',
+  sophiaAvatarAudioBridge: 'webrtc-track',
   limit: 9,
   introVideo:
     'https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/sophia.mp4',
