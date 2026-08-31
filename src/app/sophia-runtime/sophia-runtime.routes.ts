@@ -4,6 +4,8 @@ import { SophiaRealtimeClientService } from './services/sophia-realtime-client.s
 import { SophiaRuntimeConfigService } from './services/sophia-runtime-config.service';
 import { SophiaSimliClientService } from './services/sophia-simli-client.service';
 import { SophiaRuntimeSessionService } from './services/sophia-runtime-session.service';
+import { SophiaAvatarClientService } from './services/sophia-avatar-client.service';
+import { SophiaLiveAvatarClientService } from './services/sophia-liveavatar-client.service';
 
 export const SOPHIA_RUNTIME_ROUTES: Route[] = [
   {
@@ -17,6 +19,8 @@ export const SOPHIA_RUNTIME_ROUTES: Route[] = [
       SophiaRuntimeConfigService,
       SophiaRealtimeClientService,
       SophiaSimliClientService,
+      SophiaLiveAvatarClientService,
+      SophiaAvatarClientService,
     ],
     data: {
       title: 'Sophia Runtime',

@@ -9,6 +9,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { firstValueFrom } from 'rxjs';
 
 import {
@@ -20,14 +21,17 @@ import {
   type SophiaAvatarAudioBridge,
 } from '../services/sophia-runtime-config.service';
 import { SophiaRuntimeSessionService } from '../services/sophia-runtime-session.service';
-import { SophiaSimliClientService } from '../services/sophia-simli-client.service';
-import type { SophiaRuntimeSessionResponse } from '../types/sophia-runtime.types';
+import { SophiaAvatarClientService } from '../services/sophia-avatar-client.service';
+import type {
+  SophiaAvatarProvider,
+  SophiaRuntimeSessionResponse,
+} from '../types/sophia-runtime.types';
 
 type RuntimeViewState = 'idle' | 'starting' | 'active' | 'closing' | 'error';
 
 @Component({
   selector: 'app-sophia-kiosk-page',
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './sophia-kiosk.page.html',
   styleUrls: ['./sophia-kiosk.page.css'],
 })
@@ -35,11 +39,11 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private readonly runtimeConfig = inject(SophiaRuntimeConfigService);
   private readonly runtime = inject(SophiaRuntimeSessionService);
   private readonly realtime = inject(SophiaRealtimeClientService);
-  private readonly simli = inject(SophiaSimliClientService);
+  private readonly avatar = inject(SophiaAvatarClientService);
   private remoteOutputStream: MediaStream | null = null;
 
   @ViewChild('remoteAudio') private readonly remoteAudio?: ElementRef<HTMLAudioElement>;
-  @ViewChild('simliVideo') private readonly simliVideo?: ElementRef<HTMLVideoElement>;
+  @ViewChild('avatarVideo') private readonly avatarVideo?: ElementRef<HTMLVideoElement>;
   @ViewChild('simliAudio') private readonly simliAudio?: ElementRef<HTMLAudioElement>;
 
   readonly state$$ = signal<RuntimeViewState>('idle');
@@ -52,6 +56,16 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly isAvatarConnected$$ = signal(false);
   readonly isAvatarUnavailable$$ = signal(false);
   readonly realtimeEvents$$ = signal<string[]>([]);
+  readonly avatarDiagnostics$$ = signal<string[]>([]);
+  readonly avatarProvider$$ = signal<SophiaAvatarProvider>('simli');
+  readonly avatarOptions: ReadonlyArray<{
+    value: SophiaAvatarProvider;
+    label: string;
+  }> = [
+    { value: 'none', label: 'OpenAI' },
+    { value: 'simli', label: 'OpenAI + Simli' },
+    { value: 'liveavatar', label: 'OpenAI + HeyGen' },
+  ];
 
   readonly session$$ = computed(() => this.sessionResponse$$()?.session ?? null);
   readonly canStart$$ = computed(() => {
@@ -70,6 +84,9 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     if (this.isVoiceConnected$$() && this.isAvatarConnected$$()) {
       return 'Sophia is ready';
     }
+    if (this.isVoiceConnected$$() && this.activeAvatarProvider() === 'none') {
+      return 'Sophia is ready';
+    }
     if (this.isVoiceConnected$$() && this.isAvatarUnavailable$$()) {
       return 'Voice ready - avatar unavailable';
     }
@@ -83,6 +100,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.error$$.set(null);
     this.isAvatarUnavailable$$.set(false);
     this.realtimeEvents$$.set([]);
+    this.avatarDiagnostics$$.set([]);
     this.state$$.set('starting');
 
     try {
@@ -91,6 +109,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
           deviceId: '22222222-2222-4222-8222-222222222222',
           storeId: 'demo-store',
           createdByUserId: 'angular-kiosk',
+          avatarProvider: this.avatarProvider$$(),
         }),
       );
 
@@ -101,9 +120,11 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
           : 'OpenAI client secret missing',
       );
       this.avatarStatus$$.set(
-        response.avatar.sessionToken
-          ? 'Connecting avatar'
-          : 'Simli session token missing',
+        response.avatar.provider === 'none'
+          ? 'Static image'
+          : response.avatar.sessionToken
+            ? 'Connecting avatar'
+            : response.avatar.error || 'Avatar session token missing',
       );
 
       const [voiceConnection, avatarConnection] = await Promise.allSettled([
@@ -118,9 +139,17 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         throw new Error(formatError(voiceConnection.reason));
       }
 
-      if (avatarConnection.status === 'rejected') {
+      if (
+        avatarConnection.status === 'rejected' ||
+        (response.avatar.provider !== 'none' && !response.avatar.sessionToken)
+      ) {
         this.isAvatarUnavailable$$.set(true);
-        this.avatarStatus$$.set('Avatar unavailable');
+        this.avatarStatus$$.set(
+          response.avatar.error ||
+            (avatarConnection.status === 'rejected'
+              ? formatError(avatarConnection.reason)
+              : 'Avatar unavailable'),
+        );
       }
 
       this.state$$.set('active');
@@ -146,6 +175,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       this.sessionResponse$$.set(null);
       this.isAvatarUnavailable$$.set(false);
       this.realtimeEvents$$.set([]);
+      this.avatarDiagnostics$$.set([]);
       this.state$$.set('idle');
     } catch (error) {
       this.handleError(error, 'Could not finish the runtime session.');
@@ -164,6 +194,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       await this.realtime.connect({
         clientSecret,
         onRemoteStream: (stream) => this.attachRemoteAudio(stream),
+        onOutputAudioStarted: () => this.avatar.startOpenAiAudioCapture(),
+        onOutputAudioStopped: () => this.avatar.completeOpenAiAudioCapture(),
+        onOutputAudioTranscriptDone: (transcript) =>
+          this.avatar.speakText(transcript),
         onEvent: (event) => this.recordRealtimeEvent(event),
         onStatus: (status) => {
           this.voiceStatus$$.set(status);
@@ -183,18 +217,25 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   private async connectAvatar(): Promise<void> {
     const response = this.sessionResponse$$();
-    const videoElement = this.simliVideo?.nativeElement;
+    const provider = response?.avatar.provider;
+    if (provider === 'none') {
+      this.avatarStatus$$.set('Static image');
+      return;
+    }
+
+    const videoElement = this.avatarVideo?.nativeElement;
     const audioElement = this.simliAudio?.nativeElement;
     const sessionToken = response?.avatar.sessionToken;
-    if (!sessionToken || !videoElement || !audioElement) {
-      throw new Error('Simli avatar connection is not configured.');
+    if (!provider || !sessionToken || !videoElement || !audioElement) {
+      throw new Error(response?.avatar.error || 'Avatar connection is not configured.');
     }
 
     try {
-      await this.simli.connect({
+      await this.avatar.connect({
+        provider,
         sessionToken,
         transportMode: response?.avatar.transportMode,
-        playAudio: this.avatarAudioBridge$$() === 'webrtc-track',
+        audioBridge: this.avatarAudioBridge$$(),
         videoElement,
         audioElement,
         onStatus: (status) => {
@@ -203,13 +244,19 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
           this.isAvatarConnected$$.set(isConnected);
           this.syncAudioPlaybackRoute();
         },
-        onEvent: (event) => this.recordRealtimeEvent({ type: event }),
+        onEvent: (event) => {
+          this.recordRealtimeEvent({ type: event });
+          this.recordAvatarDiagnostic(event);
+        },
+        onSpeakingChange: (speaking) => {
+          this.realtime.setMicrophoneSuppressed(speaking);
+        },
       });
       if (this.remoteOutputStream) {
-        this.attachRemoteStreamToAvatar(this.remoteOutputStream);
+        this.avatar.attachRemoteStream(this.remoteOutputStream);
       }
     } catch (error) {
-      await this.simli.disconnect();
+      await this.avatar.disconnect();
       this.isAvatarConnected$$.set(false);
       this.avatarStatus$$.set('Avatar connection failed');
       throw new Error(`Avatar: ${formatError(error)}`);
@@ -217,7 +264,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private async disconnectAvatar(): Promise<void> {
-    await this.simli.disconnect();
+    await this.avatar.disconnect();
+    this.realtime.setMicrophoneSuppressed(false);
     this.isAvatarConnected$$.set(false);
     this.avatarStatus$$.set('Avatar disconnected');
     this.syncAudioPlaybackRoute();
@@ -226,7 +274,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private async disconnectVoice(): Promise<void> {
     await this.realtime.disconnect();
     this.remoteOutputStream = null;
-    this.simli.clearBuffer();
+    this.avatar.clearBuffer();
     this.isVoiceConnected$$.set(false);
     this.voiceStatus$$.set('Voice disconnected');
   }
@@ -251,7 +299,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     void this.realtime.disconnect();
-    void this.simli.disconnect();
+    void this.avatar.disconnect();
   }
 
   ngOnInit(): void {
@@ -259,7 +307,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       this.avatarAudioBridge$$.set(bridge);
       this.syncAudioPlaybackRoute();
       if (this.remoteOutputStream && this.isAvatarConnected$$()) {
-        this.attachRemoteStreamToAvatar(this.remoteOutputStream);
+        this.avatar.attachRemoteStream(this.remoteOutputStream);
       }
     });
   }
@@ -279,40 +327,35 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
     this.remoteOutputStream = stream;
     audio.srcObject = stream;
-    this.attachRemoteStreamToAvatar(stream);
+    this.avatar.attachRemoteStream(stream);
     this.syncAudioPlaybackRoute();
     void audio.play().catch(() => {
       this.voiceStatus$$.set('Tap the page to allow audio playback');
     });
   }
 
-  private attachRemoteStreamToAvatar(stream: MediaStream): void {
-    if (this.avatarAudioBridge$$() === 'webrtc-track') {
-      this.simli.attachAudioStream(stream);
-      return;
-    }
-
-    void this.simli.attachPcmAudioStream(stream).catch((error: unknown) => {
-      const message =
-        error instanceof Error ? error.message : 'Unknown audio bridge error';
-      this.avatarStatus$$.set(`Avatar audio bridge failed: ${message}`);
-    });
-  }
-
   private syncAudioPlaybackRoute(): void {
     const remoteAudio = this.remoteAudio?.nativeElement;
     const simliAudio = this.simliAudio?.nativeElement;
+    const provider = this.activeAvatarProvider();
     const useAvatarAudio =
-      this.isAvatarConnected$$() && this.avatarAudioBridge$$() === 'webrtc-track';
+      this.isAvatarConnected$$() &&
+      (provider === 'liveavatar' ||
+        (provider === 'simli' && this.avatarAudioBridge$$() === 'webrtc-track'));
 
     if (remoteAudio) {
       remoteAudio.muted = useAvatarAudio;
     }
 
     if (simliAudio) {
-      simliAudio.muted = !useAvatarAudio;
-      if (useAvatarAudio) void simliAudio.play().catch(() => undefined);
+      const useSimliAudio = useAvatarAudio && provider === 'simli';
+      simliAudio.muted = !useSimliAudio;
+      if (useSimliAudio) void simliAudio.play().catch(() => undefined);
     }
+  }
+
+  private activeAvatarProvider(): SophiaAvatarProvider {
+    return this.sessionResponse$$()?.avatar.provider || this.avatarProvider$$();
   }
 
   private recordRealtimeEvent(event: unknown): void {
@@ -323,6 +366,21 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
     const next = [`${new Date().toLocaleTimeString()} ${type}`, ...this.realtimeEvents$$()];
     this.realtimeEvents$$.set(next.slice(0, 6));
+  }
+
+  private recordAvatarDiagnostic(event: string): void {
+    if (!event.startsWith('liveavatar.')) return;
+    const next = [
+      `${new Date().toLocaleTimeString()} ${event}`,
+      ...this.avatarDiagnostics$$(),
+    ];
+    this.avatarDiagnostics$$.set(next.slice(0, 16));
+  }
+
+  setAvatarProvider(value: string): void {
+    if (value === 'none' || value === 'simli' || value === 'liveavatar') {
+      this.avatarProvider$$.set(value);
+    }
   }
 
 }

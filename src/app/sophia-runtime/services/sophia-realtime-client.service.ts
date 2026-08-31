@@ -5,6 +5,9 @@ export interface SophiaRealtimeConnectRequest {
   onRemoteStream(stream: MediaStream): void;
   onAudioDelta?(audioData: Uint8Array): void;
   onAudioDone?(): void;
+  onOutputAudioStarted?(): void;
+  onOutputAudioStopped?(): void;
+  onOutputAudioTranscriptDone?(transcript: string): void;
   onEvent(event: unknown): void;
   onToolCall(toolCall: SophiaRealtimeToolCall): Promise<unknown>;
   onStatus(status: string): void;
@@ -23,6 +26,8 @@ export class SophiaRealtimeClientService {
   private localStream: MediaStream | null = null;
   private handledToolCallIds = new Set<string>();
   private microphoneResumeTimer: number | null = null;
+  private microphoneSuppressed = false;
+  private assistantAudioPlaying = false;
 
   async connect(request: SophiaRealtimeConnectRequest): Promise<void> {
     await this.disconnect();
@@ -89,6 +94,8 @@ export class SophiaRealtimeClientService {
   async disconnect(): Promise<void> {
     this.handledToolCallIds.clear();
     this.clearMicrophoneResumeTimer();
+    this.microphoneSuppressed = false;
+    this.assistantAudioPlaying = false;
 
     this.dataChannel?.close();
     this.dataChannel = null;
@@ -108,7 +115,7 @@ export class SophiaRealtimeClientService {
     if (!event) return;
 
     request.onEvent(event);
-    this.updateMicrophoneState(event);
+    this.updateMicrophoneState(event, request);
 
     const audioDelta = extractAudioDelta(event);
     if (audioDelta) {
@@ -117,6 +124,11 @@ export class SophiaRealtimeClientService {
 
     if (isAudioDoneEvent(event)) {
       request.onAudioDone?.();
+    }
+
+    const transcript = extractOutputAudioTranscriptDone(event);
+    if (transcript) {
+      request.onOutputAudioTranscriptDone?.(transcript);
     }
 
     const toolCall = extractToolCall(event);
@@ -158,20 +170,33 @@ export class SophiaRealtimeClientService {
     this.dataChannel.send(JSON.stringify(event));
   }
 
-  private updateMicrophoneState(event: Record<string, unknown>): void {
+  private updateMicrophoneState(
+    event: Record<string, unknown>,
+    request: SophiaRealtimeConnectRequest,
+  ): void {
     const type = event['type'];
     if (type === 'output_audio_buffer.started') {
+      this.assistantAudioPlaying = true;
       this.clearMicrophoneResumeTimer();
       this.setMicrophoneEnabled(false);
+      request.onOutputAudioStarted?.();
+      return;
+    }
+
+    if (type === 'output_audio_buffer.stopped') {
+      this.assistantAudioPlaying = false;
+      request.onOutputAudioStopped?.();
+      this.scheduleMicrophoneResume();
       return;
     }
 
     if (
-      type === 'output_audio_buffer.stopped' ||
-      type === 'response.done' ||
       type === 'response.cancelled' ||
+      type === 'output_audio_buffer.cleared' ||
       type === 'error'
     ) {
+      this.assistantAudioPlaying = false;
+      request.onOutputAudioStopped?.();
       this.scheduleMicrophoneResume();
     }
   }
@@ -180,7 +205,9 @@ export class SophiaRealtimeClientService {
     this.clearMicrophoneResumeTimer();
     this.microphoneResumeTimer = window.setTimeout(() => {
       this.microphoneResumeTimer = null;
-      this.setMicrophoneEnabled(true);
+      if (!this.microphoneSuppressed && !this.assistantAudioPlaying) {
+        this.setMicrophoneEnabled(true);
+      }
     }, 500);
   }
 
@@ -195,20 +222,42 @@ export class SophiaRealtimeClientService {
       track.enabled = enabled;
     });
   }
+
+  setMicrophoneSuppressed(suppressed: boolean): void {
+    this.microphoneSuppressed = suppressed;
+    this.clearMicrophoneResumeTimer();
+    this.setMicrophoneEnabled(!suppressed && !this.assistantAudioPlaying);
+  }
 }
 
-function extractAudioDelta(event: Record<string, unknown>): Uint8Array | null {
+export function extractAudioDelta(
+  event: Record<string, unknown>,
+): Uint8Array | null {
   const type = event['type'];
   const delta = event['delta'];
-  if (typeof type !== 'string' || typeof delta !== 'string') return null;
-  if (!type.includes('audio') || !type.endsWith('.delta')) return null;
+  if (
+    (type !== 'response.output_audio.delta' &&
+      type !== 'response.audio.delta') ||
+    typeof delta !== 'string'
+  ) {
+    return null;
+  }
 
   return decodeBase64(delta);
 }
 
-function isAudioDoneEvent(event: Record<string, unknown>): boolean {
+export function isAudioDoneEvent(event: Record<string, unknown>): boolean {
   const type = event['type'];
-  return typeof type === 'string' && type.includes('audio') && type.endsWith('.done');
+  return type === 'response.output_audio.done' || type === 'response.audio.done';
+}
+
+export function extractOutputAudioTranscriptDone(
+  event: Record<string, unknown>,
+): string | null {
+  if (event['type'] !== 'response.output_audio_transcript.done') return null;
+  const transcript = event['transcript'];
+  if (typeof transcript !== 'string') return null;
+  return transcript.trim() || null;
 }
 
 function decodeBase64(value: string): Uint8Array | null {

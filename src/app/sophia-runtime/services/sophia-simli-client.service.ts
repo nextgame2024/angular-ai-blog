@@ -41,6 +41,7 @@ export interface SophiaSimliConnectRequest {
   audioElement: HTMLAudioElement;
   onStatus(status: string): void;
   onEvent(event: string): void;
+  onSpeakingChange?(speaking: boolean): void;
 }
 
 @Injectable()
@@ -210,6 +211,10 @@ export class SophiaSimliClientService {
         request.onEvent(`simli.${event}`);
         if (event === 'start') request.onStatus('Avatar connected');
         if (event === 'stop') request.onStatus('Avatar disconnected');
+        if (event === 'speaking') request.onSpeakingChange?.(true);
+        if (event === 'silent' || event === 'stop') {
+          request.onSpeakingChange?.(false);
+        }
         if (event === 'error' || event === 'startup_error') {
           request.onStatus(formatSimliError(args));
         }

@@ -1,3 +1,5 @@
+export type SophiaAvatarProvider = 'none' | 'simli' | 'liveavatar';
+
 export interface SophiaRuntimeToolDefinition {
   name: string;
   description: string;
@@ -28,11 +30,12 @@ export interface SophiaRuntimeSessionResponse {
     expiresAt?: string;
   };
   avatar: {
-    provider: string;
+    provider: SophiaAvatarProvider;
     sessionToken?: string;
     transportMode?: 'livekit' | 'p2p';
     streamUrl?: string;
     expiresAt?: string;
+    error?: string;
   };
   tools: SophiaRuntimeToolDefinition[];
 }
@@ -46,6 +49,7 @@ export interface CreateSophiaRuntimeSessionRequest {
   deviceId?: string;
   storeId?: string;
   createdByUserId?: string;
+  avatarProvider?: SophiaAvatarProvider;
 }
 
 export interface ExecuteSophiaRuntimeToolRequest {

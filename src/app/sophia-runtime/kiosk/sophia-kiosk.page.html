@@ -3,10 +3,9 @@
     <div class="avatar-panel">
       <div class="avatar-video">
         <video
-          #simliVideo
+          #avatarVideo
           autoplay
           playsinline
-          muted
           [class.connected]="isAvatarConnected$$()"
         ></video>
         <img
@@ -30,6 +29,20 @@
           <span>{{ session$$()?.status || 'idle' }}</span>
         </div>
 
+        <label class="provider-select" for="avatar-provider">
+          <span>Experience</span>
+          <select
+            id="avatar-provider"
+            [ngModel]="avatarProvider$$()"
+            (ngModelChange)="setAvatarProvider($event)"
+            [disabled]="!canStart$$()"
+          >
+            <option *ngFor="let option of avatarOptions" [value]="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </label>
+
         <div class="actions">
           <button type="button" class="primary" [disabled]="!canStart$$()" (click)="startSession()">
             {{ state$$() === 'starting' ? 'Starting' : 'Start' }}
@@ -43,6 +56,10 @@
           <span [class.live]="isVoiceConnected$$()"></span>
           {{ runtimeStatus$$() }}
         </div>
+
+        <p class="avatar-warning" *ngIf="isAvatarUnavailable$$()">
+          {{ avatarStatus$$() }}
+        </p>
 
         <dl class="session-meta" *ngIf="session$$() as session">
           <div>
@@ -61,6 +78,16 @@
       </div>
 
       <p class="error" *ngIf="error$$()">{{ error$$() }}</p>
+
+      <div class="panel-section diagnostics" *ngIf="avatarDiagnostics$$().length">
+        <div class="section-heading">
+          <p>Avatar Diagnostics</p>
+          <span>{{ avatarDiagnostics$$().length }}</span>
+        </div>
+        <ol>
+          <li *ngFor="let event of avatarDiagnostics$$()">{{ event }}</li>
+        </ol>
+      </div>
 
       <div class="panel-section events" *ngIf="realtimeEvents$$().length">
         <div class="section-heading">
