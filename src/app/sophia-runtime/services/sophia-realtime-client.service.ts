@@ -7,7 +7,7 @@ export interface SophiaRealtimeConnectRequest {
   onAudioDone?(): void;
   onOutputAudioStarted?(): void;
   onOutputAudioStopped?(): void;
-  onOutputAudioTranscriptDone?(transcript: string): void;
+  onAssistantTextDone?(text: string): void;
   onEvent(event: unknown): void;
   onToolCall(toolCall: SophiaRealtimeToolCall): Promise<unknown>;
   onStatus(status: string): void;
@@ -126,9 +126,9 @@ export class SophiaRealtimeClientService {
       request.onAudioDone?.();
     }
 
-    const transcript = extractOutputAudioTranscriptDone(event);
-    if (transcript) {
-      request.onOutputAudioTranscriptDone?.(transcript);
+    const assistantText = extractAssistantTextDone(event);
+    if (assistantText) {
+      request.onAssistantTextDone?.(assistantText);
     }
 
     const toolCall = extractToolCall(event);
@@ -251,13 +251,18 @@ export function isAudioDoneEvent(event: Record<string, unknown>): boolean {
   return type === 'response.output_audio.done' || type === 'response.audio.done';
 }
 
-export function extractOutputAudioTranscriptDone(
+export function extractAssistantTextDone(
   event: Record<string, unknown>,
 ): string | null {
-  if (event['type'] !== 'response.output_audio_transcript.done') return null;
-  const transcript = event['transcript'];
-  if (typeof transcript !== 'string') return null;
-  return transcript.trim() || null;
+  const type = event['type'];
+  const value =
+    type === 'response.output_text.done'
+      ? event['text']
+      : type === 'response.output_audio_transcript.done'
+        ? event['transcript']
+        : null;
+  if (typeof value !== 'string') return null;
+  return value.trim() || null;
 }
 
 function decodeBase64(value: string): Uint8Array | null {

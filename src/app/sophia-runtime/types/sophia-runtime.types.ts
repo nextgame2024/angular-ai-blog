@@ -1,4 +1,10 @@
 export type SophiaAvatarProvider = 'none' | 'simli' | 'liveavatar';
+export type SophiaAvatarMode = 'LITE' | 'FULL';
+export type SophiaExperience =
+  | 'openai'
+  | 'openai-simli'
+  | 'openai-liveavatar-lite'
+  | 'openai-liveavatar-full';
 
 export interface SophiaRuntimeToolDefinition {
   name: string;
@@ -26,6 +32,7 @@ export interface SophiaRuntimeSessionResponse {
     provider: string;
     model: string;
     voice?: string;
+    outputModality: 'audio' | 'text';
     clientSecret?: string;
     expiresAt?: string;
   };
@@ -33,6 +40,7 @@ export interface SophiaRuntimeSessionResponse {
     provider: SophiaAvatarProvider;
     sessionToken?: string;
     transportMode?: 'livekit' | 'p2p';
+    mode?: SophiaAvatarMode;
     streamUrl?: string;
     expiresAt?: string;
     error?: string;
@@ -50,6 +58,7 @@ export interface CreateSophiaRuntimeSessionRequest {
   storeId?: string;
   createdByUserId?: string;
   avatarProvider?: SophiaAvatarProvider;
+  avatarMode?: SophiaAvatarMode;
 }
 
 export interface ExecuteSophiaRuntimeToolRequest {

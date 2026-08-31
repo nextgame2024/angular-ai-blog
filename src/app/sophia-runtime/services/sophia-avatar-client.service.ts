@@ -65,10 +65,6 @@ export class SophiaAvatarClientService {
   }
 
   attachRemoteStream(stream: MediaStream): void {
-    if (this.activeProvider === 'liveavatar') {
-      void this.liveAvatar.attachAudioStream(stream);
-      return;
-    }
     if (this.activeProvider !== 'simli') return;
     if (this.audioBridge === 'webrtc-track') {
       this.simli.attachAudioStream(stream);
@@ -80,18 +76,6 @@ export class SophiaAvatarClientService {
   appendOpenAiAudio(audioData: Uint8Array): void {
     if (this.activeProvider === 'liveavatar') {
       this.liveAvatar.appendAudio(audioData);
-    }
-  }
-
-  startOpenAiAudioCapture(): void {
-    if (this.activeProvider === 'liveavatar') {
-      this.liveAvatar.startAudioCapture();
-    }
-  }
-
-  completeOpenAiAudioCapture(): void {
-    if (this.activeProvider === 'liveavatar') {
-      this.liveAvatar.completeAudioCapture();
     }
   }
 

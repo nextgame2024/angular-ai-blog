@@ -1,6 +1,6 @@
 import {
   extractAudioDelta,
-  extractOutputAudioTranscriptDone,
+  extractAssistantTextDone,
   isAudioDoneEvent,
 } from './sophia-realtime-client.service';
 
@@ -29,16 +29,25 @@ describe('Sophia Realtime audio events', () => {
 
   it('returns only a completed output audio transcript', () => {
     expect(
-      extractOutputAudioTranscriptDone({
+      extractAssistantTextDone({
         type: 'response.output_audio_transcript.done',
         transcript: '  Welcome to Sophia.  ',
       }),
     ).toBe('Welcome to Sophia.');
     expect(
-      extractOutputAudioTranscriptDone({
+      extractAssistantTextDone({
         type: 'response.output_audio_transcript.delta',
         delta: 'Welcome',
       }),
     ).toBeNull();
+  });
+
+  it('returns completed text-only model output', () => {
+    expect(
+      extractAssistantTextDone({
+        type: 'response.output_text.done',
+        text: '  Text for HeyGen FULL. ',
+      }),
+    ).toBe('Text for HeyGen FULL.');
   });
 });

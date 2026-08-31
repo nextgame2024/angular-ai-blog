@@ -33,8 +33,8 @@
           <span>Experience</span>
           <select
             id="avatar-provider"
-            [ngModel]="avatarProvider$$()"
-            (ngModelChange)="setAvatarProvider($event)"
+            [ngModel]="experience$$()"
+            (ngModelChange)="setExperience($event)"
             [disabled]="!canStart$$()"
           >
             <option *ngFor="let option of avatarOptions" [value]="option.value">

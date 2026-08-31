@@ -21,12 +21,6 @@ export class SophiaLiveAvatarClientService {
   private audioChunks: Uint8Array[] = [];
   private audioByteLength = 0;
   private onEvent: ((event: string) => void) | null = null;
-  private captureActive = false;
-  private capturedTrackId: string | null = null;
-  private audioContext: AudioContext | null = null;
-  private sourceNode: MediaStreamAudioSourceNode | null = null;
-  private workletNode: AudioWorkletNode | null = null;
-  private silentGain: GainNode | null = null;
   private speakingTimeout: number | null = null;
 
   async connect(request: SophiaLiveAvatarConnectRequest): Promise<void> {
@@ -83,97 +77,20 @@ export class SophiaLiveAvatarClientService {
   }
 
   appendAudio(audioData: Uint8Array): void {
-    if (!this.session || !this.captureActive || !audioData.byteLength) return;
+    if (
+      !this.session ||
+      this.session.mode !== SessionMode.LITE ||
+      !audioData.byteLength
+    ) {
+      return;
+    }
+    if (this.audioByteLength === 0) {
+      this.onEvent?.('liveavatar.audio_capture_started');
+      this.emitDiagnostic('direct_pcm_capture_started.rate_24000');
+    }
     const copy = audioData.slice();
     this.audioChunks.push(copy);
     this.audioByteLength += copy.byteLength;
-  }
-
-  async attachAudioStream(stream: MediaStream): Promise<void> {
-    const audioTrack = stream.getAudioTracks()[0];
-    if (!this.session || this.session.mode !== SessionMode.LITE || !audioTrack) {
-      return;
-    }
-    if (this.capturedTrackId === audioTrack.id) return;
-
-    await this.stopAudioBridge();
-    const session = this.session;
-    if (!session) return;
-
-    const audioContext = new AudioContext();
-    const trackSettings = audioTrack.getSettings();
-    this.emitDiagnostic(
-      `track.state_${audioTrack.readyState}.enabled_${audioTrack.enabled}.muted_${audioTrack.muted}.rate_${trackSettings.sampleRate || 'unknown'}.channels_${trackSettings.channelCount || 'unknown'}`,
-    );
-    const workletUrl = new URL(
-      'assets/sophia-pcm16-worklet.js',
-      document.baseURI,
-    ).toString();
-    await audioContext.audioWorklet.addModule(workletUrl);
-
-    if (this.session !== session) {
-      await audioContext.close();
-      return;
-    }
-
-    const sourceNode = audioContext.createMediaStreamSource(
-      new MediaStream([audioTrack]),
-    );
-    const workletNode = new AudioWorkletNode(
-      audioContext,
-      'sophia-pcm16-processor',
-      {
-        processorOptions: {
-          targetSampleRate: 24_000,
-          frameSamples: 2_400,
-        },
-      },
-    );
-    const silentGain = audioContext.createGain();
-    silentGain.gain.value = 0;
-
-    workletNode.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
-      if (
-        this.session !== session ||
-        !this.captureActive ||
-        !(event.data instanceof ArrayBuffer)
-      ) {
-        return;
-      }
-      this.appendAudio(new Uint8Array(event.data));
-    };
-
-    sourceNode.connect(workletNode);
-    workletNode.connect(silentGain);
-    silentGain.connect(audioContext.destination);
-
-    this.capturedTrackId = audioTrack.id;
-    this.audioContext = audioContext;
-    this.sourceNode = sourceNode;
-    this.workletNode = workletNode;
-    this.silentGain = silentGain;
-    await audioContext.resume();
-    this.onEvent?.('liveavatar.audio_bridge_ready');
-    this.emitDiagnostic(
-      `bridge.context_rate_${audioContext.sampleRate}.target_rate_24000.state_${audioContext.state}`,
-    );
-  }
-
-  startAudioCapture(): void {
-    if (!this.session || this.session.mode !== SessionMode.LITE) return;
-    this.clearBuffer();
-    this.captureActive = true;
-    void this.audioContext?.resume();
-    this.onEvent?.('liveavatar.audio_capture_started');
-    this.emitDiagnostic(
-      `capture_started.context_${this.audioContext?.state || 'missing'}`,
-    );
-  }
-
-  completeAudioCapture(): void {
-    if (!this.captureActive) return;
-    this.captureActive = false;
-    this.sendBufferedAudio();
   }
 
   speakText(text: string): void {
@@ -196,7 +113,7 @@ export class SophiaLiveAvatarClientService {
 
   sendBufferedAudio(): void {
     const session = this.session;
-    if (!session) return;
+    if (!session || session.mode !== SessionMode.LITE) return;
     if (!this.audioByteLength) {
       this.onEvent?.('liveavatar.audio_empty');
       return;
@@ -234,7 +151,6 @@ export class SophiaLiveAvatarClientService {
 
   async disconnect(): Promise<void> {
     this.clearSpeakingTimeout();
-    await this.stopAudioBridge();
     this.clearBuffer();
     const session = this.session;
     this.session = null;
@@ -250,23 +166,6 @@ export class SophiaLiveAvatarClientService {
       }
     } finally {
       session.removeAllListeners();
-    }
-  }
-
-  private async stopAudioBridge(): Promise<void> {
-    this.captureActive = false;
-    this.capturedTrackId = null;
-    this.sourceNode?.disconnect();
-    this.workletNode?.disconnect();
-    this.silentGain?.disconnect();
-    this.workletNode = null;
-    this.sourceNode = null;
-    this.silentGain = null;
-
-    const audioContext = this.audioContext;
-    this.audioContext = null;
-    if (audioContext && audioContext.state !== 'closed') {
-      await audioContext.close();
     }
   }
 

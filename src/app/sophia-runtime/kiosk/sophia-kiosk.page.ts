@@ -24,6 +24,7 @@ import { SophiaRuntimeSessionService } from '../services/sophia-runtime-session.
 import { SophiaAvatarClientService } from '../services/sophia-avatar-client.service';
 import type {
   SophiaAvatarProvider,
+  SophiaExperience,
   SophiaRuntimeSessionResponse,
 } from '../types/sophia-runtime.types';
 
@@ -57,14 +58,15 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly isAvatarUnavailable$$ = signal(false);
   readonly realtimeEvents$$ = signal<string[]>([]);
   readonly avatarDiagnostics$$ = signal<string[]>([]);
-  readonly avatarProvider$$ = signal<SophiaAvatarProvider>('simli');
+  readonly experience$$ = signal<SophiaExperience>('openai-simli');
   readonly avatarOptions: ReadonlyArray<{
-    value: SophiaAvatarProvider;
+    value: SophiaExperience;
     label: string;
   }> = [
-    { value: 'none', label: 'OpenAI' },
-    { value: 'simli', label: 'OpenAI + Simli' },
-    { value: 'liveavatar', label: 'OpenAI + HeyGen' },
+    { value: 'openai', label: 'OpenAI' },
+    { value: 'openai-simli', label: 'OpenAI + Simli' },
+    { value: 'openai-liveavatar-lite', label: 'OpenAI + HeyGen LITE' },
+    { value: 'openai-liveavatar-full', label: 'OpenAI + HeyGen FULL' },
   ];
 
   readonly session$$ = computed(() => this.sessionResponse$$()?.session ?? null);
@@ -104,12 +106,14 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.state$$.set('starting');
 
     try {
+      const experience = experienceConfiguration(this.experience$$());
       const response = await firstValueFrom(
         this.runtime.createSession({
           deviceId: '22222222-2222-4222-8222-222222222222',
           storeId: 'demo-store',
           createdByUserId: 'angular-kiosk',
-          avatarProvider: this.avatarProvider$$(),
+          avatarProvider: experience.avatarProvider,
+          avatarMode: experience.avatarMode,
         }),
       );
 
@@ -194,10 +198,9 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       await this.realtime.connect({
         clientSecret,
         onRemoteStream: (stream) => this.attachRemoteAudio(stream),
-        onOutputAudioStarted: () => this.avatar.startOpenAiAudioCapture(),
-        onOutputAudioStopped: () => this.avatar.completeOpenAiAudioCapture(),
-        onOutputAudioTranscriptDone: (transcript) =>
-          this.avatar.speakText(transcript),
+        onAudioDelta: (audio) => this.avatar.appendOpenAiAudio(audio),
+        onAudioDone: () => this.avatar.completeOpenAiAudio(),
+        onAssistantTextDone: (text) => this.avatar.speakText(text),
         onEvent: (event) => this.recordRealtimeEvent(event),
         onStatus: (status) => {
           this.voiceStatus$$.set(status);
@@ -355,7 +358,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private activeAvatarProvider(): SophiaAvatarProvider {
-    return this.sessionResponse$$()?.avatar.provider || this.avatarProvider$$();
+    return (
+      this.sessionResponse$$()?.avatar.provider ||
+      experienceConfiguration(this.experience$$()).avatarProvider
+    );
   }
 
   private recordRealtimeEvent(event: unknown): void {
@@ -377,12 +383,33 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.avatarDiagnostics$$.set(next.slice(0, 16));
   }
 
-  setAvatarProvider(value: string): void {
-    if (value === 'none' || value === 'simli' || value === 'liveavatar') {
-      this.avatarProvider$$.set(value);
+  setExperience(value: string): void {
+    if (
+      value === 'openai' ||
+      value === 'openai-simli' ||
+      value === 'openai-liveavatar-lite' ||
+      value === 'openai-liveavatar-full'
+    ) {
+      this.experience$$.set(value);
     }
   }
 
+}
+
+function experienceConfiguration(experience: SophiaExperience): {
+  avatarProvider: SophiaAvatarProvider;
+  avatarMode?: 'LITE' | 'FULL';
+} {
+  switch (experience) {
+    case 'openai-simli':
+      return { avatarProvider: 'simli' };
+    case 'openai-liveavatar-lite':
+      return { avatarProvider: 'liveavatar', avatarMode: 'LITE' };
+    case 'openai-liveavatar-full':
+      return { avatarProvider: 'liveavatar', avatarMode: 'FULL' };
+    default:
+      return { avatarProvider: 'none' };
+  }
 }
 
 function formatError(error: unknown): string {
