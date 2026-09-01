@@ -2,23 +2,15 @@
   <section class="stage" aria-label="Sophia runtime kiosk">
     <div class="avatar-panel">
       <div class="avatar-video">
-        <iframe
-          *ngIf="tavusConversationUrl$$() as tavusUrl"
-          class="tavus-conversation"
-          [src]="tavusUrl"
-          title="Sophia Tavus conversation"
-          allow="camera; microphone; autoplay; fullscreen; display-capture"
-          (load)="onTavusFrameLoaded()"
-        ></iframe>
         <video
-          *ngIf="!tavusConversationUrl$$()"
           #avatarVideo
           autoplay
           playsinline
           [class.connected]="isAvatarConnected$$()"
+          [class.tavus]="session$$()?.avatarProvider === 'tavus'"
         ></video>
         <img
-          *ngIf="!tavusConversationUrl$$() && !isAvatarConnected$$()"
+          *ngIf="!isAvatarConnected$$()"
           src="assets/avatars/SophiaAvatarSIMIL.jpg"
           alt="Sophia AI avatar"
         />

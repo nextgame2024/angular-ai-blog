@@ -10,7 +10,6 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
 
 import {
@@ -23,6 +22,7 @@ import {
 } from '../services/sophia-runtime-config.service';
 import { SophiaRuntimeSessionService } from '../services/sophia-runtime-session.service';
 import { SophiaAvatarClientService } from '../services/sophia-avatar-client.service';
+import { SophiaTavusClientService } from '../services/sophia-tavus-client.service';
 import type {
   SophiaAvatarProvider,
   SophiaExperience,
@@ -42,7 +42,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private readonly runtime = inject(SophiaRuntimeSessionService);
   private readonly realtime = inject(SophiaRealtimeClientService);
   private readonly avatar = inject(SophiaAvatarClientService);
-  private readonly sanitizer = inject(DomSanitizer);
+  private readonly tavus = inject(SophiaTavusClientService);
   private remoteOutputStream: MediaStream | null = null;
 
   @ViewChild('remoteAudio') private readonly remoteAudio?: ElementRef<HTMLAudioElement>;
@@ -60,7 +60,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly isAvatarUnavailable$$ = signal(false);
   readonly realtimeEvents$$ = signal<string[]>([]);
   readonly avatarDiagnostics$$ = signal<string[]>([]);
-  readonly tavusConversationUrl$$ = signal<SafeResourceUrl | null>(null);
   readonly experience$$ = signal<SophiaExperience>('openai-simli');
   readonly avatarOptions: ReadonlyArray<{
     value: SophiaExperience;
@@ -126,7 +125,16 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
       this.sessionResponse$$.set(response);
       if (experience.aiProvider === 'tavus-full') {
-        this.connectTavus(response);
+        try {
+          await this.connectTavus(response);
+        } catch (error) {
+          await this.tavus.disconnect();
+          await firstValueFrom(
+            this.runtime.closeSession(response.session.sessionId),
+          ).catch(() => undefined);
+          this.sessionResponse$$.set(null);
+          throw error;
+        }
         this.state$$.set('active');
         return;
       }
@@ -183,7 +191,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.state$$.set('closing');
 
     if (session.aiProvider === 'tavus-full') {
-      this.disconnectTavus();
+      await this.disconnectTavus();
     } else {
       await Promise.allSettled([
         this.disconnectVoice(),
@@ -197,7 +205,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       this.isAvatarUnavailable$$.set(false);
       this.realtimeEvents$$.set([]);
       this.avatarDiagnostics$$.set([]);
-      this.tavusConversationUrl$$.set(null);
       this.state$$.set('idle');
     } catch (error) {
       this.handleError(error, 'Could not finish the runtime session.');
@@ -324,7 +331,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     const session = this.session$$();
     if (session?.status === 'active' && session.aiProvider === 'tavus-full') {
-      this.disconnectTavus();
+      void this.disconnectTavus();
       void firstValueFrom(this.runtime.closeSession(session.sessionId)).catch(
         () => undefined,
       );
@@ -423,15 +430,9 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  onTavusFrameLoaded(): void {
-    if (!this.tavusConversationUrl$$()) return;
-    this.isVoiceConnected$$.set(true);
-    this.isAvatarConnected$$.set(true);
-    this.voiceStatus$$.set('Tavus microphone connected');
-    this.avatarStatus$$.set('Tavus Full connected');
-  }
-
-  private connectTavus(response: SophiaRuntimeSessionResponse): void {
+  private async connectTavus(
+    response: SophiaRuntimeSessionResponse,
+  ): Promise<void> {
     const conversationUrl = response.avatar.streamUrl;
     const meetingToken = response.avatar.sessionToken;
     if (!conversationUrl || !meetingToken) {
@@ -445,16 +446,34 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     ) {
       throw new Error('Tavus returned an unexpected conversation URL.');
     }
-    url.searchParams.set('t', meetingToken);
-    this.tavusConversationUrl$$.set(
-      this.sanitizer.bypassSecurityTrustResourceUrl(url.toString()),
-    );
     this.voiceStatus$$.set('Joining Tavus conversation');
     this.avatarStatus$$.set('Joining Tavus Full');
+
+    const videoElement = this.avatarVideo?.nativeElement;
+    const audioElement = this.remoteAudio?.nativeElement;
+    if (!videoElement || !audioElement) {
+      throw new Error('Tavus media elements are not available.');
+    }
+
+    await this.tavus.connect({
+      conversationUrl: url.toString(),
+      meetingToken,
+      videoElement,
+      audioElement,
+      onStatus: (status) => {
+        this.avatarStatus$$.set(status);
+        if (status === 'Tavus Full connected') {
+          this.isVoiceConnected$$.set(true);
+          this.isAvatarConnected$$.set(true);
+          this.voiceStatus$$.set('Tavus microphone connected');
+        }
+      },
+      onEvent: (event) => this.recordRealtimeEvent({ type: event }),
+    });
   }
 
-  private disconnectTavus(): void {
-    this.tavusConversationUrl$$.set(null);
+  private async disconnectTavus(): Promise<void> {
+    await this.tavus.disconnect();
     this.isVoiceConnected$$.set(false);
     this.isAvatarConnected$$.set(false);
     this.voiceStatus$$.set('Voice disconnected');
