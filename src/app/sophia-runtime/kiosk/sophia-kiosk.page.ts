@@ -10,6 +10,7 @@ import {
   signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { firstValueFrom } from 'rxjs';
 
 import {
@@ -41,6 +42,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private readonly runtime = inject(SophiaRuntimeSessionService);
   private readonly realtime = inject(SophiaRealtimeClientService);
   private readonly avatar = inject(SophiaAvatarClientService);
+  private readonly sanitizer = inject(DomSanitizer);
   private remoteOutputStream: MediaStream | null = null;
 
   @ViewChild('remoteAudio') private readonly remoteAudio?: ElementRef<HTMLAudioElement>;
@@ -58,14 +60,15 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly isAvatarUnavailable$$ = signal(false);
   readonly realtimeEvents$$ = signal<string[]>([]);
   readonly avatarDiagnostics$$ = signal<string[]>([]);
+  readonly tavusConversationUrl$$ = signal<SafeResourceUrl | null>(null);
   readonly experience$$ = signal<SophiaExperience>('openai-simli');
   readonly avatarOptions: ReadonlyArray<{
     value: SophiaExperience;
     label: string;
   }> = [
+    { value: 'tavus', label: 'Tavus' },
     { value: 'openai', label: 'OpenAI' },
     { value: 'openai-simli', label: 'OpenAI + Simli' },
-    { value: 'openai-liveavatar-lite', label: 'OpenAI + HeyGen LITE' },
     { value: 'openai-liveavatar-full', label: 'OpenAI + HeyGen FULL' },
   ];
 
@@ -109,15 +112,25 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       const experience = experienceConfiguration(this.experience$$());
       const response = await firstValueFrom(
         this.runtime.createSession({
+          aiProvider: experience.aiProvider,
           deviceId: '22222222-2222-4222-8222-222222222222',
           storeId: 'demo-store',
           createdByUserId: 'angular-kiosk',
-          avatarProvider: experience.avatarProvider,
+          avatarProvider:
+            experience.avatarProvider === 'tavus'
+              ? undefined
+              : experience.avatarProvider,
           avatarMode: experience.avatarMode,
         }),
       );
 
       this.sessionResponse$$.set(response);
+      if (experience.aiProvider === 'tavus-full') {
+        this.connectTavus(response);
+        this.state$$.set('active');
+        return;
+      }
+
       this.voiceStatus$$.set(
         response.ai.clientSecret
           ? 'Connecting microphone'
@@ -169,10 +182,14 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.error$$.set(null);
     this.state$$.set('closing');
 
-    await Promise.allSettled([
-      this.disconnectVoice(),
-      this.disconnectAvatar(),
-    ]);
+    if (session.aiProvider === 'tavus-full') {
+      this.disconnectTavus();
+    } else {
+      await Promise.allSettled([
+        this.disconnectVoice(),
+        this.disconnectAvatar(),
+      ]);
+    }
 
     try {
       await firstValueFrom(this.runtime.closeSession(session.sessionId));
@@ -180,6 +197,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       this.isAvatarUnavailable$$.set(false);
       this.realtimeEvents$$.set([]);
       this.avatarDiagnostics$$.set([]);
+      this.tavusConversationUrl$$.set(null);
       this.state$$.set('idle');
     } catch (error) {
       this.handleError(error, 'Could not finish the runtime session.');
@@ -224,6 +242,9 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     if (provider === 'none') {
       this.avatarStatus$$.set('Static image');
       return;
+    }
+    if (provider === 'tavus') {
+      throw new Error('Tavus Full uses its embedded conversation connection.');
     }
 
     const videoElement = this.avatarVideo?.nativeElement;
@@ -301,6 +322,13 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    const session = this.session$$();
+    if (session?.status === 'active' && session.aiProvider === 'tavus-full') {
+      this.disconnectTavus();
+      void firstValueFrom(this.runtime.closeSession(session.sessionId)).catch(
+        () => undefined,
+      );
+    }
     void this.realtime.disconnect();
     void this.avatar.disconnect();
   }
@@ -386,6 +414,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   setExperience(value: string): void {
     if (
       value === 'openai' ||
+      value === 'tavus' ||
       value === 'openai-simli' ||
       value === 'openai-liveavatar-lite' ||
       value === 'openai-liveavatar-full'
@@ -394,21 +423,70 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  onTavusFrameLoaded(): void {
+    if (!this.tavusConversationUrl$$()) return;
+    this.isVoiceConnected$$.set(true);
+    this.isAvatarConnected$$.set(true);
+    this.voiceStatus$$.set('Tavus microphone connected');
+    this.avatarStatus$$.set('Tavus Full connected');
+  }
+
+  private connectTavus(response: SophiaRuntimeSessionResponse): void {
+    const conversationUrl = response.avatar.streamUrl;
+    const meetingToken = response.avatar.sessionToken;
+    if (!conversationUrl || !meetingToken) {
+      throw new Error('Tavus conversation URL or meeting token is missing.');
+    }
+
+    const url = new URL(conversationUrl);
+    if (
+      url.protocol !== 'https:' ||
+      (url.hostname !== 'tavus.daily.co' && !url.hostname.endsWith('.daily.co'))
+    ) {
+      throw new Error('Tavus returned an unexpected conversation URL.');
+    }
+    url.searchParams.set('t', meetingToken);
+    this.tavusConversationUrl$$.set(
+      this.sanitizer.bypassSecurityTrustResourceUrl(url.toString()),
+    );
+    this.voiceStatus$$.set('Joining Tavus conversation');
+    this.avatarStatus$$.set('Joining Tavus Full');
+  }
+
+  private disconnectTavus(): void {
+    this.tavusConversationUrl$$.set(null);
+    this.isVoiceConnected$$.set(false);
+    this.isAvatarConnected$$.set(false);
+    this.voiceStatus$$.set('Voice disconnected');
+    this.avatarStatus$$.set('Avatar disconnected');
+  }
+
 }
 
 function experienceConfiguration(experience: SophiaExperience): {
+  aiProvider: 'openai-realtime' | 'tavus-full';
   avatarProvider: SophiaAvatarProvider;
   avatarMode?: 'LITE' | 'FULL';
 } {
   switch (experience) {
+    case 'tavus':
+      return { aiProvider: 'tavus-full', avatarProvider: 'tavus' };
     case 'openai-simli':
-      return { avatarProvider: 'simli' };
+      return { aiProvider: 'openai-realtime', avatarProvider: 'simli' };
     case 'openai-liveavatar-lite':
-      return { avatarProvider: 'liveavatar', avatarMode: 'LITE' };
+      return {
+        aiProvider: 'openai-realtime',
+        avatarProvider: 'liveavatar',
+        avatarMode: 'LITE',
+      };
     case 'openai-liveavatar-full':
-      return { avatarProvider: 'liveavatar', avatarMode: 'FULL' };
+      return {
+        aiProvider: 'openai-realtime',
+        avatarProvider: 'liveavatar',
+        avatarMode: 'FULL',
+      };
     default:
-      return { avatarProvider: 'none' };
+      return { aiProvider: 'openai-realtime', avatarProvider: 'none' };
   }
 }
 

@@ -5,7 +5,7 @@ import type { SophiaAvatarAudioBridge } from './sophia-runtime-config.service';
 import { SophiaLiveAvatarClientService } from './sophia-liveavatar-client.service';
 import { SophiaSimliClientService } from './sophia-simli-client.service';
 
-type ActiveAvatarProvider = Exclude<SophiaAvatarProvider, 'none'>;
+type ActiveAvatarProvider = Exclude<SophiaAvatarProvider, 'none' | 'tavus'>;
 
 export interface SophiaAvatarConnectRequest {
   provider: ActiveAvatarProvider;

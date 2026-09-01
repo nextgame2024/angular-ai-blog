@@ -1,6 +1,7 @@
-export type SophiaAvatarProvider = 'none' | 'simli' | 'liveavatar';
+export type SophiaAvatarProvider = 'none' | 'simli' | 'liveavatar' | 'tavus';
 export type SophiaAvatarMode = 'LITE' | 'FULL';
 export type SophiaExperience =
+  | 'tavus'
   | 'openai'
   | 'openai-simli'
   | 'openai-liveavatar-lite'
@@ -53,11 +54,12 @@ export interface SophiaRuntimeSessionStatusResponse {
 }
 
 export interface CreateSophiaRuntimeSessionRequest {
+  aiProvider?: 'openai-realtime' | 'tavus-full';
   customerId?: string;
   deviceId?: string;
   storeId?: string;
   createdByUserId?: string;
-  avatarProvider?: SophiaAvatarProvider;
+  avatarProvider?: Exclude<SophiaAvatarProvider, 'tavus'>;
   avatarMode?: SophiaAvatarMode;
 }
 
