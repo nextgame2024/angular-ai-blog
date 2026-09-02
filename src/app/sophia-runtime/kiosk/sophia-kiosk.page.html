@@ -2,103 +2,104 @@
   <section class="stage" aria-label="Sophia runtime kiosk">
     <div class="avatar-panel">
       <div class="avatar-video">
+        <div class="stage-toolbar">
+          <label class="provider-select" for="avatar-provider">
+            <span class="visually-hidden">Experience</span>
+            <select
+              id="avatar-provider"
+              aria-label="Sophia experience"
+              [ngModel]="experience$$()"
+              (ngModelChange)="setExperience($event)"
+              [disabled]="!canStart$$()"
+            >
+              <option *ngFor="let option of avatarOptions" [value]="option.value">
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
+
+          <div class="signal" [class.live]="state$$() === 'active'">
+            <span></span>
+            {{ state$$() === 'active' ? 'Live' : 'Standby' }}
+          </div>
+        </div>
+
         <video
           #avatarVideo
+          class="avatar-stream"
           autoplay
           playsinline
           [class.connected]="isAvatarConnected$$()"
           [class.tavus]="session$$()?.avatarProvider === 'tavus'"
         ></video>
+        <video
+          *ngIf="
+            !isAvatarConnected$$() &&
+            experience$$() === 'openai' &&
+            !standbyVideoFailed$$()
+          "
+          class="standby-video"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="auto"
+          poster="assets/avatars/SophiaAvatarSIMIL.jpg"
+          aria-label="Sophia AI standing by"
+          (error)="standbyVideoFailed$$.set(true)"
+        >
+          <source
+            src="https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatars/SophiaAiStandByPhone.mp4"
+            type="video/mp4"
+            media="(max-width: 700px)"
+          />
+          <source
+            src="https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatars/SophiaAiStandBy.mp4"
+            type="video/mp4"
+          />
+        </video>
         <img
-          *ngIf="!isAvatarConnected$$()"
+          *ngIf="
+            !isAvatarConnected$$() &&
+            (experience$$() !== 'openai' || standbyVideoFailed$$())
+          "
           src="assets/avatars/SophiaAvatarSIMIL.jpg"
           alt="Sophia AI avatar"
         />
         <audio #remoteAudio autoplay></audio>
         <audio #simliAudio autoplay muted></audio>
-        <div class="signal" [class.live]="state$$() === 'active'">
-          <span></span>
-          {{ state$$() === 'active' ? 'Live' : 'Standby' }}
-        </div>
-      </div>
-    </div>
 
-    <aside class="control-panel" aria-label="Runtime controls">
-      <div class="panel-section">
-        <div class="section-heading">
-          <p>Session</p>
-          <span>{{ session$$()?.status || 'idle' }}</span>
-        </div>
+        <div class="session-overlay" aria-label="Session controls">
+          <div class="runtime-status" aria-live="polite">
+            <span [class.live]="isVoiceConnected$$()"></span>
+            {{ runtimeStatus$$() }}
+          </div>
 
-        <label class="provider-select" for="avatar-provider">
-          <span>Experience</span>
-          <select
-            id="avatar-provider"
-            [ngModel]="experience$$()"
-            (ngModelChange)="setExperience($event)"
-            [disabled]="!canStart$$()"
-          >
-            <option *ngFor="let option of avatarOptions" [value]="option.value">
-              {{ option.label }}
-            </option>
-          </select>
-        </label>
-
-        <div class="actions">
-          <button type="button" class="primary" [disabled]="!canStart$$()" (click)="startSession()">
-            {{ state$$() === 'starting' ? 'Starting' : 'Start' }}
-          </button>
-          <button type="button" [disabled]="!canFinish$$()" (click)="finishSession()">
-            {{ state$$() === 'closing' ? 'Finishing' : 'Finish' }}
-          </button>
-        </div>
-
-        <div class="runtime-status">
-          <span [class.live]="isVoiceConnected$$()"></span>
-          {{ runtimeStatus$$() }}
+          <div class="actions">
+            <button
+              type="button"
+              class="session-action start-action"
+              [disabled]="!canStart$$()"
+              (click)="startSession()"
+            >
+              <span>{{ state$$() === 'starting' ? 'Starting' : 'Start' }}</span>
+            </button>
+            <button
+              type="button"
+              class="session-action finish-action"
+              [disabled]="!canFinish$$()"
+              (click)="finishSession()"
+            >
+              <span>{{ state$$() === 'closing' ? 'Finishing' : 'Finish' }}</span>
+            </button>
+          </div>
         </div>
 
         <p class="avatar-warning" *ngIf="isAvatarUnavailable$$()">
           {{ avatarStatus$$() }}
         </p>
-
-        <dl class="session-meta" *ngIf="session$$() as session">
-          <div>
-            <dt>Session</dt>
-            <dd>{{ session.sessionId }}</dd>
-          </div>
-          <div>
-            <dt>Store</dt>
-            <dd>{{ session.storeId || 'demo-store' }}</dd>
-          </div>
-          <div>
-            <dt>Started</dt>
-            <dd>{{ session.startedAt | date: 'short' }}</dd>
-          </div>
-        </dl>
+        <p class="error" *ngIf="error$$()">{{ error$$() }}</p>
       </div>
-
-      <p class="error" *ngIf="error$$()">{{ error$$() }}</p>
-
-      <div class="panel-section diagnostics" *ngIf="avatarDiagnostics$$().length">
-        <div class="section-heading">
-          <p>Avatar Diagnostics</p>
-          <span>{{ avatarDiagnostics$$().length }}</span>
-        </div>
-        <ol>
-          <li *ngFor="let event of avatarDiagnostics$$()">{{ event }}</li>
-        </ol>
-      </div>
-
-      <div class="panel-section events" *ngIf="realtimeEvents$$().length">
-        <div class="section-heading">
-          <p>Realtime Events</p>
-          <span>{{ realtimeEvents$$().length }}</span>
-        </div>
-        <ol>
-          <li *ngFor="let event of realtimeEvents$$()">{{ event }}</li>
-        </ol>
-      </div>
-    </aside>
+    </div>
   </section>
 </main>

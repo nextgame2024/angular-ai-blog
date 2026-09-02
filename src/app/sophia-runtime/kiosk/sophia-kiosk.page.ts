@@ -60,15 +60,17 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly isAvatarUnavailable$$ = signal(false);
   readonly realtimeEvents$$ = signal<string[]>([]);
   readonly avatarDiagnostics$$ = signal<string[]>([]);
-  readonly experience$$ = signal<SophiaExperience>('openai-simli');
+  readonly activeTask$$ = signal<string | null>(null);
+  readonly standbyVideoFailed$$ = signal(false);
+  readonly experience$$ = signal<SophiaExperience>('openai');
   readonly avatarOptions: ReadonlyArray<{
     value: SophiaExperience;
     label: string;
   }> = [
-    { value: 'tavus', label: 'Tavus' },
     { value: 'openai', label: 'OpenAI' },
     { value: 'openai-simli', label: 'OpenAI + Simli' },
     { value: 'openai-liveavatar-full', label: 'OpenAI + HeyGen FULL' },
+    { value: 'tavus', label: 'Tavus' },
   ];
 
   readonly session$$ = computed(() => this.sessionResponse$$()?.session ?? null);
@@ -82,6 +84,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   });
   readonly runtimeStatus$$ = computed(() => {
     const state = this.state$$();
+    if (this.activeTask$$()) return this.activeTask$$();
     if (state === 'starting') return 'Starting Sophia';
     if (state === 'closing') return 'Finishing session';
     if (state === 'error') return 'Connection needs attention';
@@ -318,14 +321,21 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     sessionId: string,
     toolCall: SophiaRealtimeToolCall,
   ): Promise<unknown> {
-    const response = await firstValueFrom(
-      this.runtime.executeTool(sessionId, {
-        toolName: toolCall.name,
-        input: toolCall.arguments,
-      }),
-    );
+    const isResearch = toolCall.name === 'researchBusiness';
+    if (isResearch) this.activeTask$$.set('Researching official sources');
 
-    return response.output;
+    try {
+      const response = await firstValueFrom(
+        this.runtime.executeTool(sessionId, {
+          toolName: toolCall.name,
+          input: toolCall.arguments,
+        }),
+      );
+
+      return response.output;
+    } finally {
+      if (isResearch) this.activeTask$$.set(null);
+    }
   }
 
   ngOnDestroy(): void {
@@ -426,6 +436,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       value === 'openai-liveavatar-lite' ||
       value === 'openai-liveavatar-full'
     ) {
+      if (value === 'openai') this.standbyVideoFailed$$.set(false);
       this.experience$$.set(value);
     }
   }
