@@ -11,6 +11,14 @@ export interface SophiaTavusConnectRequest {
   audioElement: HTMLAudioElement;
   onStatus(status: string): void;
   onEvent(event: string): void;
+  onToolCall(toolCall: SophiaTavusToolCall): Promise<unknown>;
+}
+
+export interface SophiaTavusToolCall {
+  callId: string;
+  name: string;
+  arguments: Record<string, unknown>;
+  conversationId: string;
 }
 
 @Injectable()
@@ -20,6 +28,8 @@ export class SophiaTavusClientService {
   private audioElement: HTMLAudioElement | null = null;
   private onStatus: ((status: string) => void) | null = null;
   private onEvent: ((event: string) => void) | null = null;
+  private onToolCall: ((toolCall: SophiaTavusToolCall) => Promise<unknown>) | null = null;
+  private handledToolCallIds = new Set<string>();
   private connected = false;
 
   async connect(request: SophiaTavusConnectRequest): Promise<void> {
@@ -29,6 +39,8 @@ export class SophiaTavusClientService {
     this.audioElement = request.audioElement;
     this.onStatus = request.onStatus;
     this.onEvent = request.onEvent;
+    this.onToolCall = request.onToolCall;
+    this.handledToolCallIds.clear();
     this.connected = false;
 
     const call = Daily.createCallObject({
@@ -49,8 +61,7 @@ export class SophiaTavusClientService {
       .on('track-started', () => this.attachRemoteTracks())
       .on('participant-left', () => this.attachRemoteTracks())
       .on('app-message', (event) => {
-        const eventType = extractAppMessageType(event.data);
-        this.emitEvent(`tavus.${eventType}`);
+        void this.handleAppMessage(event.data);
       })
       .on('camera-error', (event) => {
         this.emitEvent(`tavus.media_error.${event.errorMsg.errorMsg}`);
@@ -90,6 +101,8 @@ export class SophiaTavusClientService {
     this.audioElement = null;
     this.onStatus = null;
     this.onEvent = null;
+    this.onToolCall = null;
+    this.handledToolCallIds.clear();
 
     if (!call || call.isDestroyed()) return;
 
@@ -134,6 +147,57 @@ export class SophiaTavusClientService {
     }
   }
 
+  private async handleAppMessage(data: unknown): Promise<void> {
+    const message = normalizeAppMessage(data);
+    const eventType = message?.['event_type'];
+    this.emitEvent(`tavus.${extractAppMessageType(message || data)}`);
+    if (!message || eventType !== 'conversation.tool_call' || !this.call || !this.onToolCall) return;
+
+    const properties = asRecord(message['properties']);
+    const conversationId = message['conversation_id'];
+    const callId = properties?.['tool_call_id'];
+    const name = properties?.['name'];
+    if (typeof conversationId !== 'string' || typeof callId !== 'string' || typeof name !== 'string') {
+      this.emitEvent('tavus.tool_call.invalid');
+      return;
+    }
+    if (this.handledToolCallIds.has(callId)) return;
+    this.handledToolCallIds.add(callId);
+
+    try {
+      const output = await this.onToolCall({
+        callId,
+        name,
+        arguments: parseToolArguments(properties?.['arguments']),
+        conversationId,
+      });
+      this.sendToolResult(conversationId, callId, output, 'success');
+      this.emitEvent(`tavus.tool_result.${name}.success`);
+    } catch (error) {
+      this.sendToolResult(
+        conversationId,
+        callId,
+        { error: error instanceof Error ? error.message : 'Runtime tool execution failed.' },
+        'error',
+      );
+      this.emitEvent(`tavus.tool_result.${name}.error`);
+    }
+  }
+
+  private sendToolResult(
+    conversationId: string,
+    callId: string,
+    output: unknown,
+    status: 'success' | 'error',
+  ): void {
+    this.call?.sendAppMessage({
+      message_type: 'conversation',
+      event_type: 'conversation.tool_result',
+      conversation_id: conversationId,
+      properties: { tool_call_id: callId, output, status },
+    }, '*');
+  }
+
   private attachTrack(
     element: HTMLMediaElement,
     track: MediaStreamTrack,
@@ -174,10 +238,32 @@ function getTrack(
 }
 
 function extractAppMessageType(data: unknown): string {
-  if (typeof data === 'object' && data && 'type' in data) {
-    return String(data.type).replace(/[^a-zA-Z0-9_.-]/g, '_');
+  if (typeof data === 'object' && data) {
+    const record = data as Record<string, unknown>;
+    const type = record['event_type'] || record['type'];
+    if (type) return String(type).replace(/[^a-zA-Z0-9_.-]/g, '_');
   }
   return 'app_message';
+}
+
+function normalizeAppMessage(data: unknown): Record<string, unknown> | null {
+  if (typeof data === 'string') {
+    try { return asRecord(JSON.parse(data)); } catch { return null; }
+  }
+  return asRecord(data);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function parseToolArguments(value: unknown): Record<string, unknown> {
+  if (typeof value === 'string') {
+    try { return asRecord(JSON.parse(value)) || {}; } catch { return {}; }
+  }
+  return asRecord(value) || {};
 }
 
 function formatDailyError(error: unknown): string {

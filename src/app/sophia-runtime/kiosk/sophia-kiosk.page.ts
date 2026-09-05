@@ -26,10 +26,20 @@ import { SophiaTavusClientService } from '../services/sophia-tavus-client.servic
 import type {
   SophiaAvatarProvider,
   SophiaExperience,
+  SophiaInspectionBooking,
+  SophiaInspectionSlot,
+  SophiaProperty,
   SophiaRuntimeSessionResponse,
 } from '../types/sophia-runtime.types';
 
 type RuntimeViewState = 'idle' | 'starting' | 'active' | 'closing' | 'error';
+
+interface InspectionCalendarDay {
+  date: string;
+  dayNumber: number;
+  inCurrentMonth: boolean;
+  slots: SophiaInspectionSlot[];
+}
 
 @Component({
   selector: 'app-sophia-kiosk-page',
@@ -62,6 +72,11 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly avatarDiagnostics$$ = signal<string[]>([]);
   readonly activeTask$$ = signal<string | null>(null);
   readonly standbyVideoFailed$$ = signal(false);
+  readonly propertyResults$$ = signal<SophiaProperty[]>([]);
+  readonly selectedProperty$$ = signal<SophiaProperty | null>(null);
+  readonly inspectionSlots$$ = signal<SophiaInspectionSlot[]>([]);
+  readonly inspectionCalendarMonth$$ = signal<Date | null>(null);
+  readonly inspectionBooking$$ = signal<SophiaInspectionBooking | null>(null);
   readonly experience$$ = signal<SophiaExperience>('openai');
   readonly avatarOptions: ReadonlyArray<{
     value: SophiaExperience;
@@ -74,6 +89,60 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   ];
 
   readonly session$$ = computed(() => this.sessionResponse$$()?.session ?? null);
+  readonly inspectionMonths$$ = computed(() => {
+    const months = new Map<string, Date>();
+    for (const slot of this.inspectionSlots$$()) {
+      const date = new Date(slot.startsAt);
+      if (Number.isNaN(date.getTime())) continue;
+      const month = new Date(date.getFullYear(), date.getMonth(), 1);
+      months.set(monthKey(month), month);
+    }
+    return [...months.values()].sort((left, right) => left.getTime() - right.getTime());
+  });
+  readonly inspectionMonthLabel$$ = computed(() => {
+    const month = this.inspectionCalendarMonth$$();
+    return month
+      ? new Intl.DateTimeFormat('en-AU', { month: 'long', year: 'numeric' }).format(month)
+      : '';
+  });
+  readonly canShowPreviousInspectionMonth$$ = computed(() =>
+    this.inspectionMonthIndex() > 0,
+  );
+  readonly canShowNextInspectionMonth$$ = computed(() => {
+    const index = this.inspectionMonthIndex();
+    return index >= 0 && index < this.inspectionMonths$$().length - 1;
+  });
+  readonly inspectionCalendarDays$$ = computed<InspectionCalendarDay[]>(() => {
+    const month = this.inspectionCalendarMonth$$();
+    if (!month) return [];
+
+    const slotsByDate = new Map<string, SophiaInspectionSlot[]>();
+    for (const slot of this.inspectionSlots$$()) {
+      const key = localDateKey(new Date(slot.startsAt));
+      const slots = slotsByDate.get(key) ?? [];
+      slots.push(slot);
+      slotsByDate.set(key, slots);
+    }
+
+    const first = new Date(month.getFullYear(), month.getMonth(), 1);
+    const last = new Date(month.getFullYear(), month.getMonth() + 1, 0);
+    const gridStart = new Date(first);
+    gridStart.setDate(first.getDate() - first.getDay());
+    const gridEnd = new Date(last);
+    gridEnd.setDate(last.getDate() + (6 - last.getDay()));
+    const days: InspectionCalendarDay[] = [];
+
+    for (const current = new Date(gridStart); current <= gridEnd; current.setDate(current.getDate() + 1)) {
+      const date = new Date(current);
+      days.push({
+        date: localDateKey(date),
+        dayNumber: date.getDate(),
+        inCurrentMonth: date.getMonth() === month.getMonth(),
+        slots: slotsByDate.get(localDateKey(date)) ?? [],
+      });
+    }
+    return days;
+  });
   readonly canStart$$ = computed(() => {
     const state = this.state$$();
     return (state === 'idle' || state === 'error') && this.session$$()?.status !== 'active';
@@ -108,6 +177,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.isAvatarUnavailable$$.set(false);
     this.realtimeEvents$$.set([]);
     this.avatarDiagnostics$$.set([]);
+    this.clearPropertyExperience();
     this.state$$.set('starting');
 
     try {
@@ -208,6 +278,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       this.isAvatarUnavailable$$.set(false);
       this.realtimeEvents$$.set([]);
       this.avatarDiagnostics$$.set([]);
+      this.clearPropertyExperience();
       this.state$$.set('idle');
     } catch (error) {
       this.handleError(error, 'Could not finish the runtime session.');
@@ -321,8 +392,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     sessionId: string,
     toolCall: SophiaRealtimeToolCall,
   ): Promise<unknown> {
-    const isResearch = toolCall.name === 'researchBusiness';
-    if (isResearch) this.activeTask$$.set('Researching official sources');
+    this.activeTask$$.set(toolActivityLabel(toolCall.name));
 
     try {
       const response = await firstValueFrom(
@@ -332,10 +402,51 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         }),
       );
 
+      this.handleToolOutput(toolCall.name, response.output);
       return response.output;
     } finally {
-      if (isResearch) this.activeTask$$.set(null);
+      this.activeTask$$.set(null);
     }
+  }
+
+  selectProperty(property: SophiaProperty): void {
+    this.selectedProperty$$.set(property);
+    this.inspectionSlots$$.set([]);
+    this.inspectionCalendarMonth$$.set(null);
+    this.inspectionBooking$$.set(null);
+  }
+
+  closePropertyExperience(): void {
+    this.clearPropertyExperience();
+  }
+
+  formatInspectionTime(value: string): string {
+    return new Intl.DateTimeFormat('en-AU', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date(value));
+  }
+
+  bookingSlot(booking: SophiaInspectionBooking): SophiaInspectionSlot | null {
+    return this.inspectionSlots$$().find((slot) => slot.slotId === booking.slotId) || null;
+  }
+
+  showPreviousInspectionMonth(): void {
+    this.moveInspectionMonth(-1);
+  }
+
+  showNextInspectionMonth(): void {
+    this.moveInspectionMonth(1);
+  }
+
+  formatInspectionClock(value: string): string {
+    return new Intl.DateTimeFormat('en-AU', {
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date(value));
   }
 
   ngOnDestroy(): void {
@@ -428,6 +539,65 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.avatarDiagnostics$$.set(next.slice(0, 16));
   }
 
+  private handleToolOutput(toolName: string, output: unknown): void {
+    const payload = asRecord(output);
+    if (!payload) return;
+
+    if (toolName === 'searchProperties') {
+      const properties = Array.isArray(payload['properties'])
+        ? payload['properties'].filter(isProperty)
+        : [];
+      this.propertyResults$$.set(properties);
+      this.selectedProperty$$.set(null);
+      this.inspectionSlots$$.set([]);
+      this.inspectionBooking$$.set(null);
+      return;
+    }
+
+    if (toolName === 'getPropertyDetails' && isProperty(payload['property'])) {
+      this.selectedProperty$$.set(payload['property']);
+      this.propertyResults$$.set([]);
+      this.inspectionSlots$$.set([]);
+      this.inspectionBooking$$.set(null);
+      return;
+    }
+
+    if (toolName === 'getInspectionSlots') {
+      const slots = Array.isArray(payload['slots'])
+        ? payload['slots'].filter(isInspectionSlot)
+        : [];
+      this.inspectionSlots$$.set(slots);
+      this.inspectionCalendarMonth$$.set(firstInspectionMonth(slots));
+      this.inspectionBooking$$.set(null);
+      return;
+    }
+
+    if (toolName === 'bookInspection' && isInspectionBooking(payload['booking'])) {
+      this.inspectionBooking$$.set(payload['booking']);
+    }
+  }
+
+  private clearPropertyExperience(): void {
+    this.propertyResults$$.set([]);
+    this.selectedProperty$$.set(null);
+    this.inspectionSlots$$.set([]);
+    this.inspectionCalendarMonth$$.set(null);
+    this.inspectionBooking$$.set(null);
+  }
+
+  private inspectionMonthIndex(): number {
+    const selected = this.inspectionCalendarMonth$$();
+    return selected
+      ? this.inspectionMonths$$().findIndex((month) => monthKey(month) === monthKey(selected))
+      : -1;
+  }
+
+  private moveInspectionMonth(offset: number): void {
+    const months = this.inspectionMonths$$();
+    const target = months[this.inspectionMonthIndex() + offset];
+    if (target) this.inspectionCalendarMonth$$.set(target);
+  }
+
   setExperience(value: string): void {
     if (
       value === 'openai' ||
@@ -480,6 +650,14 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         }
       },
       onEvent: (event) => this.recordRealtimeEvent({ type: event }),
+      onToolCall: (toolCall) => this.executeRealtimeTool(
+        response.session.sessionId,
+        {
+          callId: toolCall.callId,
+          name: toolCall.name,
+          arguments: toolCall.arguments,
+        },
+      ),
     });
   }
 
@@ -491,6 +669,57 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.avatarStatus$$.set('Avatar disconnected');
   }
 
+}
+
+function toolActivityLabel(toolName: string): string | null {
+  switch (toolName) {
+    case 'researchBusiness': return 'Researching official sources';
+    case 'searchProperties': return 'Finding suitable properties';
+    case 'getPropertyDetails': return 'Loading property details';
+    case 'getInspectionSlots': return 'Checking inspection times';
+    case 'bookInspection': return 'Confirming inspection';
+    case 'searchAgencyKnowledge': return 'Checking agency guidance';
+    default: return null;
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function isProperty(value: unknown): value is SophiaProperty {
+  const property = asRecord(value);
+  return !!property && typeof property['propertyId'] === 'string' &&
+    typeof property['address'] === 'string' && typeof property['priceDisplay'] === 'string';
+}
+
+function isInspectionSlot(value: unknown): value is SophiaInspectionSlot {
+  const slot = asRecord(value);
+  return !!slot && typeof slot['slotId'] === 'string' && typeof slot['startsAt'] === 'string';
+}
+
+function isInspectionBooking(value: unknown): value is SophiaInspectionBooking {
+  const booking = asRecord(value);
+  return !!booking && typeof booking['bookingId'] === 'string' &&
+    typeof booking['customerEmail'] === 'string';
+}
+
+function firstInspectionMonth(slots: SophiaInspectionSlot[]): Date | null {
+  const first = slots
+    .map((slot) => new Date(slot.startsAt))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((left, right) => left.getTime() - right.getTime())[0];
+  return first ? new Date(first.getFullYear(), first.getMonth(), 1) : null;
+}
+
+function monthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function localDateKey(date: Date): string {
+  return `${monthKey(date)}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function experienceConfiguration(experience: SophiaExperience): {

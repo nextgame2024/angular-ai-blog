@@ -69,6 +69,122 @@
         <audio #remoteAudio autoplay></audio>
         <audio #simliAudio autoplay muted></audio>
 
+        <aside
+          class="property-experience"
+          [class.inspection-view]="inspectionSlots$$().length"
+          *ngIf="propertyResults$$().length || selectedProperty$$() || inspectionBooking$$()"
+          aria-live="polite"
+          aria-label="Property results"
+        >
+          <button
+            type="button"
+            class="close-property-experience"
+            title="Close property results"
+            aria-label="Close property results"
+            (click)="closePropertyExperience()"
+          >&times;</button>
+
+          <ng-container *ngIf="inspectionBooking$$() as booking; else propertyContent">
+            <div class="booking-confirmation">
+              <span class="confirmation-mark" aria-hidden="true">&#10003;</span>
+              <p class="result-eyebrow">Inspection confirmed</p>
+              <h2>{{ booking.customerName }}</h2>
+              <p *ngIf="selectedProperty$$() as property">{{ property.address }}, {{ property.suburb }}, {{ property.city }}</p>
+              <p *ngIf="bookingSlot(booking) as slot">{{ formatInspectionTime(slot.startsAt) }}</p>
+              <small>Confirmation reference {{ booking.bookingId.slice(0, 8).toUpperCase() }}</small>
+            </div>
+          </ng-container>
+
+          <ng-template #propertyContent>
+            <ng-container *ngIf="selectedProperty$$() as property; else propertyList">
+              <div class="property-detail">
+                <img
+                  *ngIf="property.media[0] as photo"
+                  [src]="photo.url"
+                  [alt]="photo.altText || property.title"
+                />
+                <div class="property-detail-copy">
+                  <p class="result-eyebrow">{{ property.listingType === 'rent' ? 'For rent' : 'For sale' }}</p>
+                  <h2>{{ property.address }}</h2>
+                  <p class="property-location">{{ property.suburb }}, {{ property.city }} {{ property.state }} {{ property.postcode }}</p>
+                  <strong>{{ property.priceDisplay }}</strong>
+                  <p class="property-facts">{{ property.bedrooms }} bed &middot; {{ property.bathrooms }} bath &middot; {{ property.carSpaces }} car</p>
+                  <p class="property-description">{{ property.description }}</p>
+                </div>
+                <div class="inspection-calendar" *ngIf="inspectionSlots$$().length">
+                  <div class="inspection-calendar-header">
+                    <div>
+                      <p class="result-eyebrow">Available inspections</p>
+                      <h3>{{ inspectionMonthLabel$$() }}</h3>
+                    </div>
+                    <div class="inspection-calendar-nav" *ngIf="inspectionMonths$$().length > 1">
+                      <button
+                        type="button"
+                        title="Previous month"
+                        aria-label="Previous inspection month"
+                        [disabled]="!canShowPreviousInspectionMonth$$()"
+                        (click)="showPreviousInspectionMonth()"
+                      >&#8249;</button>
+                      <button
+                        type="button"
+                        title="Next month"
+                        aria-label="Next inspection month"
+                        [disabled]="!canShowNextInspectionMonth$$()"
+                        (click)="showNextInspectionMonth()"
+                      >&#8250;</button>
+                    </div>
+                  </div>
+                  <div class="inspection-weekdays" aria-hidden="true">
+                    <span *ngFor="let weekday of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']">{{ weekday }}</span>
+                  </div>
+                  <div class="inspection-calendar-grid">
+                    <div
+                      class="inspection-calendar-day"
+                      *ngFor="let day of inspectionCalendarDays$$()"
+                      [class.outside-month]="!day.inCurrentMonth"
+                      [class.has-slots]="day.slots.length"
+                    >
+                      <span class="inspection-day-number">{{ day.dayNumber }}</span>
+                      <span
+                        class="inspection-slot"
+                        *ngFor="let slot of day.slots"
+                        [title]="formatInspectionTime(slot.startsAt)"
+                      >{{ formatInspectionClock(slot.startsAt) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+
+            <ng-template #propertyList>
+              <header class="results-heading">
+                <p class="result-eyebrow">Recommended properties</p>
+                <h2>{{ propertyResults$$().length }} options found</h2>
+              </header>
+              <div class="property-results">
+                <button
+                  type="button"
+                  class="property-result"
+                  *ngFor="let property of propertyResults$$()"
+                  (click)="selectProperty(property)"
+                >
+                  <img
+                    *ngIf="property.media[0] as photo"
+                    [src]="photo.url"
+                    [alt]="photo.altText || property.title"
+                  />
+                  <span class="property-result-copy">
+                    <small>{{ property.propertyType }} &middot; {{ property.suburb }}, {{ property.city }}</small>
+                    <strong>{{ property.address }}</strong>
+                    <span>{{ property.bedrooms }} bed &middot; {{ property.bathrooms }} bath &middot; {{ property.carSpaces }} car</span>
+                    <b>{{ property.priceDisplay }}</b>
+                  </span>
+                </button>
+              </div>
+            </ng-template>
+          </ng-template>
+        </aside>
+
         <div class="session-overlay" aria-label="Session controls">
           <div class="runtime-status" aria-live="polite">
             <span [class.live]="isVoiceConnected$$()"></span>

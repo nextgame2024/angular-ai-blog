@@ -5,9 +5,10 @@
 }
 
 .sophia-runtime-shell {
+  width: 100%;
   height: 100%;
   min-height: 0;
-  padding: 16px 24px;
+  padding: 0;
   overflow: hidden;
   background: #071013;
   color: #f6fbf8;
@@ -15,10 +16,8 @@
 
 .stage {
   width: 100%;
-  max-width: 1280px;
   height: 100%;
   min-height: 0;
-  margin: 0 auto;
 }
 
 .avatar-panel {
@@ -72,6 +71,286 @@
   aspect-ratio: 16 / 9;
 }
 
+.property-experience {
+  position: absolute;
+  z-index: 3;
+  top: 76px;
+  right: 24px;
+  bottom: 176px;
+  width: min(420px, calc(100% - 48px));
+  overflow-y: auto;
+  border-left: 3px solid #22d3ee;
+  background: rgba(5, 17, 21, 0.94);
+  box-shadow: -18px 18px 42px rgba(0, 0, 0, 0.38);
+  color: #f8fafc;
+  backdrop-filter: blur(14px);
+}
+
+.close-property-experience {
+  position: sticky;
+  z-index: 2;
+  top: 10px;
+  float: right;
+  width: 36px;
+  height: 36px;
+  margin: 10px 10px 0 0;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.88);
+  color: #f8fafc;
+  cursor: pointer;
+  font: inherit;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.results-heading,
+.property-detail-copy,
+.inspection-calendar,
+.booking-confirmation {
+  padding: 22px;
+}
+
+.results-heading h2,
+.property-detail h2,
+.booking-confirmation h2 {
+  margin: 4px 44px 0 0;
+  font-size: 22px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.result-eyebrow {
+  margin: 0;
+  color: #67e8f9;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.property-results {
+  display: grid;
+}
+
+.property-result {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  min-height: 116px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: background-color 160ms ease;
+}
+
+.property-result:hover,
+.property-result:focus-visible {
+  background: rgba(34, 211, 238, 0.1);
+  outline: none;
+}
+
+.property-result img,
+.property-detail > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.property-result-copy {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.property-result-copy small,
+.property-location,
+.property-facts,
+.booking-confirmation small {
+  color: #a7b6c2;
+}
+
+.property-result-copy strong,
+.property-result-copy span {
+  overflow-wrap: anywhere;
+}
+
+.property-result-copy b {
+  color: #5eead4;
+}
+
+.property-detail > img {
+  height: 230px;
+}
+
+.property-location,
+.property-facts,
+.property-description,
+.booking-confirmation p {
+  margin: 8px 0 0;
+  line-height: 1.45;
+}
+
+.property-detail-copy > strong {
+  display: block;
+  margin-top: 14px;
+  color: #5eead4;
+  font-size: 18px;
+}
+
+.property-description {
+  color: #d7e1e6;
+  font-size: 13px;
+}
+
+.inspection-calendar {
+  padding: 18px 22px 22px;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.property-experience.inspection-view {
+  width: min(620px, calc(100% - 48px));
+}
+
+.property-experience.inspection-view .property-detail > img {
+  height: 120px;
+}
+
+.property-experience.inspection-view .property-detail-copy {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+
+.property-experience.inspection-view .property-description {
+  display: none;
+}
+
+.inspection-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.inspection-calendar-header h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.inspection-calendar-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.inspection-calendar-nav button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(148, 163, 184, 0.38);
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.88);
+  color: #f8fafc;
+  cursor: pointer;
+  font: inherit;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.inspection-calendar-nav button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.inspection-weekdays,
+.inspection-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.inspection-weekdays span {
+  padding: 6px 2px;
+  color: #a7b6c2;
+  font-size: 10px;
+  font-weight: 800;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.inspection-calendar-day {
+  min-width: 0;
+  min-height: 62px;
+  padding: 6px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  border-left: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.32);
+}
+
+.inspection-calendar-day:nth-child(7n) {
+  border-right: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.inspection-calendar-day:nth-last-child(-n + 7) {
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.inspection-calendar-day.outside-month {
+  opacity: 0.32;
+}
+
+.inspection-calendar-day.has-slots {
+  background: rgba(8, 145, 178, 0.16);
+}
+
+.inspection-day-number {
+  display: block;
+  margin-bottom: 5px;
+  color: #dbe5ef;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.inspection-slot {
+  display: block;
+  overflow: hidden;
+  padding: 4px;
+  border-left: 2px solid #2dd4bf;
+  background: rgba(15, 118, 110, 0.3);
+  color: #ccfbf1;
+  font-size: 10px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-confirmation {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+}
+
+.confirmation-mark {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 10px;
+  border-radius: 50%;
+  background: #10b981;
+  color: #04120d;
+  font-size: 28px;
+  font-weight: 900;
+}
+
 .standby-video {
   display: block;
   width: 100%;
@@ -79,6 +358,7 @@
   min-width: 100%;
   min-height: 100%;
   object-fit: cover;
+  object-position: center 30%;
   background: #061012;
 }
 
@@ -349,7 +629,7 @@
 
 @media (max-width: 700px), (max-height: 760px) {
   .sophia-runtime-shell {
-    padding: 10px;
+    padding: 0;
   }
 
   .stage-toolbar {
@@ -413,6 +693,39 @@
     right: 12px;
     bottom: 12px;
     max-width: calc(100% - 24px);
+  }
+
+  .property-experience {
+    top: 62px;
+    right: 12px;
+    bottom: 128px;
+    width: calc(100% - 24px);
+  }
+
+  .property-experience.inspection-view {
+    width: calc(100% - 24px);
+  }
+
+  .inspection-calendar {
+    padding: 16px 12px;
+  }
+
+  .inspection-calendar-day {
+    min-height: 50px;
+    padding: 4px;
+  }
+
+  .inspection-slot {
+    padding: 3px 2px;
+    font-size: 8px;
+  }
+
+  .property-result {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+
+  .property-detail > img {
+    height: 190px;
   }
 }
 

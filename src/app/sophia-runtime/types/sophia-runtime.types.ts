@@ -80,3 +80,50 @@ export interface InventoryToolOutput {
   quantityAvailable: number;
   status: 'in_stock' | 'low_stock' | 'out_of_stock';
 }
+
+export interface SophiaPropertyMedia {
+  mediaId: string;
+  url: string;
+  altText?: string | null;
+  sortOrder: number;
+}
+
+export interface SophiaProperty {
+  propertyId: string;
+  listingType: 'sale' | 'rent';
+  propertyType: string;
+  title: string;
+  address: string;
+  suburb: string;
+  city: string;
+  state: string;
+  postcode: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  priceDisplay: string;
+  bedrooms: number;
+  bathrooms: number;
+  carSpaces: number;
+  description: string;
+  features: string[];
+  media: SophiaPropertyMedia[];
+}
+
+export interface SophiaInspectionSlot {
+  slotId: string;
+  propertyId: string;
+  startsAt: string;
+  endsAt: string;
+  capacity: number;
+  placesAvailable: number;
+}
+
+export interface SophiaInspectionBooking {
+  bookingId: string;
+  propertyId: string;
+  slotId: string;
+  customerName: string;
+  customerEmail: string;
+  status: string;
+  createdAt: string;
+}
