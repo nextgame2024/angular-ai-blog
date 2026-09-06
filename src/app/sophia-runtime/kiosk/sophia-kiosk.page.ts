@@ -48,17 +48,23 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private readonly tavus = inject(SophiaTavusClientService);
   private remoteOutputStream: MediaStream | null = null;
 
-  @ViewChild('remoteAudio') private readonly remoteAudio?: ElementRef<HTMLAudioElement>;
-  @ViewChild('avatarVideo') private readonly avatarVideo?: ElementRef<HTMLVideoElement>;
-  @ViewChild('simliAudio') private readonly simliAudio?: ElementRef<HTMLAudioElement>;
+  @ViewChild('remoteAudio')
+  private readonly remoteAudio?: ElementRef<HTMLAudioElement>;
+  @ViewChild('avatarVideo')
+  private readonly avatarVideo?: ElementRef<HTMLVideoElement>;
+  @ViewChild('simliAudio')
+  private readonly simliAudio?: ElementRef<HTMLAudioElement>;
 
   readonly state$$ = signal<RuntimeViewState>('idle');
   readonly error$$ = signal<string | null>(null);
-  readonly sessionResponse$$ = signal<SophiaRuntimeSessionResponse | null>(null);
+  readonly sessionResponse$$ = signal<SophiaRuntimeSessionResponse | null>(
+    null,
+  );
   readonly isVoiceConnected$$ = signal(false);
   readonly voiceStatus$$ = signal('Voice disconnected');
   readonly avatarStatus$$ = signal('Avatar disconnected');
-  readonly avatarAudioBridge$$ = signal<SophiaAvatarAudioBridge>('webrtc-track');
+  readonly avatarAudioBridge$$ =
+    signal<SophiaAvatarAudioBridge>('webrtc-track');
   readonly isAvatarConnected$$ = signal(false);
   readonly isAvatarUnavailable$$ = signal(false);
   readonly realtimeEvents$$ = signal<string[]>([]);
@@ -79,14 +85,33 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     { value: 'tavus', label: 'Premium' },
   ];
 
-  readonly session$$ = computed(() => this.sessionResponse$$()?.session ?? null);
+  readonly standbyImage$$ = computed(() => {
+    switch (this.experience$$()) {
+      case 'openai-liveavatar-full':
+        return 'assets/avatars/ProffesionalBG.jpg';
+      case 'tavus':
+        return 'assets/avatars/PremiumBG.jpg';
+      default:
+        return 'assets/avatars/SophiaAvatarSIMIL.jpg';
+    }
+  });
+
+  readonly session$$ = computed(
+    () => this.sessionResponse$$()?.session ?? null,
+  );
   readonly canStart$$ = computed(() => {
     const state = this.state$$();
-    return (state === 'idle' || state === 'error') && this.session$$()?.status !== 'active';
+    return (
+      (state === 'idle' || state === 'error') &&
+      this.session$$()?.status !== 'active'
+    );
   });
   readonly canFinish$$ = computed(() => {
     const state = this.state$$();
-    return this.session$$()?.status === 'active' && (state === 'active' || state === 'error');
+    return (
+      this.session$$()?.status === 'active' &&
+      (state === 'active' || state === 'error')
+    );
   });
   readonly runtimeStatus$$ = computed(() => {
     const state = this.state$$();
@@ -111,10 +136,14 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     return this.inspectionSlots$$()
       .filter((slot) => {
         const startsAt = new Date(slot.startsAt);
-        return startsAt.getFullYear() === now.getFullYear() &&
-          startsAt.getMonth() === now.getMonth();
+        return (
+          startsAt.getFullYear() === now.getFullYear() &&
+          startsAt.getMonth() === now.getMonth()
+        );
       })
-      .sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt));
+      .sort(
+        (left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt),
+      );
   });
 
   async startSession(): Promise<void> {
@@ -254,7 +283,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
             this.isVoiceConnected$$.set(true);
           }
         },
-        onToolCall: (toolCall) => this.executeRealtimeTool(session.sessionId, toolCall),
+        onToolCall: (toolCall) =>
+          this.executeRealtimeTool(session.sessionId, toolCall),
       });
     } catch (error) {
       await this.realtime.disconnect();
@@ -279,7 +309,9 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     const audioElement = this.simliAudio?.nativeElement;
     const sessionToken = response?.avatar.sessionToken;
     if (!provider || !sessionToken || !videoElement || !audioElement) {
-      throw new Error(response?.avatar.error || 'Avatar connection is not configured.');
+      throw new Error(
+        response?.avatar.error || 'Avatar connection is not configured.',
+      );
     }
 
     try {
@@ -377,7 +409,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   bookingSlot(booking: SophiaInspectionBooking): SophiaInspectionSlot | null {
-    return this.inspectionSlots$$().find((slot) => slot.slotId === booking.slotId) || null;
+    return (
+      this.inspectionSlots$$().find((slot) => slot.slotId === booking.slotId) ||
+      null
+    );
   }
 
   formatInspectionDate(value: string): string {
@@ -389,8 +424,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   formatInspectionClock(value: string): string {
-    return new Intl.DateTimeFormat('en-AU', { hour: 'numeric', minute: '2-digit' })
-      .format(new Date(value));
+    return new Intl.DateTimeFormat('en-AU', {
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date(value));
   }
 
   bookingTime(booking: SophiaInspectionBooking): string | null {
@@ -398,9 +435,13 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   bookingTimeLabel(booking: SophiaInspectionBooking): string | null {
-    return booking.startsAtLabel ||
+    return (
+      booking.startsAtLabel ||
       this.bookingSlot(booking)?.startsAtLabel ||
-      (this.bookingTime(booking) ? this.formatInspectionTime(this.bookingTime(booking)!) : null);
+      (this.bookingTime(booking)
+        ? this.formatInspectionTime(this.bookingTime(booking)!)
+        : null)
+    );
   }
 
   ngOnDestroy(): void {
@@ -454,7 +495,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     const useAvatarAudio =
       this.isAvatarConnected$$() &&
       (provider === 'liveavatar' ||
-        (provider === 'simli' && this.avatarAudioBridge$$() === 'webrtc-track'));
+        (provider === 'simli' &&
+          this.avatarAudioBridge$$() === 'webrtc-track'));
 
     if (remoteAudio) {
       remoteAudio.muted = useAvatarAudio;
@@ -480,7 +522,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         ? String((event as { type: unknown }).type)
         : 'event';
 
-    const next = [`${new Date().toLocaleTimeString()} ${type}`, ...this.realtimeEvents$$()];
+    const next = [
+      `${new Date().toLocaleTimeString()} ${type}`,
+      ...this.realtimeEvents$$(),
+    ];
     this.realtimeEvents$$.set(next.slice(0, 6));
   }
 
@@ -525,7 +570,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (toolName === 'bookInspection' && isInspectionBooking(payload['booking'])) {
+    if (
+      toolName === 'bookInspection' &&
+      isInspectionBooking(payload['booking'])
+    ) {
       this.inspectionBooking$$.set(payload['booking']);
     }
   }
@@ -589,14 +637,12 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         }
       },
       onEvent: (event) => this.recordRealtimeEvent({ type: event }),
-      onToolCall: (toolCall) => this.executeRealtimeTool(
-        response.session.sessionId,
-        {
+      onToolCall: (toolCall) =>
+        this.executeRealtimeTool(response.session.sessionId, {
           callId: toolCall.callId,
           name: toolCall.name,
           arguments: toolCall.arguments,
-        },
-      ),
+        }),
     });
   }
 
@@ -607,42 +653,59 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.voiceStatus$$.set('Voice disconnected');
     this.avatarStatus$$.set('Avatar disconnected');
   }
-
 }
 
 function toolActivityLabel(toolName: string): string | null {
   switch (toolName) {
-    case 'researchBusiness': return 'Researching official sources';
-    case 'searchProperties': return 'Finding suitable properties';
-    case 'getPropertyDetails': return 'Loading property details';
-    case 'getInspectionSlots': return 'Checking inspection times';
-    case 'bookInspection': return 'Confirming inspection';
-    case 'searchAgencyKnowledge': return 'Checking agency guidance';
-    default: return null;
+    case 'researchBusiness':
+      return 'Researching official sources';
+    case 'searchProperties':
+      return 'Finding suitable properties';
+    case 'getPropertyDetails':
+      return 'Loading property details';
+    case 'getInspectionSlots':
+      return 'Checking inspection times';
+    case 'bookInspection':
+      return 'Confirming inspection';
+    case 'searchAgencyKnowledge':
+      return 'Checking agency guidance';
+    default:
+      return null;
   }
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : null;
 }
 
 function isProperty(value: unknown): value is SophiaProperty {
   const property = asRecord(value);
-  return !!property && typeof property['propertyId'] === 'string' &&
-    typeof property['address'] === 'string' && typeof property['priceDisplay'] === 'string';
+  return (
+    !!property &&
+    typeof property['propertyId'] === 'string' &&
+    typeof property['address'] === 'string' &&
+    typeof property['priceDisplay'] === 'string'
+  );
 }
 
 function isInspectionSlot(value: unknown): value is SophiaInspectionSlot {
   const slot = asRecord(value);
-  return !!slot && typeof slot['slotId'] === 'string' && typeof slot['startsAt'] === 'string';
+  return (
+    !!slot &&
+    typeof slot['slotId'] === 'string' &&
+    typeof slot['startsAt'] === 'string'
+  );
 }
 
 function isInspectionBooking(value: unknown): value is SophiaInspectionBooking {
   const booking = asRecord(value);
-  return !!booking && typeof booking['bookingId'] === 'string' &&
-    typeof booking['customerEmail'] === 'string';
+  return (
+    !!booking &&
+    typeof booking['bookingId'] === 'string' &&
+    typeof booking['customerEmail'] === 'string'
+  );
 }
 
 function experienceConfiguration(experience: SophiaExperience): {
