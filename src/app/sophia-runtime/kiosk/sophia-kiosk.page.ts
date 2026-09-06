@@ -88,9 +88,20 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly standbyImage$$ = computed(() => {
     switch (this.experience$$()) {
       case 'openai-liveavatar-full':
-        return 'assets/avatars/ProffesionalBG.jpg';
+        return 'assets/avatars/ProffesionalBG.png';
       case 'tavus':
-        return 'assets/avatars/PremiumBG.jpg';
+        return 'assets/avatars/PremiumBG.png';
+      default:
+        return 'assets/avatars/SophiaAvatarSIMIL.jpg';
+    }
+  });
+
+  readonly standbyMobileImage$$ = computed(() => {
+    switch (this.experience$$()) {
+      case 'openai-liveavatar-full':
+        return 'assets/avatars/ProffesionalBGMobile.jpg';
+      case 'tavus':
+        return 'assets/avatars/PremiumBGMobile.jpg';
       default:
         return 'assets/avatars/SophiaAvatarSIMIL.jpg';
     }

@@ -61,13 +61,26 @@
             type="video/mp4"
           />
         </video>
+        <picture
+          *ngIf="
+            !isAvatarConnected$$() &&
+            experience$$() !== 'openai'
+          "
+          class="provider-standby"
+        >
+          <source
+            media="(max-width: 700px)"
+            [srcset]="standbyMobileImage$$()"
+          />
+          <img [src]="standbyImage$$()" alt="Sophia AI avatar" />
+        </picture>
         <img
           *ngIf="
             !isAvatarConnected$$() &&
-            (experience$$() !== 'openai' || standbyVideoFailed$$())
+            experience$$() === 'openai' &&
+            standbyVideoFailed$$()
           "
-          [src]="standbyImage$$()"
-          [class.provider-standby]="experience$$() !== 'openai'"
+          src="assets/avatars/SophiaAvatarSIMIL.jpg"
           alt="Sophia AI avatar"
         />
         <audio #remoteAudio autoplay></audio>

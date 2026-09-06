@@ -60,9 +60,15 @@
   filter: drop-shadow(0 24px 40px rgba(0, 0, 0, 0.42));
 }
 
-.avatar-video img.provider-standby {
+.avatar-video .provider-standby {
   position: absolute;
   inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.avatar-video .provider-standby img {
   display: block;
   width: 100%;
   height: 100%;
