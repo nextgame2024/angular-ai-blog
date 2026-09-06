@@ -39,7 +39,11 @@
   min-height: 0;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 20%, rgba(20, 184, 166, 0.2), transparent 36%),
+    radial-gradient(
+      circle at 50% 20%,
+      rgba(20, 184, 166, 0.2),
+      transparent 36%
+    ),
     linear-gradient(180deg, #0c1f22 0%, #061012 100%);
 }
 
@@ -66,9 +70,14 @@
   display: block;
 }
 
-.avatar-stream.tavus {
-  width: min(82vh, 900px);
-  aspect-ratio: 16 / 9;
+.avatar-stream.connected.full-stage {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  aspect-ratio: auto;
+  object-fit: cover;
+  object-position: center 56%;
 }
 
 .property-experience {
@@ -106,7 +115,7 @@
 
 .results-heading,
 .property-detail-copy,
-.inspection-calendar,
+.inspection-times,
 .booking-confirmation {
   padding: 22px;
 }
@@ -208,13 +217,13 @@
   font-size: 13px;
 }
 
-.inspection-calendar {
+.inspection-times {
   padding: 18px 22px 22px;
   border-top: 1px solid rgba(148, 163, 184, 0.22);
 }
 
 .property-experience.inspection-view {
-  width: min(620px, calc(100% - 48px));
+  width: min(500px, calc(100% - 48px));
 }
 
 .property-experience.inspection-view .property-detail > img {
@@ -230,106 +239,40 @@
   display: none;
 }
 
-.inspection-calendar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 14px;
+.inspection-times .result-eyebrow {
+  margin-bottom: 12px;
 }
 
-.inspection-calendar-header h3 {
-  margin: 4px 0 0;
-  font-size: 18px;
-  letter-spacing: 0;
+.inspection-times table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
 }
 
-.inspection-calendar-nav {
-  display: flex;
-  gap: 6px;
+.inspection-times th,
+.inspection-times td {
+  padding: 9px 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  text-align: left;
 }
 
-.inspection-calendar-nav button {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 1px solid rgba(148, 163, 184, 0.38);
-  border-radius: 4px;
-  background: rgba(15, 23, 42, 0.88);
-  color: #f8fafc;
-  cursor: pointer;
-  font: inherit;
-  font-size: 24px;
-  line-height: 1;
-}
-
-.inspection-calendar-nav button:disabled {
-  cursor: not-allowed;
-  opacity: 0.35;
-}
-
-.inspection-weekdays,
-.inspection-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-}
-
-.inspection-weekdays span {
-  padding: 6px 2px;
+.inspection-times th {
   color: #a7b6c2;
   font-size: 10px;
-  font-weight: 800;
-  text-align: center;
   text-transform: uppercase;
 }
 
-.inspection-calendar-day {
-  min-width: 0;
-  min-height: 62px;
-  padding: 6px;
-  border-top: 1px solid rgba(148, 163, 184, 0.18);
-  border-left: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(15, 23, 42, 0.32);
+.inspection-times td {
+  color: #f8fafc;
+  font-weight: 700;
 }
 
-.inspection-calendar-day:nth-child(7n) {
-  border-right: 1px solid rgba(148, 163, 184, 0.18);
-}
-
-.inspection-calendar-day:nth-last-child(-n + 7) {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-}
-
-.inspection-calendar-day.outside-month {
-  opacity: 0.32;
-}
-
-.inspection-calendar-day.has-slots {
-  background: rgba(8, 145, 178, 0.16);
-}
-
-.inspection-day-number {
-  display: block;
-  margin-bottom: 5px;
-  color: #dbe5ef;
-  font-size: 11px;
-  font-weight: 800;
-  text-align: right;
-}
-
-.inspection-slot {
-  display: block;
-  overflow: hidden;
-  padding: 4px;
-  border-left: 2px solid #2dd4bf;
-  background: rgba(15, 118, 110, 0.3);
-  color: #ccfbf1;
-  font-size: 10px;
-  font-weight: 800;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.inspection-times th:last-child,
+.inspection-times td:last-child {
+  width: 64px;
+  color: #5eead4;
+  text-align: center;
 }
 
 .booking-confirmation {
@@ -358,7 +301,7 @@
   min-width: 100%;
   min-height: 100%;
   object-fit: cover;
-  object-position: center 30%;
+  object-position: center 20%;
   background: #061012;
 }
 
@@ -483,8 +426,17 @@
   border: 2px solid rgba(255, 255, 255, 0.76);
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.5), transparent 24%),
-    radial-gradient(circle, var(--action-color-light) 0%, var(--action-color) 58%, #075985 100%);
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(255, 255, 255, 0.5),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle,
+      var(--action-color-light) 0%,
+      var(--action-color) 58%,
+      #075985 100%
+    );
   box-shadow:
     0 0 0 7px rgba(255, 255, 255, 0.12),
     0 0 30px color-mix(in srgb, var(--action-color) 72%, transparent),
@@ -497,7 +449,10 @@
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
-  transition: transform 180ms ease, filter 180ms ease, opacity 180ms ease;
+  transition:
+    transform 180ms ease,
+    filter 180ms ease,
+    opacity 180ms ease;
 }
 
 .session-action::before,
@@ -520,7 +475,9 @@
     var(--action-color-light) 58% 82%,
     transparent 82% 100%
   );
-  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
   mask-composite: exclude;
   animation: action-ring-spin 3.2s linear infinite;
 }
@@ -528,7 +485,8 @@
 .session-action::after {
   inset: -23px;
   z-index: -3;
-  border: 1px solid color-mix(in srgb, var(--action-color-light) 72%, transparent);
+  border: 1px solid
+    color-mix(in srgb, var(--action-color-light) 72%, transparent);
   box-shadow: 0 0 16px color-mix(in srgb, var(--action-color) 44%, transparent);
   animation: action-pulse 2.2s ease-out infinite;
 }
@@ -551,7 +509,11 @@
   --action-color: #ef4444;
   --action-color-light: #fca5a5;
   background:
-    radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.42), transparent 24%),
+    radial-gradient(
+      circle at 50% 40%,
+      rgba(255, 255, 255, 0.42),
+      transparent 24%
+    ),
     radial-gradient(circle, #fb7185 0%, var(--action-color) 58%, #991b1b 100%);
 }
 
@@ -706,18 +668,13 @@
     width: calc(100% - 24px);
   }
 
-  .inspection-calendar {
+  .inspection-times {
     padding: 16px 12px;
   }
 
-  .inspection-calendar-day {
-    min-height: 50px;
-    padding: 4px;
-  }
-
-  .inspection-slot {
-    padding: 3px 2px;
-    font-size: 8px;
+  .inspection-times th,
+  .inspection-times td {
+    padding: 8px 5px;
   }
 
   .property-result {

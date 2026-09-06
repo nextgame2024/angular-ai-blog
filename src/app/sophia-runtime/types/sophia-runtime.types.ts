@@ -116,6 +116,10 @@ export interface SophiaInspectionSlot {
   endsAt: string;
   capacity: number;
   placesAvailable: number;
+  startsAtDateLabel?: string;
+  startsAtTimeLabel?: string;
+  startsAtLabel?: string;
+  timeZone?: string;
 }
 
 export interface SophiaInspectionBooking {
@@ -126,4 +130,15 @@ export interface SophiaInspectionBooking {
   customerEmail: string;
   status: string;
   createdAt: string;
+  startsAt?: string;
+  endsAt?: string;
+  startsAtDateLabel?: string;
+  startsAtTimeLabel?: string;
+  startsAtLabel?: string;
+  timeZone?: string;
+  propertyAddress?: string;
+  propertySuburb?: string;
+  propertyCity?: string;
+  propertyState?: string;
+  propertyPostcode?: string;
 }

@@ -30,7 +30,10 @@
           autoplay
           playsinline
           [class.connected]="isAvatarConnected$$()"
-          [class.tavus]="session$$()?.avatarProvider === 'tavus'"
+          [class.full-stage]="
+            session$$()?.avatarProvider === 'tavus' ||
+            session$$()?.avatarProvider === 'liveavatar'
+          "
         ></video>
         <video
           *ngIf="
@@ -71,7 +74,7 @@
 
         <aside
           class="property-experience"
-          [class.inspection-view]="inspectionSlots$$().length"
+          [class.inspection-view]="currentMonthInspectionSlots$$().length"
           *ngIf="propertyResults$$().length || selectedProperty$$() || inspectionBooking$$()"
           aria-live="polite"
           aria-label="Property results"
@@ -89,8 +92,13 @@
               <span class="confirmation-mark" aria-hidden="true">&#10003;</span>
               <p class="result-eyebrow">Inspection confirmed</p>
               <h2>{{ booking.customerName }}</h2>
-              <p *ngIf="selectedProperty$$() as property">{{ property.address }}, {{ property.suburb }}, {{ property.city }}</p>
-              <p *ngIf="bookingSlot(booking) as slot">{{ formatInspectionTime(slot.startsAt) }}</p>
+              <p *ngIf="booking.propertyAddress; else selectedBookingProperty">
+                {{ booking.propertyAddress }}, {{ booking.propertySuburb }}, {{ booking.propertyCity }}
+              </p>
+              <ng-template #selectedBookingProperty>
+                <p *ngIf="selectedProperty$$() as property">{{ property.address }}, {{ property.suburb }}, {{ property.city }}</p>
+              </ng-template>
+              <p *ngIf="bookingTimeLabel(booking) as startsAtLabel">{{ startsAtLabel }}</p>
               <small>Confirmation reference {{ booking.bookingId.slice(0, 8).toUpperCase() }}</small>
             </div>
           </ng-container>
@@ -111,47 +119,20 @@
                   <p class="property-facts">{{ property.bedrooms }} bed &middot; {{ property.bathrooms }} bath &middot; {{ property.carSpaces }} car</p>
                   <p class="property-description">{{ property.description }}</p>
                 </div>
-                <div class="inspection-calendar" *ngIf="inspectionSlots$$().length">
-                  <div class="inspection-calendar-header">
-                    <div>
-                      <p class="result-eyebrow">Available inspections</p>
-                      <h3>{{ inspectionMonthLabel$$() }}</h3>
-                    </div>
-                    <div class="inspection-calendar-nav" *ngIf="inspectionMonths$$().length > 1">
-                      <button
-                        type="button"
-                        title="Previous month"
-                        aria-label="Previous inspection month"
-                        [disabled]="!canShowPreviousInspectionMonth$$()"
-                        (click)="showPreviousInspectionMonth()"
-                      >&#8249;</button>
-                      <button
-                        type="button"
-                        title="Next month"
-                        aria-label="Next inspection month"
-                        [disabled]="!canShowNextInspectionMonth$$()"
-                        (click)="showNextInspectionMonth()"
-                      >&#8250;</button>
-                    </div>
-                  </div>
-                  <div class="inspection-weekdays" aria-hidden="true">
-                    <span *ngFor="let weekday of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']">{{ weekday }}</span>
-                  </div>
-                  <div class="inspection-calendar-grid">
-                    <div
-                      class="inspection-calendar-day"
-                      *ngFor="let day of inspectionCalendarDays$$()"
-                      [class.outside-month]="!day.inCurrentMonth"
-                      [class.has-slots]="day.slots.length"
-                    >
-                      <span class="inspection-day-number">{{ day.dayNumber }}</span>
-                      <span
-                        class="inspection-slot"
-                        *ngFor="let slot of day.slots"
-                        [title]="formatInspectionTime(slot.startsAt)"
-                      >{{ formatInspectionClock(slot.startsAt) }}</span>
-                    </div>
-                  </div>
+                <div class="inspection-times" *ngIf="currentMonthInspectionSlots$$().length">
+                  <p class="result-eyebrow">Available inspection times</p>
+                  <table>
+                    <thead>
+                      <tr><th>Date</th><th>Time</th><th>Places</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let slot of currentMonthInspectionSlots$$()">
+                        <td>{{ slot.startsAtDateLabel || formatInspectionDate(slot.startsAt) }}</td>
+                        <td>{{ slot.startsAtTimeLabel || formatInspectionClock(slot.startsAt) }}</td>
+                        <td>{{ slot.placesAvailable }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </ng-container>
