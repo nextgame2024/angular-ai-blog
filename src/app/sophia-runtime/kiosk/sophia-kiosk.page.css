@@ -81,6 +81,11 @@
   filter: none;
 }
 
+.avatar-video .provider-standby.premium-standby img,
+.avatar-stream.connected.full-stage.premium-stage {
+  object-position: center 35%;
+}
+
 .avatar-stream {
   display: none;
   aspect-ratio: 3 / 4;

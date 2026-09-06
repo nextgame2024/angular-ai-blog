@@ -478,11 +478,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private handleError(error: unknown, fallback: string): void {
-    const message =
-      typeof error === 'object' && error && 'message' in error
-        ? String(error.message)
-        : fallback;
-    this.error$$.set(message || fallback);
+    const message = formatError(error);
+    this.error$$.set(
+      message === 'Unknown connection error.' ? fallback : message,
+    );
     this.state$$.set('error');
   }
 
@@ -747,6 +746,11 @@ function experienceConfiguration(experience: SophiaExperience): {
 }
 
 function formatError(error: unknown): string {
+  const errorRecord = asRecord(error);
+  const responseBody = asRecord(errorRecord?.['error']);
+  if (typeof responseBody?.['message'] === 'string') {
+    return responseBody['message'];
+  }
   return error instanceof Error && error.message
     ? error.message
     : 'Unknown connection error.';

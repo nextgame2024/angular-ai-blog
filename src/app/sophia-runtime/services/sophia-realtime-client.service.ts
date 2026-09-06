@@ -77,6 +77,7 @@ export class SophiaRealtimeClientService {
       headers: {
         authorization: `Bearer ${request.clientSecret}`,
       },
+      signal: AbortSignal.timeout(15_000),
       body: form,
     });
 
