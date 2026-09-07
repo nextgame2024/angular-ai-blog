@@ -89,6 +89,25 @@
         <audio #simliAudio autoplay muted></audio>
 
         <aside
+          class="property-gallery"
+          *ngIf="selectedProperty$$() as property"
+          aria-live="polite"
+          aria-label="Selected property photos"
+        >
+          <header>
+            <p class="result-eyebrow">Property gallery</p>
+            <h2>{{ property.address }}</h2>
+          </header>
+          <div class="property-gallery-images">
+            <img
+              *ngFor="let photo of property.media | slice: 0 : 3"
+              [src]="photo.url"
+              [alt]="photo.altText || property.title"
+            />
+          </div>
+        </aside>
+
+        <aside
           class="property-experience"
           [class.inspection-view]="currentMonthInspectionSlots$$().length"
           *ngIf="propertyResults$$().length || selectedProperty$$() || inspectionBooking$$()"
@@ -115,6 +134,18 @@
                 <p *ngIf="selectedProperty$$() as property">{{ property.address }}, {{ property.suburb }}, {{ property.city }}</p>
               </ng-template>
               <p *ngIf="bookingTimeLabel(booking) as startsAtLabel">{{ startsAtLabel }}</p>
+              <p class="booking-email">
+                Confirmation email: <strong>{{ booking.customerEmail }}</strong>
+              </p>
+              <small *ngIf="booking.confirmationEmail?.status === 'sent'">
+                Email sent successfully
+              </small>
+              <small *ngIf="booking.confirmationEmail?.status === 'already_sent'">
+                Confirmation email was already sent
+              </small>
+              <small class="email-pending" *ngIf="booking.confirmationEmail?.status === 'failed'">
+                Booking confirmed; email delivery is pending
+              </small>
               <small>Confirmation reference {{ booking.bookingId.slice(0, 8).toUpperCase() }}</small>
             </div>
           </ng-container>
@@ -122,11 +153,13 @@
           <ng-template #propertyContent>
             <ng-container *ngIf="selectedProperty$$() as property; else propertyList">
               <div class="property-detail">
-                <img
-                  *ngIf="property.media[0] as photo"
-                  [src]="photo.url"
-                  [alt]="photo.altText || property.title"
-                />
+                <div class="property-detail-mobile-gallery">
+                  <img
+                    *ngFor="let photo of property.media | slice: 0 : 3"
+                    [src]="photo.url"
+                    [alt]="photo.altText || property.title"
+                  />
+                </div>
                 <div class="property-detail-copy">
                   <p class="result-eyebrow">{{ property.listingType === 'rent' ? 'For rent' : 'For sale' }}</p>
                   <h2>{{ property.address }}</h2>

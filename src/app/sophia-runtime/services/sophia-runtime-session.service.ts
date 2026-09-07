@@ -20,6 +20,10 @@ export class SophiaRuntimeSessionService {
 
   constructor(private readonly http: HttpClient) {}
 
+  warmUp(): Observable<{ ok: boolean }> {
+    return this.http.get<{ ok: boolean }>(`${this.runtimeBase}/healthz`);
+  }
+
   createSession(
     payload: CreateSophiaRuntimeSessionRequest,
   ): Observable<SophiaRuntimeSessionResponse> {

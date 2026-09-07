@@ -41,12 +41,14 @@ type RuntimeViewState = 'idle' | 'starting' | 'active' | 'closing' | 'error';
   styleUrls: ['./sophia-kiosk.page.css'],
 })
 export class SophiaKioskPageComponent implements OnInit, OnDestroy {
+  private static readonly ERROR_DISPLAY_MS = 4_000;
   private readonly runtimeConfig = inject(SophiaRuntimeConfigService);
   private readonly runtime = inject(SophiaRuntimeSessionService);
   private readonly realtime = inject(SophiaRealtimeClientService);
   private readonly avatar = inject(SophiaAvatarClientService);
   private readonly tavus = inject(SophiaTavusClientService);
   private remoteOutputStream: MediaStream | null = null;
+  private errorDismissTimer: ReturnType<typeof setTimeout> | null = null;
 
   @ViewChild('remoteAudio')
   private readonly remoteAudio?: ElementRef<HTMLAudioElement>;
@@ -159,7 +161,9 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   async startSession(): Promise<void> {
     if (!this.canStart$$()) return;
+    const startupStartedAt = performance.now();
 
+    this.clearErrorDismissTimer();
     this.error$$.set(null);
     this.isAvatarUnavailable$$.set(false);
     this.realtimeEvents$$.set([]);
@@ -182,6 +186,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
           avatarMode: experience.avatarMode,
         }),
       );
+      this.logStartupTiming('runtime session created', startupStartedAt);
 
       this.sessionResponse$$.set(response);
       if (experience.aiProvider === 'tavus-full') {
@@ -196,6 +201,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
           throw error;
         }
         this.state$$.set('active');
+        this.logStartupTiming('Tavus ready', startupStartedAt);
         return;
       }
 
@@ -238,15 +244,27 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       }
 
       this.state$$.set('active');
+      this.logStartupTiming(
+        `${this.experience$$()} ready`,
+        startupStartedAt,
+      );
     } catch (error) {
+      this.logStartupTiming('failed', startupStartedAt);
       this.handleError(error, 'Could not start Sophia.');
     }
+  }
+
+  private logStartupTiming(stage: string, startedAt: number): void {
+    console.info(
+      `[Sophia startup] ${stage} in ${Math.round(performance.now() - startedAt)} ms`,
+    );
   }
 
   async finishSession(): Promise<void> {
     const session = this.session$$();
     if (!session || !this.canFinish$$()) return;
 
+    this.clearErrorDismissTimer();
     this.error$$.set(null);
     this.state$$.set('closing');
 
@@ -456,6 +474,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearErrorDismissTimer();
     const session = this.session$$();
     if (session?.status === 'active' && session.aiProvider === 'tavus-full') {
       void this.disconnectTavus();
@@ -468,6 +487,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    void firstValueFrom(this.runtime.warmUp()).catch(() => undefined);
     void this.runtimeConfig.resolveAvatarAudioBridge().then((bridge) => {
       this.avatarAudioBridge$$.set(bridge);
       this.syncAudioPlaybackRoute();
@@ -483,6 +503,18 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       message === 'Unknown connection error.' ? fallback : message,
     );
     this.state$$.set('error');
+    this.clearErrorDismissTimer();
+    this.errorDismissTimer = setTimeout(() => {
+      this.error$$.set(null);
+      this.errorDismissTimer = null;
+    }, SophiaKioskPageComponent.ERROR_DISPLAY_MS);
+  }
+
+  private clearErrorDismissTimer(): void {
+    if (this.errorDismissTimer !== null) {
+      clearTimeout(this.errorDismissTimer);
+      this.errorDismissTimer = null;
+    }
   }
 
   private attachRemoteAudio(stream: MediaStream): void {

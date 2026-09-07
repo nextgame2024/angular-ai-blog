@@ -141,4 +141,9 @@ export interface SophiaInspectionBooking {
   propertyCity?: string;
   propertyState?: string;
   propertyPostcode?: string;
+  confirmationEmail?: {
+    status: 'sent' | 'already_sent' | 'failed';
+    sentAt?: string;
+    message?: string;
+  };
 }
