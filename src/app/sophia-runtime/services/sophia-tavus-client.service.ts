@@ -13,6 +13,8 @@ export interface SophiaTavusConnectRequest {
   onStatus(status: string): void;
   onEvent(event: string): void;
   onUserUtterance?(): void;
+  onReplicaSpeechStarted?(): void;
+  onReplicaSpeechStopped?(): void;
   onReplicaUtterance?(): void;
   onToolCall(toolCall: SophiaTavusToolCall): Promise<unknown>;
 }
@@ -36,6 +38,8 @@ export class SophiaTavusClientService {
   private connected = false;
   private conversationId: string | null = null;
   private onUserUtterance: (() => void) | null = null;
+  private onReplicaSpeechStarted: (() => void) | null = null;
+  private onReplicaSpeechStopped: (() => void) | null = null;
   private onReplicaUtterance: (() => void) | null = null;
 
   async connect(request: SophiaTavusConnectRequest): Promise<void> {
@@ -50,6 +54,8 @@ export class SophiaTavusClientService {
     this.connected = false;
     this.conversationId = request.conversationId;
     this.onUserUtterance = request.onUserUtterance || null;
+    this.onReplicaSpeechStarted = request.onReplicaSpeechStarted || null;
+    this.onReplicaSpeechStopped = request.onReplicaSpeechStopped || null;
     this.onReplicaUtterance = request.onReplicaUtterance || null;
 
     const call = Daily.createCallObject({
@@ -105,6 +111,8 @@ export class SophiaTavusClientService {
     this.connected = false;
     this.conversationId = null;
     this.onUserUtterance = null;
+    this.onReplicaSpeechStarted = null;
+    this.onReplicaSpeechStopped = null;
     this.onReplicaUtterance = null;
 
     this.clearMediaElement(this.videoElement);
@@ -163,10 +171,30 @@ export class SophiaTavusClientService {
     const message = normalizeAppMessage(data);
     const eventType = message?.['event_type'];
     this.emitEvent(`tavus.${extractAppMessageType(message || data)}`);
+    const role = asRecord(message?.['properties'])?.['role'];
+    if (
+      (eventType === 'conversation.started_speaking' && role === 'user') ||
+      eventType === 'user.started_speaking'
+    ) {
+      this.onUserUtterance?.();
+    }
+    if (
+      (eventType === 'conversation.started_speaking' &&
+        (role === 'pal' || role === 'replica')) ||
+      eventType === 'replica.started_speaking'
+    ) {
+      this.onReplicaSpeechStarted?.();
+    }
+    if (
+      (eventType === 'conversation.stopped_speaking' &&
+        (role === 'pal' || role === 'replica')) ||
+      eventType === 'replica.stopped_speaking'
+    ) {
+      this.onReplicaSpeechStopped?.();
+    }
     if (message && eventType === 'conversation.utterance') {
-      const role = asRecord(message['properties'])?.['role'];
       if (role === 'user') this.onUserUtterance?.();
-      if (role === 'replica') this.onReplicaUtterance?.();
+      if (role === 'pal' || role === 'replica') this.onReplicaUtterance?.();
     }
     if (!message || eventType !== 'conversation.tool_call' || !this.call || !this.onToolCall) return;
 

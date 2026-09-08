@@ -57,6 +57,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private inactivityPromptTimer: ReturnType<typeof setTimeout> | null = null;
   private inactivityCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private awaitingInactivityReply = false;
+  private assistantSpeaking = false;
   private bookingReviewConfirmedByNewTurn = false;
   private bookingReviewManuallyEdited = false;
   private readonly failedPhotoUrls = new Set<string>();
@@ -288,6 +289,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.clearErrorDismissTimer();
     this.clearInactivityTimers();
     this.awaitingInactivityReply = false;
+    this.assistantSpeaking = false;
     this.error$$.set(null);
     this.state$$.set('closing');
 
@@ -855,7 +857,9 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       },
       onEvent: (event) => this.recordRealtimeEvent({ type: event }),
       onUserUtterance: () => this.onUserActivity(),
-      onReplicaUtterance: () => this.onAssistantSpeechStopped(),
+      onReplicaSpeechStarted: () => this.onAssistantSpeechStarted(),
+      onReplicaSpeechStopped: () => this.onAssistantSpeechStopped(),
+      onReplicaUtterance: () => this.onAssistantTurnCompleted(),
       onToolCall: (toolCall) =>
         this.executeRealtimeTool(response.session.sessionId, {
           callId: toolCall.callId,
@@ -965,15 +969,28 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private onAssistantSpeechStarted(): void {
-    if (!this.awaitingInactivityReply) this.clearInactivityTimers();
+    this.assistantSpeaking = true;
+    if (this.inactivityCloseTimer !== null) {
+      clearTimeout(this.inactivityCloseTimer);
+      this.inactivityCloseTimer = null;
+    }
+    if (!this.awaitingInactivityReply && this.inactivityPromptTimer !== null) {
+      clearTimeout(this.inactivityPromptTimer);
+      this.inactivityPromptTimer = null;
+    }
   }
 
   private onAssistantSpeechStopped(): void {
+    this.assistantSpeaking = false;
     if (this.awaitingInactivityReply) {
       this.scheduleInactivityClose();
       return;
     }
     this.armInactivityPrompt();
+  }
+
+  private onAssistantTurnCompleted(): void {
+    if (!this.assistantSpeaking) this.onAssistantSpeechStopped();
   }
 
   private armInactivityPrompt(): void {
@@ -994,7 +1011,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       // Covers providers that fail to emit a speech-complete event.
       this.inactivityCloseTimer = setTimeout(
         () => void this.closeInactiveSession(),
-        10_000,
+        30_000,
       );
     }, SophiaKioskPageComponent.INACTIVITY_PROMPT_MS);
   }
@@ -1010,7 +1027,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private async closeInactiveSession(): Promise<void> {
-    if (!this.awaitingInactivityReply) return;
+    if (!this.awaitingInactivityReply || this.assistantSpeaking) return;
     this.clearPropertyExperience();
     await this.finishSession();
   }
