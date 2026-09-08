@@ -229,6 +229,13 @@ export class SophiaRealtimeClientService {
     this.clearMicrophoneResumeTimer();
     this.setMicrophoneEnabled(!suppressed && !this.assistantAudioPlaying);
   }
+
+  promptAssistant(instructions: string): void {
+    this.sendEvent({
+      type: 'response.create',
+      response: { instructions },
+    });
+  }
 }
 
 export function extractAudioDelta(

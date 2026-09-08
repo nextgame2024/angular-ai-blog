@@ -24,11 +24,14 @@ import { SophiaRuntimeSessionService } from '../services/sophia-runtime-session.
 import { SophiaAvatarClientService } from '../services/sophia-avatar-client.service';
 import { SophiaTavusClientService } from '../services/sophia-tavus-client.service';
 import type {
+  SophiaAgencyKnowledge,
   SophiaAvatarProvider,
+  SophiaBookingReview,
   SophiaExperience,
   SophiaInspectionBooking,
   SophiaInspectionSlot,
   SophiaProperty,
+  SophiaPropertyMedia,
   SophiaRuntimeSessionResponse,
 } from '../types/sophia-runtime.types';
 
@@ -42,6 +45,8 @@ type RuntimeViewState = 'idle' | 'starting' | 'active' | 'closing' | 'error';
 })
 export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private static readonly ERROR_DISPLAY_MS = 4_000;
+  private static readonly INACTIVITY_PROMPT_MS = 20_000;
+  private static readonly INACTIVITY_CLOSE_MS = 5_000;
   private readonly runtimeConfig = inject(SophiaRuntimeConfigService);
   private readonly runtime = inject(SophiaRuntimeSessionService);
   private readonly realtime = inject(SophiaRealtimeClientService);
@@ -49,6 +54,12 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private readonly tavus = inject(SophiaTavusClientService);
   private remoteOutputStream: MediaStream | null = null;
   private errorDismissTimer: ReturnType<typeof setTimeout> | null = null;
+  private inactivityPromptTimer: ReturnType<typeof setTimeout> | null = null;
+  private inactivityCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private awaitingInactivityReply = false;
+  private bookingReviewConfirmedByNewTurn = false;
+  private readonly failedPhotoUrls = new Set<string>();
+  private photoViewerPropertyId: string | null = null;
 
   @ViewChild('remoteAudio')
   private readonly remoteAudio?: ElementRef<HTMLAudioElement>;
@@ -77,6 +88,13 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly selectedProperty$$ = signal<SophiaProperty | null>(null);
   readonly inspectionSlots$$ = signal<SophiaInspectionSlot[]>([]);
   readonly inspectionBooking$$ = signal<SophiaInspectionBooking | null>(null);
+  readonly bookingReview$$ = signal<SophiaBookingReview | null>(null);
+  readonly agencyKnowledge$$ = signal<SophiaAgencyKnowledge[]>([]);
+  readonly photoViewer$$ = signal<{
+    property: SophiaProperty;
+    photo: SophiaPropertyMedia;
+    photoNumber: number;
+  } | null>(null);
   readonly experience$$ = signal<SophiaExperience>('openai');
   readonly avatarOptions: ReadonlyArray<{
     value: SophiaExperience;
@@ -201,6 +219,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
           throw error;
         }
         this.state$$.set('active');
+        this.armInactivityPrompt();
         this.logStartupTiming('Tavus ready', startupStartedAt);
         return;
       }
@@ -244,6 +263,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       }
 
       this.state$$.set('active');
+      this.armInactivityPrompt();
       this.logStartupTiming(
         `${this.experience$$()} ready`,
         startupStartedAt,
@@ -265,6 +285,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     if (!session || !this.canFinish$$()) return;
 
     this.clearErrorDismissTimer();
+    this.clearInactivityTimers();
+    this.awaitingInactivityReply = false;
     this.error$$.set(null);
     this.state$$.set('closing');
 
@@ -305,7 +327,14 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         onAudioDelta: (audio) => this.avatar.appendOpenAiAudio(audio),
         onAudioDone: () => this.avatar.completeOpenAiAudio(),
         onAssistantTextDone: (text) => this.avatar.speakText(text),
-        onEvent: (event) => this.recordRealtimeEvent(event),
+        onOutputAudioStarted: () => this.onAssistantSpeechStarted(),
+        onOutputAudioStopped: () => this.onAssistantSpeechStopped(),
+        onEvent: (event) => {
+          this.recordRealtimeEvent(event);
+          if (asRecord(event)?.['type'] === 'input_audio_buffer.speech_started') {
+            this.onUserActivity();
+          }
+        },
         onStatus: (status) => {
           this.voiceStatus$$.set(status);
           if (status === 'connected' || status === 'Realtime connected') {
@@ -400,6 +429,15 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     sessionId: string,
     toolCall: SophiaRealtimeToolCall,
   ): Promise<unknown> {
+    if (
+      (toolCall.name === 'bookInspection' ||
+        toolCall.name === 'resendInspectionConfirmation') &&
+      !this.bookingReviewConfirmedByNewTurn
+    ) {
+      throw new Error(
+        'Wait for the customer to confirm the displayed name, email, property and time before sending.',
+      );
+    }
     this.activeTask$$.set(toolActivityLabel(toolCall.name));
 
     try {
@@ -411,6 +449,12 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       );
 
       this.handleToolOutput(toolCall.name, response.output);
+      if (
+        toolCall.name === 'bookInspection' ||
+        toolCall.name === 'resendInspectionConfirmation'
+      ) {
+        this.bookingReviewConfirmedByNewTurn = false;
+      }
       return response.output;
     } finally {
       this.activeTask$$.set(null);
@@ -421,6 +465,44 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.selectedProperty$$.set(property);
     this.inspectionSlots$$.set([]);
     this.inspectionBooking$$.set(null);
+    this.bookingReview$$.set(null);
+    this.agencyKnowledge$$.set([]);
+  }
+
+  openPropertyPhoto(
+    property: SophiaProperty,
+    photo: SophiaPropertyMedia,
+    photoNumber: number,
+  ): void {
+    if (this.photoViewerPropertyId !== property.propertyId) {
+      this.failedPhotoUrls.clear();
+      this.photoViewerPropertyId = property.propertyId;
+    }
+    this.photoViewer$$.set({ property, photo, photoNumber });
+  }
+
+  handlePhotoLoadError(viewer: {
+    property: SophiaProperty;
+    photo: SophiaPropertyMedia;
+    photoNumber: number;
+  }): void {
+    this.failedPhotoUrls.add(viewer.photo.url);
+    const fallbackIndex = viewer.property.media.findIndex(
+      (photo) => photo.url && !this.failedPhotoUrls.has(photo.url),
+    );
+    if (fallbackIndex < 0) {
+      this.closePhotoViewer();
+      return;
+    }
+    this.photoViewer$$.set({
+      property: viewer.property,
+      photo: viewer.property.media[fallbackIndex],
+      photoNumber: fallbackIndex + 1,
+    });
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer$$.set(null);
   }
 
   closePropertyExperience(): void {
@@ -475,6 +557,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.clearErrorDismissTimer();
+    this.clearInactivityTimers();
     const session = this.session$$();
     if (session?.status === 'active' && session.aiProvider === 'tavus-full') {
       void this.disconnectTavus();
@@ -584,6 +667,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     const payload = asRecord(output);
     if (!payload) return;
 
+    if (toolName !== 'showPropertyPhoto') {
+      this.closePhotoViewer();
+    }
+
     if (toolName === 'searchProperties') {
       const properties = Array.isArray(payload['properties'])
         ? payload['properties'].filter(isProperty)
@@ -592,6 +679,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       this.selectedProperty$$.set(null);
       this.inspectionSlots$$.set([]);
       this.inspectionBooking$$.set(null);
+      this.bookingReview$$.set(null);
+      this.agencyKnowledge$$.set([]);
       return;
     }
 
@@ -600,6 +689,29 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       this.propertyResults$$.set([]);
       this.inspectionSlots$$.set([]);
       this.inspectionBooking$$.set(null);
+      this.bookingReview$$.set(null);
+      this.agencyKnowledge$$.set([]);
+      return;
+    }
+
+    if (toolName === 'showPropertyPhoto' && isProperty(payload['property'])) {
+      const property = payload['property'];
+      const requested = Number(payload['photoNumber']) || 1;
+      const index = Math.min(
+        Math.max(requested - 1, 0),
+        Math.max(property.media.length - 1, 0),
+      );
+      const photo = property.media[index];
+      if (photo) this.openPropertyPhoto(property, photo, index + 1);
+      return;
+    }
+
+    if (
+      toolName === 'closePropertyView' &&
+      payload['closePropertyView'] === true
+    ) {
+      if (this.photoViewer$$()) this.closePhotoViewer();
+      else this.clearPropertyExperience();
       return;
     }
 
@@ -613,10 +725,52 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     }
 
     if (
+      (toolName === 'reviewInspectionBooking' ||
+        toolName === 'reviewInspectionEmailResend') &&
+      isBookingReview(payload['bookingReview'])
+    ) {
+      this.bookingReview$$.set(payload['bookingReview']);
+      this.bookingReviewConfirmedByNewTurn = false;
+      return;
+    }
+
+    if (
       toolName === 'bookInspection' &&
       isInspectionBooking(payload['booking'])
     ) {
       this.inspectionBooking$$.set(payload['booking']);
+      this.bookingReview$$.set(null);
+      return;
+    }
+
+    if (toolName === 'resendInspectionConfirmation') {
+      const confirmationEmail = asRecord(payload['confirmationEmail']);
+      const booking = this.inspectionBooking$$();
+      if (booking && confirmationEmail) {
+        this.inspectionBooking$$.set({
+          ...booking,
+          customerEmail:
+            typeof confirmationEmail['customerEmail'] === 'string'
+              ? confirmationEmail['customerEmail']
+              : booking.customerEmail,
+          confirmationEmail:
+            confirmationEmail as SophiaInspectionBooking['confirmationEmail'],
+        });
+      }
+      this.bookingReview$$.set(null);
+      return;
+    }
+
+    if (toolName === 'searchAgencyKnowledge') {
+      const results = Array.isArray(payload['results'])
+        ? payload['results'].filter(isAgencyKnowledge)
+        : [];
+      this.agencyKnowledge$$.set(results);
+      this.propertyResults$$.set([]);
+      this.selectedProperty$$.set(null);
+      this.inspectionSlots$$.set([]);
+      this.inspectionBooking$$.set(null);
+      this.bookingReview$$.set(null);
     }
   }
 
@@ -625,6 +779,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.selectedProperty$$.set(null);
     this.inspectionSlots$$.set([]);
     this.inspectionBooking$$.set(null);
+    this.bookingReview$$.set(null);
+    this.agencyKnowledge$$.set([]);
+    this.photoViewer$$.set(null);
+    this.bookingReviewConfirmedByNewTurn = false;
   }
 
   setExperience(value: string): void {
@@ -666,6 +824,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     }
 
     await this.tavus.connect({
+      conversationId: response.session.providerSessionId || '',
       conversationUrl: url.toString(),
       meetingToken,
       videoElement,
@@ -679,6 +838,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         }
       },
       onEvent: (event) => this.recordRealtimeEvent({ type: event }),
+      onUserUtterance: () => this.onUserActivity(),
+      onReplicaUtterance: () => this.onAssistantSpeechStopped(),
       onToolCall: (toolCall) =>
         this.executeRealtimeTool(response.session.sessionId, {
           callId: toolCall.callId,
@@ -695,6 +856,74 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.voiceStatus$$.set('Voice disconnected');
     this.avatarStatus$$.set('Avatar disconnected');
   }
+
+  private onUserActivity(): void {
+    if (this.bookingReview$$()) this.bookingReviewConfirmedByNewTurn = true;
+    this.awaitingInactivityReply = false;
+    this.clearInactivityTimers();
+  }
+
+  private onAssistantSpeechStarted(): void {
+    if (!this.awaitingInactivityReply) this.clearInactivityTimers();
+  }
+
+  private onAssistantSpeechStopped(): void {
+    if (this.awaitingInactivityReply) {
+      this.scheduleInactivityClose();
+      return;
+    }
+    this.armInactivityPrompt();
+  }
+
+  private armInactivityPrompt(): void {
+    this.clearInactivityTimers();
+    if (this.state$$() !== 'active') return;
+
+    this.inactivityPromptTimer = setTimeout(() => {
+      this.inactivityPromptTimer = null;
+      this.awaitingInactivityReply = true;
+      const prompt = 'Hi there, anything else I can help with?';
+      if (this.session$$()?.aiProvider === 'tavus-full') {
+        this.tavus.speak(prompt);
+      } else {
+        this.realtime.promptAssistant(
+          `Say exactly: "${prompt}" Do not add anything else.`,
+        );
+      }
+      // Covers providers that fail to emit a speech-complete event.
+      this.inactivityCloseTimer = setTimeout(
+        () => void this.closeInactiveSession(),
+        10_000,
+      );
+    }, SophiaKioskPageComponent.INACTIVITY_PROMPT_MS);
+  }
+
+  private scheduleInactivityClose(): void {
+    if (this.inactivityCloseTimer !== null) {
+      clearTimeout(this.inactivityCloseTimer);
+    }
+    this.inactivityCloseTimer = setTimeout(
+      () => void this.closeInactiveSession(),
+      SophiaKioskPageComponent.INACTIVITY_CLOSE_MS,
+    );
+  }
+
+  private async closeInactiveSession(): Promise<void> {
+    if (!this.awaitingInactivityReply) return;
+    this.clearPropertyExperience();
+    await this.finishSession();
+  }
+
+  private clearInactivityTimers(): void {
+    if (this.inactivityPromptTimer !== null) {
+      clearTimeout(this.inactivityPromptTimer);
+    }
+    if (this.inactivityCloseTimer !== null) {
+      clearTimeout(this.inactivityCloseTimer);
+    }
+    this.inactivityPromptTimer = null;
+    this.inactivityCloseTimer = null;
+  }
 }
 
 function toolActivityLabel(toolName: string): string | null {
@@ -709,6 +938,13 @@ function toolActivityLabel(toolName: string): string | null {
       return 'Checking inspection times';
     case 'bookInspection':
       return 'Confirming inspection';
+    case 'reviewInspectionBooking':
+    case 'reviewInspectionEmailResend':
+      return 'Reviewing confirmation details';
+    case 'resendInspectionConfirmation':
+      return 'Resending confirmation email';
+    case 'showPropertyPhoto':
+      return 'Opening property photo';
     case 'searchAgencyKnowledge':
       return 'Checking agency guidance';
     default:
@@ -747,6 +983,28 @@ function isInspectionBooking(value: unknown): value is SophiaInspectionBooking {
     !!booking &&
     typeof booking['bookingId'] === 'string' &&
     typeof booking['customerEmail'] === 'string'
+  );
+}
+
+function isBookingReview(value: unknown): value is SophiaBookingReview {
+  const review = asRecord(value);
+  return (
+    !!review &&
+    (review['mode'] === 'new' || review['mode'] === 'resend') &&
+    typeof review['customerName'] === 'string' &&
+    typeof review['customerEmail'] === 'string' &&
+    typeof review['propertyAddress'] === 'string' &&
+    typeof review['startsAtLabel'] === 'string'
+  );
+}
+
+function isAgencyKnowledge(value: unknown): value is SophiaAgencyKnowledge {
+  const knowledge = asRecord(value);
+  return (
+    !!knowledge &&
+    typeof knowledge['knowledgeId'] === 'string' &&
+    typeof knowledge['question'] === 'string' &&
+    typeof knowledge['answer'] === 'string'
   );
 }
 

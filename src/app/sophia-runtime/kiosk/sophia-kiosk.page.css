@@ -155,12 +155,84 @@
   min-height: 0;
 }
 
+.property-gallery-images button {
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
 .property-gallery-images img {
   display: block;
   width: 100%;
   height: 100%;
   min-height: 0;
   object-fit: cover;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.property-gallery-images button:hover img,
+.property-gallery-images button:focus-visible img {
+  transform: scale(1.025);
+  filter: brightness(1.08);
+}
+
+.photo-viewer-backdrop {
+  position: absolute;
+  z-index: 7;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(2px);
+}
+
+.photo-viewer {
+  position: absolute;
+  inset: 54px max(24px, 8vw) 138px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  place-items: center;
+  padding: 18px;
+  border: 1px solid rgba(103, 232, 249, 0.45);
+  background: rgba(3, 10, 14, 0.97);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.68);
+  backdrop-filter: blur(16px);
+}
+
+.photo-viewer img {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  filter: none;
+}
+
+.photo-viewer p {
+  margin: 12px 46px 0;
+  color: #dbe5ef;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.close-photo-viewer {
+  position: absolute;
+  z-index: 1;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 50%;
+  background: #0f172a;
+  color: #fff;
+  cursor: pointer;
+  font-size: 26px;
+  line-height: 1;
 }
 
 .property-detail-mobile-gallery {
@@ -188,8 +260,69 @@
 .results-heading,
 .property-detail-copy,
 .inspection-times,
-.booking-confirmation {
+.booking-confirmation,
+.booking-review,
+.requirements-view {
   padding: 22px;
+}
+
+.booking-review h2,
+.requirements-view h2 {
+  margin: 6px 44px 18px 0;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.booking-review dl {
+  display: grid;
+  gap: 1px;
+  margin: 0;
+  background: rgba(148, 163, 184, 0.18);
+}
+
+.booking-review dl div {
+  padding: 12px;
+  background: rgba(5, 17, 21, 0.96);
+}
+
+.booking-review dt {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.booking-review dd {
+  margin: 4px 0 0;
+  color: #f8fafc;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.review-prompt {
+  margin: 16px 0 0;
+  color: #fde68a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.requirements-view section {
+  padding: 15px 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.requirements-view h3 {
+  margin: 0 0 7px;
+  font-size: 14px;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.requirements-view section p {
+  margin: 0;
+  color: #d7e1e6;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .results-heading h2,
@@ -767,6 +900,20 @@
     height: 100%;
     min-width: 0;
     object-fit: cover;
+  }
+
+  .property-detail-mobile-gallery button {
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    background: transparent;
+    cursor: zoom-in;
+  }
+
+  .photo-viewer {
+    inset: 58px 12px 122px;
+    padding: 10px;
   }
 }
 

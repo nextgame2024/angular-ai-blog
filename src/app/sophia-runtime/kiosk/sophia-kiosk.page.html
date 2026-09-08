@@ -99,18 +99,33 @@
             <h2>{{ property.address }}</h2>
           </header>
           <div class="property-gallery-images">
-            <img
-              *ngFor="let photo of property.media | slice: 0 : 3"
-              [src]="photo.url"
-              [alt]="photo.altText || property.title"
-            />
+            <button
+              type="button"
+              *ngFor="let photo of property.media | slice: 0 : 3; let index = index"
+              (click)="openPropertyPhoto(property, photo, index + 1)"
+              [attr.aria-label]="'Open photo ' + (index + 1) + ' of ' + property.address"
+            >
+              <img [src]="photo.url" [alt]="photo.altText || property.title" />
+            </button>
           </div>
         </aside>
+
+        <div class="photo-viewer-backdrop" *ngIf="photoViewer$$() as viewer" (click)="closePhotoViewer()">
+          <div class="photo-viewer" role="dialog" aria-modal="true" aria-label="Property photo viewer" (click)="$event.stopPropagation()">
+            <button type="button" class="close-photo-viewer" title="Close photo" aria-label="Close photo" (click)="closePhotoViewer()">&times;</button>
+            <img
+              [src]="viewer.photo.url"
+              [alt]="viewer.photo.altText || viewer.property.title"
+              (error)="handlePhotoLoadError(viewer)"
+            />
+            <p>{{ viewer.property.address }} &middot; Photo {{ viewer.photoNumber }}</p>
+          </div>
+        </div>
 
         <aside
           class="property-experience"
           [class.inspection-view]="currentMonthInspectionSlots$$().length"
-          *ngIf="propertyResults$$().length || selectedProperty$$() || inspectionBooking$$()"
+          *ngIf="propertyResults$$().length || selectedProperty$$() || inspectionBooking$$() || bookingReview$$() || agencyKnowledge$$().length"
           aria-live="polite"
           aria-label="Property results"
         >
@@ -122,7 +137,21 @@
             (click)="closePropertyExperience()"
           >&times;</button>
 
-          <ng-container *ngIf="inspectionBooking$$() as booking; else propertyContent">
+          <ng-container *ngIf="bookingReview$$() as review; else bookingOrKnowledge">
+            <div class="booking-review">
+              <p class="result-eyebrow">{{ review.mode === 'resend' ? 'Confirm email resend' : 'Confirm booking details' }}</p>
+              <h2>{{ review.customerName }}</h2>
+              <dl>
+                <div><dt>Email</dt><dd>{{ review.customerEmail }}</dd></div>
+                <div><dt>Property</dt><dd>{{ review.propertyAddress }}</dd></div>
+                <div><dt>Inspection</dt><dd>{{ review.startsAtLabel }}</dd></div>
+              </dl>
+              <p class="review-prompt">Please check the email spelling and confirm these details with Sophia before anything is sent.</p>
+            </div>
+          </ng-container>
+
+          <ng-template #bookingOrKnowledge>
+          <ng-container *ngIf="inspectionBooking$$() as booking; else knowledgeOrProperty">
             <div class="booking-confirmation">
               <span class="confirmation-mark" aria-hidden="true">&#10003;</span>
               <p class="result-eyebrow">Inspection confirmed</p>
@@ -149,16 +178,32 @@
               <small>Confirmation reference {{ booking.bookingId.slice(0, 8).toUpperCase() }}</small>
             </div>
           </ng-container>
+          </ng-template>
+
+          <ng-template #knowledgeOrProperty>
+            <ng-container *ngIf="agencyKnowledge$$().length; else propertyContent">
+              <div class="requirements-view">
+                <p class="result-eyebrow">Agency requirements</p>
+                <h2>Property requirements</h2>
+                <section *ngFor="let item of agencyKnowledge$$()">
+                  <h3>{{ item.question }}</h3>
+                  <p>{{ item.answer }}</p>
+                </section>
+              </div>
+            </ng-container>
+          </ng-template>
 
           <ng-template #propertyContent>
             <ng-container *ngIf="selectedProperty$$() as property; else propertyList">
               <div class="property-detail">
                 <div class="property-detail-mobile-gallery">
-                  <img
-                    *ngFor="let photo of property.media | slice: 0 : 3"
-                    [src]="photo.url"
-                    [alt]="photo.altText || property.title"
-                  />
+                  <button
+                    type="button"
+                    *ngFor="let photo of property.media | slice: 0 : 3; let index = index"
+                    (click)="openPropertyPhoto(property, photo, index + 1)"
+                  >
+                    <img [src]="photo.url" [alt]="photo.altText || property.title" />
+                  </button>
                 </div>
                 <div class="property-detail-copy">
                   <p class="result-eyebrow">{{ property.listingType === 'rent' ? 'For rent' : 'For sale' }}</p>

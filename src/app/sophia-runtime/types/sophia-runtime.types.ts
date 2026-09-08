@@ -88,6 +88,26 @@ export interface SophiaPropertyMedia {
   sortOrder: number;
 }
 
+export interface SophiaAgencyKnowledge {
+  knowledgeId: string;
+  category: string;
+  question: string;
+  answer: string;
+  jurisdiction?: string | null;
+}
+
+export interface SophiaBookingReview {
+  mode: 'new' | 'resend';
+  bookingId?: string;
+  propertyId?: string;
+  slotId?: string;
+  confirmedStartsAt?: string;
+  propertyAddress: string;
+  startsAtLabel: string;
+  customerName: string;
+  customerEmail: string;
+}
+
 export interface SophiaProperty {
   propertyId: string;
   listingType: 'sale' | 'rent';

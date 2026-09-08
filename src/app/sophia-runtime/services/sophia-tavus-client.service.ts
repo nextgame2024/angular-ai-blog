@@ -5,12 +5,15 @@ import Daily, {
 } from '@daily-co/daily-js';
 
 export interface SophiaTavusConnectRequest {
+  conversationId: string;
   conversationUrl: string;
   meetingToken: string;
   videoElement: HTMLVideoElement;
   audioElement: HTMLAudioElement;
   onStatus(status: string): void;
   onEvent(event: string): void;
+  onUserUtterance?(): void;
+  onReplicaUtterance?(): void;
   onToolCall(toolCall: SophiaTavusToolCall): Promise<unknown>;
 }
 
@@ -31,6 +34,9 @@ export class SophiaTavusClientService {
   private onToolCall: ((toolCall: SophiaTavusToolCall) => Promise<unknown>) | null = null;
   private handledToolCallIds = new Set<string>();
   private connected = false;
+  private conversationId: string | null = null;
+  private onUserUtterance: (() => void) | null = null;
+  private onReplicaUtterance: (() => void) | null = null;
 
   async connect(request: SophiaTavusConnectRequest): Promise<void> {
     await this.disconnect();
@@ -42,6 +48,9 @@ export class SophiaTavusClientService {
     this.onToolCall = request.onToolCall;
     this.handledToolCallIds.clear();
     this.connected = false;
+    this.conversationId = request.conversationId;
+    this.onUserUtterance = request.onUserUtterance || null;
+    this.onReplicaUtterance = request.onReplicaUtterance || null;
 
     const call = Daily.createCallObject({
       subscribeToTracksAutomatically: true,
@@ -94,6 +103,9 @@ export class SophiaTavusClientService {
     const call = this.call;
     this.call = null;
     this.connected = false;
+    this.conversationId = null;
+    this.onUserUtterance = null;
+    this.onReplicaUtterance = null;
 
     this.clearMediaElement(this.videoElement);
     this.clearMediaElement(this.audioElement);
@@ -151,6 +163,11 @@ export class SophiaTavusClientService {
     const message = normalizeAppMessage(data);
     const eventType = message?.['event_type'];
     this.emitEvent(`tavus.${extractAppMessageType(message || data)}`);
+    if (message && eventType === 'conversation.utterance') {
+      const role = asRecord(message['properties'])?.['role'];
+      if (role === 'user') this.onUserUtterance?.();
+      if (role === 'replica') this.onReplicaUtterance?.();
+    }
     if (!message || eventType !== 'conversation.tool_call' || !this.call || !this.onToolCall) return;
 
     const properties = asRecord(message['properties']);
@@ -195,6 +212,16 @@ export class SophiaTavusClientService {
       event_type: 'conversation.tool_result',
       conversation_id: conversationId,
       properties: { tool_call_id: callId, output, status },
+    }, '*');
+  }
+
+  speak(text: string): void {
+    if (!this.call || !this.conversationId) return;
+    this.call.sendAppMessage({
+      message_type: 'conversation',
+      event_type: 'conversation.echo',
+      conversation_id: this.conversationId,
+      properties: { modality: 'text', text, done: true },
     }, '*');
   }
 
