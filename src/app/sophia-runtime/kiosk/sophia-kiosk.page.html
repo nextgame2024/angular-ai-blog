@@ -140,13 +140,34 @@
           <ng-container *ngIf="bookingReview$$() as review; else bookingOrKnowledge">
             <div class="booking-review">
               <p class="result-eyebrow">{{ review.mode === 'resend' ? 'Confirm email resend' : 'Confirm booking details' }}</p>
-              <h2>{{ review.customerName }}</h2>
+              <h2>{{ review.mode === 'resend' ? 'Check recipient details' : 'Check booking details' }}</h2>
+              <div class="booking-review-fields">
+                <label>
+                  <span>Name</span>
+                  <input
+                    type="text"
+                    autocomplete="name"
+                    [ngModel]="review.customerName"
+                    (ngModelChange)="updateBookingReviewField('customerName', $event)"
+                  />
+                </label>
+                <label>
+                  <span>Email</span>
+                  <input
+                    type="email"
+                    inputmode="email"
+                    autocomplete="email"
+                    spellcheck="false"
+                    [ngModel]="review.customerEmail"
+                    (ngModelChange)="updateBookingReviewField('customerEmail', $event)"
+                  />
+                </label>
+              </div>
               <dl>
-                <div><dt>Email</dt><dd>{{ review.customerEmail }}</dd></div>
                 <div><dt>Property</dt><dd>{{ review.propertyAddress }}</dd></div>
                 <div><dt>Inspection</dt><dd>{{ review.startsAtLabel }}</dd></div>
               </dl>
-              <p class="review-prompt">Please check the email spelling and confirm these details with Sophia before anything is sent.</p>
+              <p class="review-prompt">Check the details, make any corrections, then confirm them with Sophia before anything is sent.</p>
             </div>
           </ng-container>
 

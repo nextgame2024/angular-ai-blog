@@ -273,6 +273,43 @@
   letter-spacing: 0;
 }
 
+.booking-review-fields {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.booking-review-fields label {
+  display: grid;
+  gap: 6px;
+}
+
+.booking-review-fields label span {
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.booking-review-fields input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid rgba(148, 163, 184, 0.42);
+  border-radius: 3px;
+  outline: none;
+  background: rgba(5, 17, 21, 0.96);
+  color: #f8fafc;
+  font: inherit;
+  font-weight: 700;
+}
+
+.booking-review-fields input:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.18);
+}
+
 .booking-review dl {
   display: grid;
   gap: 1px;

@@ -58,6 +58,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private inactivityCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private awaitingInactivityReply = false;
   private bookingReviewConfirmedByNewTurn = false;
+  private bookingReviewManuallyEdited = false;
   private readonly failedPhotoUrls = new Set<string>();
   private photoViewerPropertyId: string | null = null;
 
@@ -429,13 +430,15 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     sessionId: string,
     toolCall: SophiaRealtimeToolCall,
   ): Promise<unknown> {
+    let toolInput = toolCall.arguments;
     if (
       (toolCall.name === 'bookInspection' ||
-        toolCall.name === 'resendInspectionConfirmation') &&
-      !this.bookingReviewConfirmedByNewTurn
+        toolCall.name === 'resendInspectionConfirmation')
     ) {
-      throw new Error(
-        'Wait for the customer to confirm the displayed name, email, property and time before sending.',
+      toolInput = await this.prepareConfirmedBookingInput(
+        sessionId,
+        toolCall.name,
+        toolCall.arguments,
       );
     }
     this.activeTask$$.set(toolActivityLabel(toolCall.name));
@@ -444,7 +447,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       const response = await firstValueFrom(
         this.runtime.executeTool(sessionId, {
           toolName: toolCall.name,
-          input: toolCall.arguments,
+          input: toolInput,
         }),
       );
 
@@ -459,6 +462,17 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     } finally {
       this.activeTask$$.set(null);
     }
+  }
+
+  updateBookingReviewField(
+    field: 'customerName' | 'customerEmail',
+    value: string,
+  ): void {
+    const review = this.bookingReview$$();
+    if (!review) return;
+    this.bookingReview$$.set({ ...review, [field]: value });
+    this.bookingReviewManuallyEdited = true;
+    this.bookingReviewConfirmedByNewTurn = false;
   }
 
   selectProperty(property: SophiaProperty): void {
@@ -730,6 +744,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       isBookingReview(payload['bookingReview'])
     ) {
       this.bookingReview$$.set(payload['bookingReview']);
+      this.bookingReviewManuallyEdited = false;
       this.bookingReviewConfirmedByNewTurn = false;
       return;
     }
@@ -783,6 +798,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.agencyKnowledge$$.set([]);
     this.photoViewer$$.set(null);
     this.bookingReviewConfirmedByNewTurn = false;
+    this.bookingReviewManuallyEdited = false;
   }
 
   setExperience(value: string): void {
@@ -861,6 +877,91 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     if (this.bookingReview$$()) this.bookingReviewConfirmedByNewTurn = true;
     this.awaitingInactivityReply = false;
     this.clearInactivityTimers();
+  }
+
+  private async prepareConfirmedBookingInput(
+    sessionId: string,
+    toolName: 'bookInspection' | 'resendInspectionConfirmation',
+    providerInput: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const currentReview = this.bookingReview$$();
+    if (!currentReview) {
+      throw new Error('Display the booking details before sending.');
+    }
+
+    const providerName = stringValue(providerInput['customerName']);
+    const providerEmail = stringValue(providerInput['customerEmail']);
+    if (!this.bookingReviewManuallyEdited) {
+      const updatedReview = {
+        ...currentReview,
+        customerName: providerName || currentReview.customerName,
+        customerEmail: providerEmail || currentReview.customerEmail,
+      };
+      if (
+        updatedReview.customerName !== currentReview.customerName ||
+        updatedReview.customerEmail.toLowerCase() !==
+          currentReview.customerEmail.toLowerCase()
+      ) {
+        this.bookingReview$$.set(updatedReview);
+        this.bookingReviewConfirmedByNewTurn = false;
+        await this.syncBookingReview(sessionId, updatedReview);
+        throw new Error(
+          'The corrected details are now displayed. Ask the customer to check and confirm them before sending.',
+        );
+      }
+    }
+
+    if (!this.bookingReviewConfirmedByNewTurn) {
+      throw new Error(
+        'Wait for the customer to confirm the displayed name, email, property and time before sending.',
+      );
+    }
+
+    const review = this.bookingReview$$()!;
+    const customerName = review.customerName.trim();
+    const customerEmail = review.customerEmail.trim().toLowerCase();
+    if (customerName.length < 2) throw new Error('Enter the customer name.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail)) {
+      throw new Error('Enter a valid confirmation email.');
+    }
+
+    const normalizedReview = { ...review, customerName, customerEmail };
+    this.bookingReview$$.set(normalizedReview);
+    await this.syncBookingReview(sessionId, normalizedReview);
+    this.bookingReviewManuallyEdited = false;
+
+    return toolName === 'bookInspection'
+      ? {
+          ...providerInput,
+          propertyId: normalizedReview.propertyId,
+          slotId: normalizedReview.slotId,
+          confirmedStartsAt: normalizedReview.confirmedStartsAt,
+          customerName,
+          customerEmail,
+          confirmed: true,
+        }
+      : {
+          ...providerInput,
+          bookingId: normalizedReview.bookingId,
+          customerEmail,
+          confirmed: true,
+        };
+  }
+
+  private async syncBookingReview(
+    sessionId: string,
+    review: SophiaBookingReview,
+  ): Promise<void> {
+    const toolName =
+      review.mode === 'resend'
+        ? 'reviewInspectionEmailResend'
+        : 'reviewInspectionBooking';
+    await firstValueFrom(
+      this.runtime.executeTool(sessionId, {
+        toolName,
+        input: { ...review },
+      }),
+    );
   }
 
   private onAssistantSpeechStarted(): void {
@@ -956,6 +1057,10 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return typeof value === 'object' && value !== null
     ? (value as Record<string, unknown>)
     : null;
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 function isProperty(value: unknown): value is SophiaProperty {
