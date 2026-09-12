@@ -193,6 +193,9 @@
               <small *ngIf="booking.confirmationEmail?.status === 'already_sent'">
                 Confirmation email was already sent
               </small>
+              <small class="email-pending" *ngIf="booking.confirmationEmail?.status === 'pending_report' || booking.confirmationEmail?.status === 'queued'">
+                Property report is being prepared and will be included with the confirmation email
+              </small>
               <small class="email-pending" *ngIf="booking.confirmationEmail?.status === 'failed'">
                 Booking confirmed; email delivery is pending
               </small>

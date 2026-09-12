@@ -149,6 +149,7 @@ export interface SophiaInspectionBooking {
   customerName: string;
   customerEmail: string;
   status: string;
+  listingType?: 'sale' | 'rent';
   createdAt: string;
   startsAt?: string;
   endsAt?: string;
@@ -162,8 +163,15 @@ export interface SophiaInspectionBooking {
   propertyState?: string;
   propertyPostcode?: string;
   confirmationEmail?: {
-    status: 'sent' | 'already_sent' | 'failed';
+    status: 'sent' | 'already_sent' | 'failed' | 'pending_report' | 'queued';
     sentAt?: string;
     message?: string;
+    reportStatus?: string;
+  };
+  reportDelivery?: {
+    reportJobId?: string;
+    reportStatus?: string;
+    deliveryId?: string;
+    deliveryStatus?: string;
   };
 }
