@@ -8,7 +8,8 @@
     "prebuild": "node scripts/generate-runtime-env.mjs",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "test:sophia": "ng test --watch=false --browsers=ChromeHeadless --include=\"src/app/sophia-runtime/**/*.spec.ts\""
   },
   "private": true,
   "dependencies": {

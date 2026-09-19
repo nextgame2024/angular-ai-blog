@@ -1,3 +1,7 @@
+import {StudentConsultationPanelComponent} from '../student/student-consultation-panel.component';
+import {CONSULTATION_TOOLS,consultationView,consultationReviewInput,type ConsultationView} from '../student/student-consultation';
+import { StudentGuidancePanelComponent } from '../student/student-guidance-panel.component';
+import { guidanceDomain, studentGuidanceView, type StudentGuidanceView } from '../student/student-guidance';
 import { CommonModule } from '@angular/common';
 import {
   Component,
@@ -39,7 +43,7 @@ type RuntimeViewState = 'idle' | 'starting' | 'active' | 'closing' | 'error';
 
 @Component({
   selector: 'app-sophia-kiosk-page',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, StudentGuidancePanelComponent, StudentConsultationPanelComponent],
   templateUrl: './sophia-kiosk.page.html',
   styleUrls: ['./sophia-kiosk.page.css'],
 })
@@ -61,6 +65,12 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private bookingReviewConfirmedByNewTurn = false;
   private bookingReviewManuallyEdited = false;
   private readonly failedPhotoUrls = new Set<string>();
+  readonly consultationView$$ = signal<ConsultationView | null>(null);
+  private consultationConfirmedByNewTurn = false;
+  private consultationManuallyEdited = false;
+  private guidanceVersion = 0;
+  private activeGuidanceDomain: 'student' | 'property' | null = null;
+  readonly studentView$$ = signal<StudentGuidanceView | null>(null);
   private photoViewerPropertyId: string | null = null;
 
   @ViewChild('remoteAudio')
@@ -432,6 +442,13 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     sessionId: string,
     toolCall: SophiaRealtimeToolCall,
   ): Promise<unknown> {
+    const domain = guidanceDomain(toolCall.name);
+    if (domain && domain !== this.activeGuidanceDomain) {
+      this.activeGuidanceDomain = domain;
+      this.guidanceVersion++;
+      this.clearPropertyExperience();
+    }
+    const guidanceVersion = this.guidanceVersion;
     let toolInput = toolCall.arguments;
     if (
       (toolCall.name === 'bookInspection' ||
@@ -443,6 +460,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         toolCall.arguments,
       );
     }
+    if (toolCall.name === 'bookStudentConsultation' || toolCall.name === 'resendStudentConsultationEmail') {
+      toolInput = await this.prepareConfirmedConsultationInput(sessionId, toolCall.name, toolCall.arguments);
+    }
+    if (domain && guidanceVersion !== this.guidanceVersion) throw new Error('The topic changed. Review the appointment again before confirming.');
     this.activeTask$$.set(toolActivityLabel(toolCall.name));
 
     try {
@@ -453,7 +474,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         }),
       );
 
-      this.handleToolOutput(toolCall.name, response.output);
+      if (!domain || guidanceVersion === this.guidanceVersion) this.handleToolOutput(toolCall.name, response.output);
       if (
         toolCall.name === 'bookInspection' ||
         toolCall.name === 'resendInspectionConfirmation'
@@ -682,6 +703,18 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private handleToolOutput(toolName: string, output: unknown): void {
     const payload = asRecord(output);
     if (!payload) return;
+    if (toolName === 'closeStudentView') { this.studentView$$.set(null); this.consultationView$$.set(null); return; }
+    if (CONSULTATION_TOOLS.includes(toolName)) {
+      this.clearPropertyExperience();
+      this.consultationView$$.set(consultationView(output));
+      return;
+    }
+    if (['searchStudentAgencyKnowledge','verifyStudentRules','compareStudentRules'].includes(toolName)) {
+      this.clearPropertyExperience();
+      this.studentView$$.set(studentGuidanceView(output));
+      return;
+    }
+    if (guidanceDomain(toolName) === 'property') { this.studentView$$.set(null); this.consultationView$$.set(null); }
 
     if (toolName !== 'showPropertyPhoto') {
       this.closePhotoViewer();
@@ -792,6 +825,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private clearPropertyExperience(): void {
+    this.consultationView$$.set(null);
+    this.consultationConfirmedByNewTurn = false;
+    this.consultationManuallyEdited = false;
+    this.studentView$$.set(null);
     this.propertyResults$$.set([]);
     this.selectedProperty$$.set(null);
     this.inspectionSlots$$.set([]);
@@ -879,8 +916,49 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   private onUserActivity(): void {
     if (this.bookingReview$$()) this.bookingReviewConfirmedByNewTurn = true;
+    if (this.consultationView$$()?.review) this.consultationConfirmedByNewTurn = true;
     this.awaitingInactivityReply = false;
     this.clearInactivityTimers();
+  }
+
+  updateConsultationField(event: {field:'customerName'|'customerEmail'|'includeSummary'|'enquirySummary';value:string|boolean}): void {
+    const view=this.consultationView$$();
+    if (!view?.review) return;
+    this.consultationView$$.set({...view,review:{...view.review,[event.field]:event.value}});
+    this.consultationConfirmedByNewTurn=false;
+    this.consultationManuallyEdited=true;
+  }
+
+  private async prepareConfirmedConsultationInput(sessionId:string,toolName:string,providerInput:Record<string,unknown>): Promise<Record<string,unknown>> {
+    let review=this.consultationView$$()?.review;
+    if(!review || (toolName==='bookStudentConsultation') !== (review.mode==='new')) throw new Error('Display the correct consultation review before confirming.');
+    if(providerInput['confirmed']!==true) throw new Error('Explicit customer confirmation is required.');
+    if(review.mode==='resend' && providerInput['bookingId']!==review.bookingId) throw new Error('Review the selected consultation before resending.');
+    if(review.mode==='new' && (providerInput['slotId']!==review.slotId || +new Date(String(providerInput['confirmedStartsAt']))!==+new Date(review.confirmedStartsAt))) throw new Error('Review the newly selected time before booking.');
+    if(!this.consultationManuallyEdited) {
+      const updated={...review,
+        customerName:review.mode==='new' ? stringValue(providerInput['customerName'])||review.customerName : review.customerName,
+        customerEmail:stringValue(providerInput['customerEmail'])||review.customerEmail,
+        includeSummary:review.mode==='new' && typeof providerInput['includeSummary']==='boolean' ? providerInput['includeSummary'] : review.includeSummary,
+        enquirySummary:review.mode==='new' && typeof providerInput['enquirySummary']==='string' ? providerInput['enquirySummary'] : review.enquirySummary,
+        sourceLinks:review.mode==='new' && Array.isArray(providerInput['sourceLinks']) ? providerInput['sourceLinks'].filter((v):v is string=>typeof v==='string') : review.sourceLinks,
+      };
+      if(updated.customerName!==review.customerName || updated.customerEmail.toLowerCase()!==review.customerEmail.toLowerCase() ||
+          updated.includeSummary!==review.includeSummary || (updated.includeSummary && (updated.enquirySummary!==review.enquirySummary || JSON.stringify(updated.sourceLinks)!==JSON.stringify(review.sourceLinks)))) {
+        this.consultationView$$.set({review:updated});
+        this.consultationConfirmedByNewTurn=false;
+        throw new Error('The corrected details are displayed. Review and confirm again before booking.');
+      }
+    }
+    if(!this.consultationConfirmedByNewTurn) throw new Error('Wait for the customer to confirm the displayed consultation details.');
+    review={...review,customerName:review.customerName.trim(),customerEmail:review.customerEmail.trim().toLowerCase()};
+    if(review.customerName.length<2 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(review.customerEmail)) throw new Error('Enter a valid name and email.');
+    const input=consultationReviewInput(review);
+    // Keep the runtime review synchronized with authoritative on-screen edits.
+    await firstValueFrom(this.runtime.executeTool(sessionId,{toolName:review.mode==='new' ? 'reviewStudentConsultation' : 'reviewStudentConsultationEmail',input}));
+    this.consultationConfirmedByNewTurn=false;
+    this.consultationManuallyEdited=false;
+    return {...input,confirmed:true};
   }
 
   private async prepareConfirmedBookingInput(
@@ -1046,6 +1124,23 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
 function toolActivityLabel(toolName: string): string | null {
   switch (toolName) {
+    case 'getStudentConsultationSlots':
+      return 'Checking adviser appointments';
+    case 'reviewStudentConsultation':
+    case 'reviewStudentConsultationEmail':
+      return 'Reviewing consultation details';
+    case 'bookStudentConsultation':
+      return 'Confirming consultation';
+    case 'resendStudentConsultationEmail':
+      return 'Queuing consultation email';
+    case 'getStudentConsultationBooking':
+      return 'Checking consultation status';
+    case 'searchStudentAgencyKnowledge':
+      return 'Checking student guidance';
+    case 'verifyStudentRules':
+      return 'Checking official student sources';
+    case 'compareStudentRules':
+      return 'Comparing student requirements';
     case 'researchBusiness':
       return 'Researching official sources';
     case 'searchProperties':

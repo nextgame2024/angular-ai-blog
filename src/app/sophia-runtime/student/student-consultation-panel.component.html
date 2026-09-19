@@ -1,0 +1,35 @@
+<header><button type="button" aria-label="Close consultation details" (click)="closeView.emit()">&times;</button><p class="eyebrow">Student agency</p><h2>Talk with an adviser</h2></header>
+<div class="body">
+  <p *ngIf="view.message">{{view.message}}</p>
+  <ng-container *ngIf="view.slots as slots">
+    <p *ngIf="!slots.length">No available appointments. Please contact the agency.</p>
+    <p *ngIf="slots.length">Tell Sophia which time you prefer.</p>
+    <article *ngFor="let slot of slots">
+      <span class="demo" *ngIf="slot.isDemo">Demo appointment — no real agent meeting</span>
+      <h3>{{slot.startsAtLabel}}</h3><p>{{slot.timeZone}}</p><p>{{slot.serviceName}} · {{slot.adviserName}}</p>
+    </article>
+  </ng-container>
+  <section *ngIf="view.review as review">
+    <span class="demo" *ngIf="review.isDemo">Demonstration only. No real adviser meeting will be arranged.</span>
+    <h3>{{review.mode === 'resend' ? 'Review the corrected email' : 'Check your booking details'}}</h3>
+    <p><strong>{{review.serviceName}}</strong><br>{{review.adviserName}}<br>{{review.startsAtLabel}} ({{review.timeZone}})</p>
+    <p>{{review.meetingDetails}}</p>
+    <label>Name<input type="text" autocomplete="name" [disabled]="review.mode === 'resend'" [ngModel]="review.customerName" (ngModelChange)="edit.emit({field:'customerName',value:$event})"></label>
+    <label>Email<input type="email" autocomplete="email" inputmode="email" spellcheck="false" [ngModel]="review.customerEmail" (ngModelChange)="edit.emit({field:'customerEmail',value:$event})"></label>
+    <ng-container *ngIf="review.mode === 'new'">
+      <label class="consent"><input type="checkbox" [ngModel]="review.includeSummary" (ngModelChange)="edit.emit({field:'includeSummary',value:$event})">Include my enquiry summary and listed official links in the confirmation email</label>
+      <label *ngIf="review.includeSummary">Enquiry summary<textarea rows="4" maxlength="2000" [ngModel]="review.enquirySummary" (ngModelChange)="edit.emit({field:'enquirySummary',value:$event})"></textarea></label>
+      <ul *ngIf="review.includeSummary"><li *ngFor="let link of review.sourceLinks">{{link}}</li></ul>
+    </ng-container>
+    <p class="prompt">Check the details and email spelling, then tell Sophia to confirm. Corrections require a new confirmation.</p>
+  </section>
+  <section *ngIf="view.booking as booking">
+    <span class="demo" *ngIf="booking.isDemo">Demo appointment only — no real adviser meeting arranged</span>
+    <h3>{{booking.status === 'confirmed' ? 'Consultation booking saved' : 'Consultation status: ' + booking.status}}</h3>
+    <p><strong>{{booking.customerName}}</strong><br>{{booking.serviceName}} · {{booking.adviserName}}</p>
+    <p>{{booking.startsAtLabel}} ({{booking.timeZone}})</p><p>{{booking.meetingDetails}}</p>
+    <p>Confirmation email: <strong>{{booking.customerEmail}}</strong></p>
+    <p class="prompt">{{emailLabel(booking.emailStatus)}}</p>
+    <small>Reference {{booking.bookingId}}</small>
+  </section>
+</div>

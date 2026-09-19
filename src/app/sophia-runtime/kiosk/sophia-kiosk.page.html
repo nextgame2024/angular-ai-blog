@@ -122,6 +122,14 @@
           </div>
         </div>
 
+        <aside class="property-experience student-experience" *ngIf="consultationView$$() as consultation" aria-live="polite" aria-label="Student consultation">
+          <app-student-consultation-panel [view]="consultation" (edit)="updateConsultationField($event)" (closeView)="consultationView$$.set(null)" />
+        </aside>
+
+        <aside class="property-experience student-experience" *ngIf="studentView$$() as studentView" aria-live="polite" aria-label="Student information">
+          <app-student-guidance-panel [view]="studentView" (closeView)="studentView$$.set(null)" />
+        </aside>
+
         <aside
           class="property-experience"
           [class.inspection-view]="currentMonthInspectionSlots$$().length"

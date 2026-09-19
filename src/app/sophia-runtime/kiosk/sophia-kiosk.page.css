@@ -962,3 +962,6 @@
     transition: none;
   }
 }
+
+.student-experience { width: min(560px, calc(100% - 48px)); }
+@media(max-width:600px) { .student-experience { width:calc(100% - 24px); right:12px; } }

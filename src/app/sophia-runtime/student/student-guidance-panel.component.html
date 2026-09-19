@@ -1,0 +1,31 @@
+<header>
+  <button type="button" aria-label="Close student information" title="Close student information" (click)="closeView.emit()">&times;</button>
+  <p class="eyebrow">Studying in Australia</p>
+  <h2>{{ view.title }}</h2>
+  <p class="notice">{{ view.notice }}</p>
+</header>
+<article *ngFor="let card of view.cards" [class.unavailable]="card.evidenceStatus === 'unavailable'">
+  <span class="evidence" [class.cached]="card.evidenceStatus === 'cached'">{{ evidenceLabel(card.evidenceStatus) }}</span>
+  <h3>{{ card.title }}</h3>
+  <p>{{ card.summary }}</p>
+  <ng-container *ngIf="card.kind === 'comparison'">
+    <p class="change-status">{{ changeLabel(card.changeStatus) }}</p>
+    <div class="comparison">
+      <section><h4>Previous rule</h4><p>{{ card.previousRule || 'Not established by the available evidence.' }}</p></section>
+      <section><h4>New rule</h4><p>{{ card.currentRule || 'Not established by the available evidence.' }}</p></section>
+    </div>
+    <dl class="dates">
+      <div><dt>Effective from</dt><dd>{{ card.effectiveFrom ? (card.effectiveFrom | date:'d MMM y':'UTC') : 'Not established' }}</dd></div>
+      <div *ngIf="card.effectiveTo"><dt>Effective until</dt><dd>{{ card.effectiveTo | date:'d MMM y':'UTC' }}</dd></div>
+    </dl>
+    <section><h4>New students / applicants</h4><p>{{ card.newStudentImpact || 'The effect on new applicants needs further verification.' }}</p></section>
+    <section><h4>Current students</h4><p>{{ card.currentStudentImpact || 'The effect on current students needs further verification. Do not assume an exemption.' }}</p></section>
+  </ng-container>
+  <section *ngIf="card.applicability.length"><h4>Who it applies to</h4><p *ngFor="let item of card.applicability">{{ item }}</p></section>
+  <p class="limitation" *ngFor="let item of card.limitations">{{ item }}</p>
+  <p class="checked" *ngIf="card.verifiedAt">{{ card.evidenceStatus === 'reviewed' ? 'Reviewed' : 'Source retrieved' }} {{ card.verifiedAt | date:'d MMM y, h:mm a':'+1000' }} Brisbane time</p>
+  <ul class="sources" *ngIf="card.sources.length">
+    <li *ngFor="let source of card.sources"><a [href]="source.url" target="_blank" rel="noopener noreferrer">{{ source.title }} <span aria-hidden="true">↗</span></a></li>
+  </ul>
+</article>
+<p class="empty" *ngIf="!view.cards.length">You can ask about a specific requirement or change. Missing evidence does not mean there have been no changes.</p>
