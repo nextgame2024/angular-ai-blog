@@ -1,4 +1,4 @@
-import {SophiaTavusClientService} from './sophia-tavus-client.service';
+import {compactTavusToolOutput,SophiaTavusClientService} from './sophia-tavus-client.service';
 describe('Premium event delivery',()=>{
  function setup(){const service=new SophiaTavusClientService() as any;const send=jasmine.createSpy('send');service.call={sendAppMessage:send};service.conversationId='current';return {service,send};}
  const message={event_type:'conversation.tool_call',conversation_id:'current',properties:{tool_call_id:'call',name:'lookup',arguments:{}}};
@@ -17,5 +17,20 @@ describe('Premium event delivery',()=>{
   await service.handleAppMessage({event_type:'user.started_speaking',conversation_id:'old'});expect(service.onUserUtterance).not.toHaveBeenCalled();
   await service.handleAppMessage({event_type:'user.started_speaking',conversation_id:'current'});expect(service.onUserUtterance).toHaveBeenCalledTimes(1);
   await service.handleAppMessage({event_type:'conversation.utterance',conversation_id:'current',properties:{role:'user'}});expect(service.onUserSpeechStopped).toHaveBeenCalledTimes(1);
+ });
+ it('keeps an oversized student panel result below the Tavus app-message limit',()=>{
+  const output={status:'reviewed',answer:'A'.repeat(2500),studentView:{cards:Array.from({length:12},()=>({summary:'B'.repeat(900)}))}};
+  const compact=compactTavusToolOutput('showStudentVisaDemoGuidance',output) as any;
+  const envelope={message_type:'conversation',event_type:'conversation.tool_result',conversation_id:'current',properties:{tool_call_id:'call',output:compact,status:'success'}};
+  expect(new TextEncoder().encode(JSON.stringify(envelope)).length).toBeLessThan(4096);
+  expect(compact.answer).toBeTruthy();
+  expect(compact.studentView).toBeUndefined();
+ });
+ it('keeps exact fields for the first four consultation slots when compacting',()=>{
+  const slots=Array.from({length:12},(_,index)=>({slotId:`slot-${index}`,startsAt:`2026-09-2${index}T10:00:00+10:00`,startsAtLabel:`Time ${index}`,serviceName:'Student consultation',adviserName:'Demo adviser',isDemo:true,unused:'X'.repeat(1000)}));
+  const compact=compactTavusToolOutput('getStudentConsultationSlots',{consultationSlots:slots}) as any;
+  expect(compact.consultationSlots.length).toBe(4);
+  expect(compact.consultationSlots[0]).toEqual(jasmine.objectContaining({slotId:'slot-0',startsAtLabel:'Time 0',isDemo:true}));
+  expect(JSON.stringify(compact)).not.toContain('unused');
  });
 });

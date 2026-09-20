@@ -226,7 +226,12 @@ export class SophiaTavusClientService {
         conversationId,
       });
       if (this.call !== activeCall || this.conversationId !== conversationId) return;
-      this.sendToolResult(conversationId, callId, output, 'success');
+      this.sendToolResult(
+        conversationId,
+        callId,
+        compactTavusToolOutput(name, output),
+        'success',
+      );
       this.emitEvent(`tavus.tool_result.${name}.success`);
     } catch (error) {
       if (this.call !== activeCall || this.conversationId !== conversationId) return;
@@ -330,6 +335,118 @@ function parseToolArguments(value: unknown): Record<string, unknown> {
     try { return asRecord(JSON.parse(value)) || {}; } catch { return {}; }
   }
   return asRecord(value) || {};
+}
+
+const TAVUS_RESULT_BUDGET_BYTES = 3_200;
+
+/**
+ * Tavus app messages have a hard 4 KB limit. The kiosk has already consumed the
+ * full output to render its panel, so the PAL only needs the concise fields it
+ * must speak or use in the next turn.
+ */
+export function compactTavusToolOutput(
+  toolName: string,
+  output: unknown,
+): unknown {
+  if (jsonBytes(output) <= TAVUS_RESULT_BUDGET_BYTES) return output;
+  const payload = asRecord(output);
+  if (!payload) return { result: 'The requested information is displayed on screen.' };
+
+  const answer = textValue(payload['answer'], 2_200);
+  if (answer) {
+    return compactWithinBudget({
+      status: payload['status'],
+      answer,
+      guidance: textValue(payload['guidance'], 500),
+      panelDisplayed: true,
+    });
+  }
+
+  const arrayKey = ['consultationSlots', 'slots', 'properties', 'results'].find(
+    (key) => Array.isArray(payload[key]),
+  );
+  if (arrayKey) {
+    return compactWithinBudget({
+      status: payload['status'],
+      [arrayKey]: (payload[arrayKey] as unknown[])
+        .slice(0, toolName === 'getStudentConsultationSlots' ? 4 : 3)
+        .map((value) => compactRecord(value)),
+      guidance: textValue(payload['guidance'], 450),
+      panelDisplayed: true,
+    });
+  }
+
+  const objectKey = [
+    'consultationReview',
+    'bookingReview',
+    'consultationBooking',
+    'booking',
+    'confirmationEmail',
+    'property',
+  ].find((key) => asRecord(payload[key]));
+  if (objectKey) {
+    return compactWithinBudget({
+      status: payload['status'],
+      [objectKey]: compactRecord(payload[objectKey]),
+      confirmationEmail:
+        objectKey === 'confirmationEmail'
+          ? undefined
+          : compactRecord(payload['confirmationEmail']),
+      guidance: textValue(payload['guidance'], 600),
+      panelDisplayed: true,
+    });
+  }
+
+  return compactWithinBudget({
+    status: payload['status'],
+    guidance: textValue(payload['guidance'], 1_400),
+    result: 'The full result is displayed on screen.',
+  });
+}
+
+function compactRecord(value: unknown): unknown {
+  const record = asRecord(value);
+  if (!record) return value;
+  const preferredKeys = [
+    'slotId', 'startsAt', 'startsAtLabel', 'serviceName', 'adviserName',
+    'isDemo', 'bookingId', 'customerName', 'customerEmail', 'includeSummary',
+    'propertyId', 'address', 'propertyAddress', 'listingType', 'propertyType',
+    'bedrooms', 'priceDisplay', 'status', 'mode', 'confirmedStartsAt',
+  ];
+  const result: Record<string, unknown> = {};
+  for (const key of preferredKeys) {
+    const item = record[key];
+    if (item !== undefined && item !== null) {
+      result[key] = typeof item === 'string' ? textValue(item, 320) : item;
+    }
+  }
+  return Object.keys(result).length ? result : { summary: textValue(JSON.stringify(record), 700) };
+}
+
+function compactWithinBudget(value: Record<string, unknown>): unknown {
+  const cleaned = Object.fromEntries(
+    Object.entries(value).filter(([, item]) => item !== undefined && item !== ''),
+  );
+  if (jsonBytes(cleaned) <= TAVUS_RESULT_BUDGET_BYTES) return cleaned;
+  return {
+    status: cleaned['status'],
+    answer: textValue(cleaned['answer'], 2_400),
+    guidance: textValue(cleaned['guidance'], 450),
+    result: 'The full result is displayed on screen.',
+  };
+}
+
+function jsonBytes(value: unknown): number {
+  try {
+    return new TextEncoder().encode(JSON.stringify(value)).length;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+}
+
+function textValue(value: unknown, maxLength: number): string {
+  if (typeof value !== 'string') return '';
+  return value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}…`;
 }
 
 function formatDailyError(error: unknown): string {
