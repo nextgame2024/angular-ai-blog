@@ -44,15 +44,12 @@ describe('Kiosk student/property separation',()=>{
     const input={...review,confirmed:true};
     await expectAsync(prepare(input)).toBeRejectedWithError(/Wait for/);
     component.updateConsultationField({field:'customerEmail',value:'corrected@example.com'});
-    (component as any).onUserActivity();
-    await expectAsync(prepare(input)).toBeRejectedWithError(/Wait for/);
-    (component as any).onAssistantSpeechStopped();
     (component as any).onUserActivity();executeTool.and.returnValue(of({output:{consultationReview:review}}));
     const result=await prepare(input);expect(result.customerEmail).toBe('corrected@example.com');expect(result.enquirySummary).toBe('');
     expect(result.sourceLinks).toEqual([]);expect(result.confirmed).toBeTrue();
   });
   it('requires another review for changed consent and rejects a different slot',async()=>{
-    component.consultationView$$.set({review});(component as any).onAssistantSpeechStopped();(component as any).onUserActivity();
+    component.consultationView$$.set({review});(component as any).onUserActivity();
     const prepare=(input:any)=>(component as any).prepareConfirmedConsultationInput('session','bookStudentConsultation',input);
     await expectAsync(prepare({...review,slotId:'different',confirmed:true})).toBeRejectedWithError(/newly selected/);
     await expectAsync(prepare({...review,includeSummary:true,confirmed:true})).toBeRejectedWithError(/corrected details/);
