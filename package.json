@@ -1,9 +1,6 @@
 {
   "name": "mediumclone-angular",
   "version": "0.0.0",
-  "engines": {
-    "node": ">=22 <23"
-  },
   "scripts": {
     "ng": "ng",
     "prestart": "node scripts/generate-runtime-env.mjs",

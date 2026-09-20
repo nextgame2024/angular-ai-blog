@@ -18,7 +18,6 @@ import { firstValueFrom } from 'rxjs';
 
 import {
   SophiaRealtimeClientService,
-  requestSophiaMicrophone,
   type SophiaRealtimeToolCall,
 } from '../services/sophia-realtime-client.service';
 import {
@@ -57,8 +56,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private readonly realtime = inject(SophiaRealtimeClientService);
   private readonly avatar = inject(SophiaAvatarClientService);
   private readonly tavus = inject(SophiaTavusClientService);
-  private destroyed = false;
-  private microphoneStream: MediaStream | null = null;
   private remoteOutputStream: MediaStream | null = null;
   private errorDismissTimer: ReturnType<typeof setTimeout> | null = null;
   private inactivityPromptTimer: ReturnType<typeof setTimeout> | null = null;
@@ -97,10 +94,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly isAvatarUnavailable$$ = signal(false);
   readonly realtimeEvents$$ = signal<string[]>([]);
   readonly avatarDiagnostics$$ = signal<string[]>([]);
-  readonly awaitingAnswer$$ = signal(false);
-  readonly userSpeaking$$ = signal(false);
-  readonly isWorking$$ = computed(() => this.state$$() === 'starting' || !!this.activeTask$$() || this.awaitingAnswer$$());
-  private readonly pendingTasks = new Map<symbol, string>();
   readonly activeTask$$ = signal<string | null>(null);
   readonly standbyVideoFailed$$ = signal(false);
   readonly propertyResults$$ = signal<SophiaProperty[]>([]);
@@ -168,8 +161,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     if (this.activeTask$$()) return this.activeTask$$();
     if (state === 'starting') return 'Starting Sophia';
     if (state === 'closing') return 'Finishing session';
-    if (this.userSpeaking$$()) return 'Listening…';
-    if (this.awaitingAnswer$$()) return 'Preparing your answer…';
     if (state === 'error') return 'Connection needs attention';
     if (this.isVoiceConnected$$() && this.isAvatarConnected$$()) {
       return 'Sophia is ready';
@@ -209,26 +200,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.avatarDiagnostics$$.set([]);
     this.clearPropertyExperience();
     this.state$$.set('starting');
-    this.pendingTasks.clear();
-    this.activeTask$$.set(null);
-    this.awaitingAnswer$$.set(false);
-    this.userSpeaking$$.set(false);
 
-    let startupFailed = false;
-    let createdResponse: SophiaRuntimeSessionResponse | null = null;
     try {
       const experience = experienceConfiguration(this.experience$$());
-      this.voiceStatus$$.set('Requesting microphone');
-      const microphoneReady = requestSophiaMicrophone().then(stream => {
-        if (startupFailed || this.destroyed) {
-          stream.getTracks().forEach(track => track.stop());
-          throw new Error('Startup cancelled');
-        }
-        this.microphoneStream = stream;
-        this.logStartupTiming('microphone ready', startupStartedAt);
-        return stream;
-      });
-      const sessionReady = firstValueFrom(
+      const response = await firstValueFrom(
         this.runtime.createSession({
           aiProvider: experience.aiProvider,
           deviceId: '22222222-2222-4222-8222-222222222222',
@@ -240,21 +215,21 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
               : experience.avatarProvider,
           avatarMode: experience.avatarMode,
         }),
-      ).then(response => {
-        if (startupFailed || this.destroyed) {
-          void firstValueFrom(this.runtime.closeSession(response.session.sessionId)).catch(() => undefined);
-          throw new Error('Startup cancelled');
-        }
-        createdResponse = response;
-        this.sessionResponse$$.set(response);
-        this.logStartupTiming('runtime session created', startupStartedAt);
-        return response;
-      });
-      const [response] = await Promise.all([sessionReady, microphoneReady]);
-      if (this.destroyed) throw new Error('Startup cancelled');
+      );
+      this.logStartupTiming('runtime session created', startupStartedAt);
+
+      this.sessionResponse$$.set(response);
       if (experience.aiProvider === 'tavus-full') {
-        await this.connectTavus(response);
-        if (this.destroyed) throw new Error('Startup cancelled');
+        try {
+          await this.connectTavus(response);
+        } catch (error) {
+          await this.tavus.disconnect();
+          await firstValueFrom(
+            this.runtime.closeSession(response.session.sessionId),
+          ).catch(() => undefined);
+          this.sessionResponse$$.set(null);
+          throw error;
+        }
         this.state$$.set('active');
         this.armInactivityPrompt();
         this.logStartupTiming('Tavus ready', startupStartedAt);
@@ -299,7 +274,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         );
       }
 
-      if (this.destroyed) throw new Error('Startup cancelled');
       this.state$$.set('active');
       this.armInactivityPrompt();
       this.logStartupTiming(
@@ -307,14 +281,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         startupStartedAt,
       );
     } catch (error) {
-      startupFailed = true;
-      this.stopMicrophone();
-      await Promise.allSettled([this.disconnectVoice(), this.disconnectAvatar(), this.disconnectTavus()]);
-      const response = createdResponse as SophiaRuntimeSessionResponse | null;
-      if (response) await firstValueFrom(this.runtime.closeSession(response.session.sessionId)).catch(() => undefined);
-      this.sessionResponse$$.set(null);
       this.logStartupTiming('failed', startupStartedAt);
-      if (!this.destroyed) this.handleError(error, 'Could not start Sophia.');
+      this.handleError(error, 'Could not start Sophia.');
     }
   }
 
@@ -334,11 +302,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.assistantSpeaking = false;
     this.error$$.set(null);
     this.state$$.set('closing');
-    this.pendingTasks.clear();
-    this.activeTask$$.set(null);
-    this.awaitingAnswer$$.set(false);
-    this.userSpeaking$$.set(false);
-    this.stopMicrophone();
 
     if (session.aiProvider === 'tavus-full') {
       await this.disconnectTavus();
@@ -373,24 +336,17 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     try {
       await this.realtime.connect({
         clientSecret,
-        microphoneStream: this.microphoneStream ?? undefined,
         onRemoteStream: (stream) => this.attachRemoteAudio(stream),
         onAudioDelta: (audio) => this.avatar.appendOpenAiAudio(audio),
         onAudioDone: () => this.avatar.completeOpenAiAudio(),
         onAssistantTextDone: (text) => this.avatar.speakText(text),
-        onUserSpeechStarted: () => {
-          this.avatar.interrupt();
-          this.assistantSpeaking = false;
-          this.onUserActivity();
-        },
         onOutputAudioStarted: () => this.onAssistantSpeechStarted(),
         onOutputAudioStopped: () => this.onAssistantSpeechStopped(),
         onEvent: (event) => {
           this.recordRealtimeEvent(event);
-          const type = asRecord(event)?.['type'];
-          if (type === 'input_audio_buffer.speech_stopped' || type === 'response.created') this.onAnswerPending();
-          if (type === 'error') { this.awaitingAnswer$$.set(false); this.userSpeaking$$.set(false); }
-          if (type === 'response.done' && asRecord(asRecord(event)?.['response'])?.['status'] === 'failed') this.awaitingAnswer$$.set(false);
+          if (asRecord(event)?.['type'] === 'input_audio_buffer.speech_started') {
+            this.onUserActivity();
+          }
         },
         onStatus: (status) => {
           this.voiceStatus$$.set(status);
@@ -448,8 +404,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
           this.recordAvatarDiagnostic(event);
         },
         onSpeakingChange: (speaking) => {
-          if (speaking) this.onAssistantSpeechStarted();
-          else this.onAssistantSpeechStopped();
+          this.realtime.setMicrophoneSuppressed(speaking);
         },
       });
       if (this.remoteOutputStream) {
@@ -465,6 +420,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   private async disconnectAvatar(): Promise<void> {
     await this.avatar.disconnect();
+    this.realtime.setMicrophoneSuppressed(false);
     this.isAvatarConnected$$.set(false);
     this.avatarStatus$$.set('Avatar disconnected');
     this.syncAudioPlaybackRoute();
@@ -508,11 +464,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       toolInput = await this.prepareConfirmedConsultationInput(sessionId, toolCall.name, toolCall.arguments);
     }
     if (domain && guidanceVersion !== this.guidanceVersion) throw new Error('The topic changed. Review the appointment again before confirming.');
-    const taskId = Symbol(toolCall.name);
-    const taskLabel = toolActivityLabel(toolCall.name) ?? 'Working on your request…';
-    this.pendingTasks.set(taskId, taskLabel);
-    this.activeTask$$.set(taskLabel);
-    this.onAnswerPending();
+    this.activeTask$$.set(toolActivityLabel(toolCall.name));
 
     try {
       const response = await firstValueFrom(
@@ -522,7 +474,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         }),
       );
 
-      if (this.session$$()?.sessionId === sessionId && (!domain || guidanceVersion === this.guidanceVersion)) this.handleToolOutput(toolCall.name, response.output);
+      if (!domain || guidanceVersion === this.guidanceVersion) this.handleToolOutput(toolCall.name, response.output);
       if (
         toolCall.name === 'bookInspection' ||
         toolCall.name === 'resendInspectionConfirmation'
@@ -531,13 +483,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       }
       return response.output;
     } finally {
-      this.pendingTasks.delete(taskId);
-      this.activeTask$$.set(Array.from(this.pendingTasks.values()).at(-1) ?? null);
-      if (this.session$$()?.sessionId === sessionId && this.session$$()?.aiProvider === 'tavus-full' && !this.pendingTasks.size && ['showPropertyPhoto', 'closePropertyView', 'closeStudentView'].includes(toolCall.name)) {
-        // Tavus presentation tools update context without generating another reply.
-        this.awaitingAnswer$$.set(false);
-        if (!this.assistantSpeaking) this.armInactivityPrompt();
-      }
+      this.activeTask$$.set(null);
     }
   }
 
@@ -646,18 +592,11 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     );
   }
 
-  private stopMicrophone(): void {
-    this.microphoneStream?.getTracks().forEach(track => track.stop());
-    this.microphoneStream = null;
-  }
-
   ngOnDestroy(): void {
-    this.destroyed = true;
-    this.stopMicrophone();
     this.clearErrorDismissTimer();
     this.clearInactivityTimers();
     const session = this.session$$();
-    if (session?.status === 'active') {
+    if (session?.status === 'active' && session.aiProvider === 'tavus-full') {
       void this.disconnectTavus();
       void firstValueFrom(this.runtime.closeSession(session.sessionId)).catch(
         () => undefined,
@@ -684,8 +623,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       message === 'Unknown connection error.' ? fallback : message,
     );
     this.state$$.set('error');
-    this.awaitingAnswer$$.set(false);
-    this.userSpeaking$$.set(false);
     this.clearErrorDismissTimer();
     this.errorDismissTimer = setTimeout(() => {
       this.error$$.set(null);
@@ -772,7 +709,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       this.consultationView$$.set(consultationView(output));
       return;
     }
-    if (['showStudentVisaDemoGuidance','searchStudentAgencyKnowledge','verifyStudentRules','compareStudentRules'].includes(toolName)) {
+    if (['searchStudentAgencyKnowledge','verifyStudentRules','compareStudentRules'].includes(toolName)) {
       this.clearPropertyExperience();
       this.studentView$$.set(studentGuidanceView(output));
       return;
@@ -942,7 +879,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     }
 
     await this.tavus.connect({
-      microphoneStream: this.microphoneStream ?? undefined,
       conversationId: response.session.providerSessionId || '',
       conversationUrl: url.toString(),
       meetingToken,
@@ -958,9 +894,9 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       },
       onEvent: (event) => this.recordRealtimeEvent({ type: event }),
       onUserUtterance: () => this.onUserActivity(),
-      onUserSpeechStopped: () => this.onAnswerPending(),
       onReplicaSpeechStarted: () => this.onAssistantSpeechStarted(),
       onReplicaSpeechStopped: () => this.onAssistantSpeechStopped(),
+      onReplicaUtterance: () => this.onAssistantTurnCompleted(),
       onToolCall: (toolCall) =>
         this.executeRealtimeTool(response.session.sessionId, {
           callId: toolCall.callId,
@@ -979,8 +915,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private onUserActivity(): void {
-    this.userSpeaking$$.set(true);
-    this.awaitingAnswer$$.set(false);
     if (this.bookingReview$$()) this.bookingReviewConfirmedByNewTurn = true;
     if (this.consultationView$$()?.review) this.consultationConfirmedByNewTurn = true;
     this.awaitingInactivityReply = false;
@@ -1112,15 +1046,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     );
   }
 
-  private onAnswerPending(): void {
-    this.userSpeaking$$.set(false);
-    this.awaitingAnswer$$.set(true);
-    this.clearInactivityTimers();
-  }
-
   private onAssistantSpeechStarted(): void {
-    this.awaitingAnswer$$.set(false);
-    this.userSpeaking$$.set(false);
     this.assistantSpeaking = true;
     if (this.inactivityCloseTimer !== null) {
       clearTimeout(this.inactivityCloseTimer);
@@ -1147,7 +1073,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   private armInactivityPrompt(): void {
     this.clearInactivityTimers();
-    if (this.state$$() !== 'active' || this.isWorking$$() || this.userSpeaking$$()) return;
+    if (this.state$$() !== 'active') return;
 
     this.inactivityPromptTimer = setTimeout(() => {
       this.inactivityPromptTimer = null;
@@ -1179,7 +1105,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private async closeInactiveSession(): Promise<void> {
-    if (!this.awaitingInactivityReply || this.assistantSpeaking || this.isWorking$$() || this.userSpeaking$$()) return;
+    if (!this.awaitingInactivityReply || this.assistantSpeaking) return;
     this.clearPropertyExperience();
     await this.finishSession();
   }

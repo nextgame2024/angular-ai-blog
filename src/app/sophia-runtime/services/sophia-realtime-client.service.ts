@@ -2,12 +2,10 @@ import { Injectable } from '@angular/core';
 
 export interface SophiaRealtimeConnectRequest {
   clientSecret: string;
-  microphoneStream?: MediaStream;
   onRemoteStream(stream: MediaStream): void;
   onAudioDelta?(audioData: Uint8Array): void;
   onAudioDone?(): void;
   onOutputAudioStarted?(): void;
-  onUserSpeechStarted?(): void;
   onOutputAudioStopped?(): void;
   onAssistantTextDone?(text: string): void;
   onEvent(event: unknown): void;
@@ -27,16 +25,22 @@ export class SophiaRealtimeClientService {
   private dataChannel: RTCDataChannel | null = null;
   private localStream: MediaStream | null = null;
   private handledToolCallIds = new Set<string>();
-  private turnVersion = 0;
-  private activeResponseId: string | null = null;
-  private interruptedResponses = new Set<string>();
+  private microphoneResumeTimer: number | null = null;
+  private microphoneSuppressed = false;
+  private assistantAudioPlaying = false;
 
   async connect(request: SophiaRealtimeConnectRequest): Promise<void> {
-    const startedAt = performance.now();
     await this.disconnect();
 
-    request.onStatus(request.microphoneStream ? 'Microphone ready' : 'Requesting microphone');
-    this.localStream = request.microphoneStream ?? await requestSophiaMicrophone();
+    request.onStatus('Requesting microphone');
+    this.localStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: false,
+        channelCount: 1,
+      },
+    });
 
     const peerConnection = new RTCPeerConnection();
     this.peerConnection = peerConnection;
@@ -56,10 +60,7 @@ export class SophiaRealtimeClientService {
 
     const dataChannel = peerConnection.createDataChannel('oai-events');
     this.dataChannel = dataChannel;
-    dataChannel.onopen = () => {
-      console.info(`[Sophia startup] Realtime connected in ${Math.round(performance.now() - startedAt)} ms`);
-      request.onStatus('Realtime connected');
-    };
+    dataChannel.onopen = () => request.onStatus('Realtime connected');
     dataChannel.onmessage = (message) => {
       void this.handleServerEvent(message.data, request);
     };
@@ -93,9 +94,9 @@ export class SophiaRealtimeClientService {
 
   async disconnect(): Promise<void> {
     this.handledToolCallIds.clear();
-    this.turnVersion++;
-    this.activeResponseId = null;
-    this.interruptedResponses.clear();
+    this.clearMicrophoneResumeTimer();
+    this.microphoneSuppressed = false;
+    this.assistantAudioPlaying = false;
 
     this.dataChannel?.close();
     this.dataChannel = null;
@@ -115,7 +116,7 @@ export class SophiaRealtimeClientService {
     if (!event) return;
 
     request.onEvent(event);
-    this.updateSpeechState(event, request);
+    this.updateMicrophoneState(event, request);
 
     const audioDelta = extractAudioDelta(event);
     if (audioDelta) {
@@ -126,7 +127,7 @@ export class SophiaRealtimeClientService {
       request.onAudioDone?.();
     }
 
-    const assistantText = this.interruptedResponses.has(String(event['response_id'])) ? null : extractAssistantTextDone(event);
+    const assistantText = extractAssistantTextDone(event);
     if (assistantText) {
       request.onAssistantTextDone?.(assistantText);
     }
@@ -136,11 +137,8 @@ export class SophiaRealtimeClientService {
     if (this.handledToolCallIds.has(toolCall.callId)) return;
     this.handledToolCallIds.add(toolCall.callId);
 
-    const channel = this.dataChannel;
-    const turnVersion = this.turnVersion;
     try {
       const output = await request.onToolCall(toolCall);
-      if (this.dataChannel !== channel) return;
       this.sendEvent({
         type: 'conversation.item.create',
         item: {
@@ -149,9 +147,8 @@ export class SophiaRealtimeClientService {
           output: JSON.stringify(output),
         },
       });
-      if (turnVersion === this.turnVersion) this.requestToolFollowUp(toolCall.name);
+      this.sendEvent({ type: 'response.create' });
     } catch (error) {
-      if (this.dataChannel !== channel) return;
       this.sendEvent({
         type: 'conversation.item.create',
         item: {
@@ -165,7 +162,7 @@ export class SophiaRealtimeClientService {
           }),
         },
       });
-      if (turnVersion === this.turnVersion) this.requestToolFollowUp(toolCall.name);
+      this.sendEvent({ type: 'response.create' });
     }
   }
 
@@ -174,31 +171,63 @@ export class SophiaRealtimeClientService {
     this.dataChannel.send(JSON.stringify(event));
   }
 
-  private requestToolFollowUp(toolName: string): void {
-    const instructions = toolFollowUpInstructions(toolName);
-    this.sendEvent({
-      type: 'response.create',
-      ...(instructions ? { response: { instructions } } : {}),
+  private updateMicrophoneState(
+    event: Record<string, unknown>,
+    request: SophiaRealtimeConnectRequest,
+  ): void {
+    const type = event['type'];
+    if (type === 'output_audio_buffer.started') {
+      this.assistantAudioPlaying = true;
+      this.clearMicrophoneResumeTimer();
+      this.setMicrophoneEnabled(false);
+      request.onOutputAudioStarted?.();
+      return;
+    }
+
+    if (type === 'output_audio_buffer.stopped') {
+      this.assistantAudioPlaying = false;
+      request.onOutputAudioStopped?.();
+      this.scheduleMicrophoneResume();
+      return;
+    }
+
+    if (
+      type === 'response.cancelled' ||
+      type === 'output_audio_buffer.cleared' ||
+      type === 'error'
+    ) {
+      this.assistantAudioPlaying = false;
+      request.onOutputAudioStopped?.();
+      this.scheduleMicrophoneResume();
+    }
+  }
+
+  private scheduleMicrophoneResume(): void {
+    this.clearMicrophoneResumeTimer();
+    this.microphoneResumeTimer = window.setTimeout(() => {
+      this.microphoneResumeTimer = null;
+      if (!this.microphoneSuppressed && !this.assistantAudioPlaying) {
+        this.setMicrophoneEnabled(true);
+      }
+    }, 500);
+  }
+
+  private clearMicrophoneResumeTimer(): void {
+    if (this.microphoneResumeTimer === null) return;
+    window.clearTimeout(this.microphoneResumeTimer);
+    this.microphoneResumeTimer = null;
+  }
+
+  private setMicrophoneEnabled(enabled: boolean): void {
+    this.localStream?.getAudioTracks().forEach((track) => {
+      track.enabled = enabled;
     });
   }
 
-  private updateSpeechState(event: Record<string, unknown>, request: SophiaRealtimeConnectRequest): void {
-    const type = event['type'];
-    if (type === 'response.created') {
-      const response = event['response'] as {id?: string} | undefined;
-      this.activeResponseId = response?.id ?? null;
-    }
-    if (type === 'input_audio_buffer.speech_started') {
-      if (this.activeResponseId) this.interruptedResponses.add(this.activeResponseId);
-      this.turnVersion++;
-      request.onUserSpeechStarted?.();
-    }
-    // Keep input audio enabled during playback: server VAD needs it for barge-in.
-    // Browser echo cancellation handles speaker feedback.
-    if (type === 'output_audio_buffer.started') request.onOutputAudioStarted?.();
-    if (['output_audio_buffer.stopped', 'output_audio_buffer.cleared', 'response.cancelled', 'error'].includes(String(type))) {
-      request.onOutputAudioStopped?.();
-    }
+  setMicrophoneSuppressed(suppressed: boolean): void {
+    this.microphoneSuppressed = suppressed;
+    this.clearMicrophoneResumeTimer();
+    this.setMicrophoneEnabled(!suppressed && !this.assistantAudioPlaying);
   }
 
   promptAssistant(instructions: string): void {
@@ -207,19 +236,6 @@ export class SophiaRealtimeClientService {
       response: { instructions },
     });
   }
-}
-
-export function toolFollowUpInstructions(toolName: string): string | null {
-  if (toolName === 'reviewStudentConsultation') {
-    return 'Briefly explain that the details are displayed, then ask exactly: Please check your name, email and appointment time. Are these details correct and may I book it? Do not call bookStudentConsultation until the customer answers in a new turn.';
-  }
-  if (toolName === 'reviewStudentConsultationEmail') {
-    return 'Briefly explain that the corrected email is displayed, then ask the customer to confirm it. Do not resend until the customer answers in a new turn.';
-  }
-  if (toolName === 'showStudentVisaDemoGuidance') {
-    return 'Give one concise spoken answer using the answer returned by the tool. The matching information is already displayed. Do not call another tool and do not repeat the answer.';
-  }
-  return null;
 }
 
 export function extractAudioDelta(
@@ -322,11 +338,4 @@ function parseToolArguments(value: unknown): Record<string, unknown> {
   } catch {
     return {};
   }
-}
-
-// Called from Start so browser permission and server provisioning can overlap.
-export function requestSophiaMicrophone(): Promise<MediaStream> {
-  return navigator.mediaDevices.getUserMedia({audio:{
-    echoCancellation:true,noiseSuppression:true,autoGainControl:false,channelCount:1,
-  }});
 }

@@ -293,8 +293,8 @@
         </aside>
 
         <div class="session-overlay" aria-label="Session controls">
-          <div class="runtime-status" role="status" aria-live="polite" [attr.aria-busy]="isWorking$$()" [class.working]="isWorking$$()">
-            <span class="status-indicator" [class.live]="isVoiceConnected$$() && !isWorking$$()" [class.spinner]="isWorking$$()" aria-hidden="true"></span>
+          <div class="runtime-status" aria-live="polite">
+            <span [class.live]="isVoiceConnected$$()"></span>
             {{ runtimeStatus$$() }}
           </div>
 
