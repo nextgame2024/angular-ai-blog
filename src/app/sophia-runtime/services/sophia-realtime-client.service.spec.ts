@@ -2,6 +2,7 @@ import {
   extractAudioDelta,
   extractAssistantTextDone,
   isAudioDoneEvent,
+  toolFollowUpInstructions,
 } from './sophia-realtime-client.service';
 
 describe('Sophia Realtime audio events', () => {
@@ -49,6 +50,16 @@ describe('Sophia Realtime audio events', () => {
         text: '  Text for HeyGen FULL. ',
       }),
     ).toBe('Text for HeyGen FULL.');
+  });
+});
+
+describe('Realtime tool follow-up instructions',()=>{
+  it('requires a separate customer confirmation after consultation review',()=>{
+    expect(toolFollowUpInstructions('reviewStudentConsultation')).toContain('Are these details correct and may I book it?');
+    expect(toolFollowUpInstructions('reviewStudentConsultation')).toContain('new turn');
+  });
+  it('speaks the local student answer once without another lookup',()=>{
+    expect(toolFollowUpInstructions('showStudentVisaDemoGuidance')).toContain('Do not call another tool');
   });
 });
 

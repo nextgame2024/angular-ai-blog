@@ -772,7 +772,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       this.consultationView$$.set(consultationView(output));
       return;
     }
-    if (['searchStudentAgencyKnowledge','verifyStudentRules','compareStudentRules'].includes(toolName)) {
+    if (['showStudentVisaDemoGuidance','searchStudentAgencyKnowledge','verifyStudentRules','compareStudentRules'].includes(toolName)) {
       this.clearPropertyExperience();
       this.studentView$$.set(studentGuidanceView(output));
       return;

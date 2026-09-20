@@ -149,7 +149,7 @@ export class SophiaRealtimeClientService {
           output: JSON.stringify(output),
         },
       });
-      if (turnVersion === this.turnVersion) this.sendEvent({ type: 'response.create' });
+      if (turnVersion === this.turnVersion) this.requestToolFollowUp(toolCall.name);
     } catch (error) {
       if (this.dataChannel !== channel) return;
       this.sendEvent({
@@ -165,13 +165,21 @@ export class SophiaRealtimeClientService {
           }),
         },
       });
-      if (turnVersion === this.turnVersion) this.sendEvent({ type: 'response.create' });
+      if (turnVersion === this.turnVersion) this.requestToolFollowUp(toolCall.name);
     }
   }
 
   private sendEvent(event: Record<string, unknown>): void {
     if (this.dataChannel?.readyState !== 'open') return;
     this.dataChannel.send(JSON.stringify(event));
+  }
+
+  private requestToolFollowUp(toolName: string): void {
+    const instructions = toolFollowUpInstructions(toolName);
+    this.sendEvent({
+      type: 'response.create',
+      ...(instructions ? { response: { instructions } } : {}),
+    });
   }
 
   private updateSpeechState(event: Record<string, unknown>, request: SophiaRealtimeConnectRequest): void {
@@ -199,6 +207,19 @@ export class SophiaRealtimeClientService {
       response: { instructions },
     });
   }
+}
+
+export function toolFollowUpInstructions(toolName: string): string | null {
+  if (toolName === 'reviewStudentConsultation') {
+    return 'Briefly explain that the details are displayed, then ask exactly: Please check your name, email and appointment time. Are these details correct and may I book it? Do not call bookStudentConsultation until the customer answers in a new turn.';
+  }
+  if (toolName === 'reviewStudentConsultationEmail') {
+    return 'Briefly explain that the corrected email is displayed, then ask the customer to confirm it. Do not resend until the customer answers in a new turn.';
+  }
+  if (toolName === 'showStudentVisaDemoGuidance') {
+    return 'Give one concise spoken answer using the answer returned by the tool. The matching information is already displayed. Do not call another tool and do not repeat the answer.';
+  }
+  return null;
 }
 
 export function extractAudioDelta(

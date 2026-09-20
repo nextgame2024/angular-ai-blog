@@ -45,7 +45,7 @@ export function studentGuidanceView(output: unknown): StudentGuidanceView {
 }
 export function guidanceDomain(tool: string): 'student' | 'property' | null {
   if(CONSULTATION_TOOLS.includes(tool))return 'student';
-  if(['searchStudentAgencyKnowledge','verifyStudentRules','compareStudentRules','closeStudentView'].includes(tool))return 'student';
+  if(['showStudentVisaDemoGuidance','searchStudentAgencyKnowledge','verifyStudentRules','compareStudentRules','closeStudentView'].includes(tool))return 'student';
   if(['searchProperties','getPropertyDetails','showPropertyPhoto','closePropertyView','getInspectionSlots','reviewInspectionBooking','reviewInspectionEmailResend','bookInspection','resendInspectionConfirmation','searchAgencyKnowledge'].includes(tool))return 'property';
   return null;
 }

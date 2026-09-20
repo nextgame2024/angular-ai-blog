@@ -41,5 +41,6 @@ describe('Student guidance cards',()=>{
     expect(guidanceDomain('getInspectionSlots')).toBe('property');
     expect(guidanceDomain('compareStudentRules')).toBe('student');
     expect(guidanceDomain('searchStudentAgencyKnowledge')).toBe('student');
+    expect(guidanceDomain('showStudentVisaDemoGuidance')).toBe('student');
   });
 });
