@@ -67,6 +67,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private readonly failedPhotoUrls = new Set<string>();
   readonly consultationView$$ = signal<ConsultationView | null>(null);
   private consultationConfirmedByNewTurn = false;
+  private consultationReviewWasPresented = false;
   private consultationManuallyEdited = false;
   private guidanceVersion = 0;
   private activeGuidanceDomain: 'student' | 'property' | null = null;
@@ -827,6 +828,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private clearPropertyExperience(): void {
     this.consultationView$$.set(null);
     this.consultationConfirmedByNewTurn = false;
+    this.consultationReviewWasPresented = false;
     this.consultationManuallyEdited = false;
     this.studentView$$.set(null);
     this.propertyResults$$.set([]);
@@ -916,7 +918,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   private onUserActivity(): void {
     if (this.bookingReview$$()) this.bookingReviewConfirmedByNewTurn = true;
-    if (this.consultationView$$()?.review) this.consultationConfirmedByNewTurn = true;
+    if (this.consultationView$$()?.review && this.consultationReviewWasPresented) {
+      this.consultationConfirmedByNewTurn = true;
+      this.consultationReviewWasPresented = false;
+    }
     this.awaitingInactivityReply = false;
     this.clearInactivityTimers();
   }
@@ -926,6 +931,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     if (!view?.review) return;
     this.consultationView$$.set({...view,review:{...view.review,[event.field]:event.value}});
     this.consultationConfirmedByNewTurn=false;
+    this.consultationReviewWasPresented=false;
     this.consultationManuallyEdited=true;
   }
 
@@ -957,6 +963,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     // Keep the runtime review synchronized with authoritative on-screen edits.
     await firstValueFrom(this.runtime.executeTool(sessionId,{toolName:review.mode==='new' ? 'reviewStudentConsultation' : 'reviewStudentConsultationEmail',input}));
     this.consultationConfirmedByNewTurn=false;
+    this.consultationReviewWasPresented=false;
     this.consultationManuallyEdited=false;
     return {...input,confirmed:true};
   }
@@ -1060,6 +1067,9 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   private onAssistantSpeechStopped(): void {
     this.assistantSpeaking = false;
+    if (this.consultationView$$()?.review) {
+      this.consultationReviewWasPresented = true;
+    }
     if (this.awaitingInactivityReply) {
       this.scheduleInactivityClose();
       return;
