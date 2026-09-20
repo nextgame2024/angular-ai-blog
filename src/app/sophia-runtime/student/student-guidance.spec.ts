@@ -26,6 +26,17 @@ describe('Student guidance cards',()=>{
     fixture.nativeElement.querySelector('button[aria-label="Close student information"]').click();
     expect(close).toHaveBeenCalled();
   });
+  it('shows web research as plain text while keeping official source links separate',()=>{
+    const view=studentGuidanceView({studentView:{cards:[{
+      title:'**Visa documents**',
+      summary:'Use the **official checklist** at [Home Affairs](https://immi.homeaffairs.gov.au/example?utm_source=openai).',
+      evidenceStatus:'live',
+      sources:[{title:'Home Affairs',url:'https://immi.homeaffairs.gov.au/example'}],
+    }]}});
+    expect(view.cards[0].title).toBe('Visa documents');
+    expect(view.cards[0].summary).toBe('Use the official checklist at Home Affairs.');
+    expect(view.cards[0].sources[0].url).toBe('https://immi.homeaffairs.gov.au/example');
+  });
   it('distinguishes property and student tools',()=>{
     expect(guidanceDomain('getInspectionSlots')).toBe('property');
     expect(guidanceDomain('compareStudentRules')).toBe('student');
