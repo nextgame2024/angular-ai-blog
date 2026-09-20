@@ -965,3 +965,15 @@
 
 .student-experience { width: min(560px, calc(100% - 48px)); }
 @media(max-width:600px) { .student-experience { width:calc(100% - 24px); right:12px; } }
+
+/* A visible wait state, shared by all providers. */
+.runtime-status.working { border-color: #53e4ed; box-shadow: 0 0 20px rgba(83,228,237,.25); }
+.runtime-status > .status-indicator.spinner {
+  width: 20px; height: 20px; background: transparent;
+  border: 3px solid rgba(83,228,237,.25); border-top-color: #53e4ed;
+  animation: sophia-wait-spin .8s linear infinite;
+}
+@keyframes sophia-wait-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .runtime-status > .status-indicator.spinner { animation: none; }
+}

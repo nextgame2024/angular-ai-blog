@@ -14,6 +14,7 @@ export interface SophiaTavusConnectRequest {
   onStatus(status: string): void;
   onEvent(event: string): void;
   onUserUtterance?(): void;
+  onUserSpeechStopped?(): void;
   onReplicaSpeechStarted?(): void;
   onReplicaSpeechStopped?(): void;
   onReplicaUtterance?(): void;
@@ -38,6 +39,7 @@ export class SophiaTavusClientService {
   private handledToolCallIds = new Set<string>();
   private connected = false;
   private conversationId: string | null = null;
+  private onUserSpeechStopped: (() => void) | null = null;
   private onUserUtterance: (() => void) | null = null;
   private onReplicaSpeechStarted: (() => void) | null = null;
   private onReplicaSpeechStopped: (() => void) | null = null;
@@ -55,6 +57,7 @@ export class SophiaTavusClientService {
     this.connected = false;
     this.conversationId = request.conversationId;
     this.onUserUtterance = request.onUserUtterance || null;
+    this.onUserSpeechStopped = request.onUserSpeechStopped || null;
     this.onReplicaSpeechStarted = request.onReplicaSpeechStarted || null;
     this.onReplicaSpeechStopped = request.onReplicaSpeechStopped || null;
     this.onReplicaUtterance = request.onReplicaUtterance || null;
@@ -113,6 +116,7 @@ export class SophiaTavusClientService {
     this.connected = false;
     this.conversationId = null;
     this.onUserUtterance = null;
+    this.onUserSpeechStopped = null;
     this.onReplicaSpeechStarted = null;
     this.onReplicaSpeechStopped = null;
     this.onReplicaUtterance = null;
@@ -171,6 +175,7 @@ export class SophiaTavusClientService {
 
   private async handleAppMessage(data: unknown): Promise<void> {
     const message = normalizeAppMessage(data);
+    if (message?.['conversation_id'] && message['conversation_id'] !== this.conversationId) return;
     const eventType = message?.['event_type'];
     this.emitEvent(`tavus.${extractAppMessageType(message || data)}`);
     const role = asRecord(message?.['properties'])?.['role'];
@@ -195,9 +200,10 @@ export class SophiaTavusClientService {
       this.onReplicaSpeechStopped?.();
     }
     if (message && eventType === 'conversation.utterance') {
-      if (role === 'user') this.onUserUtterance?.();
+      if (role === 'user') this.onUserSpeechStopped?.();
       if (role === 'pal' || role === 'replica') this.onReplicaUtterance?.();
     }
+    if ((eventType === 'conversation.stopped_speaking' && role === 'user') || eventType === 'user.stopped_speaking') this.onUserSpeechStopped?.();
     if (!message || eventType !== 'conversation.tool_call' || !this.call || !this.onToolCall) return;
 
     const properties = asRecord(message['properties']);
@@ -208,7 +214,8 @@ export class SophiaTavusClientService {
       this.emitEvent('tavus.tool_call.invalid');
       return;
     }
-    if (this.handledToolCallIds.has(callId)) return;
+    if (conversationId !== this.conversationId || this.handledToolCallIds.has(callId)) return;
+    const activeCall = this.call;
     this.handledToolCallIds.add(callId);
 
     try {
@@ -218,9 +225,11 @@ export class SophiaTavusClientService {
         arguments: parseToolArguments(properties?.['arguments']),
         conversationId,
       });
+      if (this.call !== activeCall || this.conversationId !== conversationId) return;
       this.sendToolResult(conversationId, callId, output, 'success');
       this.emitEvent(`tavus.tool_result.${name}.success`);
     } catch (error) {
+      if (this.call !== activeCall || this.conversationId !== conversationId) return;
       this.sendToolResult(
         conversationId,
         callId,

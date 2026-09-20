@@ -144,6 +144,12 @@ export class SophiaLiveAvatarClientService {
     }
   }
 
+  interrupt(): void {
+    this.clearSpeakingTimeout();
+    this.clearBuffer();
+    this.session?.interrupt();
+  }
+
   clearBuffer(): void {
     this.audioChunks = [];
     this.audioByteLength = 0;

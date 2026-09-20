@@ -24,7 +24,7 @@ describe('Sophia startup',()=>{
   spyOn(navigator.mediaDevices,'getUserMedia').and.returnValue(new Promise((resolve,reject)=>{resolveMic=resolve;rejectMic=reject;}));
   session=new Subject();runtime={createSession:jasmine.createSpy('create').and.returnValue(session),closeSession:jasmine.createSpy('close').and.returnValue(of({}))};
   voice={connect:jasmine.createSpy('connect').and.resolveTo(),disconnect:jasmine.createSpy('disconnect').and.resolveTo(),setMicrophoneSuppressed:()=>{}};
-  avatar={connect:jasmine.createSpy('avatar connect').and.resolveTo(),disconnect:async()=>{}};
+  avatar={connect:jasmine.createSpy('avatar connect').and.resolveTo(),interrupt:jasmine.createSpy('interrupt'),disconnect:async()=>{}};
   tavus={connect:jasmine.createSpy('tavus connect').and.resolveTo(),disconnect:async()=>{}};
   TestBed.configureTestingModule({providers:[
    {provide:SophiaRuntimeConfigService,useValue:{}},{provide:SophiaRuntimeSessionService,useValue:runtime},
@@ -75,5 +75,18 @@ describe('Sophia startup',()=>{
   const starting=component.startSession();resolveMic(stream);
   session.next({...response,avatar:{provider:'liveavatar',sessionToken:'test'}});session.complete();await starting;
   expect(voice.connect).toHaveBeenCalledWith(jasmine.objectContaining({microphoneStream:stream}));expect(avatar.connect).toHaveBeenCalled();expect(component.state$$()).toBe('active');
+ });
+ it('shows waiting feedback without an inactivity prompt, then stops the avatar on interruption',async()=>{
+  const starting=component.startSession();resolveMic(stream);session.next(response);session.complete();await starting;
+  const callbacks=voice.connect.calls.mostRecent().args[0];
+  callbacks.onEvent({type:'input_audio_buffer.speech_stopped'});
+  expect(component.isWorking$$()).toBeTrue();
+  expect(component.runtimeStatus$$()).toBe('Preparing your answer…');
+  (component as any).armInactivityPrompt();
+  expect((component as any).inactivityPromptTimer).toBeNull();
+  callbacks.onOutputAudioStarted();expect(component.isWorking$$()).toBeFalse();
+  callbacks.onUserSpeechStarted();
+  expect(avatar.interrupt).toHaveBeenCalledTimes(1);
+  expect(component.runtimeStatus$$()).toBe('Listening…');
  });
 });

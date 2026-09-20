@@ -91,6 +91,11 @@ export class SophiaAvatarClientService {
     }
   }
 
+  interrupt(): void {
+    if (this.activeProvider === 'liveavatar') this.liveAvatar.interrupt();
+    else this.simli.clearBuffer();
+  }
+
   clearBuffer(): void {
     this.simli.clearBuffer();
     this.liveAvatar.clearBuffer();

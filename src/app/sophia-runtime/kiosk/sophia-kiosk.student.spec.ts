@@ -28,6 +28,7 @@ describe('Kiosk student/property separation',()=>{
     expect(component.studentView$$()).toBeNull();
   });
   it('ignores a late property response after switching to student guidance',async()=>{
+    component.sessionResponse$$.set({session:{sessionId:'session',aiProvider:'openai-realtime'},ai:{},avatar:{provider:'none'}} as any);
     const property=new Subject<any>();const student=new Subject<any>();
     executeTool.and.returnValues(property,student);
     const p=(component as any).executeRealtimeTool('session',{name:'searchProperties',arguments:{}});

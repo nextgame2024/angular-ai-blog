@@ -97,6 +97,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   readonly isAvatarUnavailable$$ = signal(false);
   readonly realtimeEvents$$ = signal<string[]>([]);
   readonly avatarDiagnostics$$ = signal<string[]>([]);
+  readonly awaitingAnswer$$ = signal(false);
+  readonly userSpeaking$$ = signal(false);
+  readonly isWorking$$ = computed(() => this.state$$() === 'starting' || !!this.activeTask$$() || this.awaitingAnswer$$());
+  private readonly pendingTasks = new Map<symbol, string>();
   readonly activeTask$$ = signal<string | null>(null);
   readonly standbyVideoFailed$$ = signal(false);
   readonly propertyResults$$ = signal<SophiaProperty[]>([]);
@@ -164,6 +168,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     if (this.activeTask$$()) return this.activeTask$$();
     if (state === 'starting') return 'Starting Sophia';
     if (state === 'closing') return 'Finishing session';
+    if (this.userSpeaking$$()) return 'Listening…';
+    if (this.awaitingAnswer$$()) return 'Preparing your answer…';
     if (state === 'error') return 'Connection needs attention';
     if (this.isVoiceConnected$$() && this.isAvatarConnected$$()) {
       return 'Sophia is ready';
@@ -203,6 +209,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.avatarDiagnostics$$.set([]);
     this.clearPropertyExperience();
     this.state$$.set('starting');
+    this.pendingTasks.clear();
+    this.activeTask$$.set(null);
+    this.awaitingAnswer$$.set(false);
+    this.userSpeaking$$.set(false);
 
     let startupFailed = false;
     let createdResponse: SophiaRuntimeSessionResponse | null = null;
@@ -324,6 +334,10 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.assistantSpeaking = false;
     this.error$$.set(null);
     this.state$$.set('closing');
+    this.pendingTasks.clear();
+    this.activeTask$$.set(null);
+    this.awaitingAnswer$$.set(false);
+    this.userSpeaking$$.set(false);
     this.stopMicrophone();
 
     if (session.aiProvider === 'tavus-full') {
@@ -364,13 +378,19 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         onAudioDelta: (audio) => this.avatar.appendOpenAiAudio(audio),
         onAudioDone: () => this.avatar.completeOpenAiAudio(),
         onAssistantTextDone: (text) => this.avatar.speakText(text),
+        onUserSpeechStarted: () => {
+          this.avatar.interrupt();
+          this.assistantSpeaking = false;
+          this.onUserActivity();
+        },
         onOutputAudioStarted: () => this.onAssistantSpeechStarted(),
         onOutputAudioStopped: () => this.onAssistantSpeechStopped(),
         onEvent: (event) => {
           this.recordRealtimeEvent(event);
-          if (asRecord(event)?.['type'] === 'input_audio_buffer.speech_started') {
-            this.onUserActivity();
-          }
+          const type = asRecord(event)?.['type'];
+          if (type === 'input_audio_buffer.speech_stopped' || type === 'response.created') this.onAnswerPending();
+          if (type === 'error') { this.awaitingAnswer$$.set(false); this.userSpeaking$$.set(false); }
+          if (type === 'response.done' && asRecord(asRecord(event)?.['response'])?.['status'] === 'failed') this.awaitingAnswer$$.set(false);
         },
         onStatus: (status) => {
           this.voiceStatus$$.set(status);
@@ -428,7 +448,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
           this.recordAvatarDiagnostic(event);
         },
         onSpeakingChange: (speaking) => {
-          this.realtime.setMicrophoneSuppressed(speaking);
+          if (speaking) this.onAssistantSpeechStarted();
+          else this.onAssistantSpeechStopped();
         },
       });
       if (this.remoteOutputStream) {
@@ -444,7 +465,6 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   private async disconnectAvatar(): Promise<void> {
     await this.avatar.disconnect();
-    this.realtime.setMicrophoneSuppressed(false);
     this.isAvatarConnected$$.set(false);
     this.avatarStatus$$.set('Avatar disconnected');
     this.syncAudioPlaybackRoute();
@@ -488,7 +508,11 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       toolInput = await this.prepareConfirmedConsultationInput(sessionId, toolCall.name, toolCall.arguments);
     }
     if (domain && guidanceVersion !== this.guidanceVersion) throw new Error('The topic changed. Review the appointment again before confirming.');
-    this.activeTask$$.set(toolActivityLabel(toolCall.name));
+    const taskId = Symbol(toolCall.name);
+    const taskLabel = toolActivityLabel(toolCall.name) ?? 'Working on your request…';
+    this.pendingTasks.set(taskId, taskLabel);
+    this.activeTask$$.set(taskLabel);
+    this.onAnswerPending();
 
     try {
       const response = await firstValueFrom(
@@ -498,7 +522,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         }),
       );
 
-      if (!domain || guidanceVersion === this.guidanceVersion) this.handleToolOutput(toolCall.name, response.output);
+      if (this.session$$()?.sessionId === sessionId && (!domain || guidanceVersion === this.guidanceVersion)) this.handleToolOutput(toolCall.name, response.output);
       if (
         toolCall.name === 'bookInspection' ||
         toolCall.name === 'resendInspectionConfirmation'
@@ -507,7 +531,13 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       }
       return response.output;
     } finally {
-      this.activeTask$$.set(null);
+      this.pendingTasks.delete(taskId);
+      this.activeTask$$.set(Array.from(this.pendingTasks.values()).at(-1) ?? null);
+      if (this.session$$()?.sessionId === sessionId && this.session$$()?.aiProvider === 'tavus-full' && !this.pendingTasks.size && ['showPropertyPhoto', 'closePropertyView', 'closeStudentView'].includes(toolCall.name)) {
+        // Tavus presentation tools update context without generating another reply.
+        this.awaitingAnswer$$.set(false);
+        if (!this.assistantSpeaking) this.armInactivityPrompt();
+      }
     }
   }
 
@@ -654,6 +684,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       message === 'Unknown connection error.' ? fallback : message,
     );
     this.state$$.set('error');
+    this.awaitingAnswer$$.set(false);
+    this.userSpeaking$$.set(false);
     this.clearErrorDismissTimer();
     this.errorDismissTimer = setTimeout(() => {
       this.error$$.set(null);
@@ -926,9 +958,9 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
       },
       onEvent: (event) => this.recordRealtimeEvent({ type: event }),
       onUserUtterance: () => this.onUserActivity(),
+      onUserSpeechStopped: () => this.onAnswerPending(),
       onReplicaSpeechStarted: () => this.onAssistantSpeechStarted(),
       onReplicaSpeechStopped: () => this.onAssistantSpeechStopped(),
-      onReplicaUtterance: () => this.onAssistantTurnCompleted(),
       onToolCall: (toolCall) =>
         this.executeRealtimeTool(response.session.sessionId, {
           callId: toolCall.callId,
@@ -947,6 +979,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private onUserActivity(): void {
+    this.userSpeaking$$.set(true);
+    this.awaitingAnswer$$.set(false);
     if (this.bookingReview$$()) this.bookingReviewConfirmedByNewTurn = true;
     if (this.consultationView$$()?.review) this.consultationConfirmedByNewTurn = true;
     this.awaitingInactivityReply = false;
@@ -1078,7 +1112,15 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     );
   }
 
+  private onAnswerPending(): void {
+    this.userSpeaking$$.set(false);
+    this.awaitingAnswer$$.set(true);
+    this.clearInactivityTimers();
+  }
+
   private onAssistantSpeechStarted(): void {
+    this.awaitingAnswer$$.set(false);
+    this.userSpeaking$$.set(false);
     this.assistantSpeaking = true;
     if (this.inactivityCloseTimer !== null) {
       clearTimeout(this.inactivityCloseTimer);
@@ -1105,7 +1147,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
 
   private armInactivityPrompt(): void {
     this.clearInactivityTimers();
-    if (this.state$$() !== 'active') return;
+    if (this.state$$() !== 'active' || this.isWorking$$() || this.userSpeaking$$()) return;
 
     this.inactivityPromptTimer = setTimeout(() => {
       this.inactivityPromptTimer = null;
@@ -1137,7 +1179,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   }
 
   private async closeInactiveSession(): Promise<void> {
-    if (!this.awaitingInactivityReply || this.assistantSpeaking) return;
+    if (!this.awaitingInactivityReply || this.assistantSpeaking || this.isWorking$$() || this.userSpeaking$$()) return;
     this.clearPropertyExperience();
     await this.finishSession();
   }

@@ -7,6 +7,7 @@ export interface SophiaRealtimeConnectRequest {
   onAudioDelta?(audioData: Uint8Array): void;
   onAudioDone?(): void;
   onOutputAudioStarted?(): void;
+  onUserSpeechStarted?(): void;
   onOutputAudioStopped?(): void;
   onAssistantTextDone?(text: string): void;
   onEvent(event: unknown): void;
@@ -26,9 +27,9 @@ export class SophiaRealtimeClientService {
   private dataChannel: RTCDataChannel | null = null;
   private localStream: MediaStream | null = null;
   private handledToolCallIds = new Set<string>();
-  private microphoneResumeTimer: number | null = null;
-  private microphoneSuppressed = false;
-  private assistantAudioPlaying = false;
+  private turnVersion = 0;
+  private activeResponseId: string | null = null;
+  private interruptedResponses = new Set<string>();
 
   async connect(request: SophiaRealtimeConnectRequest): Promise<void> {
     const startedAt = performance.now();
@@ -92,9 +93,9 @@ export class SophiaRealtimeClientService {
 
   async disconnect(): Promise<void> {
     this.handledToolCallIds.clear();
-    this.clearMicrophoneResumeTimer();
-    this.microphoneSuppressed = false;
-    this.assistantAudioPlaying = false;
+    this.turnVersion++;
+    this.activeResponseId = null;
+    this.interruptedResponses.clear();
 
     this.dataChannel?.close();
     this.dataChannel = null;
@@ -114,7 +115,7 @@ export class SophiaRealtimeClientService {
     if (!event) return;
 
     request.onEvent(event);
-    this.updateMicrophoneState(event, request);
+    this.updateSpeechState(event, request);
 
     const audioDelta = extractAudioDelta(event);
     if (audioDelta) {
@@ -125,7 +126,7 @@ export class SophiaRealtimeClientService {
       request.onAudioDone?.();
     }
 
-    const assistantText = extractAssistantTextDone(event);
+    const assistantText = this.interruptedResponses.has(String(event['response_id'])) ? null : extractAssistantTextDone(event);
     if (assistantText) {
       request.onAssistantTextDone?.(assistantText);
     }
@@ -135,8 +136,11 @@ export class SophiaRealtimeClientService {
     if (this.handledToolCallIds.has(toolCall.callId)) return;
     this.handledToolCallIds.add(toolCall.callId);
 
+    const channel = this.dataChannel;
+    const turnVersion = this.turnVersion;
     try {
       const output = await request.onToolCall(toolCall);
+      if (this.dataChannel !== channel) return;
       this.sendEvent({
         type: 'conversation.item.create',
         item: {
@@ -145,8 +149,9 @@ export class SophiaRealtimeClientService {
           output: JSON.stringify(output),
         },
       });
-      this.sendEvent({ type: 'response.create' });
+      if (turnVersion === this.turnVersion) this.sendEvent({ type: 'response.create' });
     } catch (error) {
+      if (this.dataChannel !== channel) return;
       this.sendEvent({
         type: 'conversation.item.create',
         item: {
@@ -160,7 +165,7 @@ export class SophiaRealtimeClientService {
           }),
         },
       });
-      this.sendEvent({ type: 'response.create' });
+      if (turnVersion === this.turnVersion) this.sendEvent({ type: 'response.create' });
     }
   }
 
@@ -169,63 +174,23 @@ export class SophiaRealtimeClientService {
     this.dataChannel.send(JSON.stringify(event));
   }
 
-  private updateMicrophoneState(
-    event: Record<string, unknown>,
-    request: SophiaRealtimeConnectRequest,
-  ): void {
+  private updateSpeechState(event: Record<string, unknown>, request: SophiaRealtimeConnectRequest): void {
     const type = event['type'];
-    if (type === 'output_audio_buffer.started') {
-      this.assistantAudioPlaying = true;
-      this.clearMicrophoneResumeTimer();
-      this.setMicrophoneEnabled(false);
-      request.onOutputAudioStarted?.();
-      return;
+    if (type === 'response.created') {
+      const response = event['response'] as {id?: string} | undefined;
+      this.activeResponseId = response?.id ?? null;
     }
-
-    if (type === 'output_audio_buffer.stopped') {
-      this.assistantAudioPlaying = false;
+    if (type === 'input_audio_buffer.speech_started') {
+      if (this.activeResponseId) this.interruptedResponses.add(this.activeResponseId);
+      this.turnVersion++;
+      request.onUserSpeechStarted?.();
+    }
+    // Keep input audio enabled during playback: server VAD needs it for barge-in.
+    // Browser echo cancellation handles speaker feedback.
+    if (type === 'output_audio_buffer.started') request.onOutputAudioStarted?.();
+    if (['output_audio_buffer.stopped', 'output_audio_buffer.cleared', 'response.cancelled', 'error'].includes(String(type))) {
       request.onOutputAudioStopped?.();
-      this.scheduleMicrophoneResume();
-      return;
     }
-
-    if (
-      type === 'response.cancelled' ||
-      type === 'output_audio_buffer.cleared' ||
-      type === 'error'
-    ) {
-      this.assistantAudioPlaying = false;
-      request.onOutputAudioStopped?.();
-      this.scheduleMicrophoneResume();
-    }
-  }
-
-  private scheduleMicrophoneResume(): void {
-    this.clearMicrophoneResumeTimer();
-    this.microphoneResumeTimer = window.setTimeout(() => {
-      this.microphoneResumeTimer = null;
-      if (!this.microphoneSuppressed && !this.assistantAudioPlaying) {
-        this.setMicrophoneEnabled(true);
-      }
-    }, 500);
-  }
-
-  private clearMicrophoneResumeTimer(): void {
-    if (this.microphoneResumeTimer === null) return;
-    window.clearTimeout(this.microphoneResumeTimer);
-    this.microphoneResumeTimer = null;
-  }
-
-  private setMicrophoneEnabled(enabled: boolean): void {
-    this.localStream?.getAudioTracks().forEach((track) => {
-      track.enabled = enabled;
-    });
-  }
-
-  setMicrophoneSuppressed(suppressed: boolean): void {
-    this.microphoneSuppressed = suppressed;
-    this.clearMicrophoneResumeTimer();
-    this.setMicrophoneEnabled(!suppressed && !this.assistantAudioPlaying);
   }
 
   promptAssistant(instructions: string): void {
