@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 
 export interface SophiaRealtimeConnectRequest {
   clientSecret: string;
+  microphoneStream?: MediaStream;
   onRemoteStream(stream: MediaStream): void;
   onAudioDelta?(audioData: Uint8Array): void;
   onAudioDone?(): void;
@@ -30,17 +31,11 @@ export class SophiaRealtimeClientService {
   private assistantAudioPlaying = false;
 
   async connect(request: SophiaRealtimeConnectRequest): Promise<void> {
+    const startedAt = performance.now();
     await this.disconnect();
 
-    request.onStatus('Requesting microphone');
-    this.localStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: false,
-        channelCount: 1,
-      },
-    });
+    request.onStatus(request.microphoneStream ? 'Microphone ready' : 'Requesting microphone');
+    this.localStream = request.microphoneStream ?? await requestSophiaMicrophone();
 
     const peerConnection = new RTCPeerConnection();
     this.peerConnection = peerConnection;
@@ -60,7 +55,10 @@ export class SophiaRealtimeClientService {
 
     const dataChannel = peerConnection.createDataChannel('oai-events');
     this.dataChannel = dataChannel;
-    dataChannel.onopen = () => request.onStatus('Realtime connected');
+    dataChannel.onopen = () => {
+      console.info(`[Sophia startup] Realtime connected in ${Math.round(performance.now() - startedAt)} ms`);
+      request.onStatus('Realtime connected');
+    };
     dataChannel.onmessage = (message) => {
       void this.handleServerEvent(message.data, request);
     };
@@ -338,4 +336,11 @@ function parseToolArguments(value: unknown): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+// Called from Start so browser permission and server provisioning can overlap.
+export function requestSophiaMicrophone(): Promise<MediaStream> {
+  return navigator.mediaDevices.getUserMedia({audio:{
+    echoCancellation:true,noiseSuppression:true,autoGainControl:false,channelCount:1,
+  }});
 }

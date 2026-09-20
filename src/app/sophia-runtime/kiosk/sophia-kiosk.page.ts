@@ -18,6 +18,7 @@ import { firstValueFrom } from 'rxjs';
 
 import {
   SophiaRealtimeClientService,
+  requestSophiaMicrophone,
   type SophiaRealtimeToolCall,
 } from '../services/sophia-realtime-client.service';
 import {
@@ -56,6 +57,8 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
   private readonly realtime = inject(SophiaRealtimeClientService);
   private readonly avatar = inject(SophiaAvatarClientService);
   private readonly tavus = inject(SophiaTavusClientService);
+  private destroyed = false;
+  private microphoneStream: MediaStream | null = null;
   private remoteOutputStream: MediaStream | null = null;
   private errorDismissTimer: ReturnType<typeof setTimeout> | null = null;
   private inactivityPromptTimer: ReturnType<typeof setTimeout> | null = null;
@@ -201,9 +204,21 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.clearPropertyExperience();
     this.state$$.set('starting');
 
+    let startupFailed = false;
+    let createdResponse: SophiaRuntimeSessionResponse | null = null;
     try {
       const experience = experienceConfiguration(this.experience$$());
-      const response = await firstValueFrom(
+      this.voiceStatus$$.set('Requesting microphone');
+      const microphoneReady = requestSophiaMicrophone().then(stream => {
+        if (startupFailed || this.destroyed) {
+          stream.getTracks().forEach(track => track.stop());
+          throw new Error('Startup cancelled');
+        }
+        this.microphoneStream = stream;
+        this.logStartupTiming('microphone ready', startupStartedAt);
+        return stream;
+      });
+      const sessionReady = firstValueFrom(
         this.runtime.createSession({
           aiProvider: experience.aiProvider,
           deviceId: '22222222-2222-4222-8222-222222222222',
@@ -215,21 +230,21 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
               : experience.avatarProvider,
           avatarMode: experience.avatarMode,
         }),
-      );
-      this.logStartupTiming('runtime session created', startupStartedAt);
-
-      this.sessionResponse$$.set(response);
-      if (experience.aiProvider === 'tavus-full') {
-        try {
-          await this.connectTavus(response);
-        } catch (error) {
-          await this.tavus.disconnect();
-          await firstValueFrom(
-            this.runtime.closeSession(response.session.sessionId),
-          ).catch(() => undefined);
-          this.sessionResponse$$.set(null);
-          throw error;
+      ).then(response => {
+        if (startupFailed || this.destroyed) {
+          void firstValueFrom(this.runtime.closeSession(response.session.sessionId)).catch(() => undefined);
+          throw new Error('Startup cancelled');
         }
+        createdResponse = response;
+        this.sessionResponse$$.set(response);
+        this.logStartupTiming('runtime session created', startupStartedAt);
+        return response;
+      });
+      const [response] = await Promise.all([sessionReady, microphoneReady]);
+      if (this.destroyed) throw new Error('Startup cancelled');
+      if (experience.aiProvider === 'tavus-full') {
+        await this.connectTavus(response);
+        if (this.destroyed) throw new Error('Startup cancelled');
         this.state$$.set('active');
         this.armInactivityPrompt();
         this.logStartupTiming('Tavus ready', startupStartedAt);
@@ -274,6 +289,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         );
       }
 
+      if (this.destroyed) throw new Error('Startup cancelled');
       this.state$$.set('active');
       this.armInactivityPrompt();
       this.logStartupTiming(
@@ -281,8 +297,14 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
         startupStartedAt,
       );
     } catch (error) {
+      startupFailed = true;
+      this.stopMicrophone();
+      await Promise.allSettled([this.disconnectVoice(), this.disconnectAvatar(), this.disconnectTavus()]);
+      const response = createdResponse as SophiaRuntimeSessionResponse | null;
+      if (response) await firstValueFrom(this.runtime.closeSession(response.session.sessionId)).catch(() => undefined);
+      this.sessionResponse$$.set(null);
       this.logStartupTiming('failed', startupStartedAt);
-      this.handleError(error, 'Could not start Sophia.');
+      if (!this.destroyed) this.handleError(error, 'Could not start Sophia.');
     }
   }
 
@@ -302,6 +324,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     this.assistantSpeaking = false;
     this.error$$.set(null);
     this.state$$.set('closing');
+    this.stopMicrophone();
 
     if (session.aiProvider === 'tavus-full') {
       await this.disconnectTavus();
@@ -336,6 +359,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     try {
       await this.realtime.connect({
         clientSecret,
+        microphoneStream: this.microphoneStream ?? undefined,
         onRemoteStream: (stream) => this.attachRemoteAudio(stream),
         onAudioDelta: (audio) => this.avatar.appendOpenAiAudio(audio),
         onAudioDone: () => this.avatar.completeOpenAiAudio(),
@@ -592,11 +616,18 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     );
   }
 
+  private stopMicrophone(): void {
+    this.microphoneStream?.getTracks().forEach(track => track.stop());
+    this.microphoneStream = null;
+  }
+
   ngOnDestroy(): void {
+    this.destroyed = true;
+    this.stopMicrophone();
     this.clearErrorDismissTimer();
     this.clearInactivityTimers();
     const session = this.session$$();
-    if (session?.status === 'active' && session.aiProvider === 'tavus-full') {
+    if (session?.status === 'active') {
       void this.disconnectTavus();
       void firstValueFrom(this.runtime.closeSession(session.sessionId)).catch(
         () => undefined,
@@ -879,6 +910,7 @@ export class SophiaKioskPageComponent implements OnInit, OnDestroy {
     }
 
     await this.tavus.connect({
+      microphoneStream: this.microphoneStream ?? undefined,
       conversationId: response.session.providerSessionId || '',
       conversationUrl: url.toString(),
       meetingToken,

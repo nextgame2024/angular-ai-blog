@@ -5,6 +5,7 @@ import Daily, {
 } from '@daily-co/daily-js';
 
 export interface SophiaTavusConnectRequest {
+  microphoneStream?: MediaStream;
   conversationId: string;
   conversationUrl: string;
   meetingToken: string;
@@ -92,6 +93,7 @@ export class SophiaTavusClientService {
 
     try {
       await call.join({
+        ...(request.microphoneStream ? {audioSource:request.microphoneStream.getAudioTracks()[0]} : {}),
         url: request.conversationUrl,
         token: request.meetingToken,
         userName: 'Sophia customer',
