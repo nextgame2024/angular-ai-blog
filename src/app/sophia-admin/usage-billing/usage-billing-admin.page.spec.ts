@@ -63,7 +63,7 @@ describe('UsageBillingAdminPage', () => {
     expect(text).toContain('Balance enforcement unavailable');
     expect(text).toContain('Charge preview unavailable'); expect(text).toContain('Charge execution: disabled');
     expect(text).toContain('Tenant administrators cannot publish rate cards.');
-    expect(text).toContain('Sandbox configuration still required: provider');
+    expect(text).toContain('Billing configuration still required: provider');
     expect(text).toContain('Raw webhook bodies and card data are never stored.');
   });
 });

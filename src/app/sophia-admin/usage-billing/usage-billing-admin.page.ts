@@ -96,7 +96,7 @@ export class UsageBillingAdminPage implements OnInit {
   }
   openPortal(): void {
     const billing = this.commercial();
-    if (!billing?.providerIntegration.portal || !billing.providerCustomers.length || !this.allowedBillingAction()) return;
+    if (!billing?.providerIntegration.portal || !this.hasActiveProviderCustomer() || !this.allowedBillingAction()) return;
     this.busy.set(true); this.error.set(''); this.notice.set('');
     this.admin.createBillingPortal(this.tenant(), { requestId: crypto.randomUUID() })
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
@@ -105,15 +105,24 @@ export class UsageBillingAdminPage implements OnInit {
   }
   reconcileBilling(): void {
     const billing = this.commercial();
-    if (!billing?.providerIntegration.reconciliation || !billing.providerCustomers.length || !this.allowedBillingAction()) return;
+    if (!billing?.providerIntegration.reconciliation || !this.hasActiveProviderCustomer() || !this.allowedBillingAction()) return;
     this.busy.set(true); this.error.set(''); this.notice.set('');
     this.admin.reconcileBilling(this.tenant(), { requestId: crypto.randomUUID() })
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: (result) => { this.notice.set(`Sandbox reconciliation ${result.status}: ${result.subscriptionCount} subscription(s), ${result.invoiceCount} invoice(s). No live entitlement changed.`); this.busy.set(false); this.refresh(); },
+        next: (result) => { this.notice.set(`${this.billingEnvironment()} reconciliation ${result.status}: ${result.subscriptionCount} subscription(s), ${result.invoiceCount} invoice(s). No live entitlement changed.`); this.busy.set(false); this.refresh(); },
         error: (error) => this.fail(error),
       });
   }
   allowedBillingAction(): boolean { return this.can('billing.manage') && this.recentMfa() && !this.busy(); }
+  hasActiveProviderCustomer(): boolean {
+    const billing = this.commercial(); const environment = billing?.providerIntegration.availability;
+    if (!billing || (environment !== 'sandbox' && environment !== 'live')) return false;
+    return billing.providerCustomers.some((customer) => customer.environment === environment);
+  }
+  billingEnvironment(): string {
+    const environment = this.commercial()?.providerIntegration.availability;
+    return environment === 'sandbox' || environment === 'live' ? environment : 'billing';
+  }
   money(minor: string | null | undefined, currency: string | null | undefined): string {
     if (minor == null || !currency) return 'Unavailable';
     const value = Number(minor); if (!Number.isSafeInteger(value)) return `${minor} minor units ${currency}`;

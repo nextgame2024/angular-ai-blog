@@ -767,18 +767,19 @@ export interface CommercialWorkspace {
     disclaimer?: string;
   };
   subscriptions: Array<{
-    billing_subscription_reference_id?: string; provider_key?: string; external_subscription_ref: string;
+    billing_subscription_reference_id?: string; provider_key?: string; provider_environment?: 'sandbox' | 'live'; external_subscription_ref: string;
     status?: string; current_period_start?: string | null; current_period_end?: string | null;
     observed_at?: string; revision?: number;
   }>;
   invoices: Array<{
-    billing_invoice_reference_id?: string; provider_key?: string; external_invoice_ref: string;
+    billing_invoice_reference_id?: string; provider_key?: string; provider_environment?: 'sandbox' | 'live'; external_invoice_ref: string;
     status?: string; currency?: string | null; amount_due_minor?: string | null; amount_paid_minor?: string | null;
     hosted_invoice_url?: string | null; due_at?: string | null; observed_at?: string; revision?: number;
   }>;
   providerCustomers: Array<{ providerKey: string; environment: 'sandbox' | 'live'; observedAt: string }>;
   recentWebhookEvents: Array<{
-    external_event_ref: string; event_type: string; processing_status: 'received' | 'processed' | 'ignored' | 'failed';
+    provider_environment?: 'sandbox' | 'live'; external_event_ref: string; event_type: string;
+    processing_status: 'received' | 'processed' | 'ignored' | 'failed';
     processing_detail?: string | null; occurred_at: string; processed_at?: string | null;
   }>;
   activeCheckoutIntent: null | {
