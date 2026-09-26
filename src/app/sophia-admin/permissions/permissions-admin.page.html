@@ -1,0 +1,15 @@
+<header class="page-header"><div><p class="eyebrow">ADM-10 · Server policy</p><h1>Permissions</h1><p>Inspect fixed role templates and the effective grants computed for current organisation members.</p></div><button type="button" (click)="load()" [disabled]="loading()">Reload</button></header>
+
+@if (loading()) { <app-admin-state-panel kind="loading" title="Loading permission policy" message="Reading the server-owned role and permission registry." /> }
+@else if (error()) { <app-admin-state-panel kind="error" title="Permissions unavailable" [message]="error()" /> }
+@else if (registry(); as policy) {
+  <section class="platform-boundary"><div><p class="eyebrow">Platform authority</p><h2>Not assignable by tenant roles</h2><p>Support access and organisation provisioning require a separate, time-bounded platform authority contract. They are not membership roles and this workspace cannot grant them.</p></div><ul>@for (permission of policy.platformPermissions; track permission) { <li>{{ permission }}</li> }</ul></section>
+
+  <section class="card"><div class="heading"><div><p class="eyebrow">Fixed templates</p><h2>Role-permission matrix</h2></div><p>Custom roles and permission elevation overrides are disabled. ✓ means the server role grants the permission; MFA marks privileged use.</p></div>
+    <div class="matrix"><table><thead><tr><th scope="col">Permission</th>@for (role of policy.roles; track role.role) { <th scope="col">{{ label(role.role) }}</th> }</tr></thead><tbody>@for (permission of tenantPermissions(); track permission) { <tr><th scope="row"><span>{{ permission }}</span>@if (isMfa(permission)) { <small>MFA</small> }</th>@for (role of policy.roles; track role.role) { <td [attr.aria-label]="label(role.role) + (grants(role.role, permission) ? ' grants ' : ' does not grant ') + permission">{{ grants(role.role, permission) ? '✓' : '—' }}</td> }</tr> }</tbody></table></div>
+  </section>
+
+  <section class="card"><div class="heading"><div><p class="eyebrow">Effective access</p><h2>Current memberships</h2></div><p>These grants are calculated by the backend after role permissions and deny overrides. Role assignment remains in Users.</p></div>
+    <div class="members">@for (member of members(); track member.membership_id) { <article><div><strong>{{ member.identity_user_id }}</strong><span>{{ label(member.role_key) }} · {{ member.status }}</span></div><details><summary>{{ member.effective_permissions.length }} effective grants</summary><ul>@for (permission of member.effective_permissions; track permission) { <li>{{ permission }}</li> }</ul></details></article> }</div>
+  </section>
+}

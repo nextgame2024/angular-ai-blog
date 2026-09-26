@@ -119,6 +119,13 @@ export const appRoutes: Route[] = [
       ),
   },
   {
+    path: 'sophia-admin',
+    loadChildren: () =>
+      import('src/app/sophia-admin/sophia-admin.routes').then(
+        (m) => m.SOPHIA_ADMIN_ROUTES
+      ),
+  },
+  {
     path: 'explore',
     loadComponent: () =>
       import('./manager/components/explore/manager-explore.page').then(

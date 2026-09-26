@@ -1,11 +1,8 @@
+export * from '../contracts/generated/sophia-runtime-v2.contracts';
+
 export type SophiaAvatarProvider = 'none' | 'simli' | 'liveavatar' | 'tavus';
 export type SophiaAvatarMode = 'LITE' | 'FULL';
-export type SophiaExperience =
-  | 'tavus'
-  | 'openai'
-  | 'openai-simli'
-  | 'openai-liveavatar-lite'
-  | 'openai-liveavatar-full';
+export type SophiaExperience = 'essential' | 'professional' | 'premium';
 
 export interface SophiaRuntimeToolDefinition {
   name: string;
@@ -36,6 +33,7 @@ export interface SophiaRuntimeSessionResponse {
     outputModality: 'audio' | 'text';
     clientSecret?: string;
     expiresAt?: string;
+    transportBootstrap?: Record<string, unknown>;
   };
   avatar: {
     provider: SophiaAvatarProvider;
@@ -47,13 +45,30 @@ export interface SophiaRuntimeSessionResponse {
     error?: string;
   };
   tools: SophiaRuntimeToolDefinition[];
+  sessionAccessToken: string;
+  sessionAccessExpiresAt: string;
 }
 
 export interface SophiaRuntimeSessionStatusResponse {
   session: SophiaRuntimeSession;
 }
 
+export interface SophiaActionReview {
+  reviewId: string;
+  commandId: string;
+  actionType: string;
+  status: 'reviewed' | 'confirmed';
+  payload: Record<string, unknown>;
+  expiresAt: string;
+}
+
+export interface SophiaCurrentActionReviewResponse {
+  review: SophiaActionReview | null;
+}
+
 export interface CreateSophiaRuntimeSessionRequest {
+  experience: 'essential' | 'professional' | 'premium';
+  /** @deprecated Server policy ignores browser-selected authority fields. */
   aiProvider?: 'openai-realtime' | 'tavus-full';
   customerId?: string;
   deviceId?: string;
@@ -66,6 +81,10 @@ export interface CreateSophiaRuntimeSessionRequest {
 export interface ExecuteSophiaRuntimeToolRequest {
   toolName: string;
   input: Record<string, unknown>;
+  providerCallId?: string;
+  providerEventId?: string;
+  eventSource?: 'browser' | 'provider_sideband';
+  correlationId?: string;
 }
 
 export interface ExecuteSophiaRuntimeToolResponse {
@@ -79,99 +98,4 @@ export interface InventoryToolOutput {
   storeId: string;
   quantityAvailable: number;
   status: 'in_stock' | 'low_stock' | 'out_of_stock';
-}
-
-export interface SophiaPropertyMedia {
-  mediaId: string;
-  url: string;
-  altText?: string | null;
-  sortOrder: number;
-}
-
-export interface SophiaAgencyKnowledge {
-  knowledgeId: string;
-  category: string;
-  question: string;
-  answer: string;
-  jurisdiction?: string | null;
-}
-
-export interface SophiaBookingReview {
-  mode: 'new' | 'resend';
-  bookingId?: string;
-  propertyId?: string;
-  slotId?: string;
-  confirmedStartsAt?: string;
-  propertyAddress: string;
-  startsAtLabel: string;
-  customerName: string;
-  customerEmail: string;
-}
-
-export interface SophiaProperty {
-  propertyId: string;
-  listingType: 'sale' | 'rent';
-  propertyType: string;
-  title: string;
-  address: string;
-  suburb: string;
-  city: string;
-  state: string;
-  postcode: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  priceDisplay: string;
-  bedrooms: number;
-  bathrooms: number;
-  carSpaces: number;
-  description: string;
-  features: string[];
-  media: SophiaPropertyMedia[];
-}
-
-export interface SophiaInspectionSlot {
-  slotId: string;
-  propertyId: string;
-  startsAt: string;
-  endsAt: string;
-  capacity: number;
-  placesAvailable: number;
-  startsAtDateLabel?: string;
-  startsAtTimeLabel?: string;
-  startsAtLabel?: string;
-  timeZone?: string;
-}
-
-export interface SophiaInspectionBooking {
-  bookingId: string;
-  propertyId: string;
-  slotId: string;
-  customerName: string;
-  customerEmail: string;
-  status: string;
-  listingType?: 'sale' | 'rent';
-  createdAt: string;
-  startsAt?: string;
-  endsAt?: string;
-  startsAtDateLabel?: string;
-  startsAtTimeLabel?: string;
-  startsAtLabel?: string;
-  timeZone?: string;
-  propertyAddress?: string;
-  propertySuburb?: string;
-  propertyCity?: string;
-  propertyState?: string;
-  propertyPostcode?: string;
-  confirmationEmail?: {
-    status: 'sent' | 'already_sent' | 'failed' | 'pending_report' | 'queued';
-    sentAt?: string;
-    message?: string;
-    reportStatus?: string;
-  };
-  reportDelivery?: {
-    reportJobId?: string;
-    reportStatus?: string;
-    deliveryId?: string;
-    deliveryStatus?: string;
-  };
 }

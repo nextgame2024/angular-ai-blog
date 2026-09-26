@@ -1,0 +1,54 @@
+<div class="admin-shell">
+  <a class="skip-link" href="#admin-content">Skip to Admin content</a>
+
+  <header class="topbar">
+    <a class="brand" routerLink="/sophia-admin/overview" aria-label="Sophia Admin overview">
+      <span class="brand__mark" aria-hidden="true">S</span>
+      <span><strong>Sophia</strong><small>Administration</small></span>
+    </a>
+
+    <div class="context-control">
+      <label for="organisation-context">Organisation context</label>
+      <select id="organisation-context" [disabled]="true" [attr.aria-describedby]="'context-help'">
+        <option>{{ displayName() }}</option>
+      </select>
+      <span id="context-help" class="sr-only">The organisation is verified from your authenticated Business Manager company.</span>
+    </div>
+
+    <div class="identity">
+      <span>{{ principal()?.role?.replaceAll('_', ' ') }}</span>
+      <button type="button" (click)="signOut()">Sign out</button>
+    </div>
+  </header>
+
+  <aside class="sidebar" aria-label="Sophia Admin modules">
+    <a class="overview-link" routerLink="/sophia-admin/overview" routerLinkActive="active">Overview</a>
+    <nav>
+      @for (item of modules; track item.id) {
+        @if (item.available && hasPermission(item.permission)) {
+          <a [routerLink]="['/sophia-admin', item.route]" routerLinkActive="active">
+            <span>{{ item.label }}</span><small>{{ item.id }}</small>
+          </a>
+        } @else {
+          <span class="nav-disabled" [attr.aria-label]="item.label + (hasPermission(item.permission) ? ', not yet available' : ', unavailable for your role')">
+            <span>{{ item.label }}</span>
+            <small>{{ hasPermission(item.permission) ? 'Planned' : 'No access' }}</small>
+          </span>
+        }
+      }
+    </nav>
+  </aside>
+
+  <main id="admin-content" class="content" tabindex="-1">
+    @if (loading()) {
+      <app-admin-state-panel kind="loading" title="Loading Sophia Admin" message="Verifying your organisation and permissions…" />
+    } @else if (error()) {
+      <app-admin-state-panel kind="error" title="Admin context unavailable" [message]="error()" />
+    } @else {
+      @if (organisation()?.status !== 'active') {
+        <div class="suspension" role="status">New Sophia sessions are suspended for this organisation. Historical records and committed work remain intact.</div>
+      }
+      <router-outlet />
+    }
+  </main>
+</div>

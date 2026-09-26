@@ -3,324 +3,48 @@
     <div class="avatar-panel">
       <div class="avatar-video">
         <div class="stage-toolbar">
-          <label class="provider-select" for="avatar-provider">
+          <label class="experience-select" for="sophia-experience">
             <span class="visually-hidden">Experience</span>
-            <select
-              id="avatar-provider"
-              aria-label="Sophia experience"
-              [ngModel]="experience$$()"
-              (ngModelChange)="setExperience($event)"
-              [disabled]="!canStart$$()"
-            >
-              <option *ngFor="let option of avatarOptions" [value]="option.value">
-                {{ option.label }}
-              </option>
+            <select id="sophia-experience" aria-label="Sophia experience" [ngModel]="experience$$()" (ngModelChange)="setExperience($event)" [disabled]="!canStart$$()">
+              <option *ngFor="let option of avatarOptions" [value]="option.value">{{ option.label }}</option>
             </select>
           </label>
-
-          <div class="signal" [class.live]="state$$() === 'active'">
-            <span></span>
-            {{ state$$() === 'active' ? 'Live' : 'Standby' }}
-          </div>
+          <div class="signal" [class.live]="state$$() === 'active'"><span></span>{{ state$$() === 'active' ? 'Live' : 'Standby' }}</div>
         </div>
 
-        <video
-          #avatarVideo
-          class="avatar-stream"
-          autoplay
-          playsinline
-          [class.connected]="isAvatarConnected$$()"
-          [class.full-stage]="
-            session$$()?.avatarProvider === 'tavus' ||
-            session$$()?.avatarProvider === 'liveavatar'
-          "
-          [class.premium-stage]="experience$$() === 'tavus'"
-        ></video>
-        <video
-          *ngIf="
-            !isAvatarConnected$$() &&
-            experience$$() === 'openai' &&
-            !standbyVideoFailed$$()
-          "
-          class="standby-video"
-          autoplay
-          muted
-          loop
-          playsinline
-          preload="auto"
-          poster="assets/avatars/SophiaAvatarSIMIL.jpg"
-          aria-label="Sophia AI standing by"
-          (error)="standbyVideoFailed$$.set(true)"
-        >
-          <source
-            src="https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatars/SophiaAiStandByPhone.mp4"
-            type="video/mp4"
-            media="(max-width: 700px)"
-          />
-          <source
-            src="https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatars/SophiaAiStandBy.mp4"
-            type="video/mp4"
-          />
+        <video #avatarVideo class="avatar-stream" autoplay playsinline [class.connected]="isAvatarConnected$$()" [class.full-stage]="isFullStage$$()" [class.premium-stage]="isPremiumExperience$$()"></video>
+        <video *ngIf="!isAvatarConnected$$() && usesVideoStandby$$() && !standbyVideoFailed$$()" class="standby-video" autoplay muted loop playsinline preload="auto" poster="assets/avatars/SophiaAvatarSIMIL.jpg" aria-label="Sophia AI standing by" (error)="standbyVideoFailed$$.set(true)">
+          <source src="https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatars/SophiaAiStandByPhone.mp4" type="video/mp4" media="(max-width: 700px)" />
+          <source src="https://files-nodejs-api.s3.ap-southeast-2.amazonaws.com/public/avatars/SophiaAiStandBy.mp4" type="video/mp4" />
         </video>
-        <picture
-          *ngIf="
-            !isAvatarConnected$$() &&
-            experience$$() !== 'openai'
-          "
-          class="provider-standby"
-          [class.premium-standby]="experience$$() === 'tavus'"
-        >
-          <source
-            media="(max-width: 700px)"
-            [srcset]="standbyMobileImage$$()"
-          />
+        <picture *ngIf="!isAvatarConnected$$() && !usesVideoStandby$$()" class="experience-standby" [class.premium-standby]="isPremiumExperience$$()">
+          <source media="(max-width: 700px)" [srcset]="standbyMobileImage$$()" />
           <img [src]="standbyImage$$()" alt="Sophia AI avatar" />
         </picture>
-        <img
-          *ngIf="
-            !isAvatarConnected$$() &&
-            experience$$() === 'openai' &&
-            standbyVideoFailed$$()
-          "
-          src="assets/avatars/SophiaAvatarSIMIL.jpg"
-          alt="Sophia AI avatar"
-        />
+        <img *ngIf="!isAvatarConnected$$() && usesVideoStandby$$() && standbyVideoFailed$$()" src="assets/avatars/SophiaAvatarSIMIL.jpg" alt="Sophia AI avatar" />
         <audio #remoteAudio autoplay></audio>
-        <audio #simliAudio autoplay muted></audio>
+        <audio #avatarAudio autoplay muted></audio>
 
-        <aside
-          class="property-gallery"
-          *ngIf="selectedProperty$$() as property"
-          aria-live="polite"
-          aria-label="Selected property photos"
-        >
-          <header>
-            <p class="result-eyebrow">Property gallery</p>
-            <h2>{{ property.address }}</h2>
-          </header>
-          <div class="property-gallery-images">
-            <button
-              type="button"
-              *ngFor="let photo of property.media | slice: 0 : 3; let index = index"
-              (click)="openPropertyPhoto(property, photo, index + 1)"
-              [attr.aria-label]="'Open photo ' + (index + 1) + ' of ' + property.address"
-            >
-              <img [src]="photo.url" [alt]="photo.altText || property.title" />
-            </button>
+        <app-sophia-presentation-host [busy]="activeTask$$() !== null" />
+
+        <form *ngIf="state$$() === 'active'" class="text-fallback" aria-label="Type a message to Sophia" (ngSubmit)="submitText()">
+          <label for="sophia-text-input">Prefer typing or cannot use the microphone?</label>
+          <div>
+            <input id="sophia-text-input" name="sophiaTextInput" type="text" autocomplete="off" maxlength="2000" [ngModel]="textInput$$()" (ngModelChange)="textInput$$.set($event)" placeholder="Type your message" />
+            <button type="submit" [disabled]="!textInput$$().trim()">Send</button>
           </div>
-        </aside>
-
-        <div class="photo-viewer-backdrop" *ngIf="photoViewer$$() as viewer" (click)="closePhotoViewer()">
-          <div class="photo-viewer" role="dialog" aria-modal="true" aria-label="Property photo viewer" (click)="$event.stopPropagation()">
-            <button type="button" class="close-photo-viewer" title="Close photo" aria-label="Close photo" (click)="closePhotoViewer()">&times;</button>
-            <img
-              [src]="viewer.photo.url"
-              [alt]="viewer.photo.altText || viewer.property.title"
-              (error)="handlePhotoLoadError(viewer)"
-            />
-            <p>{{ viewer.property.address }} &middot; Photo {{ viewer.photoNumber }}</p>
-          </div>
-        </div>
-
-        <aside class="property-experience student-experience" *ngIf="consultationView$$() as consultation" aria-live="polite" aria-label="Student consultation">
-          <app-student-consultation-panel [view]="consultation" (edit)="updateConsultationField($event)" (closeView)="consultationView$$.set(null)" />
-        </aside>
-
-        <aside class="property-experience student-experience" *ngIf="studentView$$() as studentView" aria-live="polite" aria-label="Student information">
-          <app-student-guidance-panel [view]="studentView" (closeView)="studentView$$.set(null)" />
-        </aside>
-
-        <aside
-          class="property-experience"
-          [class.inspection-view]="currentMonthInspectionSlots$$().length"
-          *ngIf="propertyResults$$().length || selectedProperty$$() || inspectionBooking$$() || bookingReview$$() || agencyKnowledge$$().length"
-          aria-live="polite"
-          aria-label="Property results"
-        >
-          <button
-            type="button"
-            class="close-property-experience"
-            title="Close property results"
-            aria-label="Close property results"
-            (click)="closePropertyExperience()"
-          >&times;</button>
-
-          <ng-container *ngIf="bookingReview$$() as review; else bookingOrKnowledge">
-            <div class="booking-review">
-              <p class="result-eyebrow">{{ review.mode === 'resend' ? 'Confirm email resend' : 'Confirm booking details' }}</p>
-              <h2>{{ review.mode === 'resend' ? 'Check recipient details' : 'Check booking details' }}</h2>
-              <div class="booking-review-fields">
-                <label>
-                  <span>Name</span>
-                  <input
-                    type="text"
-                    autocomplete="name"
-                    [ngModel]="review.customerName"
-                    (ngModelChange)="updateBookingReviewField('customerName', $event)"
-                  />
-                </label>
-                <label>
-                  <span>Email</span>
-                  <input
-                    type="email"
-                    inputmode="email"
-                    autocomplete="email"
-                    spellcheck="false"
-                    [ngModel]="review.customerEmail"
-                    (ngModelChange)="updateBookingReviewField('customerEmail', $event)"
-                  />
-                </label>
-              </div>
-              <dl>
-                <div><dt>Property</dt><dd>{{ review.propertyAddress }}</dd></div>
-                <div><dt>Inspection</dt><dd>{{ review.startsAtLabel }}</dd></div>
-              </dl>
-              <p class="review-prompt">Check the details, make any corrections, then confirm them with Sophia before anything is sent.</p>
-            </div>
-          </ng-container>
-
-          <ng-template #bookingOrKnowledge>
-          <ng-container *ngIf="inspectionBooking$$() as booking; else knowledgeOrProperty">
-            <div class="booking-confirmation">
-              <span class="confirmation-mark" aria-hidden="true">&#10003;</span>
-              <p class="result-eyebrow">Inspection confirmed</p>
-              <h2>{{ booking.customerName }}</h2>
-              <p *ngIf="booking.propertyAddress; else selectedBookingProperty">
-                {{ booking.propertyAddress }}, {{ booking.propertySuburb }}, {{ booking.propertyCity }}
-              </p>
-              <ng-template #selectedBookingProperty>
-                <p *ngIf="selectedProperty$$() as property">{{ property.address }}, {{ property.suburb }}, {{ property.city }}</p>
-              </ng-template>
-              <p *ngIf="bookingTimeLabel(booking) as startsAtLabel">{{ startsAtLabel }}</p>
-              <p class="booking-email">
-                Confirmation email: <strong>{{ booking.customerEmail }}</strong>
-              </p>
-              <small *ngIf="booking.confirmationEmail?.status === 'sent'">
-                Email sent successfully
-              </small>
-              <small *ngIf="booking.confirmationEmail?.status === 'already_sent'">
-                Confirmation email was already sent
-              </small>
-              <small class="email-pending" *ngIf="booking.confirmationEmail?.status === 'pending_report' || booking.confirmationEmail?.status === 'queued'">
-                Property report is being prepared and will be included with the confirmation email
-              </small>
-              <small class="email-pending" *ngIf="booking.confirmationEmail?.status === 'failed'">
-                Booking confirmed; email delivery is pending
-              </small>
-              <small>Confirmation reference {{ booking.bookingId.slice(0, 8).toUpperCase() }}</small>
-            </div>
-          </ng-container>
-          </ng-template>
-
-          <ng-template #knowledgeOrProperty>
-            <ng-container *ngIf="agencyKnowledge$$().length; else propertyContent">
-              <div class="requirements-view">
-                <p class="result-eyebrow">Agency requirements</p>
-                <h2>Property requirements</h2>
-                <section *ngFor="let item of agencyKnowledge$$()">
-                  <h3>{{ item.question }}</h3>
-                  <p>{{ item.answer }}</p>
-                </section>
-              </div>
-            </ng-container>
-          </ng-template>
-
-          <ng-template #propertyContent>
-            <ng-container *ngIf="selectedProperty$$() as property; else propertyList">
-              <div class="property-detail">
-                <div class="property-detail-mobile-gallery">
-                  <button
-                    type="button"
-                    *ngFor="let photo of property.media | slice: 0 : 3; let index = index"
-                    (click)="openPropertyPhoto(property, photo, index + 1)"
-                  >
-                    <img [src]="photo.url" [alt]="photo.altText || property.title" />
-                  </button>
-                </div>
-                <div class="property-detail-copy">
-                  <p class="result-eyebrow">{{ property.listingType === 'rent' ? 'For rent' : 'For sale' }}</p>
-                  <h2>{{ property.address }}</h2>
-                  <p class="property-location">{{ property.suburb }}, {{ property.city }} {{ property.state }} {{ property.postcode }}</p>
-                  <strong>{{ property.priceDisplay }}</strong>
-                  <p class="property-facts">{{ property.bedrooms }} bed &middot; {{ property.bathrooms }} bath &middot; {{ property.carSpaces }} car</p>
-                  <p class="property-description">{{ property.description }}</p>
-                </div>
-                <div class="inspection-times" *ngIf="currentMonthInspectionSlots$$().length">
-                  <p class="result-eyebrow">Available inspection times</p>
-                  <table>
-                    <thead>
-                      <tr><th>Date</th><th>Time</th><th>Places</th></tr>
-                    </thead>
-                    <tbody>
-                      <tr *ngFor="let slot of currentMonthInspectionSlots$$()">
-                        <td>{{ slot.startsAtDateLabel || formatInspectionDate(slot.startsAt) }}</td>
-                        <td>{{ slot.startsAtTimeLabel || formatInspectionClock(slot.startsAt) }}</td>
-                        <td>{{ slot.placesAvailable }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </ng-container>
-
-            <ng-template #propertyList>
-              <header class="results-heading">
-                <p class="result-eyebrow">Recommended properties</p>
-                <h2>{{ propertyResults$$().length }} options found</h2>
-              </header>
-              <div class="property-results">
-                <button
-                  type="button"
-                  class="property-result"
-                  *ngFor="let property of propertyResults$$()"
-                  (click)="selectProperty(property)"
-                >
-                  <img
-                    *ngIf="property.media[0] as photo"
-                    [src]="photo.url"
-                    [alt]="photo.altText || property.title"
-                  />
-                  <span class="property-result-copy">
-                    <small>{{ property.propertyType }} &middot; {{ property.suburb }}, {{ property.city }}</small>
-                    <strong>{{ property.address }}</strong>
-                    <span>{{ property.bedrooms }} bed &middot; {{ property.bathrooms }} bath &middot; {{ property.carSpaces }} car</span>
-                    <b>{{ property.priceDisplay }}</b>
-                  </span>
-                </button>
-              </div>
-            </ng-template>
-          </ng-template>
-        </aside>
+          <p *ngIf="assistantText$$()" class="assistant-text" aria-live="polite">{{ assistantText$$() }}</p>
+        </form>
 
         <div class="session-overlay" aria-label="Session controls">
-          <div class="runtime-status" aria-live="polite">
-            <span [class.live]="isVoiceConnected$$()"></span>
-            {{ runtimeStatus$$() }}
-          </div>
-
+          <div class="runtime-status" aria-live="polite"><span [class.live]="isVoiceConnected$$()"></span>{{ runtimeStatus$$() }}</div>
           <div class="actions">
-            <button
-              type="button"
-              class="session-action start-action"
-              [disabled]="!canStart$$()"
-              (click)="startSession()"
-            >
-              <span>{{ state$$() === 'starting' ? 'Starting' : 'Start' }}</span>
-            </button>
-            <button
-              type="button"
-              class="session-action finish-action"
-              [disabled]="!canFinish$$()"
-              (click)="finishSession()"
-            >
-              <span>{{ state$$() === 'closing' ? 'Finishing' : 'Finish' }}</span>
-            </button>
+            <button type="button" class="session-action start-action" [disabled]="!canStart$$()" (click)="startSession()"><span>{{ state$$() === 'starting' ? 'Starting' : 'Start' }}</span></button>
+            <button type="button" class="session-action finish-action" [disabled]="!canFinish$$()" (click)="finishSession()"><span>{{ state$$() === 'closing' ? 'Finishing' : 'Finish' }}</span></button>
           </div>
         </div>
 
-        <p class="avatar-warning" *ngIf="isAvatarUnavailable$$()">
-          {{ avatarStatus$$() }}
-        </p>
+        <p class="avatar-warning" *ngIf="isAvatarUnavailable$$()">{{ avatarStatus$$() }}</p>
         <p class="error" *ngIf="error$$()">{{ error$$() }}</p>
       </div>
     </div>

@@ -2,6 +2,7 @@ import {
   extractAudioDelta,
   extractAssistantTextDone,
   isAudioDoneEvent,
+  SophiaRealtimeClientService,
 } from './sophia-realtime-client.service';
 
 describe('Sophia Realtime audio events', () => {
@@ -49,5 +50,26 @@ describe('Sophia Realtime audio events', () => {
         text: '  Text for HeyGen FULL. ',
       }),
     ).toBe('Text for HeyGen FULL.');
+  });
+
+  it('submits bounded text as a user turn before requesting a response', () => {
+    const service = new SophiaRealtimeClientService();
+    const send = jasmine.createSpy('send');
+    (service as unknown as { dataChannel: Partial<RTCDataChannel> }).dataChannel = {
+      readyState: 'open',
+      send,
+    };
+
+    service.submitUserText('  I need an inspection  ');
+
+    expect(JSON.parse(send.calls.argsFor(0)[0])).toEqual({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text: 'I need an inspection' }],
+      },
+    });
+    expect(JSON.parse(send.calls.argsFor(1)[0])).toEqual({ type: 'response.create' });
   });
 });

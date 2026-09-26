@@ -33,21 +33,28 @@ export class SophiaRealtimeClientService {
     await this.disconnect();
 
     request.onStatus('Requesting microphone');
-    this.localStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: false,
-        channelCount: 1,
-      },
-    });
+    try {
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: false,
+          channelCount: 1,
+        },
+      });
+    } catch {
+      this.localStream = null;
+      request.onStatus('Microphone unavailable - text input ready');
+    }
 
     const peerConnection = new RTCPeerConnection();
     this.peerConnection = peerConnection;
 
-    for (const track of this.localStream.getTracks()) {
-      peerConnection.addTrack(track, this.localStream);
+    const localStream = this.localStream;
+    for (const track of localStream?.getTracks() ?? []) {
+      peerConnection.addTrack(track, localStream!);
     }
+    if (!localStream) peerConnection.addTransceiver('audio', { direction: 'recvonly' });
 
     peerConnection.ontrack = (event) => {
       const [stream] = event.streams;
@@ -230,11 +237,34 @@ export class SophiaRealtimeClientService {
     this.setMicrophoneEnabled(!suppressed && !this.assistantAudioPlaying);
   }
 
+  interrupt(): void {
+    this.sendEvent({ type: 'response.cancel' });
+    this.sendEvent({ type: 'output_audio_buffer.clear' });
+    this.assistantAudioPlaying = false;
+    this.scheduleMicrophoneResume();
+  }
+
   promptAssistant(instructions: string): void {
     this.sendEvent({
       type: 'response.create',
       response: { instructions },
     });
+  }
+
+  submitUserText(text: string): void {
+    const message = text.trim().slice(0, 2_000);
+    if (!message || this.dataChannel?.readyState !== 'open') {
+      throw new Error('Sophia text input is not connected.');
+    }
+    this.sendEvent({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text: message }],
+      },
+    });
+    this.sendEvent({ type: 'response.create' });
   }
 }
 

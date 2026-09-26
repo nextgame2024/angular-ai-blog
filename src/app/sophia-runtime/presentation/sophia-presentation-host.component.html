@@ -1,0 +1,96 @@
+@if (document(); as view) {
+  <aside class="presentation" aria-live="polite" aria-label="Sophia results">
+    <button type="button" class="close" title="Close results" aria-label="Close results" (click)="close()">&times;</button>
+
+    @for (block of view.blocks; track $index) {
+      @switch (block.type) {
+        @case ('item-list') {
+          <section class="block item-list">
+            @if (block.eyebrow) { <p class="eyebrow">{{ block.eyebrow }}</p> }
+            <h2>{{ block.title }}</h2>
+            <div class="items">
+              @for (item of block.items; track item.id) {
+                @if (item.action) {
+                  <button type="button" class="item" (click)="run(item.action)" [disabled]="busy">
+                    @if (item.media && safeMedia(item.media); as media) { <img [src]="media.url" [alt]="media.altText" (error)="mediaFailed(media)" /> }
+                    <span><small>{{ item.subtitle }}</small><strong>{{ item.title }}</strong><span>{{ item.summary }}</span><b>{{ item.badge }}</b></span>
+                  </button>
+                } @else {
+                  <article class="item"><span><small>{{ item.subtitle }}</small><strong>{{ item.title }}</strong><span>{{ item.summary }}</span><b>{{ item.badge }}</b></span></article>
+                }
+              }
+            </div>
+          </section>
+        }
+        @case ('detail-card') {
+          <section class="block detail">
+            @if (block.eyebrow) { <p class="eyebrow">{{ block.eyebrow }}</p> }
+            <h2>{{ block.title }}</h2>
+            @if (block.subtitle) { <p class="subtitle">{{ block.subtitle }}</p> }
+            @if (block.primaryText) { <strong class="primary">{{ block.primaryText }}</strong> }
+            @if (block.fields.length) { <dl>@for (field of block.fields; track field.label) { <div><dt>{{ field.label }}</dt><dd>{{ field.value }}</dd></div> }</dl> }
+            @if (block.summary) { <p class="summary">{{ block.summary }}</p> }
+          </section>
+        }
+        @case ('media-gallery') {
+          @if (visibleMedia(block).length) {
+            <section class="block gallery">
+              <p class="eyebrow">Media</p><h2>{{ block.title }}</h2>
+              <div class="media-grid">
+                @for (media of visibleMedia(block); track media.mediaId) {
+                  <button type="button" (click)="openMedia(media)" [attr.aria-label]="'Open ' + media.altText">
+                    <img [src]="media.url" [alt]="media.altText" (error)="mediaFailed(media)" />
+                  </button>
+                }
+              </div>
+            </section>
+          }
+        }
+        @case ('availability-list') {
+          <section class="block availability"><p class="eyebrow">Availability</p><h2>{{ block.title }}</h2>
+            <table><thead><tr><th>When</th><th>Details</th><th>Status</th></tr></thead><tbody>
+              @for (row of block.rows; track row.id) { <tr><td>{{ row.primary }}</td><td>{{ row.secondary }}</td><td>{{ row.status }}</td></tr> }
+            </tbody></table>
+          </section>
+        }
+        @case ('review-card') {
+          <section class="block review">
+            @if (block.eyebrow) { <p class="eyebrow">{{ block.eyebrow }}</p> }
+            <h2>{{ block.title }}</h2>
+            <div class="review-fields">
+              @for (field of block.fields; track field.key) {
+                <label><span>{{ field.label }}</span><input [type]="field.inputType" [autocomplete]="field.autocomplete || 'off'" [ngModel]="field.value" (ngModelChange)="updateField(field.key, $event)" /></label>
+              }
+            </div>
+            <dl>@for (fact of block.facts; track fact.label) { <div><dt>{{ fact.label }}</dt><dd>{{ fact.value }}</dd></div> }</dl>
+            <p class="prompt">{{ block.prompt }}</p>
+            <button type="button" class="primary-action" (click)="run(block.action)" [disabled]="busy">{{ block.action.label }}</button>
+            @if (block.secondaryAction) { <button type="button" (click)="run(block.secondaryAction)" [disabled]="busy">{{ block.secondaryAction.label }}</button> }
+          </section>
+        }
+        @case ('operation-status') {
+          <section class="block status" [attr.data-status]="block.status"><span class="status-mark" aria-hidden="true">{{ block.status === 'success' ? '✓' : '•' }}</span>
+            @if (block.eyebrow) { <p class="eyebrow">{{ block.eyebrow }}</p> }<h2>{{ block.title }}</h2>
+            @if (block.summary) { <p>{{ block.summary }}</p> }
+            <dl>@for (detail of block.details; track detail.label) { <div><dt>{{ detail.label }}</dt><dd>{{ detail.value }}</dd></div> }</dl>
+          </section>
+        }
+        @case ('source-list') {
+          <section class="block sources"><p class="eyebrow">Approved sources</p><h2>{{ block.title }}</h2>
+            @for (item of block.items; track item.id) { <article><h3>{{ item.title }}</h3><p>{{ item.excerpt }}</p>@if (item.sourceRef) { <small>{{ item.sourceRef }}</small> }</article> }
+          </section>
+        }
+      }
+    }
+  </aside>
+}
+
+@if (selectedMedia(); as media) {
+  <div class="media-backdrop" (click)="selectedMedia.set(null)">
+    <div class="media-viewer" role="dialog" aria-modal="true" [attr.aria-label]="media.altText" (click)="$event.stopPropagation()">
+      <button type="button" aria-label="Close media" (click)="selectedMedia.set(null)">&times;</button>
+      <img [src]="media.url" [alt]="media.altText" (error)="mediaFailed(media)" />
+      <p>{{ media.altText }}</p>
+    </div>
+  </div>
+}

@@ -1,0 +1,171 @@
+<main class="knowledge-admin">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Sophia Admin · ADM-06</p>
+      <h1>Approved knowledge</h1>
+      <p>Review, approve and publish tenant knowledge without changing source code.</p>
+    </div>
+    <button type="button" class="secondary" (click)="refresh()" [disabled]="loading() || busy()">Refresh</button>
+  </header>
+
+  @if (error()) { <div class="message error" role="alert">{{ error() }}</div> }
+  @if (notice()) { <div class="message success" role="status">{{ notice() }}</div> }
+
+  <section class="security-gate" [class.ready]="fileReadiness()?.enabled" aria-labelledby="file-gate-title">
+    <div>
+      <span class="status-dot"></span>
+      <div>
+        @if (fileReadiness()?.enabled) {
+          <h2 id="file-gate-title">Private file ingestion is operational</h2>
+          <p>Uploads use the verified private bucket, checksum-bound URLs, malware scanning and an isolated bounded text parser.</p>
+        } @else {
+          <h2 id="file-gate-title">File ingestion remains locked</h2>
+          <p>Files stay disabled until private storage and malware scanning pass live readiness checks. Public avatar uploads are never used for knowledge.</p>
+        }
+      </div>
+    </div>
+    <span class="pill">{{ fileReadiness()?.enabled ? 'Operational' : 'Fail closed' }}</span>
+  </section>
+
+  @if (canIngest()) {
+    <section class="panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">Private intake</p><h2>Upload bounded text file</h2></div>
+        <span class="limit">{{ formatBytes(fileReadiness()?.maxUploadBytes || 1048576) }} maximum</span>
+      </div>
+      <form [formGroup]="fileForm" (ngSubmit)="uploadFile()" class="file-form">
+        <label>Managed-text source
+          <select formControlName="sourceId">
+            <option value="">Select an active source</option>
+            @for (source of sources(); track source.knowledge_source_id) {
+              @if (source.status === 'active' && source.source_type === 'managed_text') {
+                <option [value]="source.knowledge_source_id">{{ source.title }}</option>
+              }
+            }
+          </select>
+        </label>
+        <label>Text or Markdown file
+          <input type="file" accept=".txt,.md,text/plain,text/markdown" (change)="selectFile($event)" [disabled]="!fileReadiness()?.enabled" />
+        </label>
+        <button type="submit" class="primary" [disabled]="busy() || !fileReadiness()?.enabled || !selectedFile()">Upload to quarantine</button>
+      </form>
+      @if (!fileReadiness()?.enabled) {
+        <p class="empty">Storage: {{ fileReadiness()?.storage?.reason || 'checking' }} · Scanner: {{ fileReadiness()?.scanner?.reason || 'checking' }}</p>
+      }
+      @if (fileIntakes().length) {
+        <div class="intake-list">
+          @for (intake of fileIntakes(); track intake.knowledge_file_intake_id) {
+            <div class="intake-row">
+              <div><strong>{{ intake.original_filename }}</strong><small>{{ intake.declared_bytes }} bytes · attempt {{ intake.attempt_count }}</small></div>
+              <span class="pill" [class.alert]="intake.status === 'failed' || intake.status === 'quarantined'">{{ intake.status }}</span>
+              @if (intake.error_message) { <small class="failure">{{ intake.error_message }}</small> }
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+
+  @if (canEdit()) {
+    <section class="panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">New source</p><h2>Managed text</h2></div>
+        <span class="limit">256 KiB UTF-8 maximum</span>
+      </div>
+      <form [formGroup]="sourceForm" (ngSubmit)="createManagedText()" class="source-form">
+        <label>Source key<input formControlName="sourceKey" placeholder="customer-support-hours" /></label>
+        <label>Title<input formControlName="title" placeholder="Customer support hours" /></label>
+        <label>Format<select formControlName="mediaType"><option value="text/plain">Plain text</option><option value="text/markdown">Markdown</option></select></label>
+        <label class="wide">Approved source text<textarea formControlName="contentText" rows="9" placeholder="Paste reviewed content here."></textarea></label>
+        <div class="wide form-actions"><button type="submit" class="primary" [disabled]="busy()">Create and ingest draft</button></div>
+      </form>
+    </section>
+  }
+
+  <section class="panel">
+    <div class="section-heading">
+      <div><p class="eyebrow">Publication grant</p><h2>Knowledge capability</h2></div>
+      <span class="pill">{{ bindings().length }} available</span>
+    </div>
+    <form [formGroup]="publishForm">
+      <label>Select the capability binding used for new publications
+        <select formControlName="capabilityBindingId">
+          <option value="">Select a binding</option>
+          @for (binding of bindings(); track binding.capability_binding_id) {
+            <option [value]="binding.capability_binding_id">{{ binding.display_name }} · v{{ binding.business_profile_version }} · {{ binding.connector_key }}</option>
+          }
+        </select>
+      </label>
+    </form>
+    @if (!bindings().length) { <p class="empty">No enabled tenant knowledge capability binding exists. Publication remains unavailable.</p> }
+  </section>
+
+  <section class="panel">
+    <div class="section-heading"><div><p class="eyebrow">Tenant sources</p><h2>Lifecycle</h2></div><span class="pill">{{ sources().length }} sources</span></div>
+    @if (loading()) {
+      <p class="empty">Loading approved knowledge…</p>
+    } @else if (!sources().length) {
+      <p class="empty">No knowledge sources have been created for this tenant.</p>
+    } @else {
+      <div class="source-list">
+        @for (source of sources(); track source.knowledge_source_id) {
+          <article class="source-card" [class.retired]="source.status === 'retired'">
+            <div class="source-title">
+              <div><h3>{{ source.title }}</h3><code>{{ source.source_key }}</code></div>
+              <span class="pill" [class.alert]="source.status === 'retired'">{{ source.status }}</span>
+            </div>
+            <div class="revision-list">
+              @for (revision of source.revisions; track revision.knowledgeRevisionId) {
+                <div class="revision-row">
+                  <div>
+                    <strong>Revision {{ revision.revision }}</strong>
+                    <span>{{ revision.status }}</span><span>{{ revision.ingestionStatus }}</span>
+                    @if (revision.failureMessage) { <small class="failure">{{ revision.failureMessage }}</small> }
+                  </div>
+                  <div class="actions">
+                    <button type="button" class="secondary" (click)="review(revision.knowledgeRevisionId)" [disabled]="busy()">Review</button>
+                    @if (canPublish() && revision.status === 'draft' && revision.ingestionStatus === 'ready') {
+                      <button type="button" class="secondary" (click)="approve(revision.knowledgeRevisionId)" [disabled]="busy()">Approve</button>
+                    }
+                    @if (canPublish() && revision.status === 'approved') {
+                      <button type="button" class="primary" (click)="publish(revision.knowledgeRevisionId)" [disabled]="busy() || !bindings().length">Publish</button>
+                    }
+                    @if (revision.snapshotStatus === 'published') {
+                      <button type="button" class="secondary" (click)="choosePreview(source, revision)">Test retrieval</button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+            @if (canRetire() && source.status === 'active') {
+              <button type="button" class="danger" (click)="retire(source)" [disabled]="busy()">Retire source</button>
+            }
+          </article>
+        }
+      </div>
+    }
+  </section>
+
+  @if (reviewedRevision(); as revision) {
+    <section class="panel review">
+      <div class="section-heading"><div><p class="eyebrow">Revision review</p><h2>{{ revision.title }} · revision {{ revision.revision }}</h2></div><button type="button" class="secondary" (click)="reviewedRevision.set(null)">Close</button></div>
+      <dl><div><dt>Status</dt><dd>{{ revision.status }} / {{ revision.ingestion_status }}</dd></div><div><dt>SHA-256</dt><dd><code>{{ revision.content_sha256 }}</code></dd></div><div><dt>Format</dt><dd>{{ revision.media_type || revision.source_type }}</dd></div></dl>
+      <pre>{{ revision.content_text || revision.connector_object_ref }}</pre>
+    </section>
+  }
+
+  @if (selectedSnapshot(); as selected) {
+    <section class="panel preview">
+      <div class="section-heading"><div><p class="eyebrow">Granted snapshot preview</p><h2>{{ selected.label }}</h2></div></div>
+      <form [formGroup]="previewForm" (ngSubmit)="preview()" class="preview-form">
+        <label>Test query<input formControlName="query" placeholder="When are you open?" /></label>
+        <button type="submit" class="primary" [disabled]="busy()">Run preview</button>
+      </form>
+      <div class="results">
+        @for (result of previewResults(); track result.sources[0].sourceRef) {
+          <article><h3>{{ result.title }}</h3><p>{{ result.excerpt }}</p><code>{{ result.sources[0].sourceRef }}</code></article>
+        }
+      </div>
+    </section>
+  }
+</main>

@@ -1,0 +1,58 @@
+<header class="page-header">
+  <div><p class="eyebrow">Control plane</p><h1>Administration overview</h1></div>
+  <p>Configuration and operations are scoped to the organisation verified by the server. Navigation visibility never replaces API permission checks.</p>
+</header>
+
+@if (loading()) {
+  <app-admin-state-panel kind="loading" title="Loading module access" message="Checking your effective permission set…" />
+} @else if (error()) {
+  <app-admin-state-panel kind="error" title="Permission context unavailable" [message]="error()" />
+} @else {
+  <section class="summary" aria-label="Admin module summary">
+    <article><strong>16</strong><span>Declared modules</span></article>
+    <article><strong>{{ availableCount() }}</strong><span>Available to your role</span></article>
+    <article><strong>{{ principal()?.permissions?.length || 0 }}</strong><span>Effective permissions</span></article>
+  </section>
+
+  <section class="readiness" aria-labelledby="readiness-title">
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Persisted integration gate</p>
+        <h2 id="readiness-title">Existing authorised tenant readiness</h2>
+      </div>
+      @if (readiness()) {
+        <span class="readiness-badge">
+          {{ readiness()?.activationReady === true ? 'Activation ready' : readiness()?.activationReady === false ? 'Configuration incomplete' : 'Partial visibility' }}
+        </span>
+      }
+    </div>
+    <p class="scope-note">
+      This gate assembles an existing authorised tenant. Foundational business, provider and experience profiles are pre-provisioned outside the current Admin UI; it is not a greenfield organisation-provisioning workflow.
+    </p>
+    @if (readinessError()) {
+      <app-admin-state-panel kind="error" title="Readiness unavailable" [message]="readinessError()" />
+    } @else {
+      <app-admin-table caption="Persisted tenant onboarding readiness" [columns]="readinessColumns" [rows]="readinessRows()" />
+      <p class="future-note">Conversations, analytics and usage/billing remain explicitly planned under P6-A01, P6-A03 and P6-A05.</p>
+    }
+  </section>
+
+  <section class="directory" aria-labelledby="directory-title">
+    <div class="section-heading"><div><p class="eyebrow">Module directory</p><h2 id="directory-title">Delivery and access</h2></div></div>
+    <app-admin-table caption="Sophia Admin module delivery and permission status" [columns]="tableColumns" [rows]="tableRows()" />
+    <app-admin-pagination [page]="page()" [pageSize]="8" [totalItems]="modules.length" (pageChange)="setPage($event)" />
+  </section>
+
+  @if (availableCount() > 0) {
+    <section class="available-card">
+      <div><p class="eyebrow">Available now</p><h2>Configuration workspaces</h2><p>Use the module directory and navigation to continue the configuration allowed by your effective permissions.</p></div>
+      @if (hasPermission('agents.read')) {
+        <a routerLink="/sophia-admin/agents">Open agents</a>
+      } @else if (hasPermission('knowledge.read')) {
+        <a routerLink="/sophia-admin/knowledge">Open knowledge</a>
+      }
+    </section>
+  } @else {
+    <app-admin-state-panel kind="empty" title="No module workspace is currently available" message="Your identity is valid, but no delivered workspace is included in your effective permissions." />
+  }
+}

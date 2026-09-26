@@ -1,0 +1,43 @@
+<header class="page-header">
+  <div><p class="eyebrow">ADM-01 · Tenant organisation</p><h1>Organisation</h1><p>Manage the organisation resolved by your authenticated Business Manager membership.</p></div>
+  <button type="button" class="secondary" (click)="load()" [disabled]="loading() || saving()">Reload</button>
+</header>
+
+<section class="boundary" aria-label="Platform organisation boundary">
+  <div><strong>Platform organisation provisioning is separate</strong><p>This tenant workspace cannot list, create, or switch to unrelated organisations. A platform principal and audited provisioning API have not been activated.</p></div>
+  <span>Unavailable</span>
+</section>
+
+@if (loading()) { <app-admin-state-panel kind="loading" title="Loading organisation" message="Resolving the server-authorised tenant context." /> }
+@else if (error() && !organisation()) { <app-admin-state-panel kind="error" title="Organisation unavailable" [message]="error()" /> }
+@else if (organisation(); as item) {
+  @if (error()) { <p class="message error" role="alert">{{ error() }}</p> }
+  @if (notice()) { <p class="message success" role="status">{{ notice() }}</p> }
+  <div class="grid">
+    <section class="card">
+      <div class="card-heading"><div><p class="eyebrow">Settings</p><h2>Tenant profile</h2></div><span class="status" [attr.data-status]="item.status">{{ item.status }}</span></div>
+      <form [formGroup]="form" (ngSubmit)="save()">
+        <label>Legal/display name<input formControlName="name" autocomplete="organization" /></label>
+        <label>Customer-facing name<input formControlName="displayName" autocomplete="organization" /></label>
+        <div class="row"><label>Timezone<input formControlName="timezone" placeholder="Australia/Brisbane" /></label><label>Default locale<input formControlName="defaultLocale" placeholder="en-AU" /></label></div>
+        <label>Primary colour<input formControlName="primaryColour" placeholder="#075b52" /></label>
+        <p class="meta">Revision {{ item.settings_revision }} · Tenant {{ item.customer_id }}</p>
+        <button class="primary" type="submit" [disabled]="saving() || form.invalid || !can('organisation.manage')">Save settings</button>
+        @if (!can('organisation.manage')) { <p class="hint">Your effective grants are read-only for organisation settings.</p> }
+      </form>
+    </section>
+
+    <section class="card lifecycle">
+      <p class="eyebrow">Lifecycle</p><h2>Session admission</h2>
+      <p>Suspension blocks new Sophia sessions. It does not delete bookings, reports, receipts, audit history, or committed work.</p>
+      @if (item.status === 'active') {
+        <label>Reason for suspension<textarea [formControl]="suspensionReason" rows="4" maxlength="1000"></textarea></label>
+        <button type="button" class="danger" (click)="suspend()" [disabled]="saving() || suspensionReason.invalid || !can('organisation.suspend') || !privilegedReady">Suspend admission</button>
+      } @else {
+        <p class="suspension"><strong>Reason:</strong> {{ item.suspension_reason || 'No reason supplied.' }}</p>
+        <button type="button" class="primary" (click)="resume()" [disabled]="saving() || !can('organisation.suspend') || !privilegedReady">Resume admission</button>
+      }
+      @if (can('organisation.suspend') && !privilegedReady) { <p class="hint warning">Recent MFA evidence is required. Business Manager did not provide a usable MFA verification timestamp for this session.</p> }
+    </section>
+  </div>
+}

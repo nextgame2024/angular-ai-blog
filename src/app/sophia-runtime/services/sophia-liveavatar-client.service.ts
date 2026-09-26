@@ -149,6 +149,12 @@ export class SophiaLiveAvatarClientService {
     this.audioByteLength = 0;
   }
 
+  interrupt(): void {
+    this.clearBuffer();
+    this.clearSpeakingTimeout();
+    this.session?.interrupt();
+  }
+
   async disconnect(): Promise<void> {
     this.clearSpeakingTimeout();
     this.clearBuffer();

@@ -253,6 +253,15 @@ export class SophiaTavusClientService {
     }, '*');
   }
 
+  interrupt(): void {
+    if (!this.call || !this.conversationId) return;
+    this.call.sendAppMessage({
+      message_type: 'conversation',
+      event_type: 'conversation.interrupt',
+      conversation_id: this.conversationId,
+    }, '*');
+  }
+
   private attachTrack(
     element: HTMLMediaElement,
     track: MediaStreamTrack,

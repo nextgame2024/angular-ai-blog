@@ -1,0 +1,37 @@
+<header class="page-header"><div><p class="eyebrow">ADM-02 · Tenant access</p><h1>Users</h1><p>Membership, fixed-role assignment, and single-use invitation lifecycle for the active organisation.</p></div><button type="button" class="secondary" (click)="load()" [disabled]="loading() || !!savingId()">Reload</button></header>
+
+@if (loading()) { <app-admin-state-panel kind="loading" title="Loading users" message="Fetching memberships, invitations, and the server role registry." /> }
+@else if (error() && !registry()) { <app-admin-state-panel kind="error" title="Users unavailable" [message]="error()" /> }
+@else {
+  @if (error()) { <p class="message error" role="alert">{{ error() }}</p> }
+  @if (notice()) { <p class="message success" role="status">{{ notice() }}</p> }
+  @if (!privilegedReady && (can('users.roles.assign') || can('users.invite'))) { <p class="message warning">This session has no recent MFA evidence. Privileged invitation and membership changes remain server-blocked until Business Manager supplies a current MFA verification timestamp.</p> }
+  @if (receipt(); as issued) { <section class="receipt"><div><p class="eyebrow">One-time dry-run receipt</p><h2>Invitation token</h2><p>Expires {{ issued.expiresAt | date:'medium' }}. This token is shown only in this response and was not written to audit metadata.</p></div><code>{{ issued.delivery.token }}</code></section> }
+
+  <section class="card invite">
+    <div><p class="eyebrow">Invite</p><h2>Add a member</h2><p>Delivery is deliberately dry-run. No email is sent by this workspace.</p></div>
+    <form [formGroup]="inviteForm" (ngSubmit)="issueInvitation()">
+      <label>Email<input type="email" formControlName="email" autocomplete="email" placeholder="person@example.com" /></label>
+      <label>Fixed role<select formControlName="role">@for (role of roles(); track role.role) { <option [value]="role.role">{{ label(role.role) }}</option> }</select></label>
+      <label>Expires (hours)<input type="number" min="1" max="168" formControlName="expiresInHours" /></label>
+      <button type="submit" class="primary" [disabled]="inviteForm.invalid || savingId() === 'invitation:new' || !can('users.invite') || !can('users.roles.assign') || !privilegedReady">Create dry-run invitation</button>
+    </form>
+  </section>
+
+  <section class="section"><div class="section-title"><div><p class="eyebrow">Memberships</p><h2>{{ members().length }} organisation members</h2></div><span>Self changes and final-owner removal are blocked by the API</span></div>
+    @if (!members().length) { <app-admin-state-panel kind="empty" title="No memberships" message="No tenant memberships were returned." /> }
+    <div class="member-list">@for (member of members(); track member.membership_id) {
+      <article class="member" [attr.data-status]="member.status">
+        <div class="identity"><strong>{{ member.identity_user_id }}</strong><span>{{ member.status }} · revision {{ member.authorization_revision }} @if (isSelf(member)) { · You }</span></div>
+        <label>Role<select #role [value]="member.role_key" (change)="updateRole(member, role.value)" [disabled]="!canMutateMemberships || isSelf(member) || savingId() === member.membership_id">@for (item of roles(); track item.role) { <option [value]="item.role">{{ label(item.role) }}</option> }</select></label>
+        <label>Status<select #status [value]="member.status" (change)="updateStatus(member, status.value)" [disabled]="!canMutateMemberships || isSelf(member) || savingId() === member.membership_id"><option value="active">Active</option><option value="suspended">Suspended</option><option value="revoked">Revoked</option></select></label>
+        <details><summary>{{ member.effective_permissions.length }} effective grants</summary><ul>@for (permission of member.effective_permissions; track permission) { <li>{{ permission }}</li> }</ul></details>
+      </article>
+    }</div>
+  </section>
+
+  <section class="section"><div class="section-title"><div><p class="eyebrow">Invitations</p><h2>Invitation lifecycle</h2></div><span>Expired invitations are derived by the server</span></div>
+    @if (!invitations().length) { <app-admin-state-panel kind="empty" title="No invitations" message="No invitation records exist for this organisation." /> }
+    <div class="table-wrap"><table><thead><tr><th>Recipient</th><th>Role</th><th>Status</th><th>Expires</th><th>Action</th></tr></thead><tbody>@for (invite of invitations(); track invite.invitation_id) { <tr><td>{{ invite.recipient_email }}</td><td>{{ label(invite.role_key) }}</td><td><span class="pill" [attr.data-status]="invite.status">{{ invite.status }}</span></td><td>{{ invite.expires_at | date:'medium' }}</td><td><button type="button" class="link-danger" (click)="revoke(invite)" [disabled]="invite.status !== 'pending' || !can('users.invite') || savingId() === invite.invitation_id">Revoke</button></td></tr> }</tbody></table></div>
+  </section>
+}
