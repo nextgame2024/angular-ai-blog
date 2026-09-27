@@ -746,7 +746,7 @@ export interface CommercialWorkspace {
   tenantId: string;
   generatedAt: string;
   providerIntegration: {
-    availability: 'disabled' | 'sandbox' | 'live'; providerKey: string | null;
+    availability: 'disabled' | 'sandbox' | 'live'; providerKey: string | null; providerAccountKey: string | null;
     checkout: boolean; portal: boolean; signedWebhooks: boolean; reconciliation: boolean;
     missingConfiguration: string[]; detail: string;
   };
@@ -755,6 +755,12 @@ export interface CommercialWorkspace {
     planVersionId: string; planKey: string; version: number; displayName: string; planStatus: string;
     pricingStatus: string; currency: string | null; interval: string | null; baseChargeMinor: string | null;
     taxMode: string; overageRounding: string; entitlements: Record<string, unknown>; manifestDigest: string;
+    sellerLegalEntityId: string | null; taxCategory: string;
+    commercialPolicy: null | {
+      policyVersionId: string; legalEntityVersionId: string; customerScope: 'business_only' | 'consumer_only' | 'mixed';
+      gstRegistered: boolean; taxCalculationMode: 'none' | 'fixed_rate' | 'provider_automatic';
+      priceDisplayMode: 'no_tax' | 'tax_exclusive' | 'tax_inclusive'; taxLabel: string | null;
+    };
   };
   preview: {
     status: 'unavailable' | 'preview_only'; chargeExecution: false; reason?: string;
@@ -762,23 +768,26 @@ export interface CommercialWorkspace {
     evidenceStatus?: 'measured' | 'estimated_or_incomplete'; baseChargeMinor?: string;
     subtotalMinor?: string; taxMinor?: string | null; totalMinor?: string; taxMode?: string;
     lineItems?: Array<{
-      dimension: string; quantity: string; includedQuantity: string; overageQuantity: string; amountMinor: string;
+      dimension: string; quantity: string; includedQuantity: string; overageQuantity: string;
+      billingUnitQuantity: string; billableOverageQuantity: string; amountMinor: string;
     }>;
     disclaimer?: string;
   };
   subscriptions: Array<{
-    billing_subscription_reference_id?: string; provider_key?: string; provider_environment?: 'sandbox' | 'live'; external_subscription_ref: string;
+    billing_subscription_reference_id?: string; provider_key?: string; provider_environment?: 'sandbox' | 'live';
+    provider_account_key?: string; external_subscription_ref: string;
     status?: string; current_period_start?: string | null; current_period_end?: string | null;
     observed_at?: string; revision?: number;
   }>;
   invoices: Array<{
-    billing_invoice_reference_id?: string; provider_key?: string; provider_environment?: 'sandbox' | 'live'; external_invoice_ref: string;
+    billing_invoice_reference_id?: string; provider_key?: string; provider_environment?: 'sandbox' | 'live';
+    provider_account_key?: string; external_invoice_ref: string;
     status?: string; currency?: string | null; amount_due_minor?: string | null; amount_paid_minor?: string | null;
     hosted_invoice_url?: string | null; due_at?: string | null; observed_at?: string; revision?: number;
   }>;
-  providerCustomers: Array<{ providerKey: string; environment: 'sandbox' | 'live'; observedAt: string }>;
+  providerCustomers: Array<{ providerKey: string; environment: 'sandbox' | 'live'; providerAccountKey: string; observedAt: string }>;
   recentWebhookEvents: Array<{
-    provider_environment?: 'sandbox' | 'live'; external_event_ref: string; event_type: string;
+    provider_environment?: 'sandbox' | 'live'; provider_account_key?: string; external_event_ref: string; event_type: string;
     processing_status: 'received' | 'processed' | 'ignored' | 'failed';
     processing_detail?: string | null; occurred_at: string; processed_at?: string | null;
   }>;

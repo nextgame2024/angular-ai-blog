@@ -138,8 +138,10 @@ export class UsageBillingAdminPage implements OnInit {
   allowedBillingAction(): boolean { return this.can('billing.manage') && this.recentMfa() && !this.busy(); }
   hasActiveProviderCustomer(): boolean {
     const billing = this.commercial(); const environment = billing?.providerIntegration.availability;
-    if (!billing || (environment !== 'sandbox' && environment !== 'live')) return false;
-    return billing.providerCustomers.some((customer) => customer.environment === environment);
+    const accountKey = billing?.providerIntegration.providerAccountKey;
+    if (!billing || !accountKey || (environment !== 'sandbox' && environment !== 'live')) return false;
+    return billing.providerCustomers.some((customer) => customer.environment === environment
+      && customer.providerAccountKey === accountKey);
   }
   billingEnvironment(): string {
     const environment = this.commercial()?.providerIntegration.availability;

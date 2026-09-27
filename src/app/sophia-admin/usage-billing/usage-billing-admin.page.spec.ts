@@ -39,7 +39,8 @@ describe('UsageBillingAdminPage', () => {
     }));
     admin.commercialWorkspace.and.returnValue(of({
       tenantId: 'tenant-1', generatedAt: '2026-09-26T00:00:00Z',
-      providerIntegration: { availability: 'disabled', providerKey: null, checkout: false, portal: false,
+      providerIntegration: { availability: 'disabled', providerKey: null, providerAccountKey: null,
+        checkout: false, portal: false,
         signedWebhooks: false, reconciliation: false, missingConfiguration: ['provider'],
         detail: 'No Sophia billing provider is configured.' },
       assignment: null,
@@ -72,7 +73,8 @@ describe('UsageBillingAdminPage', () => {
     component.principal.set({ tenantId: 'tenant-1', identityUserId: 'billing-1', role: 'billing_administrator',
       permissions: ['usage.read', 'billing.read', 'billing.manage'], mfaVerifiedAt: new Date().toISOString() });
     component.commercial.set({ ...component.commercial()!, providerIntegration: {
-      availability: 'live', providerKey: 'stripe-sophia', checkout: false, portal: true,
+      availability: 'live', providerKey: 'stripe-sophia', providerAccountKey: 'legacy-primary',
+      checkout: false, portal: true,
       signedWebhooks: true, reconciliation: true, missingConfiguration: [], detail: 'Live observation mode.',
     } });
     admin.bindLiveBillingCustomer.and.returnValue(of({ environment: 'live', providerCustomerBound: true,
@@ -83,5 +85,37 @@ describe('UsageBillingAdminPage', () => {
       requestId: jasmine.any(String), customerRef: 'cus_liveSophia123',
     });
     expect(component.notice()).toContain('No charge or entitlement change was created');
+  });
+
+  it('does not enable hosted actions for a customer from another provider account', () => {
+    const component = fixture.componentInstance;
+    component.commercial.set({ ...component.commercial()!, providerIntegration: {
+      availability: 'live', providerKey: 'stripe-sophia', providerAccountKey: 'current-account',
+      checkout: false, portal: true, signedWebhooks: true, reconciliation: true,
+      missingConfiguration: [], detail: 'Live observation mode.',
+    }, providerCustomers: [{ providerKey: 'stripe-sophia', environment: 'live',
+      providerAccountKey: 'retired-account', observedAt: '2026-09-27T00:00:00Z' }] });
+    expect(component.hasActiveProviderCustomer()).toBeFalse();
+  });
+
+  it('renders the effective non-GST business-only policy without a plus-GST claim', () => {
+    const component = fixture.componentInstance;
+    component.commercial.set({ ...component.commercial()!, assignment: {
+      assignmentId: 'assignment-1', assignmentStatus: 'active', effectiveFrom: '2026-09-01T00:00:00Z', effectiveTo: null,
+      planVersionId: 'plan-1', planKey: 'sophia-voice', version: 1, displayName: 'Sophia Voice', planStatus: 'published',
+      pricingStatus: 'configured', currency: 'AUD', interval: 'month', baseChargeMinor: '75000',
+      taxMode: 'not_applicable', overageRounding: 'ceil', entitlements: {}, manifestDigest: 'a'.repeat(64),
+      sellerLegalEntityId: 'seller-1', taxCategory: 'standard_rate', commercialPolicy: {
+        policyVersionId: 'policy-1', legalEntityVersionId: 'legal-1', customerScope: 'business_only',
+        gstRegistered: false, taxCalculationMode: 'none', priceDisplayMode: 'no_tax', taxLabel: null,
+      },
+    } });
+    fixture.detectChanges();
+
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Customer scope: business only');
+    expect(text).toContain('Seller is not GST registered');
+    expect(text).toContain('GST is not calculated, collected, invoiced or added');
+    expect(text).not.toContain('+ GST');
   });
 });
