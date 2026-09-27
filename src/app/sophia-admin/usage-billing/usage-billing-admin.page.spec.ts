@@ -10,7 +10,7 @@ describe('UsageBillingAdminPage', () => {
   beforeEach(async () => {
     admin = jasmine.createSpyObj<SophiaAdminService>('SophiaAdminService', [
       'context', 'usageWorkspace', 'usageLimits', 'commercialWorkspace', 'updateUsageLimits',
-      'createBillingCheckout', 'createBillingPortal', 'reconcileBilling',
+      'createBillingCheckout', 'createBillingPortal', 'bindLiveBillingCustomer', 'reconcileBilling',
     ]);
     admin.context.and.returnValue(of({ principal: {
       tenantId: 'tenant-1', identityUserId: 'billing-1', role: 'billing_administrator',
@@ -65,5 +65,23 @@ describe('UsageBillingAdminPage', () => {
     expect(text).toContain('Tenant administrators cannot publish rate cards.');
     expect(text).toContain('Billing configuration still required: provider');
     expect(text).toContain('Raw webhook bodies and card data are never stored.');
+  });
+
+  it('binds only an existing verified live Customer and reports that no charge was created', () => {
+    const component = fixture.componentInstance;
+    component.principal.set({ tenantId: 'tenant-1', identityUserId: 'billing-1', role: 'billing_administrator',
+      permissions: ['usage.read', 'billing.read', 'billing.manage'], mfaVerifiedAt: new Date().toISOString() });
+    component.commercial.set({ ...component.commercial()!, providerIntegration: {
+      availability: 'live', providerKey: 'stripe-sophia', checkout: false, portal: true,
+      signedWebhooks: true, reconciliation: true, missingConfiguration: [], detail: 'Live observation mode.',
+    } });
+    admin.bindLiveBillingCustomer.and.returnValue(of({ environment: 'live', providerCustomerBound: true,
+      alreadyBound: false, observedAt: '2026-09-27T00:00:00Z', liveCharge: false }));
+    component.form.controls.liveCustomerRef.setValue('cus_liveSophia123');
+    component.bindLiveCustomer();
+    expect(admin.bindLiveBillingCustomer).toHaveBeenCalledWith('tenant-1', {
+      requestId: jasmine.any(String), customerRef: 'cus_liveSophia123',
+    });
+    expect(component.notice()).toContain('No charge or entitlement change was created');
   });
 });

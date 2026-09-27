@@ -200,6 +200,14 @@ describe('SophiaAdminService', () => {
     ));
     expect(request.request.method).toBe('POST'); request.flush({});
 
+    service.bindLiveBillingCustomer('tenant/1', { requestId: 'request-bind', customerRef: 'cus_liveSophia123' }).subscribe();
+    request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/api/admin/v1/tenants/tenant%2F1/usage-billing/customer-binding',
+    ));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ requestId: 'request-bind', customerRef: 'cus_liveSophia123' });
+    request.flush({});
+
     service.reconcileBilling('tenant/1', { requestId: 'request-3' }).subscribe();
     request = http.expectOne((candidate) => candidate.url.endsWith(
       '/api/admin/v1/tenants/tenant%2F1/usage-billing/reconcile',

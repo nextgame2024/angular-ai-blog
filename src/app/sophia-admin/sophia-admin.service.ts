@@ -740,14 +740,22 @@ export class SophiaAdminService {
   }
 
   createBillingCheckout(tenantId: string, input: { requestId: string; planVersionId: string }) {
-    return this.http.post<{ url: string; expiresAt: string | null; environment: 'sandbox'; liveCharge: false }>(
+    return this.http.post<{ url: string; expiresAt: string | null; environment: 'sandbox' | 'live'; liveCharge: boolean }>(
       `${this.adminBase}/tenants/${encodeURIComponent(tenantId)}/usage-billing/checkout`, input, { headers: this.headers() },
     );
   }
 
   createBillingPortal(tenantId: string, input: { requestId: string }) {
-    return this.http.post<{ url: string; expiresAt: string | null; environment: 'sandbox'; liveCharge: false }>(
+    return this.http.post<{ url: string; expiresAt: string | null; environment: 'sandbox' | 'live'; liveCharge: false }>(
       `${this.adminBase}/tenants/${encodeURIComponent(tenantId)}/usage-billing/portal`, input, { headers: this.headers() },
+    );
+  }
+
+  bindLiveBillingCustomer(tenantId: string, input: { requestId: string; customerRef: string }) {
+    return this.http.post<{ environment: 'live'; providerCustomerBound: true; alreadyBound: boolean;
+      observedAt: string; liveCharge: false }>(
+      `${this.adminBase}/tenants/${encodeURIComponent(tenantId)}/usage-billing/customer-binding`, input,
+      { headers: this.headers() },
     );
   }
 

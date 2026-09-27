@@ -28,6 +28,7 @@ export class UsageBillingAdminPage implements OnInit {
     maxToolCallsPerMinute: new FormControl('', { nonNullable: true }),
     providerCostAlertMicrounits: new FormControl('', { nonNullable: true }),
     providerCostAlertCurrency: new FormControl('', { nonNullable: true }),
+    liveCustomerRef: new FormControl('', { nonNullable: true }),
   });
 
   ngOnInit(): void {
@@ -53,6 +54,7 @@ export class UsageBillingAdminPage implements OnInit {
           maxToolCallsPerMinute: configured?.maxToolCallsPerMinute?.toString() ?? '',
           providerCostAlertMicrounits: configured?.providerCostAlertMicrounits ?? '',
           providerCostAlertCurrency: configured?.providerCostAlertCurrency ?? '',
+          liveCustomerRef: '',
         });
         this.loading.set(false); this.busy.set(false);
       },
@@ -101,6 +103,26 @@ export class UsageBillingAdminPage implements OnInit {
     this.admin.createBillingPortal(this.tenant(), { requestId: crypto.randomUUID() })
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: ({ url }) => { this.busy.set(false); window.location.assign(url); }, error: (error) => this.fail(error),
+      });
+  }
+  bindLiveCustomer(): void {
+    const billing = this.commercial();
+    const customerRef = this.form.controls.liveCustomerRef.value.trim();
+    if (billing?.providerIntegration.availability !== 'live' || billing.providerIntegration.checkout
+      || this.hasActiveProviderCustomer() || !this.allowedBillingAction()) return;
+    if (!/^cus_[A-Za-z0-9]{8,236}$/.test(customerRef)) {
+      this.error.set('Enter a valid Stripe Customer ID beginning with cus_.'); return;
+    }
+    this.busy.set(true); this.error.set(''); this.notice.set('');
+    this.admin.bindLiveBillingCustomer(this.tenant(), { requestId: crypto.randomUUID(), customerRef })
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: (result) => {
+          this.notice.set(result.alreadyBound
+            ? 'The verified live Stripe Customer was already bound to this tenant.'
+            : 'The verified live Stripe Customer is now bound. No charge or entitlement change was created.');
+          this.form.controls.liveCustomerRef.setValue(''); this.busy.set(false); this.refresh();
+        },
+        error: (error) => this.fail(error),
       });
   }
   reconcileBilling(): void {
