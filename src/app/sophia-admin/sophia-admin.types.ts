@@ -773,6 +773,16 @@ export interface CommercialWorkspace {
     }>;
     disclaimer?: string;
   };
+  finalisedUsagePeriods: Array<{
+    billing_usage_period_ledger_id: string; billing_subscription_period_id: string;
+    commercial_plan_version_id: string; assignment_revision: number;
+    assignment_effective_from: string; assignment_effective_to: string | null;
+    seller_legal_entity_version_id: string;
+    seller_commercial_policy_version_id: string; period_start: string; period_end: string;
+    active_microseconds: string; included_active_seconds: string; overage_microseconds: string;
+    billable_overage_minutes: string; overage_unit_price_minor: string; currency: string;
+    plan_manifest_digest: string; ledger_digest: string; finalised_at: string;
+  }>;
   subscriptions: Array<{
     billing_subscription_reference_id?: string; provider_key?: string; provider_environment?: 'sandbox' | 'live';
     provider_account_key?: string; external_subscription_ref: string;

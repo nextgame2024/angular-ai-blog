@@ -761,7 +761,10 @@ export class SophiaAdminService {
 
   reconcileBilling(tenantId: string, input: { requestId: string }) {
     return this.http.post<{ status: 'reconciled' | 'incomplete'; observedAt: string;
-      subscriptionCount: number; invoiceCount: number; liveEntitlementMutation: false }>(
+      subscriptionCount: number; invoiceCount: number;
+      periodLedger: { observedPeriods: number; finalised: number; existing: number;
+        blocked: Array<{ periodId: string; reason: string }> };
+      liveEntitlementMutation: false }>(
       `${this.adminBase}/tenants/${encodeURIComponent(tenantId)}/usage-billing/reconcile`, input, { headers: this.headers() },
     );
   }

@@ -45,6 +45,7 @@ describe('UsageBillingAdminPage', () => {
         detail: 'No Sophia billing provider is configured.' },
       assignment: null,
       preview: { status: 'unavailable', chargeExecution: false, reason: 'No active Sophia commercial plan assignment exists.' },
+      finalisedUsagePeriods: [],
       subscriptions: [], invoices: [], providerCustomers: [], recentWebhookEvents: [], activeCheckoutIntent: null,
       authority: { tenantPlanMutation: 'unavailable', detail: 'Tenant administrators cannot publish rate cards.' },
       isolation: { existingPayments: 'excluded', detail: 'Existing business payment objects are outside this namespace.' },

@@ -131,7 +131,7 @@ export class UsageBillingAdminPage implements OnInit {
     this.busy.set(true); this.error.set(''); this.notice.set('');
     this.admin.reconcileBilling(this.tenant(), { requestId: crypto.randomUUID() })
       .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-        next: (result) => { this.notice.set(`${this.billingEnvironment()} reconciliation ${result.status}: ${result.subscriptionCount} subscription(s), ${result.invoiceCount} invoice(s). No live entitlement changed.`); this.busy.set(false); this.refresh(); },
+        next: (result) => { this.notice.set(`${this.billingEnvironment()} reconciliation ${result.status}: ${result.subscriptionCount} subscription(s), ${result.invoiceCount} invoice(s), ${result.periodLedger.finalised} usage period(s) finalised${result.periodLedger.blocked.length ? `, ${result.periodLedger.blocked.length} blocked` : ''}. No live entitlement changed.`); this.busy.set(false); this.refresh(); },
         error: (error) => this.fail(error),
       });
   }
