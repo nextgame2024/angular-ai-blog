@@ -15,6 +15,7 @@ import type {
 @Injectable()
 export class SophiaRuntimeSessionService {
   private readonly accessTokens = new Map<string, string>();
+  private readonly connectionIds = new Map<string, string>();
   private readonly runtimeBase = environment.sophiaRuntimeApiUrl.replace(
     /\/$/,
     '',
@@ -61,15 +62,24 @@ export class SophiaRuntimeSessionService {
   closeSession(sessionId: string): Observable<SophiaRuntimeSessionStatusResponse> {
     return this.http.post<SophiaRuntimeSessionStatusResponse>(
       `${this.runtimeBase}/sessions/${sessionId}/close`,
-      {},
+      this.activityPayload(sessionId),
       { headers: this.sessionHeaders(sessionId) },
-    ).pipe(tap(() => this.accessTokens.delete(sessionId)));
+    ).pipe(tap(() => this.forgetSession(sessionId)));
+  }
+
+  markConnected(sessionId: string): Observable<SophiaRuntimeSessionStatusResponse> {
+    const connectionId = crypto.randomUUID();
+    return this.http.post<SophiaRuntimeSessionStatusResponse>(
+      `${this.runtimeBase}/sessions/${sessionId}/connected`,
+      { connectionId },
+      { headers: this.sessionHeaders(sessionId) },
+    ).pipe(tap(() => this.connectionIds.set(sessionId, connectionId)));
   }
 
   heartbeatSession(sessionId: string): Observable<SophiaRuntimeSessionStatusResponse> {
     return this.http.post<SophiaRuntimeSessionStatusResponse>(
       `${this.runtimeBase}/sessions/${sessionId}/heartbeat`,
-      {},
+      this.activityPayload(sessionId),
       { headers: this.sessionHeaders(sessionId) },
     );
   }
@@ -77,13 +87,14 @@ export class SophiaRuntimeSessionService {
   markDisconnected(sessionId: string): Observable<SophiaRuntimeSessionStatusResponse> {
     return this.http.post<SophiaRuntimeSessionStatusResponse>(
       `${this.runtimeBase}/sessions/${sessionId}/disconnect`,
-      {},
+      this.activityPayload(sessionId),
       { headers: this.sessionHeaders(sessionId) },
     );
   }
 
   forgetSession(sessionId: string): void {
     this.accessTokens.delete(sessionId);
+    this.connectionIds.delete(sessionId);
   }
 
   confirmActionReview(
@@ -118,5 +129,10 @@ export class SophiaRuntimeSessionService {
     const token = this.accessTokens.get(sessionId);
     if (!token) throw new Error('Sophia session access is unavailable.');
     return new HttpHeaders({ Authorization: `Bearer ${token}` });
+  }
+
+  private activityPayload(sessionId: string): { connectionId?: string } {
+    const connectionId = this.connectionIds.get(sessionId);
+    return connectionId ? { connectionId } : {};
   }
 }

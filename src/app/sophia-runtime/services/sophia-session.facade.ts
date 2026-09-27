@@ -180,6 +180,10 @@ export class SophiaSessionFacade {
         },
       });
 
+      await firstValueFrom(
+        this.runtime.markConnected(response.session.sessionId),
+      );
+
       this.armSessionExpiry(
         response.session.sessionId,
         response.sessionAccessExpiresAt,
@@ -456,6 +460,7 @@ export class SophiaSessionFacade {
     this.clearInactivityTimers();
     this.stopHeartbeat();
     await this.transports.disconnect().catch(() => undefined);
+    await firstValueFrom(this.runtime.markDisconnected(sessionId)).catch(() => undefined);
     this.runtime.forgetSession(sessionId);
     this.session.set(null);
     this.resetConnectionState();

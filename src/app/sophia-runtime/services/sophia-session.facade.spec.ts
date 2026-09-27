@@ -22,6 +22,7 @@ describe('SophiaSessionFacade', () => {
       [
         'warmUp',
         'createSession',
+        'markConnected',
         'closeSession',
         'heartbeatSession',
         'markDisconnected',
@@ -32,6 +33,8 @@ describe('SophiaSessionFacade', () => {
       ],
     );
     runtime.warmUp.and.returnValue(of({ ok: true }));
+    runtime.markConnected.and.returnValue(of({ session: sessionResponse().session }));
+    runtime.markDisconnected.and.returnValue(of({ session: sessionResponse().session }));
 
     TestBed.configureTestingModule({
       providers: [
@@ -106,6 +109,8 @@ describe('SophiaSessionFacade', () => {
       onClosed,
     });
     flushMicrotasks();
+
+    expect(runtime.markConnected).toHaveBeenCalledOnceWith('session-1');
     tick(101);
     flushMicrotasks();
 
