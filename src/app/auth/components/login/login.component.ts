@@ -23,6 +23,7 @@ import { ButtonModule } from 'primeng/button';
 import { InputGroupModule } from 'primeng/inputgroup';
 import { InputGroupAddonModule } from 'primeng/inputgroupaddon';
 import { LOGIN_REDIRECT_TARGET_QUERY_PARAM } from '../../../shared/services/post-login-redirect.service';
+import { PersistanceService } from '../../../shared/services/persistance.service';
 
 @Component({
   selector: 'mc-login',
@@ -49,6 +50,7 @@ export class LoginComponent {
   private readonly store = inject(Store);
   private readonly route = inject(ActivatedRoute);
   private readonly authService = inject(AuthService);
+  private readonly persistence = inject(PersistanceService);
 
   readonly form = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -62,6 +64,7 @@ export class LoginComponent {
   });
 
   readonly mode$$ = signal<'login' | 'forgot' | 'mfa'>('login');
+  readonly enrollmentComplete$$ = signal(false);
   readonly isSubmitting$$ = toSignal(this.store.select(selectIsSubmitting), {
     initialValue: false,
   });
@@ -85,6 +88,13 @@ export class LoginComponent {
     this.mfaForm.reset();
     this.mode$$.set('mfa');
   });
+
+  constructor() {
+    if (this.persistence.get<boolean>('mfaEnrollmentComplete')) {
+      this.enrollmentComplete$$.set(true);
+      this.persistence.remove('mfaEnrollmentComplete');
+    }
+  }
 
   private readonly errorEffect = effect((onCleanup) => {
     const errors = this.validationErrors$$();

@@ -14,6 +14,11 @@
           <div class="text-center mb-3">
             <a routerLink="/register" class="text-sm">Need an account?</a>
           </div>
+          @if (enrollmentComplete$$()) {
+            <div class="reset-notice success" role="status">
+              Authenticator MFA is active. Sign in again with your password and authenticator code.
+            </div>
+          }
         } @else if (mode$$() === "forgot") {
           <div class="forgot-copy">
             <p>

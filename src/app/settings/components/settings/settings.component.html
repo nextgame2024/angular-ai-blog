@@ -138,10 +138,6 @@
             <p>
               Status: <strong>{{ status.mfa.enabled ? 'Active' : (status.mfa.status === 'pending' ? 'Pending confirmation' : 'Not enrolled') }}</strong>
             </p>
-            @if (status.mfaVerifiedAt) {
-              <p class="text-sm text-gray-500">Last step-up: {{ status.mfaVerifiedAt | date:'medium' }}</p>
-            }
-
             @if (!status.mfa.enabled) {
               <form [formGroup]="mfaEnrollmentForm" (ngSubmit)="startMfaEnrollment()" class="space-y-3">
                 <p class="text-sm text-gray-600">Confirm your current password to create a TOTP secret. The secret is shown once.</p>
@@ -178,19 +174,7 @@
             }
 
             @if (status.mfa.enabled) {
-              <p class="text-sm text-gray-600">MFA is required whenever you sign in. That verification also unlocks sensitive actions for up to 12 hours.</p>
-              @if (!showMfaStepUp$$()) {
-                <button pButton type="button" label="Verify again now" class="p-button-outlined w-full"
-                  (click)="showMfaStepUp()"></button>
-              } @else {
-                <form [formGroup]="mfaStepUpForm" (ngSubmit)="stepUpMfa()" class="space-y-3">
-                  <p class="text-sm text-gray-600">Enter a fresh code only if your recent verification expired or you are about to perform sensitive work.</p>
-                  <input pInputText formControlName="code" inputmode="numeric" autocomplete="one-time-code"
-                    maxlength="6" placeholder="6-digit authenticator code" class="w-full" />
-                  <button pButton type="submit" label="Verify identity" class="w-full"
-                    [disabled]="mfaBusy$$() || mfaStepUpForm.invalid"></button>
-                </form>
-              }
+              <p class="text-sm text-gray-600">MFA is required every time you sign in. For your security, the session expires after 12 hours; you will then sign in again with your password and authenticator code.</p>
             }
           } @else {
             <p class="text-sm text-gray-500">Loading MFA status…</p>

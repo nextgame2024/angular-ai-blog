@@ -89,13 +89,9 @@ export class SettingsComponent {
   readonly mfaActivationForm = this.fb.nonNullable.group({
     code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
   });
-  readonly mfaStepUpForm = this.fb.nonNullable.group({
-    code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
-  });
   readonly mfaStatus$$ = signal<MfaStatusResponse | null>(null);
   readonly mfaEnrollment$$ = signal<MfaEnrollmentResponse['mfa'] | null>(null);
   readonly mfaQrCode$$ = signal<string | null>(null);
-  readonly showMfaStepUp$$ = signal(false);
   readonly mfaBusy$$ = signal(false);
   readonly mfaNotice$$ = signal<string | null>(null);
   readonly mfaError$$ = signal<string | null>(null);
@@ -244,36 +240,11 @@ export class SettingsComponent {
     this.auth.activateTotp(this.mfaActivationForm.controls.code.value).subscribe({
       next: () => {
         this.mfaActivationForm.reset(); this.mfaEnrollment$$.set(null); this.mfaQrCode$$.set(null);
-        this.showMfaStepUp$$.set(true);
-        this.mfaNotice$$.set('Authenticator MFA is active. It will be required the next time you sign in.');
-        this.loadMfaStatus(); this.store.dispatch(authActions.getCurrentUser());
+        this.persistence.set('mfaEnrollmentComplete', true);
+        this.store.dispatch(authActions.logout());
       },
       error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },
     });
-  }
-
-  stepUpMfa(): void {
-    if (this.mfaStepUpForm.invalid) return;
-    this.mfaBusy$$.set(true); this.mfaError$$.set(null); this.mfaNotice$$.set(null);
-    this.auth.stepUpTotp(this.mfaStepUpForm.controls.code.value).subscribe({
-      next: (currentUser) => {
-        this.persistence.set('accessToken', currentUser.token);
-        this.persistence.set('token', currentUser.token);
-        this.store.dispatch(authActions.getCurrentUserSuccess({ currentUser }));
-        this.mfaStepUpForm.reset(); this.mfaBusy$$.set(false);
-        this.showMfaStepUp$$.set(false);
-        this.mfaNotice$$.set('Identity verified. Sensitive actions are available for up to 12 hours.');
-        this.mfaStatus$$.update((status) => status ? { ...status,
-          mfaVerifiedAt: currentUser.mfaVerifiedAt ?? null } : status);
-      },
-      error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },
-    });
-  }
-
-  showMfaStepUp(): void {
-    this.showMfaStepUp$$.set(true);
-    this.mfaNotice$$.set(null);
-    this.mfaError$$.set(null);
   }
 
   async copyMfaSecret(): Promise<void> {
