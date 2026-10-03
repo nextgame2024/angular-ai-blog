@@ -74,20 +74,20 @@
             </p-inputgroup>
 
             <button
-              class="forgot-link"
-              type="button"
-              (click)="showForgotPassword()"
-            >
-              Forgot your password?
-            </button>
-
-            <button
               pButton
               type="submit"
               label="Sign In"
               class="w-full"
               [disabled]="form.invalid || isSubmitting$$()"
             ></button>
+
+            <button
+              class="forgot-link"
+              type="button"
+              (click)="showForgotPassword()"
+            >
+              Forgot your password?
+            </button>
           </form>
         } @else if (mode$$() === "forgot") {
           <form
