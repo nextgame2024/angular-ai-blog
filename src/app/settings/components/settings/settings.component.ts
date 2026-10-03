@@ -19,6 +19,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { AuthService, MfaEnrollmentResponse, MfaStatusResponse } from 'src/app/auth/services/auth.service';
 import { PersistanceService } from 'src/app/shared/services/persistance.service';
+import * as QRCode from 'qrcode';
 
 /* PrimeNG */
 import { CardModule } from 'primeng/card';
@@ -93,6 +94,8 @@ export class SettingsComponent {
   });
   readonly mfaStatus$$ = signal<MfaStatusResponse | null>(null);
   readonly mfaEnrollment$$ = signal<MfaEnrollmentResponse['mfa'] | null>(null);
+  readonly mfaQrCode$$ = signal<string | null>(null);
+  readonly showMfaStepUp$$ = signal(false);
   readonly mfaBusy$$ = signal(false);
   readonly mfaNotice$$ = signal<string | null>(null);
   readonly mfaError$$ = signal<string | null>(null);
@@ -227,7 +230,8 @@ export class SettingsComponent {
       next: ({ mfa }) => {
         this.mfaEnrollment$$.set(mfa); this.mfaBusy$$.set(false);
         this.mfaEnrollmentForm.reset();
-        this.mfaNotice$$.set('Add the secret to your authenticator, then confirm one code.');
+        void this.renderMfaQrCode(mfa.otpauthUri);
+        this.mfaNotice$$.set('Scan the QR code, then enter the current code from your authenticator.');
         this.loadMfaStatus();
       },
       error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },
@@ -239,8 +243,9 @@ export class SettingsComponent {
     this.mfaBusy$$.set(true); this.mfaError$$.set(null); this.mfaNotice$$.set(null);
     this.auth.activateTotp(this.mfaActivationForm.controls.code.value).subscribe({
       next: () => {
-        this.mfaActivationForm.reset(); this.mfaEnrollment$$.set(null);
-        this.mfaNotice$$.set('Authenticator MFA is active. Verify a fresh code before privileged work.');
+        this.mfaActivationForm.reset(); this.mfaEnrollment$$.set(null); this.mfaQrCode$$.set(null);
+        this.showMfaStepUp$$.set(true);
+        this.mfaNotice$$.set('Authenticator MFA is active. It will be required the next time you sign in.');
         this.loadMfaStatus(); this.store.dispatch(authActions.getCurrentUser());
       },
       error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },
@@ -256,12 +261,43 @@ export class SettingsComponent {
         this.persistence.set('token', currentUser.token);
         this.store.dispatch(authActions.getCurrentUserSuccess({ currentUser }));
         this.mfaStepUpForm.reset(); this.mfaBusy$$.set(false);
-        this.mfaNotice$$.set('Recent MFA verified. Privileged actions are available for up to 12 hours.');
+        this.showMfaStepUp$$.set(false);
+        this.mfaNotice$$.set('Identity verified. Sensitive actions are available for up to 12 hours.');
         this.mfaStatus$$.update((status) => status ? { ...status,
           mfaVerifiedAt: currentUser.mfaVerifiedAt ?? null } : status);
       },
       error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },
     });
+  }
+
+  showMfaStepUp(): void {
+    this.showMfaStepUp$$.set(true);
+    this.mfaNotice$$.set(null);
+    this.mfaError$$.set(null);
+  }
+
+  async copyMfaSecret(): Promise<void> {
+    const secret = this.mfaEnrollment$$()?.secret;
+    if (!secret) return;
+    try {
+      await navigator.clipboard.writeText(secret);
+      this.mfaNotice$$.set('Setup key copied. Keep it private.');
+    } catch {
+      this.mfaError$$.set('Could not copy the key. Select and copy it manually.');
+    }
+  }
+
+  private async renderMfaQrCode(uri: string): Promise<void> {
+    try {
+      this.mfaQrCode$$.set(await QRCode.toDataURL(uri, {
+        width: 224,
+        margin: 1,
+        errorCorrectionLevel: 'M',
+      }));
+    } catch {
+      this.mfaQrCode$$.set(null);
+      this.mfaError$$.set('Could not render the QR code. Use the manual setup key.');
+    }
   }
 }
 

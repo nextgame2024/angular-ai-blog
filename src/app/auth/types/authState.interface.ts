@@ -6,4 +6,5 @@ export interface AuthStateInterface {
   currentUser: CurrentUserInterface | null | undefined;
   isLoading: boolean;
   validationErrors: BackendErrorsInterface | null;
+  mfaLoginChallenge: string | null;
 }

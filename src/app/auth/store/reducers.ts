@@ -8,6 +8,7 @@ const initialState: AuthStateInterface = {
   isLoading: false,
   currentUser: undefined,
   validationErrors: null,
+  mfaLoginChallenge: null,
 };
 
 const authFeature = createFeature({
@@ -39,6 +40,24 @@ const authFeature = createFeature({
       ...state,
       isSubmitting: false,
       currentUser: action.currentUser,
+      mfaLoginChallenge: null,
+    })),
+    on(authActions.loginMFARequired, (state, action) => ({
+      ...state,
+      isSubmitting: false,
+      validationErrors: null,
+      mfaLoginChallenge: action.challengeToken,
+    })),
+    on(authActions.completeMFALogin, (state) => ({
+      ...state,
+      isSubmitting: true,
+      validationErrors: null,
+    })),
+    on(authActions.cancelMFALogin, (state) => ({
+      ...state,
+      isSubmitting: false,
+      validationErrors: null,
+      mfaLoginChallenge: null,
     })),
     on(authActions.loginFailure, (state, action) => ({
       ...state,
@@ -84,4 +103,5 @@ export const {
   selectIsLoading,
   selectCurrentUser,
   selectValidationErrors,
+  selectMfaLoginChallenge,
 } = authFeature;

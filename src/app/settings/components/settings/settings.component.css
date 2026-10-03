@@ -47,6 +47,26 @@
   font-weight: 700;
 }
 
+.mfa-qr {
+  width: 14rem;
+  height: 14rem;
+  max-width: 100%;
+  justify-self: center;
+  border-radius: 0.5rem;
+}
+
+.mfa-manual {
+  display: grid;
+  gap: 0.75rem;
+  border-top: 1px solid #cbd5e1;
+  padding-top: 0.75rem;
+}
+
+.mfa-manual summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
 /* ------------------------------------------------------------------
    MOBILE: Remove PrimeNG's default padding inside the p-card body
    so the Settings card lines up edge-to-edge with your own px-5 rows.

@@ -44,4 +44,25 @@ describe('AuthService MFA', () => {
       mfaVerifiedAt: '2026-10-04T00:00:00.000Z' } });
     expect(token).toBe('step-up-token');
   });
+
+  it('supports a password challenge followed by MFA sign-in', () => {
+    let challenge: string | undefined;
+    service.login({ user: { email: 'owner@example.com', password: 'password' } })
+      .subscribe((response) => {
+        if ('mfaRequired' in response) challenge = response.challengeToken;
+      });
+    const password = http.expectOne((request) => request.url.endsWith('/users/login'));
+    expect(password.request.method).toBe('POST');
+    password.flush({ mfaRequired: true, challengeToken: 'challenge-token', expiresInSeconds: 300 });
+    expect(challenge).toBe('challenge-token');
+
+    let token: string | undefined;
+    service.completeMfaLogin('challenge-token', '123456')
+      .subscribe((user) => { token = user.token; });
+    const mfa = http.expectOne((request) => request.url.endsWith('/users/login/mfa'));
+    expect(mfa.request.body).toEqual({ challengeToken: 'challenge-token', code: '123456' });
+    mfa.flush({ user: { id: 'user-1', email: 'owner@example.com', username: 'owner',
+      token: 'login-token', mfaEnabled: true, mfaVerifiedAt: '2026-10-04T00:00:00.000Z' } });
+    expect(token).toBe('login-token');
+  });
 });

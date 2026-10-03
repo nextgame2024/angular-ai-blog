@@ -32,7 +32,8 @@
             "scripts": [],
             "allowedCommonJsDependencies": [
               "simli-client/dist/client",
-              "livekit-client"
+              "livekit-client",
+              "qrcode"
             ],
             "browser": "src/main.ts"
           },

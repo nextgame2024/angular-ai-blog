@@ -31,6 +31,15 @@ export const authActions = createActionGroup({
       currentUser: CurrentUserInterface;
       redirectTarget?: string | null;
     }>(),
+    'Login MFA required': props<{
+      challengeToken: string;
+    }>(),
+    'Complete MFA login': props<{
+      challengeToken: string;
+      code: string;
+      redirectTarget?: string | null;
+    }>(),
+    'Cancel MFA login': emptyProps(),
     'Login failure': props<{ errors: BackendErrorsInterface }>(),
 
     'Get current user': emptyProps(),

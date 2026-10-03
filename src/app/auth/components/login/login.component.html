@@ -7,14 +7,14 @@
     <!-- Width owner: snug on phones, grows responsibly -->
     <div class="w-full max-w-[23rem] sm:max-w-md md:max-w-lg">
       <p-card
-        [header]="mode$$() === 'login' ? 'Sign In' : 'Reset Password'"
+        [header]="mode$$() === 'forgot' ? 'Reset Password' : (mode$$() === 'mfa' ? 'Verify your identity' : 'Sign In')"
         styleClass="w-full m-0 auth-card"
       >
         @if (mode$$() === "login") {
           <div class="text-center mb-3">
             <a routerLink="/register" class="text-sm">Need an account?</a>
           </div>
-        } @else {
+        } @else if (mode$$() === "forgot") {
           <div class="forgot-copy">
             <p>
               Enter the email for your account and we will send you a secure
@@ -84,7 +84,7 @@
               [disabled]="form.invalid || isSubmitting$$()"
             ></button>
           </form>
-        } @else {
+        } @else if (mode$$() === "forgot") {
           <form
             [formGroup]="forgotForm"
             (ngSubmit)="onForgotSubmit()"
@@ -121,6 +121,39 @@
 
             <button class="back-link" type="button" (click)="showLogin()">
               Back to sign in
+            </button>
+          </form>
+        } @else {
+          <form
+            [formGroup]="mfaForm"
+            (ngSubmit)="onMfaSubmit()"
+            class="space-y-4 mt-4"
+          >
+            <div class="forgot-copy">
+              <p>Open your authenticator app and enter the current 6-digit code.</p>
+            </div>
+            <p-inputgroup>
+              <p-inputgroup-addon><i class="pi pi-shield"></i></p-inputgroup-addon>
+              <input
+                pInputText
+                type="text"
+                formControlName="code"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                placeholder="6-digit code"
+                class="w-full flex-auto"
+              />
+            </p-inputgroup>
+            <button
+              pButton
+              type="submit"
+              label="Verify and sign in"
+              class="w-full"
+              [disabled]="mfaForm.invalid || isSubmitting$$()"
+            ></button>
+            <button class="back-link" type="button" (click)="cancelMfaLogin()">
+              Use a different account
             </button>
           </form>
         }

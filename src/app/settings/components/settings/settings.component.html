@@ -154,9 +154,20 @@
 
             @if (mfaEnrollment$$(); as enrollment) {
               <section class="mfa-secret" aria-label="Authenticator enrollment secret">
-                <p class="text-sm">Enter this key in Google Authenticator, 1Password, Microsoft Authenticator, or another TOTP app:</p>
-                <code>{{ enrollment.secret }}</code>
-                <p class="text-xs text-gray-500 break-all">{{ enrollment.otpauthUri }}</p>
+                <h3 class="font-semibold">Scan with your authenticator app</h3>
+                <p class="text-sm">In Google Authenticator, Microsoft Authenticator, 1Password, or another TOTP app, choose <strong>Scan a QR code</strong>.</p>
+                @if (mfaQrCode$$()) {
+                  <img class="mfa-qr" [src]="mfaQrCode$$()" alt="QR code for Sophia AI authenticator setup" />
+                } @else {
+                  <p class="text-sm text-gray-500">Preparing QR code…</p>
+                }
+                <details class="mfa-manual">
+                  <summary>Can’t scan the QR code?</summary>
+                  <p class="text-sm">Enter this setup key manually. Never share it.</p>
+                  <code>{{ enrollment.secret }}</code>
+                  <button pButton type="button" label="Copy setup key" class="p-button-outlined w-full"
+                    (click)="copyMfaSecret()"></button>
+                </details>
               </section>
               <form [formGroup]="mfaActivationForm" (ngSubmit)="activateMfa()" class="space-y-3">
                 <input pInputText formControlName="code" inputmode="numeric" autocomplete="one-time-code"
@@ -167,13 +178,19 @@
             }
 
             @if (status.mfa.enabled) {
-              <form [formGroup]="mfaStepUpForm" (ngSubmit)="stepUpMfa()" class="space-y-3">
-                <p class="text-sm text-gray-600">Verify a fresh authenticator code before billing, role, privacy, or other privileged actions.</p>
-                <input pInputText formControlName="code" inputmode="numeric" autocomplete="one-time-code"
-                  maxlength="6" placeholder="6-digit authenticator code" class="w-full" />
-                <button pButton type="submit" label="Verify recent MFA" class="w-full"
-                  [disabled]="mfaBusy$$() || mfaStepUpForm.invalid"></button>
-              </form>
+              <p class="text-sm text-gray-600">MFA is required whenever you sign in. That verification also unlocks sensitive actions for up to 12 hours.</p>
+              @if (!showMfaStepUp$$()) {
+                <button pButton type="button" label="Verify again now" class="p-button-outlined w-full"
+                  (click)="showMfaStepUp()"></button>
+              } @else {
+                <form [formGroup]="mfaStepUpForm" (ngSubmit)="stepUpMfa()" class="space-y-3">
+                  <p class="text-sm text-gray-600">Enter a fresh code only if your recent verification expired or you are about to perform sensitive work.</p>
+                  <input pInputText formControlName="code" inputmode="numeric" autocomplete="one-time-code"
+                    maxlength="6" placeholder="6-digit authenticator code" class="w-full" />
+                  <button pButton type="submit" label="Verify identity" class="w-full"
+                    [disabled]="mfaBusy$$() || mfaStepUpForm.invalid"></button>
+                </form>
+              }
             }
           } @else {
             <p class="text-sm text-gray-500">Loading MFA status…</p>

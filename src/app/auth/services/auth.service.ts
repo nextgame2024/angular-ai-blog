@@ -26,6 +26,14 @@ export interface MfaEnrollmentResponse {
   mfa: { status: 'pending'; secret: string; otpauthUri: string };
 }
 
+export interface MfaLoginChallengeResponse {
+  mfaRequired: true;
+  challengeToken: string;
+  expiresInSeconds: number;
+}
+
+export type LoginResponse = AuthResponseInterface | MfaLoginChallengeResponse;
+
 @Injectable({
   providedIn: 'root',
 })
@@ -48,10 +56,14 @@ export class AuthService {
       .pipe(map(this.getUser));
   }
 
-  login(data: LoginRequestInterface): Observable<CurrentUserInterface> {
+  login(data: LoginRequestInterface): Observable<LoginResponse> {
     const url = environment.apiUrl + '/users/login';
-    return this.http
-      .post<AuthResponseInterface>(url, data)
+    return this.http.post<LoginResponse>(url, data);
+  }
+
+  completeMfaLogin(challengeToken: string, code: string): Observable<CurrentUserInterface> {
+    const url = environment.apiUrl + '/users/login/mfa';
+    return this.http.post<AuthResponseInterface>(url, { challengeToken, code })
       .pipe(map(this.getUser));
   }
 

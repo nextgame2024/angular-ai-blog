@@ -109,9 +109,12 @@ export const loginEffect = createEffect(
       ofType(authActions.login),
       switchMap(({ request, redirectTarget }) => {
         return authService.login(request).pipe(
-          map((currentUser: CurrentUserInterface) => {
-            persistanceService.set('accessToken', currentUser.token);
-            return authActions.loginSuccess({ currentUser, redirectTarget });
+          map((response) => {
+            if ('mfaRequired' in response) {
+              return authActions.loginMFARequired({ challengeToken: response.challengeToken });
+            }
+            persistanceService.set('accessToken', response.user.token);
+            return authActions.loginSuccess({ currentUser: response.user, redirectTarget });
           }),
           catchError((errorResponse: HttpErrorResponse) => {
             const fallbackMessage =
@@ -134,6 +137,28 @@ export const loginEffect = createEffect(
       })
     );
   },
+  { functional: true }
+);
+
+export const completeMfaLoginEffect = createEffect(
+  (
+    actions$ = inject(Actions),
+    authService = inject(AuthService),
+    persistanceService = inject(PersistanceService)
+  ) => actions$.pipe(
+    ofType(authActions.completeMFALogin),
+    switchMap(({ challengeToken, code, redirectTarget }) => authService
+      .completeMfaLogin(challengeToken, code)
+      .pipe(
+        map((currentUser) => {
+          persistanceService.set('accessToken', currentUser.token);
+          return authActions.loginSuccess({ currentUser, redirectTarget });
+        }),
+        catchError((errorResponse: HttpErrorResponse) => of(authActions.loginFailure({
+          errors: { login: [errorResponse?.error?.error || 'The authenticator code is invalid.'] },
+        }))),
+      )),
+  ),
   { functional: true }
 );
 

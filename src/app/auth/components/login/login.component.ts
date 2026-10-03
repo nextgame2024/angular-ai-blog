@@ -5,6 +5,7 @@ import { authActions } from '../../store/actions';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import {
   selectIsSubmitting,
+  selectMfaLoginChallenge,
   selectValidationErrors,
 } from '../../store/reducers';
 import { CommonModule } from '@angular/common';
@@ -56,8 +57,11 @@ export class LoginComponent {
   readonly forgotForm = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
   });
+  readonly mfaForm = this.fb.nonNullable.group({
+    code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
+  });
 
-  readonly mode$$ = signal<'login' | 'forgot'>('login');
+  readonly mode$$ = signal<'login' | 'forgot' | 'mfa'>('login');
   readonly isSubmitting$$ = toSignal(this.store.select(selectIsSubmitting), {
     initialValue: false,
   });
@@ -70,6 +74,17 @@ export class LoginComponent {
     this.store.select(selectValidationErrors),
     { initialValue: null },
   );
+  private readonly mfaLoginChallenge$$ = toSignal(
+    this.store.select(selectMfaLoginChallenge),
+    { initialValue: null },
+  );
+
+  private readonly mfaChallengeEffect = effect(() => {
+    if (!this.mfaLoginChallenge$$()) return;
+    this.form.controls.password.reset();
+    this.mfaForm.reset();
+    this.mode$$.set('mfa');
+  });
 
   private readonly errorEffect = effect((onCleanup) => {
     const errors = this.validationErrors$$();
@@ -104,6 +119,25 @@ export class LoginComponent {
     );
 
     this.store.dispatch(authActions.login({ request, redirectTarget }));
+  }
+
+  onMfaSubmit(): void {
+    const challengeToken = this.mfaLoginChallenge$$();
+    if (!challengeToken || this.mfaForm.invalid) return;
+    const redirectTarget = this.route.snapshot.queryParamMap.get(
+      LOGIN_REDIRECT_TARGET_QUERY_PARAM,
+    );
+    this.store.dispatch(authActions.completeMFALogin({
+      challengeToken,
+      code: this.mfaForm.controls.code.value,
+      redirectTarget,
+    }));
+  }
+
+  cancelMfaLogin(): void {
+    this.store.dispatch(authActions.cancelMFALogin());
+    this.mfaForm.reset();
+    this.mode$$.set('login');
   }
 
   showForgotPassword(): void {
