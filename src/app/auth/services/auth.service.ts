@@ -12,6 +12,20 @@ export interface PasswordResetMessageResponse {
   message: string;
 }
 
+export interface MfaStatusResponse {
+  mfa: {
+    enabled: boolean;
+    status: 'not_enrolled' | 'pending' | 'active';
+    activatedAt?: string | null;
+    lockedUntil?: string | null;
+  };
+  mfaVerifiedAt: string | null;
+}
+
+export interface MfaEnrollmentResponse {
+  mfa: { status: 'pending'; secret: string; otpauthUri: string };
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -65,6 +79,24 @@ export class AuthService {
     const url = environment.apiUrl + '/user';
     return this.http
       .put<AuthResponseInterface>(url, currentUserRequest)
+      .pipe(map(this.getUser));
+  }
+
+  getMfaStatus(): Observable<MfaStatusResponse> {
+    return this.http.get<MfaStatusResponse>(environment.apiUrl + '/user/mfa');
+  }
+
+  enrolTotp(password: string): Observable<MfaEnrollmentResponse> {
+    return this.http.post<MfaEnrollmentResponse>(environment.apiUrl + '/user/mfa/totp/enrol', { password });
+  }
+
+  activateTotp(code: string): Observable<{ mfa: { status: 'active'; enabled: true; activatedAt: string } }> {
+    return this.http.post<{ mfa: { status: 'active'; enabled: true; activatedAt: string } }>(
+      environment.apiUrl + '/user/mfa/totp/activate', { code });
+  }
+
+  stepUpTotp(code: string): Observable<CurrentUserInterface> {
+    return this.http.post<AuthResponseInterface>(environment.apiUrl + '/user/mfa/totp/step-up', { code })
       .pipe(map(this.getUser));
   }
 }

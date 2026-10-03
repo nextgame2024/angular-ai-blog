@@ -18,4 +18,6 @@ export interface CurrentUserInterface {
   siteName?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
+  mfaEnabled?: boolean;
+  mfaVerifiedAt?: string | null;
 }

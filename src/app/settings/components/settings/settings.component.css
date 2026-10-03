@@ -23,6 +23,30 @@
   flex: 0 0 auto;
 }
 
+.mfa-message {
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.mfa-error { background: #fef2f2; color: #991b1b; }
+.mfa-success { background: #ecfdf5; color: #065f46; }
+
+.mfa-secret {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  background: #f8fafc;
+}
+
+.mfa-secret code {
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
 /* ------------------------------------------------------------------
    MOBILE: Remove PrimeNG's default padding inside the p-card body
    so the Settings card lines up edge-to-edge with your own px-5 rows.

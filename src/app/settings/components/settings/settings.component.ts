@@ -6,7 +6,7 @@ import {
   signal,
   viewChild,
 } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Store } from '@ngrx/store';
 import { selectCurrentUser } from 'src/app/auth/store/reducers';
 import { CurrentUserInterface } from 'src/app/shared/types/currentUser.interface';
@@ -17,6 +17,8 @@ import { CurrentUserRequestInterface } from 'src/app/shared/types/currentUserReq
 import { authActions } from 'src/app/auth/store/actions';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
+import { AuthService, MfaEnrollmentResponse, MfaStatusResponse } from 'src/app/auth/services/auth.service';
+import { PersistanceService } from 'src/app/shared/services/persistance.service';
 
 /* PrimeNG */
 import { CardModule } from 'primeng/card';
@@ -69,6 +71,9 @@ export class SettingsComponent {
 
   private readonly fb = inject(FormBuilder);
   private readonly store = inject(Store);
+  private readonly auth = inject(AuthService);
+  private readonly persistence = inject(PersistanceService);
+  private mfaLoadedUserId: string | null = null;
 
   readonly form = this.fb.nonNullable.group({
     image: '',
@@ -77,6 +82,20 @@ export class SettingsComponent {
     email: '',
     password: '',
   });
+  readonly mfaEnrollmentForm = this.fb.nonNullable.group({
+    password: ['', [Validators.required]],
+  });
+  readonly mfaActivationForm = this.fb.nonNullable.group({
+    code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
+  });
+  readonly mfaStepUpForm = this.fb.nonNullable.group({
+    code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
+  });
+  readonly mfaStatus$$ = signal<MfaStatusResponse | null>(null);
+  readonly mfaEnrollment$$ = signal<MfaEnrollmentResponse['mfa'] | null>(null);
+  readonly mfaBusy$$ = signal(false);
+  readonly mfaNotice$$ = signal<string | null>(null);
+  readonly mfaError$$ = signal<string | null>(null);
 
   // bigger default preview if image is empty/broken
   readonly defaultAvatar =
@@ -127,6 +146,10 @@ export class SettingsComponent {
       email: currentUser.email,
       password: '',
     });
+    if (this.mfaLoadedUserId !== currentUser.id) {
+      this.mfaLoadedUserId = currentUser.id;
+      this.loadMfaStatus();
+    }
   });
 
   private readonly uploadedUrlEffect = effect(() => {
@@ -188,4 +211,62 @@ export class SettingsComponent {
     };
     this.store.dispatch(authActions.updateCurrentUser({ currentUserRequest }));
   }
+
+  loadMfaStatus(): void {
+    this.mfaBusy$$.set(true); this.mfaError$$.set(null);
+    this.auth.getMfaStatus().subscribe({
+      next: (status) => { this.mfaStatus$$.set(status); this.mfaBusy$$.set(false); },
+      error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },
+    });
+  }
+
+  startMfaEnrollment(): void {
+    if (this.mfaEnrollmentForm.invalid) return;
+    this.mfaBusy$$.set(true); this.mfaError$$.set(null); this.mfaNotice$$.set(null);
+    this.auth.enrolTotp(this.mfaEnrollmentForm.controls.password.value).subscribe({
+      next: ({ mfa }) => {
+        this.mfaEnrollment$$.set(mfa); this.mfaBusy$$.set(false);
+        this.mfaEnrollmentForm.reset();
+        this.mfaNotice$$.set('Add the secret to your authenticator, then confirm one code.');
+        this.loadMfaStatus();
+      },
+      error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },
+    });
+  }
+
+  activateMfa(): void {
+    if (this.mfaActivationForm.invalid) return;
+    this.mfaBusy$$.set(true); this.mfaError$$.set(null); this.mfaNotice$$.set(null);
+    this.auth.activateTotp(this.mfaActivationForm.controls.code.value).subscribe({
+      next: () => {
+        this.mfaActivationForm.reset(); this.mfaEnrollment$$.set(null);
+        this.mfaNotice$$.set('Authenticator MFA is active. Verify a fresh code before privileged work.');
+        this.loadMfaStatus(); this.store.dispatch(authActions.getCurrentUser());
+      },
+      error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },
+    });
+  }
+
+  stepUpMfa(): void {
+    if (this.mfaStepUpForm.invalid) return;
+    this.mfaBusy$$.set(true); this.mfaError$$.set(null); this.mfaNotice$$.set(null);
+    this.auth.stepUpTotp(this.mfaStepUpForm.controls.code.value).subscribe({
+      next: (currentUser) => {
+        this.persistence.set('accessToken', currentUser.token);
+        this.persistence.set('token', currentUser.token);
+        this.store.dispatch(authActions.getCurrentUserSuccess({ currentUser }));
+        this.mfaStepUpForm.reset(); this.mfaBusy$$.set(false);
+        this.mfaNotice$$.set('Recent MFA verified. Privileged actions are available for up to 12 hours.');
+        this.mfaStatus$$.update((status) => status ? { ...status,
+          mfaVerifiedAt: currentUser.mfaVerifiedAt ?? null } : status);
+      },
+      error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },
+    });
+  }
+}
+
+function apiError(error: unknown): string {
+  const candidate = error as { error?: { error?: unknown }; message?: unknown };
+  return typeof candidate.error?.error === 'string' ? candidate.error.error
+    : typeof candidate.message === 'string' ? candidate.message : 'MFA operation failed.';
 }
