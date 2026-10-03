@@ -89,9 +89,15 @@ export class SettingsComponent {
   readonly mfaActivationForm = this.fb.nonNullable.group({
     code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
   });
+  readonly mfaDisableForm = this.fb.nonNullable.group({
+    password: ['', [Validators.required]],
+    code: ['', [Validators.required, Validators.pattern(/^\d{6}$/)]],
+    confirmation: [false, [Validators.requiredTrue]],
+  });
   readonly mfaStatus$$ = signal<MfaStatusResponse | null>(null);
   readonly mfaEnrollment$$ = signal<MfaEnrollmentResponse['mfa'] | null>(null);
   readonly mfaQrCode$$ = signal<string | null>(null);
+  readonly showMfaDisable$$ = signal(false);
   readonly mfaBusy$$ = signal(false);
   readonly mfaNotice$$ = signal<string | null>(null);
   readonly mfaError$$ = signal<string | null>(null);
@@ -241,6 +247,32 @@ export class SettingsComponent {
       next: () => {
         this.mfaActivationForm.reset(); this.mfaEnrollment$$.set(null); this.mfaQrCode$$.set(null);
         this.persistence.set('mfaEnrollmentComplete', true);
+        this.store.dispatch(authActions.logout());
+      },
+      error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },
+    });
+  }
+
+  showMfaDisable(): void {
+    this.mfaDisableForm.reset({ password: '', code: '', confirmation: false });
+    this.mfaError$$.set(null);
+    this.mfaNotice$$.set(null);
+    this.showMfaDisable$$.set(true);
+  }
+
+  cancelMfaDisable(): void {
+    this.mfaDisableForm.reset({ password: '', code: '', confirmation: false });
+    this.showMfaDisable$$.set(false);
+  }
+
+  disableMfa(): void {
+    if (this.mfaDisableForm.invalid) return;
+    const { password, code } = this.mfaDisableForm.getRawValue();
+    this.mfaBusy$$.set(true); this.mfaError$$.set(null); this.mfaNotice$$.set(null);
+    this.auth.disableTotp(password, code).subscribe({
+      next: () => {
+        this.mfaDisableForm.reset({ password: '', code: '', confirmation: false });
+        this.persistence.set('mfaDisabled', true);
         this.store.dispatch(authActions.logout());
       },
       error: (error) => { this.mfaError$$.set(apiError(error)); this.mfaBusy$$.set(false); },

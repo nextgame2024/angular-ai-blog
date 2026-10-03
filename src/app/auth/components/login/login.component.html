@@ -19,6 +19,11 @@
               Authenticator MFA is active. Sign in again with your password and authenticator code.
             </div>
           }
+          @if (mfaDisabled$$()) {
+            <div class="reset-notice success" role="status">
+              Authenticator MFA was disabled and all sessions were signed out. Sign in with your password.
+            </div>
+          }
         } @else if (mode$$() === "forgot") {
           <div class="forgot-copy">
             <p>

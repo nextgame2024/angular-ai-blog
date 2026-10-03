@@ -65,6 +65,7 @@ export class LoginComponent {
 
   readonly mode$$ = signal<'login' | 'forgot' | 'mfa'>('login');
   readonly enrollmentComplete$$ = signal(false);
+  readonly mfaDisabled$$ = signal(false);
   readonly isSubmitting$$ = toSignal(this.store.select(selectIsSubmitting), {
     initialValue: false,
   });
@@ -93,6 +94,10 @@ export class LoginComponent {
     if (this.persistence.get<boolean>('mfaEnrollmentComplete')) {
       this.enrollmentComplete$$.set(true);
       this.persistence.remove('mfaEnrollmentComplete');
+    }
+    if (this.persistence.get<boolean>('mfaDisabled')) {
+      this.mfaDisabled$$.set(true);
+      this.persistence.remove('mfaDisabled');
     }
   }
 

@@ -107,6 +107,11 @@ export class AuthService {
       environment.apiUrl + '/user/mfa/totp/activate', { code });
   }
 
+  disableTotp(password: string, code: string): Observable<{ sessionsRevoked: true }> {
+    return this.http.post<{ sessionsRevoked: true }>(
+      environment.apiUrl + '/user/mfa/totp/disable', { password, code });
+  }
+
   stepUpTotp(code: string): Observable<CurrentUserInterface> {
     return this.http.post<AuthResponseInterface>(environment.apiUrl + '/user/mfa/totp/step-up', { code })
       .pipe(map(this.getUser));

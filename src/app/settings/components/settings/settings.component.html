@@ -175,6 +175,31 @@
 
             @if (status.mfa.enabled) {
               <p class="text-sm text-gray-600">MFA is required every time you sign in. For your security, the session expires after 12 hours; you will then sign in again with your password and authenticator code.</p>
+              @if (!showMfaDisable$$()) {
+                <button pButton type="button" label="Disable authenticator MFA"
+                  class="p-button-outlined p-button-danger w-full" (click)="showMfaDisable()"></button>
+              } @else {
+                <form [formGroup]="mfaDisableForm" (ngSubmit)="disableMfa()" class="space-y-3">
+                  <div class="mfa-message mfa-error">
+                    <strong>This reduces your account security.</strong> All sessions will be signed out and future logins will use only your password until MFA is enrolled again.
+                  </div>
+                  <p-password formControlName="password" [feedback]="false" [toggleMask]="true"
+                    placeholder="Current password" styleClass="block w-full" inputStyleClass="w-full"></p-password>
+                  <p class="text-sm text-gray-600">Use a fresh code from your authenticator. If you just signed in, wait for the next code.</p>
+                  <input pInputText formControlName="code" inputmode="numeric" autocomplete="one-time-code"
+                    maxlength="6" placeholder="Current 6-digit authenticator code" class="w-full" />
+                  <label class="flex items-start gap-2 text-sm text-gray-700">
+                    <input type="checkbox" formControlName="confirmation" class="mt-1" />
+                    <span>I understand that MFA protection will be removed.</span>
+                  </label>
+                  <div class="flex gap-3">
+                    <button pButton type="button" label="Cancel" class="p-button-outlined flex-1"
+                      (click)="cancelMfaDisable()" [disabled]="mfaBusy$$()"></button>
+                    <button pButton type="submit" label="Disable MFA" class="p-button-danger flex-1"
+                      [disabled]="mfaBusy$$() || mfaDisableForm.invalid"></button>
+                  </div>
+                </form>
+              }
             }
           } @else {
             <p class="text-sm text-gray-500">Loading MFA status…</p>

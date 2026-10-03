@@ -45,6 +45,17 @@ describe('AuthService MFA', () => {
     expect(token).toBe('step-up-token');
   });
 
+  it('sends both credentials when disabling MFA', () => {
+    let revoked = false;
+    service.disableTotp('current-password', '654321')
+      .subscribe((response) => { revoked = response.sessionsRevoked; });
+    const request = http.expectOne((candidate) => candidate.url.endsWith('/user/mfa/totp/disable'));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ password: 'current-password', code: '654321' });
+    request.flush({ mfa: { status: 'not_enrolled', enabled: false }, sessionsRevoked: true });
+    expect(revoked).toBeTrue();
+  });
+
   it('supports a password challenge followed by MFA sign-in', () => {
     let challenge: string | undefined;
     service.login({ user: { email: 'owner@example.com', password: 'password' } })
