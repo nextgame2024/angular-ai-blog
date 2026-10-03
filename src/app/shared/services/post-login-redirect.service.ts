@@ -76,6 +76,12 @@ export class PostLoginRedirectService {
     const companyId = currentUser?.companyId ?? null;
     const normalizedTarget = normalizeToken(requestedTarget);
 
+    // A normal sign-in should never wait on optional navigation/access APIs.
+    // Resolve those only when the user explicitly asked to return somewhere.
+    if (!normalizedTarget) {
+      return of(HOME_ROUTE);
+    }
+
     if (normalizedTarget === 'ai-toolkit-checkout') {
       return this.getAiToolkitAccess().pipe(
         map((hasAccess) =>
