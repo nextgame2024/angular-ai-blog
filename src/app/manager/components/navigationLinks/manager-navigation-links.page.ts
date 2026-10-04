@@ -70,6 +70,21 @@ export function normalizeSophiaAdminHeaderSelection(
   return normalized;
 }
 
+export const ALL_ACTIVE_USERS_VALUE = '__all_active_users__';
+
+export function withAllActiveUsersOption(
+  options: Array<{ value: string; label: string }>,
+): Array<{ value: string; label: string }> {
+  if (!options.length) return [];
+  return [
+    {
+      value: ALL_ACTIVE_USERS_VALUE,
+      label: `All active users (${options.length})`,
+    },
+    ...options,
+  ];
+}
+
 @Component({
     selector: 'app-manager-navigation-links-page',
     imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
@@ -102,12 +117,14 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
   navigationLabelOptions: NavigationLabelOption[] = HEADER_NAVIGATION_LABEL_OPTIONS;
   sophiaAdminModuleOptions = SOPHIA_ADMIN_MODULE_OPTIONS;
   userOptions: Array<{ value: string; label: string }> = [];
+  private activeUserOptions: Array<{ value: string; label: string }> = [];
 
   selectedNavigationLabels = new Set<string>();
   selectedSophiaAdminModules = new Set<string>();
   labelsLoading = false;
   labelsDropdownOpen = false;
   modulesDropdownOpen = false;
+  private sophiaAdminSelectionDirty = false;
 
   private infiniteObserver?: IntersectionObserver;
   private isLoadingMore = false;
@@ -339,6 +356,30 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
       this.selectedNavigationLabels.add(label);
     }
     this.selectedNavigationLabels = new Set(this.selectedNavigationLabels);
+    if (label === this.sophiaAdminLabel) this.sophiaAdminSelectionDirty = true;
+  }
+
+  get areAllLabelsSelected(): boolean {
+    return (
+      this.navigationLabelOptions.length > 0 &&
+      this.navigationLabelOptions.every((option) =>
+        this.selectedNavigationLabels.has(option.value),
+      )
+    );
+  }
+
+  toggleAllLabels(): void {
+    const selectAll = !this.areAllLabelsSelected;
+    this.selectedNavigationLabels = selectAll
+      ? new Set(this.navigationLabelOptions.map((option) => option.value))
+      : new Set<string>();
+    if (
+      this.navigationLabelOptions.some(
+        (option) => option.value === this.sophiaAdminLabel,
+      )
+    ) {
+      this.sophiaAdminSelectionDirty = true;
+    }
   }
 
   get isHeaderType(): boolean {
@@ -376,6 +417,30 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
       this.selectedSophiaAdminModules.add(moduleId);
     }
     this.selectedSophiaAdminModules = new Set(this.selectedSophiaAdminModules);
+    this.sophiaAdminSelectionDirty = true;
+  }
+
+  get areAllModulesSelected(): boolean {
+    return (
+      this.sophiaAdminModuleOptions.length > 0 &&
+      this.sophiaAdminModuleOptions.every((option) =>
+        this.selectedSophiaAdminModules.has(option.value),
+      )
+    );
+  }
+
+  toggleAllModules(): void {
+    this.selectedSophiaAdminModules = this.areAllModulesSelected
+      ? new Set<string>()
+      : new Set(this.sophiaAdminModuleOptions.map((option) => option.value));
+    this.sophiaAdminSelectionDirty = true;
+  }
+
+  get allActiveUsersSelected(): boolean {
+    return (
+      this.navigationLinkForm.get('target_user_id')?.value ===
+      ALL_ACTIVE_USERS_VALUE
+    );
   }
 
   saveNavigationLink(): void {
@@ -411,12 +476,20 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
         return;
       }
       if (navigationType === 'header') {
-        payload.target_user_id = raw.target_user_id || null;
         payload.sophia_admin_modules = Array.from(
           this.selectedSophiaAdminModules,
         );
+        if (raw.target_user_id === ALL_ACTIVE_USERS_VALUE) {
+          if (this.sophiaAdminSelectionDirty) {
+            payload.target_user_ids = this.activeUserOptions.map(
+              (option) => option.value,
+            );
+          }
+        } else {
+          payload.target_user_id = raw.target_user_id || null;
+        }
         if (selectedNavigationLabels.has(this.sophiaAdminLabel)) {
-          if (!payload.target_user_id) {
+          if (!payload.target_user_id && !payload.target_user_ids?.length) {
             this.navigationLinkForm.get('target_user_id')?.markAsTouched();
             return;
           }
@@ -463,8 +536,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
               { emitEvent: false },
             );
           }
-
-          this.reloadAssignedLabels();
+          this.loadUserOptions();
         },
         error: () => {
           this.companies = [];
@@ -502,6 +574,8 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     const targetUserId = this.isSuperAdmin
       ? this.navigationLinkForm.get('target_user_id')?.value || ''
       : '';
+    const allUsersSelected = targetUserId === ALL_ACTIVE_USERS_VALUE;
+    this.sophiaAdminSelectionDirty = false;
 
     if (this.isSuperAdmin && !companyId) {
       this.selectedNavigationLabels.clear();
@@ -519,7 +593,11 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
         companyId: companyId || undefined,
       });
     const entitlement$ =
-      this.isSuperAdmin && navigationType === 'header' && companyId && targetUserId
+      this.isSuperAdmin &&
+      navigationType === 'header' &&
+      companyId &&
+      targetUserId &&
+      !allUsersSelected
         ? this.navigationLinksApi
             .getSophiaAdminEntitlement(companyId, targetUserId)
             .pipe(catchError(() => of(null)))
@@ -543,7 +621,9 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
             selected,
             navigationType,
           );
-          this.selectedSophiaAdminModules = new Set(entitlement?.modules ?? []);
+          this.selectedSophiaAdminModules = new Set(
+            allUsersSelected ? [] : entitlement?.modules ?? [],
+          );
           this.labelsLoading = false;
         },
         error: () => {
@@ -559,6 +639,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     const companyId = this.navigationLinkForm.get('company_id')?.value || '';
     if (!this.isSuperAdmin || !companyId) {
       this.userOptions = [];
+      this.activeUserOptions = [];
       this.navigationLinkForm
         .get('target_user_id')
         ?.setValue('', { emitEvent: false });
@@ -571,21 +652,23 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
-          this.userOptions = (result.items ?? []).map((user) => ({
+          this.activeUserOptions = (result.items ?? []).map((user) => ({
             value: user.id,
             label: `${user.name || user.username} (${user.email})`,
           }));
+          this.userOptions = withAllActiveUsersOption(this.activeUserOptions);
           const current = this.navigationLinkForm.get('target_user_id')?.value;
           const next = this.userOptions.some(
             (option) => option.value === current,
           )
             ? current || ''
-            : this.userOptions[0]?.value || '';
+            : this.activeUserOptions[0]?.value || '';
           this.navigationLinkForm.get('target_user_id')?.setValue(next);
           if (!next) this.reloadAssignedLabels();
         },
         error: () => {
           this.userOptions = [];
+          this.activeUserOptions = [];
           this.navigationLinkForm.get('target_user_id')?.setValue('');
         },
       });

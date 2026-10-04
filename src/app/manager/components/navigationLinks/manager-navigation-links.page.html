@@ -121,6 +121,23 @@
                       >
                     }
                   </div>
+                  @if (!labelsLoading && navigationLabelOptions.length) {
+                    <button
+                      type="button"
+                      class="labels-multiselect-option select-all-option"
+                      [attr.aria-pressed]="areAllLabelsSelected"
+                      (click)="toggleAllLabels()"
+                    >
+                      <input
+                        class="selection-checkbox"
+                        type="checkbox"
+                        tabindex="-1"
+                        [checked]="areAllLabelsSelected"
+                        aria-hidden="true"
+                      />
+                      <span>{{ areAllLabelsSelected ? 'Clear all' : 'Select all' }}</span>
+                    </button>
+                  }
                   @for (option of navigationLabelOptions; track trackByLabel($index, option)) {
                     <button
                       type="button"
@@ -129,15 +146,13 @@
                       [attr.aria-pressed]="isLabelSelected(option.value)"
                       (click)="toggleLabel(option.value)"
                       >
-                      <span
-                        class="check"
-                        [class.checked]="isLabelSelected(option.value)"
+                      <input
+                        class="selection-checkbox"
+                        type="checkbox"
+                        tabindex="-1"
+                        [checked]="isLabelSelected(option.value)"
                         aria-hidden="true"
-                        >
-                        <svg viewBox="0 0 20 20">
-                          <path d="M4 10l4 4 8-8"></path>
-                        </svg>
-                      </span>
+                      />
                       <span>{{ option.label }}</span>
                     </button>
                   }
@@ -172,8 +187,27 @@
                 @if (modulesDropdownOpen) {
                   <div class="labels-multiselect-menu" (click)="$event.stopPropagation()">
                     <div class="labels-multiselect-hint">
-                      Select the modules this client administrator may access.
+                      @if (allActiveUsersSelected) {
+                        Apply the selected modules to every eligible active user. Existing non-client administrator roles are preserved.
+                      } @else {
+                        Select the modules this client administrator may access.
+                      }
                     </div>
+                    <button
+                      type="button"
+                      class="labels-multiselect-option select-all-option"
+                      [attr.aria-pressed]="areAllModulesSelected"
+                      (click)="toggleAllModules()"
+                    >
+                      <input
+                        class="selection-checkbox"
+                        type="checkbox"
+                        tabindex="-1"
+                        [checked]="areAllModulesSelected"
+                        aria-hidden="true"
+                      />
+                      <span>{{ areAllModulesSelected ? 'Clear all' : 'Select all' }}</span>
+                    </button>
                     @for (option of sophiaAdminModuleOptions; track trackByLabel($index, option)) {
                       <button
                         type="button"
@@ -181,13 +215,13 @@
                         [attr.aria-pressed]="isModuleSelected(option.value)"
                         (click)="toggleModule(option.value)"
                       >
-                        <span
-                          class="check"
-                          [class.checked]="isModuleSelected(option.value)"
+                        <input
+                          class="selection-checkbox"
+                          type="checkbox"
+                          tabindex="-1"
+                          [checked]="isModuleSelected(option.value)"
                           aria-hidden="true"
-                        >
-                          <svg viewBox="0 0 20 20"><path d="M4 10l4 4 8-8"></path></svg>
-                        </span>
+                        />
                         <span>{{ option.value }} · {{ option.label }}</span>
                       </button>
                     }

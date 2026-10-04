@@ -31,6 +31,7 @@ export interface NavigationLinksSyncResult {
   createdLabels: string[];
   removedLabels: string[];
   sophiaAdminEntitlement?: SophiaAdminEntitlement | null;
+  sophiaAdminEntitlements?: Array<SophiaAdminEntitlement | null>;
 }
 
 export interface SophiaAdminEntitlement {

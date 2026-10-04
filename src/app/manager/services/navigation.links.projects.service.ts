@@ -116,6 +116,7 @@ export class NavigationLinksProjectsService {
     navigation_type: NavigationType;
     navigation_labels: string[];
     target_user_id?: string;
+    target_user_ids?: string[];
     sophia_admin_modules?: string[];
   }): Observable<NavigationLinksSyncResult> {
     return this.http.post<NavigationLinksSyncResult>(
