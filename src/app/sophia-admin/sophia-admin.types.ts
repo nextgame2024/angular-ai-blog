@@ -66,7 +66,8 @@ export type SophiaAdminRole =
   | 'release_publisher'
   | 'operations_member'
   | 'billing_administrator'
-  | 'read_only_auditor';
+  | 'read_only_auditor'
+  | 'client_administrator';
 
 export interface SophiaAdminMember {
   membership_id: string;

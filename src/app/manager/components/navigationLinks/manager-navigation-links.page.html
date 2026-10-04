@@ -71,6 +71,17 @@
         ></app-manager-select>
       </label>
 
+      @if (isSuperAdmin && isHeaderType) {
+        <label class="inline-field">
+          <span>User *</span>
+          <app-manager-select
+            formControlName="target_user_id"
+            [options]="userOptions"
+            placeholder="Select user"
+          ></app-manager-select>
+        </label>
+      }
+
       <label class="inline-field inline-field-wide">
         <span>Navigation labels</span>
 
@@ -141,6 +152,50 @@
               }
             </div>
           </label>
+
+          @if (isSuperAdmin && isHeaderType) {
+            <label class="inline-field inline-field-wide">
+              <span>Sophia Admin modules</span>
+              <div class="labels-multiselect" [class.open]="modulesDropdownOpen">
+                <button
+                  type="button"
+                  class="labels-multiselect-trigger"
+                  [disabled]="!sophiaAdminSelected || labelsLoading"
+                  [attr.aria-expanded]="modulesDropdownOpen"
+                  (click)="toggleModulesDropdown($event)"
+                >
+                  <span class="value">{{ selectedModulesSummary }}</span>
+                  <span class="chevron" aria-hidden="true">
+                    <svg viewBox="0 0 20 20"><path d="M6 8l4 4 4-4"></path></svg>
+                  </span>
+                </button>
+                @if (modulesDropdownOpen) {
+                  <div class="labels-multiselect-menu" (click)="$event.stopPropagation()">
+                    <div class="labels-multiselect-hint">
+                      Select the modules this client administrator may access.
+                    </div>
+                    @for (option of sophiaAdminModuleOptions; track trackByLabel($index, option)) {
+                      <button
+                        type="button"
+                        class="labels-multiselect-option"
+                        [attr.aria-pressed]="isModuleSelected(option.value)"
+                        (click)="toggleModule(option.value)"
+                      >
+                        <span
+                          class="check"
+                          [class.checked]="isModuleSelected(option.value)"
+                          aria-hidden="true"
+                        >
+                          <svg viewBox="0 0 20 20"><path d="M4 10l4 4 8-8"></path></svg>
+                        </span>
+                        <span>{{ option.value }} · {{ option.label }}</span>
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+            </label>
+          }
 
           <div class="inline-actions">
             <button class="btn primary" type="submit" [disabled]="labelsLoading">

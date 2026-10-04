@@ -10,6 +10,7 @@ import type {
   NavigationLinksSyncResult,
   NavigationType,
   PagedResult,
+  SophiaAdminEntitlement,
 } from '../types/navigation.links.interface';
 
 @Injectable({ providedIn: 'root' })
@@ -114,6 +115,8 @@ export class NavigationLinksProjectsService {
     company_id?: string;
     navigation_type: NavigationType;
     navigation_labels: string[];
+    target_user_id?: string;
+    sophia_admin_modules?: string[];
   }): Observable<NavigationLinksSyncResult> {
     return this.http.post<NavigationLinksSyncResult>(
       `${this.navigationLinksBase}/sync`,
@@ -121,5 +124,20 @@ export class NavigationLinksProjectsService {
         navigationLinksSync: payload,
       },
     );
+  }
+
+  getSophiaAdminEntitlement(
+    companyId: string,
+    userId: string,
+  ): Observable<SophiaAdminEntitlement> {
+    const params = new HttpParams()
+      .set('companyId', companyId)
+      .set('userId', userId);
+    return this.http
+      .get<{ entitlement: SophiaAdminEntitlement }>(
+        `${this.navigationLinksBase}/sophia-admin-entitlement`,
+        { params },
+      )
+      .pipe(map((res) => res.entitlement));
   }
 }

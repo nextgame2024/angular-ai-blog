@@ -201,6 +201,7 @@ export class ManagerService {
     q?: string;
     status?: string;
     type?: string;
+    companyId?: string;
   }): Observable<PagedResult<BmUser>> {
     let httpParams = new HttpParams()
       .set('page', String(params.page ?? 1))
@@ -208,6 +209,7 @@ export class ManagerService {
     if (params.q) httpParams = httpParams.set('q', params.q);
     if (params.status) httpParams = httpParams.set('status', params.status);
     if (params.type) httpParams = httpParams.set('type', params.type);
+    if (params.companyId) httpParams = httpParams.set('companyId', params.companyId);
 
     return this.http
       .get<ListUsersResponse>(this.usersBase, { params: httpParams })

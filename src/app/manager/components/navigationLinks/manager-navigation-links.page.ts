@@ -15,8 +15,9 @@ import {
 } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { combineLatest, Observable, Subject } from 'rxjs';
+import { combineLatest, forkJoin, Observable, of, Subject } from 'rxjs';
 import {
+  catchError,
   debounceTime,
   distinctUntilChanged,
   map,
@@ -38,12 +39,14 @@ import {
   HEADER_NAVIGATION_LABEL_OPTIONS,
   MENU_NAVIGATION_LABEL_OPTIONS,
   NAVIGATION_TYPE_OPTIONS,
+  SOPHIA_ADMIN_MODULE_OPTIONS,
   type BmNavigationLink,
   type NavigationLabelOption,
   type NavigationType,
 } from '../../types/navigation.links.interface';
 import { ManagerCompanyService } from '../../services/manager.company.service';
 import { NavigationLinksProjectsService } from '../../services/navigation.links.projects.service';
+import { ManagerService } from '../../services/manager.service';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 import { selectCurrentUser } from '../../../auth/store/reducers';
 import type { CurrentUserInterface } from '../../../shared/types/currentUser.interface';
@@ -58,6 +61,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private readonly superAdminId = 'c2dad143-077c-4082-92f0-47805601db3b';
   private labelsLoadToken = 0;
+  readonly sophiaAdminLabel = 'Sophia Ai admin';
 
   loading$ = this.store.select(selectManagerNavigationLinksLoading);
   error$ = this.store.select(selectManagerNavigationLinksError);
@@ -77,10 +81,14 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
   companyOptions: Array<{ value: string; label: string }> = [];
   navigationTypeOptions = NAVIGATION_TYPE_OPTIONS;
   navigationLabelOptions: NavigationLabelOption[] = HEADER_NAVIGATION_LABEL_OPTIONS;
+  sophiaAdminModuleOptions = SOPHIA_ADMIN_MODULE_OPTIONS;
+  userOptions: Array<{ value: string; label: string }> = [];
 
   selectedNavigationLabels = new Set<string>();
+  selectedSophiaAdminModules = new Set<string>();
   labelsLoading = false;
   labelsDropdownOpen = false;
+  modulesDropdownOpen = false;
 
   private infiniteObserver?: IntersectionObserver;
   private isLoadingMore = false;
@@ -96,6 +104,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
   navigationLinkForm = this.fb.group({
     company_id: [''],
     navigation_type: ['header', [Validators.required]],
+    target_user_id: [''],
   });
 
   constructor(
@@ -103,6 +112,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private companyApi: ManagerCompanyService,
     private navigationLinksApi: NavigationLinksProjectsService,
+    private managerApi: ManagerService,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
@@ -158,11 +168,14 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
         this.currentUser = user ?? null;
         this.isSuperAdmin = user?.id === this.superAdminId;
         this.syncCompanyControl();
+        this.applyNavigationType(
+          (this.navigationLinkForm.get('navigation_type')?.value as NavigationType) || 'header',
+        );
 
         if (this.isSuperAdmin) {
           this.loadCompanyOptions();
         } else {
-          this.reloadAssignedLabels();
+          this.loadUserOptions();
         }
       });
 
@@ -202,9 +215,14 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
       ?.valueChanges.pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         if (this.isSuperAdmin) {
-          this.reloadAssignedLabels();
+          this.loadUserOptions();
         }
       });
+
+    this.navigationLinkForm
+      .get('target_user_id')
+      ?.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.reloadAssignedLabels());
 
     this.applyNavigationType('header');
     setTimeout(() => this.setupInfiniteScroll(), 0);
@@ -222,6 +240,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     if (!target) return;
     if (!target.closest('.labels-multiselect')) {
       this.labelsDropdownOpen = false;
+      this.modulesDropdownOpen = false;
     }
   }
 
@@ -247,7 +266,13 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
         ? MENU_NAVIGATION_LABEL_OPTIONS
         : HEADER_NAVIGATION_LABEL_OPTIONS;
 
-    return new Set(options.map((option) => option.value));
+    return new Set(
+      options
+        .filter(
+          (option) => this.isSuperAdmin || option.value !== this.sophiaAdminLabel,
+        )
+        .map((option) => option.value),
+    );
   }
 
   private sanitizeSelectedNavigationLabels(
@@ -297,6 +322,43 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     this.selectedNavigationLabels = new Set(this.selectedNavigationLabels);
   }
 
+  get isHeaderType(): boolean {
+    return this.navigationLinkForm.get('navigation_type')?.value === 'header';
+  }
+
+  get sophiaAdminSelected(): boolean {
+    return this.selectedNavigationLabels.has(this.sophiaAdminLabel);
+  }
+
+  get selectedModulesSummary(): string {
+    const selected = this.sophiaAdminModuleOptions.filter((option) =>
+      this.selectedSophiaAdminModules.has(option.value),
+    );
+    if (!selected.length) return 'Select modules';
+    if (selected.length === 1) return selected[0].label;
+    return `${selected[0].label} + ${selected.length - 1} more`;
+  }
+
+  toggleModulesDropdown(event?: MouseEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.sophiaAdminSelected) return;
+    this.modulesDropdownOpen = !this.modulesDropdownOpen;
+  }
+
+  isModuleSelected(moduleId: string): boolean {
+    return this.selectedSophiaAdminModules.has(moduleId);
+  }
+
+  toggleModule(moduleId: string): void {
+    if (this.selectedSophiaAdminModules.has(moduleId)) {
+      this.selectedSophiaAdminModules.delete(moduleId);
+    } else {
+      this.selectedSophiaAdminModules.add(moduleId);
+    }
+    this.selectedSophiaAdminModules = new Set(this.selectedSophiaAdminModules);
+  }
+
   saveNavigationLink(): void {
     if (this.navigationLinkForm.invalid) {
       this.navigationLinkForm.markAllAsTouched();
@@ -323,12 +385,26 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
         this.navigationLinkForm.get('company_id')?.markAsTouched();
         return;
       }
+      if (navigationType === 'header') {
+        payload.target_user_id = raw.target_user_id || null;
+        payload.sophia_admin_modules = Array.from(
+          this.selectedSophiaAdminModules,
+        );
+        if (selectedNavigationLabels.has(this.sophiaAdminLabel)) {
+          if (!payload.target_user_id) {
+            this.navigationLinkForm.get('target_user_id')?.markAsTouched();
+            return;
+          }
+          if (!payload.sophia_admin_modules.length) return;
+        }
+      }
     }
 
     this.store.dispatch(
       ManagerNavigationLinksActions.syncNavigationLabels({ payload }),
     );
     this.labelsDropdownOpen = false;
+    this.modulesDropdownOpen = false;
   }
 
   private syncCompanyControl(): void {
@@ -370,6 +446,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
           this.companies = [];
           this.companyOptions = [];
           this.selectedNavigationLabels.clear();
+          this.selectedSophiaAdminModules.clear();
         },
       });
   }
@@ -379,7 +456,10 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     this.navigationLabelOptions =
       nextType === 'menu'
         ? MENU_NAVIGATION_LABEL_OPTIONS
-        : HEADER_NAVIGATION_LABEL_OPTIONS;
+        : HEADER_NAVIGATION_LABEL_OPTIONS.filter(
+            (option) =>
+              this.isSuperAdmin || option.value !== this.sophiaAdminLabel,
+          );
 
     this.selectedNavigationLabels = this.sanitizeSelectedNavigationLabels(
       this.selectedNavigationLabels,
@@ -395,6 +475,9 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     const companyId = this.isSuperAdmin
       ? this.navigationLinkForm.get('company_id')?.value || ''
       : undefined;
+    const targetUserId = this.isSuperAdmin
+      ? this.navigationLinkForm.get('target_user_id')?.value || ''
+      : '';
 
     if (this.isSuperAdmin && !companyId) {
       this.selectedNavigationLabels.clear();
@@ -405,16 +488,23 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     const token = ++this.labelsLoadToken;
     this.labelsLoading = true;
 
-    this.navigationLinksApi
-      .listNavigationLinks({
+    const links$ = this.navigationLinksApi.listNavigationLinks({
         page: 1,
         limit: 500,
         navigationType,
         companyId: companyId || undefined,
-      })
+      });
+    const entitlement$ =
+      this.isSuperAdmin && navigationType === 'header' && companyId && targetUserId
+        ? this.navigationLinksApi
+            .getSophiaAdminEntitlement(companyId, targetUserId)
+            .pipe(catchError(() => of(null)))
+        : of(null);
+
+    forkJoin({ links: links$, entitlement: entitlement$ })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (result) => {
+        next: ({ links: result, entitlement }) => {
           if (token !== this.labelsLoadToken) return;
 
           const selected = new Set<string>();
@@ -423,17 +513,56 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
             if (item.active === false) continue;
             selected.add(item.navigationLabel);
           }
+          if (entitlement?.enabled) selected.add(this.sophiaAdminLabel);
 
           this.selectedNavigationLabels = this.sanitizeSelectedNavigationLabels(
             selected,
             navigationType,
           );
+          this.selectedSophiaAdminModules = new Set(entitlement?.modules ?? []);
           this.labelsLoading = false;
         },
         error: () => {
           if (token !== this.labelsLoadToken) return;
           this.selectedNavigationLabels.clear();
+          this.selectedSophiaAdminModules.clear();
           this.labelsLoading = false;
+        },
+      });
+  }
+
+  private loadUserOptions(): void {
+    const companyId = this.navigationLinkForm.get('company_id')?.value || '';
+    if (!this.isSuperAdmin || !companyId) {
+      this.userOptions = [];
+      this.navigationLinkForm
+        .get('target_user_id')
+        ?.setValue('', { emitEvent: false });
+      this.reloadAssignedLabels();
+      return;
+    }
+
+    this.managerApi
+      .listUsers({ page: 1, limit: 100, companyId, status: 'active' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.userOptions = (result.items ?? []).map((user) => ({
+            value: user.id,
+            label: `${user.name || user.username} (${user.email})`,
+          }));
+          const current = this.navigationLinkForm.get('target_user_id')?.value;
+          const next = this.userOptions.some(
+            (option) => option.value === current,
+          )
+            ? current || ''
+            : this.userOptions[0]?.value || '';
+          this.navigationLinkForm.get('target_user_id')?.setValue(next);
+          if (!next) this.reloadAssignedLabels();
+        },
+        error: () => {
+          this.userOptions = [];
+          this.navigationLinkForm.get('target_user_id')?.setValue('');
         },
       });
   }

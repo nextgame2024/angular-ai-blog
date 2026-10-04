@@ -221,6 +221,11 @@ export class TopBarComponent {
         excludePrefixes: ['/manager/explore', '/manager/dashboard'],
       },
       { label: 'Settings', route: '/settings', matchMode: 'prefix' },
+      {
+        label: 'Sophia Ai admin',
+        route: '/sophia-admin/overview',
+        matchMode: 'prefix',
+      },
     );
     return items;
   }

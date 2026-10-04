@@ -30,6 +30,21 @@ export interface NavigationLinksSyncResult {
   navigationLinks: BmNavigationLink[];
   createdLabels: string[];
   removedLabels: string[];
+  sophiaAdminEntitlement?: SophiaAdminEntitlement | null;
+}
+
+export interface SophiaAdminEntitlement {
+  userId: string;
+  userName?: string | null;
+  userEmail: string;
+  userStatus: string;
+  customerId?: string | null;
+  membershipId?: string | null;
+  roleKey?: string | null;
+  membershipStatus?: string | null;
+  modules: string[];
+  authorizationRevision?: number | null;
+  enabled: boolean;
 }
 
 export interface NavigationLabelOption {
@@ -53,6 +68,26 @@ export const HEADER_NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = [
   { value: 'Ai Toolkit', label: 'Ai Toolkit' },
   { value: 'Dashboard', label: 'Dashboard' },
   { value: 'Settings', label: 'Settings' },
+  { value: 'Sophia Ai admin', label: 'Sophia Ai admin' },
+];
+
+export const SOPHIA_ADMIN_MODULE_OPTIONS: NavigationLabelOption[] = [
+  { value: 'ADM-01', label: 'Organisations' },
+  { value: 'ADM-02', label: 'Users' },
+  { value: 'ADM-03', label: 'Agents' },
+  { value: 'ADM-04', label: 'Agent versions' },
+  { value: 'ADM-05', label: 'Instructions' },
+  { value: 'ADM-06', label: 'Knowledge' },
+  { value: 'ADM-07', label: 'Tools' },
+  { value: 'ADM-08', label: 'Connectors' },
+  { value: 'ADM-09', label: 'Workflows' },
+  { value: 'ADM-10', label: 'Permissions' },
+  { value: 'ADM-11', label: 'Escalations' },
+  { value: 'ADM-12', label: 'Conversations' },
+  { value: 'ADM-13', label: 'Evaluations' },
+  { value: 'ADM-14', label: 'Analytics' },
+  { value: 'ADM-15', label: 'Audit logs' },
+  { value: 'ADM-16', label: 'Usage / Billing' },
 ];
 
 export const MENU_NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = [
