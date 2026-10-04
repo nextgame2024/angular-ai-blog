@@ -51,6 +51,25 @@ import { ManagerSelectComponent } from '../shared/manager-select/manager-select.
 import { selectCurrentUser } from '../../../auth/store/reducers';
 import type { CurrentUserInterface } from '../../../shared/types/currentUser.interface';
 
+export function normalizeSophiaAdminHeaderSelection(
+  labels: Iterable<string>,
+  moduleCount: number,
+  isSuperAdmin: boolean,
+  navigationType: NavigationType,
+  sophiaAdminLabel = 'Sophia Ai admin',
+): Set<string> {
+  const normalized = new Set(labels);
+  if (
+    isSuperAdmin &&
+    navigationType === 'header' &&
+    normalized.has(sophiaAdminLabel) &&
+    moduleCount === 0
+  ) {
+    normalized.delete(sophiaAdminLabel);
+  }
+  return normalized;
+}
+
 @Component({
     selector: 'app-manager-navigation-links-page',
     imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
@@ -367,9 +386,15 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
 
     const raw = this.navigationLinkForm.getRawValue();
     const navigationType = (raw.navigation_type || 'header') as NavigationType;
-    const selectedNavigationLabels = this.sanitizeSelectedNavigationLabels(
-      this.selectedNavigationLabels,
+    const selectedNavigationLabels = normalizeSophiaAdminHeaderSelection(
+      this.sanitizeSelectedNavigationLabels(
+        this.selectedNavigationLabels,
+        navigationType,
+      ),
+      this.selectedSophiaAdminModules.size,
+      this.isSuperAdmin,
       navigationType,
+      this.sophiaAdminLabel,
     );
 
     this.selectedNavigationLabels = selectedNavigationLabels;
@@ -395,7 +420,6 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
             this.navigationLinkForm.get('target_user_id')?.markAsTouched();
             return;
           }
-          if (!payload.sophia_admin_modules.length) return;
         }
       }
     }
