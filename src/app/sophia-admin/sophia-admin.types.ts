@@ -22,7 +22,7 @@ export interface SophiaAdminPrincipal {
 
 export interface SophiaAdminOrganisationContext {
   customerId: string;
-  externalCompanyId: string;
+  externalCompanyId: string | null;
   name: string;
   status: string;
 }

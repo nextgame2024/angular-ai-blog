@@ -15,7 +15,10 @@ import { AdminStatePanelComponent } from '../shared/admin-state-panel.component'
 export class SophiaAdminForbiddenPage {
   private readonly route = inject(ActivatedRoute);
   readonly permission = this.route.snapshot.queryParamMap.get('permission');
-  readonly message = this.permission
-    ? `Your current organisation role does not grant ${this.permission}. The API also enforces this permission.`
-    : 'Your current organisation role does not grant access to this workspace.';
+  readonly reason = this.route.snapshot.queryParamMap.get('reason');
+  readonly message = this.reason === 'context_unavailable'
+    ? 'Sophia Admin could not verify the organisation context. Your Business Manager session has not been signed out.'
+    : this.permission
+      ? `Your current organisation role does not grant ${this.permission}. The API also enforces this permission.`
+      : 'Your current account does not grant access to this Sophia Admin workspace.';
 }

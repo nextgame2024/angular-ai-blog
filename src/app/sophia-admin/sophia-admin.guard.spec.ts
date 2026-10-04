@@ -1,4 +1,5 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { provideRouter, Router, UrlTree } from '@angular/router';
 import { firstValueFrom, Observable, of, throwError } from 'rxjs';
 import {
@@ -54,7 +55,14 @@ describe('sophiaAdminGuard', () => {
   });
 
   it('redirects an unverifiable identity to login', async () => {
-    const result = await run(throwError(() => new Error('unauthorised')));
+    const result = await run(throwError(() => new HttpErrorResponse({ status: 401 })));
     expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toContain('/login');
+  });
+
+  it('does not misrepresent an Admin context failure as a signed-out session', async () => {
+    const result = await run(throwError(() => new HttpErrorResponse({ status: 500 })));
+    const url = TestBed.inject(Router).serializeUrl(result as UrlTree);
+    expect(url).toContain('/sophia-admin/forbidden');
+    expect(url).toContain('reason=context_unavailable');
   });
 });
