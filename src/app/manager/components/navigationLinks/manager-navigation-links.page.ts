@@ -72,6 +72,16 @@ export function normalizeSophiaAdminHeaderSelection(
 
 export const ALL_ACTIVE_USERS_VALUE = '__all_active_users__';
 
+export function canConfigurePlatformAdmin(
+  isSuperAdmin: boolean,
+  operatorCompanyId: string | null | undefined,
+  selectedCompanyId: string | null | undefined,
+): boolean {
+  return Boolean(
+    isSuperAdmin && operatorCompanyId && selectedCompanyId === operatorCompanyId,
+  );
+}
+
 export function withAllActiveUsersOption(
   options: Array<{ value: string; label: string }>,
 ): Array<{ value: string; label: string }> {
@@ -251,6 +261,9 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
       ?.valueChanges.pipe(takeUntil(this.destroy$))
       .subscribe(() => {
         if (this.isSuperAdmin) {
+          this.applyNavigationType(
+            (this.navigationLinkForm.get('navigation_type')?.value as NavigationType) || 'header',
+          );
           this.loadUserOptions();
         }
       });
@@ -305,7 +318,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     return new Set(
       options
         .filter(
-          (option) => this.isSuperAdmin || option.value !== this.sophiaAdminLabel,
+          (option) => this.canConfigureSophiaAdmin || option.value !== this.sophiaAdminLabel,
         )
         .map((option) => option.value),
     );
@@ -386,6 +399,14 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     return this.navigationLinkForm.get('navigation_type')?.value === 'header';
   }
 
+  get canConfigureSophiaAdmin(): boolean {
+    return canConfigurePlatformAdmin(
+      this.isSuperAdmin,
+      this.currentUser?.companyId,
+      this.navigationLinkForm.get('company_id')?.value,
+    );
+  }
+
   get sophiaAdminSelected(): boolean {
     return this.selectedNavigationLabels.has(this.sophiaAdminLabel);
   }
@@ -457,7 +478,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
         navigationType,
       ),
       this.selectedSophiaAdminModules.size,
-      this.isSuperAdmin,
+      this.canConfigureSophiaAdmin,
       navigationType,
       this.sophiaAdminLabel,
     );
@@ -475,7 +496,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
         this.navigationLinkForm.get('company_id')?.markAsTouched();
         return;
       }
-      if (navigationType === 'header') {
+      if (this.canConfigureSophiaAdmin && navigationType === 'header') {
         payload.sophia_admin_modules = Array.from(
           this.selectedSophiaAdminModules,
         );
@@ -536,6 +557,9 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
               { emitEvent: false },
             );
           }
+          this.applyNavigationType(
+            (this.navigationLinkForm.get('navigation_type')?.value as NavigationType) || 'header',
+          );
           this.loadUserOptions();
         },
         error: () => {
@@ -554,7 +578,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
         ? MENU_NAVIGATION_LABEL_OPTIONS
         : HEADER_NAVIGATION_LABEL_OPTIONS.filter(
             (option) =>
-              this.isSuperAdmin || option.value !== this.sophiaAdminLabel,
+              this.canConfigureSophiaAdmin || option.value !== this.sophiaAdminLabel,
           );
 
     this.selectedNavigationLabels = this.sanitizeSelectedNavigationLabels(
@@ -571,7 +595,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
     const companyId = this.isSuperAdmin
       ? this.navigationLinkForm.get('company_id')?.value || ''
       : undefined;
-    const targetUserId = this.isSuperAdmin
+    const targetUserId = this.canConfigureSophiaAdmin
       ? this.navigationLinkForm.get('target_user_id')?.value || ''
       : '';
     const allUsersSelected = targetUserId === ALL_ACTIVE_USERS_VALUE;
@@ -593,7 +617,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
         companyId: companyId || undefined,
       });
     const entitlement$ =
-      this.isSuperAdmin &&
+      this.canConfigureSophiaAdmin &&
       navigationType === 'header' &&
       companyId &&
       targetUserId &&
@@ -637,7 +661,7 @@ export class ManagerNavigationLinksPageComponent implements OnInit, OnDestroy {
 
   private loadUserOptions(): void {
     const companyId = this.navigationLinkForm.get('company_id')?.value || '';
-    if (!this.isSuperAdmin || !companyId) {
+    if (!this.canConfigureSophiaAdmin || !companyId) {
       this.userOptions = [];
       this.activeUserOptions = [];
       this.navigationLinkForm

@@ -9,10 +9,21 @@
 
     <div class="context-control">
       <label for="organisation-context">Organisation context</label>
-      <select id="organisation-context" [disabled]="true" [attr.aria-describedby]="'context-help'">
-        <option>{{ displayName() }}</option>
+      <select
+        id="organisation-context"
+        [disabled]="!canSwitchOrganisation()"
+        [value]="principal()?.tenantId || ''"
+        [attr.aria-describedby]="'context-help'"
+        (change)="selectOrganisation($any($event.target).value)"
+      >
+        @if (!organisations().length) {
+          <option [value]="principal()?.tenantId || ''">{{ displayName() }}</option>
+        }
+        @for (item of organisations(); track item.customerId) {
+          <option [value]="item.customerId">{{ item.name }}</option>
+        }
       </select>
-      <span id="context-help" class="sr-only">The organisation is verified from your authenticated Business Manager company.</span>
+      <span id="context-help" class="sr-only">Internal platform operators may switch among server-authorised customer organisations.</span>
     </div>
 
     <div class="identity">

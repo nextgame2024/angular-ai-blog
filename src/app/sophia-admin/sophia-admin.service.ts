@@ -1,6 +1,6 @@
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
-import { Observable, shareReplay } from 'rxjs';
+import { Observable, shareReplay, tap } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { PersistanceService } from '../shared/services/persistance.service';
 import type {
@@ -64,21 +64,42 @@ export class SophiaAdminService {
     .replace(/\/runtime$/, '/admin/v1');
   private contextRequest?: Observable<SophiaAdminContext>;
   private contextCredential: string | null = null;
+  private contextTenantId: string | null = null;
+  private selectedTenantId: string | null = null;
 
   context(force = false): Observable<SophiaAdminContext> {
     const credential = this.credential();
-    if (force || credential !== this.contextCredential) {
+    const credentialChanged = credential !== this.contextCredential;
+    if (credentialChanged) this.selectedTenantId = null;
+    if (force || credentialChanged || this.selectedTenantId !== this.contextTenantId) {
       this.contextRequest = undefined;
       this.contextCredential = credential;
+      this.contextTenantId = this.selectedTenantId;
     }
     return this.contextRequest ??= this.http.get<SophiaAdminContext>(
       `${this.adminBase}/context`, { headers: this.headers() },
-    ).pipe(shareReplay({ bufferSize: 1, refCount: false }));
+    ).pipe(
+      tap(({ principal }) => {
+        this.selectedTenantId = principal.tenantId;
+        this.contextTenantId = principal.tenantId;
+      }),
+      shareReplay({ bufferSize: 1, refCount: false }),
+    );
+  }
+
+  selectOrganisation(tenantId: string): Observable<SophiaAdminContext> {
+    this.contextCredential = this.credential();
+    this.selectedTenantId = tenantId.trim();
+    this.contextRequest = undefined;
+    this.contextTenantId = this.selectedTenantId;
+    return this.context(true);
   }
 
   clearContext(): void {
     this.contextRequest = undefined;
     this.contextCredential = null;
+    this.contextTenantId = null;
+    this.selectedTenantId = null;
   }
 
   onboardingReadiness(tenantId: string) {
@@ -816,7 +837,13 @@ export class SophiaAdminService {
 
   private headers(): HttpHeaders {
     const token = this.credential();
-    return token ? new HttpHeaders({ Authorization: `Token ${token}` }) : new HttpHeaders();
+    let headers = token
+      ? new HttpHeaders({ Authorization: `Token ${token}` })
+      : new HttpHeaders();
+    if (this.selectedTenantId) {
+      headers = headers.set('X-Sophia-Admin-Tenant-Id', this.selectedTenantId);
+    }
+    return headers;
   }
 
   private credential(): string | null {

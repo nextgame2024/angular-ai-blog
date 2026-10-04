@@ -14,16 +14,21 @@ describe('SophiaAdminShellComponent', () => {
   beforeEach(async () => {
     admin = jasmine.createSpyObj<SophiaAdminService>(
       'SophiaAdminService',
-      ['context', 'getOrganisation', 'clearContext'],
+      ['context', 'selectOrganisation', 'getOrganisation', 'clearContext'],
     );
     store = jasmine.createSpyObj<Store>('Store', ['dispatch']);
     admin.context.and.returnValue(of({
       principal: {
         tenantId: 'tenant-1',
         identityUserId: 'user-1',
-        role: 'configuration_editor',
+        role: 'platform_operator',
+        authorityType: 'platform',
         permissions: ['organisation.read', 'knowledge.read'],
       },
+      organisations: [
+        { customerId: 'tenant-1', externalCompanyId: 'company-1', name: 'Neutral Company', status: 'active' },
+        { customerId: 'tenant-2', externalCompanyId: 'company-2', name: 'Second Company', status: 'active' },
+      ],
     }));
     admin.getOrganisation.and.returnValue(of({
       customer_id: 'tenant-1',
@@ -54,6 +59,9 @@ describe('SophiaAdminShellComponent', () => {
     expect(element.textContent).toContain('Neutral Company');
     expect(element.textContent).not.toContain('real estate');
     expect(element.textContent).not.toContain('OpenAI');
+    const selector = element.querySelector<HTMLSelectElement>('#organisation-context');
+    expect(selector?.disabled).toBeFalse();
+    expect(selector?.options.length).toBe(2);
   });
 
   it('clears Admin context before dispatching logout', () => {

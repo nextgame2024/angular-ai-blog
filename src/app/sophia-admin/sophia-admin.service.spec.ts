@@ -227,6 +227,26 @@ describe('SophiaAdminService', () => {
     replacement.flush({ principal: { tenantId: 'tenant-2', permissions: [] } });
   });
 
+  it('re-resolves a platform operator against the selected server-authorised organisation', () => {
+    service.context().subscribe();
+    http.expectOne((candidate) => candidate.url.endsWith('/api/admin/v1/context'))
+      .flush({ principal: { tenantId: 'tenant-1', permissions: [] }, organisations: [] });
+
+    service.selectOrganisation('tenant-2').subscribe((response) => {
+      expect(response.principal.tenantId).toBe('tenant-2');
+    });
+    const selected = http.expectOne((candidate) => candidate.url.endsWith('/api/admin/v1/context'));
+    expect(selected.request.headers.get('X-Sophia-Admin-Tenant-Id')).toBe('tenant-2');
+    selected.flush({ principal: { tenantId: 'tenant-2', permissions: [] }, organisations: [] });
+
+    service.getOrganisation('tenant-2').subscribe();
+    const organisation = http.expectOne((candidate) => candidate.url.endsWith(
+      '/api/admin/v1/tenants/tenant-2/organisation',
+    ));
+    expect(organisation.request.headers.get('X-Sophia-Admin-Tenant-Id')).toBe('tenant-2');
+    organisation.flush({});
+  });
+
   it('does not add Business Manager credentials to a private presigned upload', async () => {
     const fetchSpy = spyOn(window, 'fetch').and.resolveTo(new Response(null, { status: 200 }));
     const file = new File(['approved'], 'policy.txt', { type: 'text/plain' });

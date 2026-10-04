@@ -71,7 +71,7 @@
         ></app-manager-select>
       </label>
 
-      @if (isSuperAdmin && isHeaderType) {
+      @if (canConfigureSophiaAdmin && isHeaderType) {
         <label class="inline-field">
           <span>User *</span>
           <app-manager-select
@@ -168,7 +168,7 @@
             </div>
           </label>
 
-          @if (isSuperAdmin && isHeaderType) {
+          @if (canConfigureSophiaAdmin && isHeaderType) {
             <label class="inline-field inline-field-wide">
               <span>Sophia Admin modules</span>
               <div class="labels-multiselect" [class.open]="modulesDropdownOpen">
@@ -188,9 +188,9 @@
                   <div class="labels-multiselect-menu" (click)="$event.stopPropagation()">
                     <div class="labels-multiselect-hint">
                       @if (allActiveUsersSelected) {
-                        Apply the selected modules to every eligible active user. Existing non-client administrator roles are preserved.
+                        Apply the selected modules to every active internal operator.
                       } @else {
-                        Select the modules this client administrator may access.
+                        Select the customer administration modules this internal operator may access.
                       }
                     </div>
                     <button

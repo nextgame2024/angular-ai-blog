@@ -15,11 +15,21 @@ export interface SophiaAdminPrincipal {
   role: string;
   permissions: AdminPermission[];
   authorizationRevision?: number;
+  authorityType?: 'tenant' | 'platform';
+  operatorCompanyId?: string;
   mfaVerifiedAt?: string;
+}
+
+export interface SophiaAdminOrganisationContext {
+  customerId: string;
+  externalCompanyId: string;
+  name: string;
+  status: string;
 }
 
 export interface SophiaAdminContext {
   principal: SophiaAdminPrincipal;
+  organisations?: SophiaAdminOrganisationContext[];
 }
 
 export interface AdminOnboardingReadinessStep {

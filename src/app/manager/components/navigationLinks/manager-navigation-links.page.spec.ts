@@ -1,10 +1,17 @@
 import {
   ALL_ACTIVE_USERS_VALUE,
+  canConfigurePlatformAdmin,
   normalizeSophiaAdminHeaderSelection,
   withAllActiveUsersOption,
 } from './manager-navigation-links.page';
 
 describe('Manager navigation links Sophia Admin revocation', () => {
+  it('permits platform authority only for the super administrator own company', () => {
+    expect(canConfigurePlatformAdmin(true, 'admin-company', 'admin-company')).toBeTrue();
+    expect(canConfigurePlatformAdmin(true, 'admin-company', 'customer-company')).toBeFalse();
+    expect(canConfigurePlatformAdmin(false, 'admin-company', 'admin-company')).toBeFalse();
+  });
+
   it('removes the Sophia Admin header link when the final module is cleared', () => {
     const labels = normalizeSophiaAdminHeaderSelection(
       ['Business manager', 'Sophia Ai admin'],
