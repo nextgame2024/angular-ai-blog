@@ -1,0 +1,97 @@
+<section class="ofa-students" aria-labelledby="ofa-students-title">
+  <header class="ofa-header">
+    <div>
+      <p class="eyebrow">Open For Australia · Operations</p>
+      <h1 id="ofa-students-title">Students</h1>
+      <p>Search the tenant-scoped operational register. This read checkpoint contains synthetic data only.</p>
+    </div>
+    @if (workspace) {
+      <span class="role-badge">{{ formatLabel(workspace.role) }}</span>
+    }
+  </header>
+
+  <div class="privacy-note">
+    Restricted identity, sensitive and financial fields are not returned on this list.
+  </div>
+
+  <div class="filters" aria-label="Student filters">
+    <label>
+      <span>Search</span>
+      <input [formControl]="search" type="search" placeholder="Name, reference or email" />
+    </label>
+    <label>
+      <span>Status</span>
+      <select [formControl]="status">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="action_required">Action required</option>
+        <option value="on_hold">On hold</option>
+        <option value="completed">Completed</option>
+        <option value="archived">Archived</option>
+      </select>
+    </label>
+    <label>
+      <span>College</span>
+      <input [formControl]="college" type="search" placeholder="College name" />
+    </label>
+    <label>
+      <span>Advisor</span>
+      <select [formControl]="advisor">
+        <option value="">All assignments</option>
+        <option value="assigned">Assigned</option>
+        <option value="unassigned">Unassigned</option>
+        <option value="me">Assigned to me</option>
+      </select>
+    </label>
+  </div>
+
+  @if (error) {
+    <div class="state state-error" role="alert">
+      <strong>Students unavailable</strong>
+      <span>{{ error }}</span>
+      <button type="button" (click)="load()">Try again</button>
+    </div>
+  } @else if (loading) {
+    <div class="state" aria-live="polite">Loading the student register…</div>
+  } @else if (!students.length) {
+    <div class="state" data-testid="ofa-students-empty">
+      <strong>No students found</strong>
+      <span>No synthetic records match the current filters.</span>
+    </div>
+  } @else {
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Reference</th>
+            <th>College</th>
+            <th>Stage</th>
+            <th>Status</th>
+            <th>Advisor</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (student of students; track student.studentId) {
+            <tr>
+              <td><strong>{{ student.legalName }}</strong><small>{{ student.email }}</small></td>
+              <td>{{ student.studentReference }}</td>
+              <td>{{ student.collegeName || 'Not assigned' }}</td>
+              <td>{{ formatLabel(student.currentStage) }}</td>
+              <td><span class="status status-{{ student.status }}">{{ formatLabel(student.status) }}</span></td>
+              <td>{{ student.advisorAssigned ? 'Assigned' : 'Unassigned' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <footer class="pagination">
+      <span>Showing {{ students.length }} of {{ total }}</span>
+      <div>
+        <button type="button" (click)="previousPage()" [disabled]="page <= 1">Previous</button>
+        <span>Page {{ page }}</span>
+        <button type="button" (click)="nextPage()" [disabled]="page * pageSize >= total">Next</button>
+      </div>
+    </footer>
+  }
+</section>

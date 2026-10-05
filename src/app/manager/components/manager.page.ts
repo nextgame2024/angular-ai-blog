@@ -153,6 +153,11 @@ export class ManagerPageComponent implements OnDestroy {
   readonly searchCtrl = new FormControl<string>('', { nonNullable: true });
 
   readonly menu: MenuItem[] = [
+    {
+      label: 'Students',
+      route: '/manager/open-for-australia/students',
+      icon: 'students',
+    },
     { label: 'Clients', route: '/manager/clients', icon: 'clients' },
     { label: 'Sites', route: '/manager/sites', icon: 'sites' },
     { label: 'Pallets', route: '/manager/pallets', icon: 'pallets' },

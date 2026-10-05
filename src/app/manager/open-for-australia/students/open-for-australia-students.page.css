@@ -1,0 +1,32 @@
+:host { display: block; min-height: 100%; background: #f6f9fc; color: #152238; }
+.ofa-students { padding: clamp(1rem, 2vw, 2rem); }
+.ofa-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.ofa-header h1 { margin: .2rem 0; font-size: clamp(1.8rem, 3vw, 2.5rem); }
+.ofa-header p { margin: 0; color: #5f6f82; }
+.eyebrow { color: #087f73 !important; font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.role-badge { border: 1px solid #bde8df; border-radius: 999px; background: #e9faf6; color: #087f73; padding: .5rem .8rem; font-weight: 700; white-space: nowrap; }
+.privacy-note { margin: 1rem 0; border-left: 4px solid #17b89d; background: #eefbf8; padding: .8rem 1rem; color: #34544f; }
+.filters { display: grid; grid-template-columns: minmax(14rem, 2fr) repeat(3, minmax(10rem, 1fr)); gap: .75rem; margin: 1rem 0; }
+label { display: grid; gap: .35rem; color: #425268; font-size: .8rem; font-weight: 700; }
+input, select { width: 100%; min-height: 2.75rem; box-sizing: border-box; border: 1px solid #d7e0ea; border-radius: .65rem; background: white; padding: .65rem .8rem; color: #152238; font: inherit; }
+.table-wrap { overflow-x: auto; border: 1px solid #dce5ed; border-radius: .9rem; background: white; }
+table { width: 100%; min-width: 760px; border-collapse: collapse; }
+th, td { padding: .85rem 1rem; border-bottom: 1px solid #e8eef3; text-align: left; }
+th { background: #f7fafc; color: #526173; font-size: .78rem; }
+td { font-size: .9rem; }
+td small { display: block; margin-top: .2rem; color: #708095; }
+.status { display: inline-block; border-radius: 999px; background: #eef3f7; padding: .25rem .55rem; font-size: .75rem; font-weight: 700; }
+.status-active, .status-completed { background: #e4f8f0; color: #14785e; }
+.status-action_required { background: #fff1df; color: #9a5a05; }
+.status-on_hold { background: #ffebee; color: #a83042; }
+.state { display: grid; justify-items: center; gap: .5rem; margin-top: 1rem; border: 1px dashed #c9d5df; border-radius: .9rem; background: white; padding: 3rem 1rem; color: #617185; text-align: center; }
+.state-error { border-style: solid; border-color: #f0b7be; background: #fff7f8; color: #8f2636; }
+button { border: 1px solid #b9c9d7; border-radius: .55rem; background: white; padding: .55rem .8rem; color: #223248; cursor: pointer; }
+button:disabled { cursor: default; opacity: .45; }
+.pagination { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem .25rem; color: #617185; }
+.pagination div { display: flex; align-items: center; gap: .65rem; }
+@media (max-width: 760px) {
+  .ofa-header { flex-direction: column; }
+  .filters { grid-template-columns: 1fr; }
+  .pagination { align-items: flex-start; flex-direction: column; }
+}
