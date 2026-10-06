@@ -85,6 +85,11 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     { value: 'archived', label: 'archived' },
   ];
 
+  workspaceProfileOptions = [
+    { value: 'project_map', label: 'Project map' },
+    { value: 'student_operations', label: 'Student operations' },
+  ];
+
   defaultLogo = '/assets/sophiaAi-logo.svg';
   logoPreviewUrl: string | null = null;
   selectedLogoFile?: File;
@@ -96,6 +101,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
 
   companyForm = this.fb.group({
     company_name: ['', [Validators.required, Validators.maxLength(140)]],
+    workspace_profile: ['project_map', [Validators.required]],
     legal_name: [''],
     trading_name: [''],
     abn: [''],
@@ -250,6 +256,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
       this.resetLogoState();
       this.companyForm.patchValue({
         company_name: c.companyName ?? '',
+        workspace_profile: c.workspaceProfile ?? 'project_map',
         legal_name: c.legalName ?? '',
         trading_name: c.tradingName ?? '',
         abn: c.abn ?? '',
@@ -309,6 +316,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     this.resetLogoState();
     this.companyForm.reset({
       company_name: '',
+      workspace_profile: 'project_map',
       legal_name: '',
       trading_name: '',
       abn: '',
@@ -353,6 +361,7 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
     delete payload.ownerUserId;
     if (!this.isSuperAdmin) {
       delete payload.status;
+      delete payload.workspace_profile;
     }
 
     this.store.dispatch(ManagerCompanyActions.saveCompany({ payload }));

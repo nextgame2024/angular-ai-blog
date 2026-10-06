@@ -1,9 +1,11 @@
 export type CompanyStatus = 'active' | 'archived' | string;
+export type WorkspaceProfile = 'project_map' | 'student_operations' | string;
 
 export interface BmCompany {
   companyId: string;
   ownerUserId?: string | null;
   companyName: string;
+  workspaceProfile?: WorkspaceProfile | null;
   status?: CompanyStatus | null;
   createdAt?: string | null;
   updatedAt?: string | null;

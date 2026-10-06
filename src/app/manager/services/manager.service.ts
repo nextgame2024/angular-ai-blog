@@ -92,6 +92,14 @@ export interface ListUsersResponse {
   total: number;
 }
 
+export interface BusinessPackAssignment {
+  entitlementId: string;
+  packId: string;
+  roleKey: string | null;
+  status: 'active' | 'suspended' | 'revoked';
+  authorizationRevision: number;
+}
+
 @Injectable()
 export class ManagerService {
   // environment.apiUrl already includes "/api"
@@ -251,5 +259,36 @@ export class ManagerService {
     return this.http.delete<{ userId: string; action: 'archived' | 'deleted' }>(
       `${this.usersBase}/${userId}`,
     );
+  }
+
+  getBusinessPackAssignment(input: {
+    companyId: string;
+    userId: string;
+    packId: string;
+  }): Observable<BusinessPackAssignment | null> {
+    const params = new HttpParams()
+      .set('companyId', input.companyId)
+      .set('userId', input.userId)
+      .set('packId', input.packId);
+    return this.http.get<{ assignment: BusinessPackAssignment | null }>(
+      `${this.apiBase}/bm/business-pack-entitlements`,
+      { params },
+    ).pipe(map((response) => response.assignment ?? null));
+  }
+
+  setBusinessPackAssignment(input: {
+    companyId: string;
+    userId: string;
+    packId: string;
+    roleKey: string | null;
+  }): Observable<BusinessPackAssignment | null> {
+    return this.http.put<{ assignment: BusinessPackAssignment | null }>(
+      `${this.apiBase}/bm/business-pack-entitlements/${input.userId}`,
+      { assignment: {
+        companyId: input.companyId,
+        packId: input.packId,
+        roleKey: input.roleKey,
+      } },
+    ).pipe(map((response) => response.assignment ?? null));
   }
 }

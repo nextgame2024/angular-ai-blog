@@ -153,6 +153,20 @@
         }
       </label>
       }
+      @if (selectedCompanyUsesStudentOperations()) {
+      <label class="company-picker">
+        <span>Open For Australia role</span>
+        <app-manager-select
+          formControlName="businessPackRole"
+          [options]="businessPackRoleOptions"
+          placeholder="Select role"
+        ></app-manager-select>
+        <small>Controls this user’s authority inside the student operations workspace.</small>
+      </label>
+      }
+      @if (roleAdministrationError) {
+        <div class="error" role="alert">{{ roleAdministrationError }}</div>
+      }
       <div class="avatar-grid">
         <div class="avatar-stack">
           <img
@@ -357,6 +371,20 @@
         <small class="error-text"> Company is required. </small>
         }
       </label>
+      }
+      @if (selectedCompanyUsesStudentOperations()) {
+      <label class="company-picker">
+        <span>Open For Australia role</span>
+        <app-manager-select
+          formControlName="businessPackRole"
+          [options]="businessPackRoleOptions"
+          placeholder="Select role"
+        ></app-manager-select>
+        <small>Controls this user’s authority inside the student operations workspace.</small>
+      </label>
+      }
+      @if (roleAdministrationError) {
+        <div class="error" role="alert">{{ roleAdministrationError }}</div>
       }
       <div class="avatar-grid">
         <div class="avatar-stack">

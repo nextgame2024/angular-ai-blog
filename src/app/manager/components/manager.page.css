@@ -12,6 +12,15 @@
   background: transparent;
 }
 
+.workspace-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #64748b;
+  background: #f7fafc;
+}
+
 /* Map fills entire canvas */
 .map-container {
   position: absolute;

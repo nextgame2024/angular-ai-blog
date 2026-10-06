@@ -1,0 +1,72 @@
+<main class="dashboard" aria-labelledby="operations-dashboard-title">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <span>Business manager</span><span>/</span><span>Dashboard</span>
+  </nav>
+
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">Open For Australia · Operations</p>
+      <h1 id="operations-dashboard-title">Operations Dashboard</h1>
+      <p>A single view of student operations requiring attention.</p>
+    </div>
+    @if (workspace) {
+      <span class="role-badge">{{ formatRole(workspace.role) }}</span>
+    }
+  </header>
+
+  @if (error) {
+    <section class="state state-error" role="alert">
+      <strong>Dashboard unavailable</strong>
+      <span>{{ error }}</span>
+      <button type="button" (click)="load()">Try again</button>
+    </section>
+  } @else if (loading) {
+    <section class="state" aria-live="polite">Loading operations dashboard…</section>
+  } @else {
+    <section class="metrics" aria-label="Operations summary">
+      <article class="metric metric-primary">
+        <span>Active students</span><strong>{{ activeStudents }}</strong>
+        <small>{{ totalStudents }} total student records</small>
+      </article>
+      <article class="metric metric-warning">
+        <span>Action required</span><strong>{{ actionRequired }}</strong>
+        <small>Student cases needing review</small>
+      </article>
+      <article class="metric metric-danger">
+        <span>On hold</span><strong>{{ onHold }}</strong>
+        <small>Cases currently blocked</small>
+      </article>
+      <article class="metric metric-muted">
+        <span>Payments awaiting reconciliation</span><strong>—</strong>
+        <small>Available after Payments &amp; Controls</small>
+      </article>
+    </section>
+
+    <section class="dashboard-grid">
+      <article class="card priorities">
+        <div class="card-heading">
+          <div><h2>Today’s priorities</h2><p>Derived from current student case status.</p></div>
+          <a routerLink="/manager/open-for-australia/students">View students</a>
+        </div>
+        @if (actionRequired || onHold) {
+          <ul>
+            @if (actionRequired) {
+              <li><span class="priority-dot warning"></span><strong>{{ actionRequired }} students require action</strong><span>Review case status and next steps.</span></li>
+            }
+            @if (onHold) {
+              <li><span class="priority-dot danger"></span><strong>{{ onHold }} students are on hold</strong><span>Resolve blockers before work continues.</span></li>
+            }
+          </ul>
+        } @else {
+          <div class="empty-priorities">No student status exceptions require attention.</div>
+        }
+      </article>
+
+      <article class="card coming-soon">
+        <h2>Financial controls</h2>
+        <p>Payment reconciliation, college approvals, overdue instalments and commissions will appear here when the Payments &amp; Controls data model is delivered.</p>
+        <span class="phase-badge">Next checkpoint</span>
+      </article>
+    </section>
+  }
+</main>

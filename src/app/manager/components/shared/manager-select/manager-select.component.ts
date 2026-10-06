@@ -45,7 +45,7 @@ export class ManagerSelectComponent implements ControlValueAccessor {
   constructor(private hostRef: ElementRef<HTMLElement>) {}
 
   get selectedLabel(): string {
-    if (!this.value) return '';
+    if (this.value === null) return '';
     return this.options.find((opt) => opt.value === this.value)?.label ?? '';
   }
 

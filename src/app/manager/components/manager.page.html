@@ -1,6 +1,12 @@
 <div class="manager-shell" [class.edge-to-edge-content]="edgeToEdgeContent$$()">
+  @if (showStudentOperationsDashboard$$()) {
+    <app-open-for-australia-dashboard></app-open-for-australia-dashboard>
+  } @else if (!edgeToEdgeContent$$() && workspaceProfile$$() === null) {
+    <div class="workspace-loading" aria-live="polite">Loading workspace…</div>
+  }
+
   <!-- Map layer -->
-  @if (!edgeToEdgeContent$$()) {
+  @if (showProjectMap$$()) {
     <div class="map-container">
       @if (mapsLoaded$$()) {
       <google-map
@@ -57,7 +63,7 @@
     </div>
   }
 
-  @if (!edgeToEdgeContent$$() && activeProject$$(); as activeProject) {
+  @if (showProjectMap$$() && activeProject$$(); as activeProject) {
     <div
       class="map-static-info"
       cdkDrag
@@ -176,7 +182,7 @@
   }
 
   <!-- Search bar -->
-  @if (!edgeToEdgeContent$$()) {
+  @if (showProjectMap$$()) {
     <div class="search-bar">
       <div class="search-inner">
         <span class="icon">🔎</span>

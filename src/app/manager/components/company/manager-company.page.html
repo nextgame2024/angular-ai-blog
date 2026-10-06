@@ -279,6 +279,16 @@
                   [disabled]="!isSuperAdmin"
                 ></app-manager-select>
               </label>
+              @if (isSuperAdmin) {
+                <label>
+                  <span>Workspace profile</span>
+                  <app-manager-select
+                    formControlName="workspace_profile"
+                    [options]="workspaceProfileOptions"
+                    placeholder="Select workspace"
+                  ></app-manager-select>
+                </label>
+              }
               <label>
                 <span>Bank</span>
                 <input formControlName="bank" placeholder="Bank" />
@@ -468,6 +478,14 @@
                       [options]="statusOptions"
                       placeholder="Select status"
                       [disabled]="!isSuperAdmin"
+                    ></app-manager-select>
+                  </label>
+                  <label>
+                    <span>Workspace profile</span>
+                    <app-manager-select
+                      formControlName="workspace_profile"
+                      [options]="workspaceProfileOptions"
+                      placeholder="Select workspace"
                     ></app-manager-select>
                   </label>
                   <label>

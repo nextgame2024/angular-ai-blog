@@ -41,6 +41,8 @@ import {
   selectManagerProjectsTotal,
 } from '../store/projects/manager.selectors';
 import type { BmProject } from '../types/projects.interface';
+import type { WorkspaceProfile } from '../types/company.interface';
+import { OpenForAustraliaDashboardComponent } from '../open-for-australia/dashboard/open-for-australia-dashboard.component';
 
 type MenuItem = {
   label: string;
@@ -86,6 +88,7 @@ function formatDisplayDate(dateIso: string): string {
       ReactiveFormsModule,
       GoogleMapsModule,
       RouterModule,
+      OpenForAustraliaDashboardComponent,
     ],
     providers: [ManagerScheduleProjectsService],
     templateUrl: './manager.page.html',
@@ -116,6 +119,7 @@ export class ManagerPageComponent implements OnDestroy {
   private readonly routePreviewEnabled = true;
   private readonly superAdminId = 'c2dad143-077c-4082-92f0-47805601db3b';
   private menuLoadToken = 0;
+  private companyLoadToken = 0;
   readonly useAdvancedMarkers = false;
   readonly zeroDragPosition = { x: 0, y: 0 };
   private readonly companyMarkerIconUrl =
@@ -296,6 +300,7 @@ export class ManagerPageComponent implements OnDestroy {
   private readonly activeMenuLabels$$ = signal<Set<string>>(new Set());
   private readonly menuConfigLoaded$$ = signal(false);
   private readonly companyAddress$$ = signal<string | null>(null);
+  readonly workspaceProfile$$ = signal<WorkspaceProfile | null>(null);
 
   readonly visibleMenu$$ = computed<MenuItem[]>(() => {
     const user = this.currentUser$$();
@@ -323,6 +328,19 @@ export class ManagerPageComponent implements OnDestroy {
     { initialValue: this.router.url },
   );
 
+  readonly isMenuHome$$ = computed(() =>
+    this.currentPath$$().split('?')[0] === '/manager/menu',
+  );
+  readonly showStudentOperationsDashboard$$ = computed(() =>
+    this.workspaceProfile$$() === 'student_operations'
+      && this.isMenuHome$$()
+      && !this.edgeToEdgeContent$$(),
+  );
+  readonly showProjectMap$$ = computed(() =>
+    this.workspaceProfile$$() === 'project_map'
+      && !this.edgeToEdgeContent$$(),
+  );
+
   private readonly initEffect = effect((onCleanup) => {
     this.updateIsMobile();
     const onResize = () => {
@@ -337,6 +355,7 @@ export class ManagerPageComponent implements OnDestroy {
   });
 
   private readonly mapsLoadEffect = effect(() => {
+    if (this.workspaceProfile$$() !== 'project_map') return;
     if (this.mapsInit$$()) return;
     this.mapsInit$$.set(true);
     this.mapsLoader
@@ -420,9 +439,9 @@ export class ManagerPageComponent implements OnDestroy {
         companyId ? 'company-scope-changed' : 'company-scope-cleared',
       );
       this.store.dispatch(ManagerProjectsActions.resetProjectsState());
+      this.workspaceProfile$$.set(null);
       if (!companyId) return;
-      void this.loadCompanyAddress();
-      this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
+      void this.loadCompanyWorkspace(companyId);
     });
   });
 
@@ -1260,6 +1279,7 @@ export class ManagerPageComponent implements OnDestroy {
 
   private resetCompanyScopedState(reason: string): void {
     this.mapRefreshToken += 1;
+    this.companyLoadToken += 1;
     this.clearProjectMarkerListeners();
     this.projectMarkers$$.set([]);
     this.companyMarker$$.set(null);
@@ -1373,17 +1393,32 @@ export class ManagerPageComponent implements OnDestroy {
     return message;
   }
 
-  private async loadCompanyAddress(): Promise<void> {
+  private async loadCompanyWorkspace(companyId: string): Promise<void> {
+    const requestToken = ++this.companyLoadToken;
     try {
-      const res = await firstValueFrom(
-        this.companyService.listCompanies({ page: 1, limit: 1 }),
+      const response = await firstValueFrom(
+        this.companyService.getCompany(companyId),
       );
-      const address = String(res?.items?.[0]?.address || '').trim();
+      if (requestToken !== this.companyLoadToken) return;
+      const company = response?.company;
+      const profile = company?.workspaceProfile === 'student_operations'
+        ? 'student_operations'
+        : 'project_map';
+      this.workspaceProfile$$.set(profile);
+      const address = String(company?.address || '').trim();
       this.companyAddress$$.set(address || null);
+      if (profile === 'project_map') {
+        this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
+      }
     } catch {
+      if (requestToken !== this.companyLoadToken) return;
+      // Existing companies retain their historical project-map behaviour if
+      // the profile cannot be resolved during a staged deployment.
+      this.workspaceProfile$$.set('project_map');
       this.companyAddress$$.set(null);
+      this.store.dispatch(ManagerProjectsActions.loadProjects({ page: 1 }));
     } finally {
-      this.refreshMapMarkers();
+      if (requestToken === this.companyLoadToken) this.refreshMapMarkers();
     }
   }
 

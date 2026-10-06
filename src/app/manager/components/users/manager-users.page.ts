@@ -45,6 +45,8 @@ import { ManagerCompanyService } from '../../services/manager.company.service';
 import { ManagerSitesService } from '../../services/manager.sites.service';
 
 import type { BmUser } from '../../services/manager.service';
+import { ManagerService } from '../../services/manager.service';
+import type { BmCompany } from '../../types/company.interface';
 
 @Component({
     selector: 'app-manager-users-page',
@@ -88,7 +90,17 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   currentUser: CurrentUserInterface | null = null;
   isSuperAdmin = false;
   companyOptions: ManagerSelectOption[] = [];
+  private companiesById = new Map<string, BmCompany>();
   siteOptions: ManagerSelectOption[] = [];
+  roleAdministrationError = '';
+  readonly businessPackRoleOptions: ManagerSelectOption[] = [
+    { value: '', label: 'No Open For Australia role' },
+    { value: 'chief_executive', label: 'Chief Executive' },
+    { value: 'operations', label: 'Operations' },
+    { value: 'advisor', label: 'Advisor' },
+  ];
+  private pendingRoleAssignment: { companyId: string; roleKey: string | null } | null = null;
+  private readonly openForAustraliaPackId = 'open-for-australia';
 
   @ViewChild('usersList') usersListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
@@ -134,6 +146,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     status: ['active', [Validators.required]],
     image: [''],
     bio: [''],
+    businessPackRole: [''],
   });
 
   constructor(
@@ -142,6 +155,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     private townPlanner: TownPlannerV2Service,
     private avatarUpload: AvatarUploadService,
     private companyApi: ManagerCompanyService,
+    private managerApi: ManagerService,
     private sitesApi: ManagerSitesService,
     private actions$: Actions,
   ) {
@@ -192,11 +206,12 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
       )
       .subscribe((action) => {
-        if (!this.closeAfterSave) return;
-        this.closeAfterSave = false;
         if (action.type === ManagerActions.saveUserSuccess.type) {
-          this.closeForm();
+          this.finishRoleAssignment(action.user);
+          return;
         }
+        this.pendingRoleAssignment = null;
+        this.closeAfterSave = false;
       });
   }
 
@@ -263,12 +278,14 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         status: u.status ?? 'active',
         image: u.image ?? '',
         bio: u.bio ?? '',
+        businessPackRole: '',
       });
       if (this.isSuperAdmin) {
         this.loadSitesForCompany(u.companyId ?? undefined);
         this.userForm.controls.siteId.setValue(u.siteId ?? '', {
           emitEvent: false,
         });
+        this.loadBusinessPackRole(u);
       }
 
       this.userForm.controls.password.clearValidators();
@@ -285,6 +302,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       .subscribe((companyId) => {
         if (!this.isSuperAdmin) return;
         this.userForm.controls.siteId.setValue('', { emitEvent: false });
+        this.userForm.controls.businessPackRole.setValue('', { emitEvent: false });
+        this.roleAdministrationError = '';
         this.loadSitesForCompany(companyId || undefined);
       });
   }
@@ -308,6 +327,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
 
   openCreate(): void {
     this.resetAvatarState();
+    this.roleAdministrationError = '';
     const defaultCompanyId = this.isSuperAdmin
       ? (this.companyOptions[0]?.value ?? '')
       : '';
@@ -325,6 +345,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       status: 'active',
       image: '',
       bio: '',
+      businessPackRole: '',
     });
 
     this.userForm.controls.password.clearValidators();
@@ -341,6 +362,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   openEdit(u: BmUser): void {
+    this.roleAdministrationError = '';
     this.store.dispatch(ManagerActions.openUserEdit({ userId: u.id }));
   }
 
@@ -357,6 +379,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     }
 
     const payload: any = this.userForm.getRawValue();
+    const selectedRole = String(payload.businessPackRole || '').trim();
+    delete payload.businessPackRole;
 
     if (!payload.password) delete payload.password;
     if (!payload.siteId) delete payload.siteId;
@@ -367,10 +391,14 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         this.userForm.controls.companyId.markAsTouched();
         return;
       }
+      this.pendingRoleAssignment = this.companyUsesStudentOperations(payload.companyId)
+        ? { companyId: payload.companyId, roleKey: selectedRole || null }
+        : null;
     } else {
       // Non-super admins are always scoped to their own company by backend.
       delete payload.company_id;
       delete payload.companyId;
+      this.pendingRoleAssignment = null;
     }
 
     this.store.dispatch(ManagerActions.saveUser({ payload }));
@@ -416,6 +444,11 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
 
   get avatarSrc(): string {
     return this.previewUrl || this.userForm.controls.image.value || this.defaultAvatar;
+  }
+
+  selectedCompanyUsesStudentOperations(): boolean {
+    return this.isSuperAdmin
+      && this.companyUsesStudentOperations(this.userForm.controls.companyId.value || '');
   }
 
   private setupInfiniteScroll(): void {
@@ -702,6 +735,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       .pipe(take(1))
       .subscribe({
         next: ({ items }) => {
+          this.companiesById = new Map((items || []).map((company) => [company.companyId, company]));
           this.companyOptions = (items || []).map((company) => ({
             value: company.companyId,
             label: company.companyName || company.companyId,
@@ -716,9 +750,13 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
           if (this.isSuperAdmin) {
             this.loadSitesForCompany(this.userForm.controls.companyId.value || undefined);
           }
+          this.editingUser$.pipe(take(1)).subscribe((editing) => {
+            if (editing) this.loadBusinessPackRole(editing);
+          });
         },
         error: () => {
           this.companyOptions = [];
+          this.companiesById.clear();
         },
       });
   }
@@ -751,5 +789,60 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
           this.userForm.controls.siteId.setValue('', { emitEvent: false });
         },
       });
+  }
+
+  private companyUsesStudentOperations(companyId: string): boolean {
+    return this.companiesById.get(companyId)?.workspaceProfile === 'student_operations';
+  }
+
+  private loadBusinessPackRole(user: BmUser): void {
+    const companyId = user.companyId || '';
+    if (!this.isSuperAdmin || !companyId || !this.companyUsesStudentOperations(companyId)) {
+      this.userForm.controls.businessPackRole.setValue('', { emitEvent: false });
+      return;
+    }
+    this.managerApi.getBusinessPackAssignment({
+      companyId,
+      userId: user.id,
+      packId: this.openForAustraliaPackId,
+    }).pipe(take(1)).subscribe({
+      next: (assignment) => {
+        const role = assignment?.status === 'active' ? assignment.roleKey || '' : '';
+        this.userForm.controls.businessPackRole.setValue(role, { emitEvent: false });
+      },
+      error: () => {
+        this.roleAdministrationError = 'The Open For Australia role could not be loaded.';
+      },
+    });
+  }
+
+  private finishRoleAssignment(user: BmUser): void {
+    const pending = this.pendingRoleAssignment;
+    this.pendingRoleAssignment = null;
+    if (!pending) {
+      const shouldClose = this.closeAfterSave;
+      this.closeAfterSave = false;
+      if (shouldClose) this.closeForm();
+      return;
+    }
+    this.managerApi.setBusinessPackAssignment({
+      companyId: pending.companyId,
+      userId: user.id,
+      packId: this.openForAustraliaPackId,
+      roleKey: pending.roleKey,
+    }).pipe(take(1)).subscribe({
+      next: () => {
+        this.roleAdministrationError = '';
+        const shouldClose = this.closeAfterSave;
+        this.closeAfterSave = false;
+        if (shouldClose) this.closeForm();
+      },
+      error: (error) => {
+        this.closeAfterSave = false;
+        this.roleAdministrationError = error?.error?.error
+          || error?.message
+          || 'The user was saved, but the business-pack role could not be updated.';
+      },
+    });
   }
 }
