@@ -1,26 +1,33 @@
 <section class="students-shell" #studentsList aria-labelledby="students-title">
-  <nav class="breadcrumb" aria-label="Breadcrumb">
-    <a routerLink="/manager/menu">Menu</a><span>/</span><span>Students</span>
-  </nav>
-  <header class="list-header">
-    <div>
-      <h1 id="students-title">Students</h1>
-      <p>Manage active and historical student records and operational status.</p>
+  <div class="list-header">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a><span class="sep">/</span><span>Students</span>
+    </nav>
+    <header class="students-toolbar">
+      <div class="title">
+        <h3 id="students-title">Students</h3>
+        <p class="sub">Manage active and historical student records and operational status.</p>
+      </div>
+      @if (workspace) { <span class="role-badge">{{ formatLabel(workspace.role) }}</span> }
+    </header>
+    @if (privacyNoteVisible) {
+      <div class="privacy-note">
+        <span>This register excludes restricted identity documents and sensitive financial details.</span>
+        <button type="button" class="privacy-dismiss" (click)="dismissPrivacyNote()" aria-label="Dismiss privacy notice">×</button>
+      </div>
+    }
+    <div class="filters" aria-label="Student filters">
+      <label class="search-field">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        </span>
+        <input [formControl]="search" type="search" placeholder="Search by name, reference or email" aria-label="Search students" />
+        @if (search.value) { <button type="button" class="clear" (click)="clearSearch()" aria-label="Clear search">×</button> }
+      </label>
+      <app-manager-select [formControl]="status" [options]="statusOptions" placeholder="All statuses"></app-manager-select>
+      <label class="plain-field"><input [formControl]="college" type="search" placeholder="College name" aria-label="Filter by college" /></label>
+      <app-manager-select [formControl]="advisor" [options]="advisorOptions" placeholder="All assignments"></app-manager-select>
     </div>
-    @if (workspace) { <span class="role-badge">{{ formatLabel(workspace.role) }}</span> }
-  </header>
-  <div class="privacy-note">
-    This register excludes restricted identity documents and sensitive financial details.
-  </div>
-  <div class="filters" aria-label="Student filters">
-    <label class="search-field">
-      <span class="search-icon" aria-hidden="true">⌕</span>
-      <input [formControl]="search" type="search" placeholder="Search by name, reference or email" aria-label="Search students" />
-      @if (search.value) { <button type="button" class="clear" (click)="clearSearch()" aria-label="Clear search">×</button> }
-    </label>
-    <app-manager-select [formControl]="status" [options]="statusOptions" placeholder="All statuses"></app-manager-select>
-    <label class="plain-field"><input [formControl]="college" type="search" placeholder="College name" aria-label="Filter by college" /></label>
-    <app-manager-select [formControl]="advisor" [options]="advisorOptions" placeholder="All assignments"></app-manager-select>
   </div>
 
   @if (error) {
@@ -29,8 +36,12 @@
       <button type="button" (click)="retry()">Try again</button>
     </div>
   } @else if (loadingInitial) {
-    <div class="screen-loader" aria-live="polite" aria-busy="true">
-      <div class="loader-ring" aria-hidden="true"></div><span>Loading students…</span>
+    <div class="list-loader" aria-live="polite" aria-busy="true">
+      <div class="loader-card">
+        <div class="loader-ring" aria-hidden="true"></div>
+        <div class="loader-bar" aria-hidden="true"></div>
+        <div class="loader-text">Loading students…</div>
+      </div>
     </div>
   } @else if (!students.length) {
     <div class="state" data-testid="ofa-students-empty">

@@ -15,6 +15,7 @@ import { GoogleMap, GoogleMapsModule } from '@angular/google-maps';
 import {
   ActivatedRoute,
   NavigationEnd,
+  NavigationStart,
   Router,
   RouterModule,
 } from '@angular/router';
@@ -460,6 +461,17 @@ export class ManagerPageComponent implements OnDestroy {
     this.syncRouteUIState();
   });
 
+  private readonly navigationStartEffect = effect((onCleanup) => {
+    const subscription = this.router.events.pipe(
+      filter((event): event is NavigationStart => event instanceof NavigationStart),
+    ).subscribe((event) => {
+      if (event.url.split('?')[0] === '/manager/menu') {
+        this.showMenuShellImmediately();
+      }
+    });
+    onCleanup(() => subscription.unsubscribe());
+  });
+
   private readonly companyAddressEffect = effect(() => {
     this.companyAddress$$();
     untracked(() => {
@@ -542,7 +554,17 @@ export class ManagerPageComponent implements OnDestroy {
   }
 
   goBackToMenu(): void {
+    this.showMenuShellImmediately();
     this.router.navigateByUrl('/manager/menu');
+  }
+
+  private showMenuShellImmediately(): void {
+    this.panelTitle$$.set('Business manager');
+    this.panelFullscreen$$.set(false);
+    this.hideShellHeader$$.set(false);
+    this.edgeToEdgeContent$$.set(false);
+    this.panelCollapsed$$.set(false);
+    this.panelOpenMobile$$.set(true);
   }
 
   private async loadActiveMenuLinks(): Promise<void> {

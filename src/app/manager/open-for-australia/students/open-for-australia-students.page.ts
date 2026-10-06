@@ -57,6 +57,7 @@ export class OpenForAustraliaStudentsPageComponent implements OnInit, AfterViewI
   loadingInitial = true;
   loadingMore = false;
   error = '';
+  privacyNoteVisible = true;
 
   get hasMore(): boolean { return this.students.length < this.total; }
 
@@ -84,6 +85,7 @@ export class OpenForAustraliaStudentsPageComponent implements OnInit, AfterViewI
 
   retry(): void { this.workspace ? this.resetAndLoad() : this.loadInitial(); }
   clearSearch(): void { this.search.setValue(''); }
+  dismissPrivacyNote(): void { this.privacyNoteVisible = false; }
 
   formatLabel(value: string): string {
     return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());

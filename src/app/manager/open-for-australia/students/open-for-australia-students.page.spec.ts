@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { OpenForAustraliaService } from '../open-for-australia.service';
 import { OpenForAustraliaStudentsPageComponent } from './open-for-australia-students.page';
 
@@ -50,5 +50,24 @@ describe('OpenForAustraliaStudentsPageComponent', () => {
       'This account does not have Open For Australia workspace access.',
     );
     expect(fixture.componentInstance.students).toEqual([]);
+  });
+
+  it('keeps the page controls visible while loading only the register', () => {
+    api.students.and.returnValue(new Subject());
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Manage active and historical');
+    expect(fixture.nativeElement.querySelector('.list-loader .loader-card')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.screen-loader')).toBeNull();
+  });
+
+  it('allows the privacy notice to be dismissed', () => {
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('.privacy-dismiss').click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'This register excludes restricted identity documents',
+    );
   });
 });

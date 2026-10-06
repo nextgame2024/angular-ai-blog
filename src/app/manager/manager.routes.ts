@@ -118,7 +118,7 @@ export const MANAGER_ROUTES: Route[] = [
       {
         path: 'open-for-australia/students',
         component: OpenForAustraliaStudentsPageComponent,
-        data: { title: 'Open For Australia · Students', fullscreen: true },
+        data: { title: 'Students', fullscreen: true },
       },
       {
         path: 'dashboard',

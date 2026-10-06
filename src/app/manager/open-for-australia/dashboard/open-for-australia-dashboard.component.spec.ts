@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { OpenForAustraliaService } from '../open-for-australia.service';
 import { OpenForAustraliaDashboardComponent } from './open-for-australia-dashboard.component';
 
@@ -22,6 +22,14 @@ describe('OpenForAustraliaDashboardComponent', () => {
   };
 
   beforeEach(async () => {
+    api.dashboard.calls.reset();
+    api.dashboard.and.returnValue(of({
+      workspace: {
+        packId: 'open-for-australia', version: '0.1.0', tenantId: 'tenant-1',
+        role: 'operations', authorizationRevision: 1, workspaceRoutes: ['students'],
+      },
+      summary: { totalStudents: 11, activeStudents: 8, actionRequired: 2, onHold: 1 },
+    }));
     await TestBed.configureTestingModule({
       imports: [OpenForAustraliaDashboardComponent],
       providers: [
@@ -40,5 +48,14 @@ describe('OpenForAustraliaDashboardComponent', () => {
     expect(text).toContain('Available after Payments & Controls');
     expect(text).not.toContain('$');
     expect(api.dashboard).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the dashboard heading while loading only the data region', () => {
+    api.dashboard.and.returnValue(new Subject());
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Operations Dashboard');
+    expect(fixture.nativeElement.querySelector('.dashboard-content-loader .loader-card')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.screen-loader')).toBeNull();
   });
 });

@@ -21,7 +21,7 @@ ul { list-style: none; padding: 0; margin: 1rem 0 0; } li { display: grid; grid-
 .empty-priorities { margin-top: 1rem; padding: 1.2rem; border-radius: .75rem; background: #f5faf8; color: #497068; }
 .coming-soon { background: linear-gradient(145deg, #fff, #f5f2ff); }.phase-badge { display: inline-block; margin-top: .4rem; border-color: #d8cef9; background: #f3efff; color: #6247aa; font-size: .78rem; }
 .state { display: grid; justify-items: center; gap: .5rem; padding: 3rem 1rem; border: 1px dashed #cad4df; border-radius: 1rem; background: white; color: #617185; }.state-error { border-style: solid; border-color: #f0b7be; background: #fff7f8; color: #8f2636; }.state button { border: 1px solid #b9c9d7; border-radius: .55rem; background: white; padding: .55rem .8rem; cursor: pointer; }
-.screen-loader { position: fixed; inset: 0; z-index: 999; display: grid; place-items: center; background: rgba(248,250,252,.72); backdrop-filter: blur(6px); }
+.dashboard-content-loader { min-height: 330px; display: grid; place-items: center; border: 1px dashed #cad4df; border-radius: 1rem; background: rgba(255,255,255,.72); }
 .loader-card { display: grid; gap: .75rem; place-items: center; padding: 1.25rem 1.5rem; border-radius: 16px; border: 1px solid rgba(15,23,42,.08); background: rgba(255,255,255,.9); box-shadow: 0 18px 40px rgba(15,23,42,.18); }
 .loader-ring { width: 46px; height: 46px; border-radius: 50%; border: 3px solid rgba(16,224,199,.25); border-top-color: #10e0c7; border-right-color: rgba(110,89,255,.45); animation: dashboard-spin .9s linear infinite; }
 .loader-bar { width: 140px; height: 6px; border-radius: 999px; background: rgba(15,23,42,.08); overflow: hidden; position: relative; }
