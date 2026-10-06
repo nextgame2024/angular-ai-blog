@@ -457,8 +457,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   selectedCompanyUsesStudentOperations(): boolean {
-    return this.canAdministerStudentOperationsRoles
-      && this.currentUser?.workspaceProfile === 'student_operations';
+    return this.canAdministerStudentOperationsRoles;
   }
 
   private resolveRoleAdministrationAuthority(user: CurrentUserInterface | null): void {
@@ -466,8 +465,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     if (this.roleAuthorityUserId === userId && this.roleAuthorityResolved) return;
     this.roleAuthorityUserId = userId;
     this.canAdministerStudentOperationsRoles = false;
-    this.roleAuthorityResolved = user?.workspaceProfile !== 'student_operations';
-    if (!userId || user?.workspaceProfile !== 'student_operations') return;
+    this.roleAuthorityResolved = !userId;
+    if (!userId) return;
 
     this.openForAustraliaApi.workspace().pipe(take(1)).subscribe({
       next: (workspace) => {
