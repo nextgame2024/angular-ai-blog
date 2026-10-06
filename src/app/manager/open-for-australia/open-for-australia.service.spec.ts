@@ -30,6 +30,19 @@ describe('OpenForAustraliaService', () => {
     request.flush({ packId: 'open-for-australia' });
   });
 
+  it('loads dashboard context and metrics with one request', () => {
+    service.dashboard().subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/api/business-packs/open-for-australia/v1/workspace/dashboard',
+    ));
+    expect(request.request.method).toBe('GET');
+    expect(request.request.headers.get('Authorization')).toBe('Token business-manager-token');
+    request.flush({
+      workspace: { packId: 'open-for-australia' },
+      summary: { totalStudents: 0, activeStudents: 0, actionRequired: 0, onHold: 0 },
+    });
+  });
+
   it('sends bounded student-list filters without a browser-selected tenant', () => {
     service.students({ page: 2, limit: 20, q: 'student', status: 'active' }).subscribe();
     const request = http.expectOne((candidate) => candidate.url.endsWith(

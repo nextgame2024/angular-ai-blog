@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { forkJoin } from 'rxjs';
 import { OpenForAustraliaService } from '../open-for-australia.service';
 import type { OpenForAustraliaWorkspace } from '../open-for-australia.types';
 
@@ -29,25 +28,13 @@ export class OpenForAustraliaDashboardComponent implements OnInit {
   load(): void {
     this.loading = true;
     this.error = '';
-    const count = (status?: string) => this.api.students({
-      page: 1,
-      limit: 1,
-      status,
-    });
-
-    forkJoin({
-      workspace: this.api.workspace(),
-      all: count(),
-      active: count('active'),
-      actionRequired: count('action_required'),
-      onHold: count('on_hold'),
-    }).subscribe({
-      next: ({ workspace, all, active, actionRequired, onHold }) => {
+    this.api.dashboard().subscribe({
+      next: ({ workspace, summary }) => {
         this.workspace = workspace;
-        this.totalStudents = all.total;
-        this.activeStudents = active.total;
-        this.actionRequired = actionRequired.total;
-        this.onHold = onHold.total;
+        this.totalStudents = summary.totalStudents;
+        this.activeStudents = summary.activeStudents;
+        this.actionRequired = summary.actionRequired;
+        this.onHold = summary.onHold;
         this.loading = false;
       },
       error: (error) => {

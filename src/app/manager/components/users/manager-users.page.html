@@ -155,14 +155,17 @@
       }
       @if (selectedCompanyUsesStudentOperations()) {
       <label class="company-picker">
-        <span>Open For Australia role</span>
+        <span>Student operations role</span>
         <app-manager-select
           formControlName="businessPackRole"
           [options]="businessPackRoleOptions"
           placeholder="Select role"
         ></app-manager-select>
-        <small>Controls this user’s authority inside the student operations workspace.</small>
+        <small>Chief Executives can assign roles only to users in their own student operations company.</small>
       </label>
+      }
+      @if (currentUser?.workspaceProfile === 'student_operations' && roleAuthorityResolved && !canAdministerStudentOperationsRoles) {
+        <div class="role-notice">Only your company’s Chief Executive can assign student operations roles.</div>
       }
       @if (roleAdministrationError) {
         <div class="error" role="alert">{{ roleAdministrationError }}</div>
@@ -374,14 +377,17 @@
       }
       @if (selectedCompanyUsesStudentOperations()) {
       <label class="company-picker">
-        <span>Open For Australia role</span>
+        <span>Student operations role</span>
         <app-manager-select
           formControlName="businessPackRole"
           [options]="businessPackRoleOptions"
           placeholder="Select role"
         ></app-manager-select>
-        <small>Controls this user’s authority inside the student operations workspace.</small>
+        <small>Chief Executives can assign roles only to users in their own student operations company.</small>
       </label>
+      }
+      @if (currentUser?.workspaceProfile === 'student_operations' && roleAuthorityResolved && !canAdministerStudentOperationsRoles) {
+        <div class="role-notice">Only your company’s Chief Executive can assign student operations roles.</div>
       }
       @if (roleAdministrationError) {
         <div class="error" role="alert">{{ roleAdministrationError }}</div>

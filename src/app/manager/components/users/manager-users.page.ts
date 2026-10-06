@@ -46,7 +46,7 @@ import { ManagerSitesService } from '../../services/manager.sites.service';
 
 import type { BmUser } from '../../services/manager.service';
 import { ManagerService } from '../../services/manager.service';
-import type { BmCompany } from '../../types/company.interface';
+import { OpenForAustraliaService } from '../../open-for-australia/open-for-australia.service';
 
 @Component({
     selector: 'app-manager-users-page',
@@ -90,11 +90,13 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   currentUser: CurrentUserInterface | null = null;
   isSuperAdmin = false;
   companyOptions: ManagerSelectOption[] = [];
-  private companiesById = new Map<string, BmCompany>();
   siteOptions: ManagerSelectOption[] = [];
   roleAdministrationError = '';
+  canAdministerStudentOperationsRoles = false;
+  roleAuthorityResolved = false;
+  private roleAuthorityUserId = '';
   readonly businessPackRoleOptions: ManagerSelectOption[] = [
-    { value: '', label: 'No Open For Australia role' },
+    { value: '', label: 'No student operations role' },
     { value: 'chief_executive', label: 'Chief Executive' },
     { value: 'operations', label: 'Operations' },
     { value: 'advisor', label: 'Advisor' },
@@ -158,6 +160,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     private managerApi: ManagerService,
     private sitesApi: ManagerSitesService,
     private actions$: Actions,
+    private openForAustraliaApi: OpenForAustraliaService,
+    private host: ElementRef<HTMLElement>,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
@@ -226,6 +230,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         this.currentUser = user ?? null;
         this.isSuperAdmin = user?.id === this.superAdminId;
         this.syncCompanyControlRules();
+        this.resolveRoleAdministrationAuthority(user ?? null);
         if (this.isSuperAdmin && !wasSuperAdmin) {
           this.loadCompaniesForSuperAdmin();
         }
@@ -285,8 +290,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         this.userForm.controls.siteId.setValue(u.siteId ?? '', {
           emitEvent: false,
         });
-        this.loadBusinessPackRole(u);
       }
+      if (this.canAdministerStudentOperationsRoles) this.loadBusinessPackRole(u);
 
       this.userForm.controls.password.clearValidators();
       this.userForm.controls.password.setValidators([Validators.minLength(8)]);
@@ -326,6 +331,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   trackByUser = (_: number, u: BmUser) => u.id;
 
   openCreate(): void {
+    this.scrollContentToTop();
     this.resetAvatarState();
     this.roleAdministrationError = '';
     const defaultCompanyId = this.isSuperAdmin
@@ -364,10 +370,12 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   openEdit(u: BmUser): void {
     this.roleAdministrationError = '';
     this.store.dispatch(ManagerActions.openUserEdit({ userId: u.id }));
+    this.scrollContentToTop();
   }
 
   closeForm(): void {
     this.store.dispatch(ManagerActions.closeUserForm());
+    this.scrollContentToTop();
   }
 
   saveUser(): void {
@@ -391,15 +399,17 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         this.userForm.controls.companyId.markAsTouched();
         return;
       }
-      this.pendingRoleAssignment = this.companyUsesStudentOperations(payload.companyId)
-        ? { companyId: payload.companyId, roleKey: selectedRole || null }
-        : null;
     } else {
       // Non-super admins are always scoped to their own company by backend.
       delete payload.company_id;
       delete payload.companyId;
-      this.pendingRoleAssignment = null;
     }
+    const roleCompanyId = this.isSuperAdmin
+      ? String(payload.companyId || '').trim()
+      : String(this.currentUser?.companyId || '').trim();
+    this.pendingRoleAssignment = this.canAdministerStudentOperationsRoles && roleCompanyId
+      ? { companyId: roleCompanyId, roleKey: selectedRole || null }
+      : null;
 
     this.store.dispatch(ManagerActions.saveUser({ payload }));
   }
@@ -447,8 +457,41 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   selectedCompanyUsesStudentOperations(): boolean {
-    return this.isSuperAdmin
-      && this.companyUsesStudentOperations(this.userForm.controls.companyId.value || '');
+    return this.canAdministerStudentOperationsRoles
+      && this.currentUser?.workspaceProfile === 'student_operations';
+  }
+
+  private resolveRoleAdministrationAuthority(user: CurrentUserInterface | null): void {
+    const userId = user?.id || '';
+    if (this.roleAuthorityUserId === userId && this.roleAuthorityResolved) return;
+    this.roleAuthorityUserId = userId;
+    this.canAdministerStudentOperationsRoles = false;
+    this.roleAuthorityResolved = user?.workspaceProfile !== 'student_operations';
+    if (!userId || user?.workspaceProfile !== 'student_operations') return;
+
+    this.openForAustraliaApi.workspace().pipe(take(1)).subscribe({
+      next: (workspace) => {
+        if (this.roleAuthorityUserId !== userId) return;
+        this.canAdministerStudentOperationsRoles = workspace.role === 'chief_executive';
+        this.roleAuthorityResolved = true;
+        if (this.canAdministerStudentOperationsRoles) {
+          this.editingUser$.pipe(take(1)).subscribe((editing) => {
+            if (editing) this.loadBusinessPackRole(editing);
+          });
+        }
+      },
+      error: () => {
+        if (this.roleAuthorityUserId !== userId) return;
+        this.roleAuthorityResolved = true;
+      },
+    });
+  }
+
+  private scrollContentToTop(): void {
+    requestAnimationFrame(() => {
+      const content = this.host.nativeElement.closest('.content');
+      content?.scrollTo({ top: 0, behavior: 'auto' });
+    });
   }
 
   private setupInfiniteScroll(): void {
@@ -735,7 +778,6 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       .pipe(take(1))
       .subscribe({
         next: ({ items }) => {
-          this.companiesById = new Map((items || []).map((company) => [company.companyId, company]));
           this.companyOptions = (items || []).map((company) => ({
             value: company.companyId,
             label: company.companyName || company.companyId,
@@ -756,7 +798,6 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.companyOptions = [];
-          this.companiesById.clear();
         },
       });
   }
@@ -791,13 +832,13 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       });
   }
 
-  private companyUsesStudentOperations(companyId: string): boolean {
-    return this.companiesById.get(companyId)?.workspaceProfile === 'student_operations';
-  }
-
   private loadBusinessPackRole(user: BmUser): void {
     const companyId = user.companyId || '';
-    if (!this.isSuperAdmin || !companyId || !this.companyUsesStudentOperations(companyId)) {
+    if (
+      !this.canAdministerStudentOperationsRoles
+      || !companyId
+      || companyId !== this.currentUser?.companyId
+    ) {
       this.userForm.controls.businessPackRole.setValue('', { emitEvent: false });
       return;
     }
@@ -811,7 +852,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         this.userForm.controls.businessPackRole.setValue(role, { emitEvent: false });
       },
       error: () => {
-        this.roleAdministrationError = 'The Open For Australia role could not be loaded.';
+        this.roleAdministrationError = 'The student operations role could not be loaded.';
       },
     });
   }

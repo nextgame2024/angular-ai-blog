@@ -434,13 +434,23 @@ export class ManagerPageComponent implements OnDestroy {
 
   private readonly currentCompanyScopeEffect = effect(() => {
     const companyId = this.currentCompanyId$$();
+    const userWorkspaceProfile = this.currentUser$$()?.workspaceProfile;
     untracked(() => {
       this.resetCompanyScopedState(
         companyId ? 'company-scope-changed' : 'company-scope-cleared',
       );
       this.store.dispatch(ManagerProjectsActions.resetProjectsState());
-      this.workspaceProfile$$.set(null);
+      const resolvedProfile = userWorkspaceProfile === 'student_operations'
+        ? 'student_operations'
+        : userWorkspaceProfile === 'project_map'
+          ? 'project_map'
+          : null;
+      this.workspaceProfile$$.set(resolvedProfile);
       if (!companyId) return;
+      if (resolvedProfile === 'student_operations') {
+        this.companyAddress$$.set(null);
+        return;
+      }
       void this.loadCompanyWorkspace(companyId);
     });
   });

@@ -201,6 +201,15 @@
   background: rgba(255, 255, 255, 0.95);
 }
 
+.role-notice {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(8, 127, 115, 0.18);
+  border-radius: 12px;
+  background: rgba(234, 250, 246, 0.8);
+  color: #315f59;
+  font-size: 0.88rem;
+}
+
 .status-modal-backdrop {
   position: fixed;
   inset: 0;

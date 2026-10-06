@@ -14,6 +14,7 @@ export interface CurrentUserInterface {
   status?: string | null;
   companyId?: string | null;
   companyName?: string | null;
+  workspaceProfile?: 'project_map' | 'student_operations' | string | null;
   siteId?: string | null;
   siteName?: string | null;
   createdAt?: string | null;

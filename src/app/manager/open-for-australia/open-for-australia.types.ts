@@ -28,3 +28,13 @@ export interface OpenForAustraliaStudentList {
   limit: number;
   total: number;
 }
+
+export interface OpenForAustraliaDashboard {
+  workspace: OpenForAustraliaWorkspace;
+  summary: {
+    totalStudents: number;
+    activeStudents: number;
+    actionRequired: number;
+    onHold: number;
+  };
+}

@@ -7,14 +7,17 @@ import { OpenForAustraliaDashboardComponent } from './open-for-australia-dashboa
 describe('OpenForAustraliaDashboardComponent', () => {
   let fixture: ComponentFixture<OpenForAustraliaDashboardComponent>;
   const api = {
-    workspace: jasmine.createSpy().and.returnValue(of({
-      packId: 'open-for-australia', version: '0.1.0', tenantId: 'tenant-1',
-      role: 'operations', authorizationRevision: 1, workspaceRoutes: ['students'],
-    })),
-    students: jasmine.createSpy().and.callFake((input: { status?: string }) => of({
-      students: [], page: 1, limit: 1,
-      total: input.status === 'active' ? 8 : input.status === 'action_required' ? 2
-        : input.status === 'on_hold' ? 1 : 11,
+    dashboard: jasmine.createSpy().and.returnValue(of({
+      workspace: {
+        packId: 'open-for-australia', version: '0.1.0', tenantId: 'tenant-1',
+        role: 'operations', authorizationRevision: 1, workspaceRoutes: ['students'],
+      },
+      summary: {
+        totalStudents: 11,
+        activeStudents: 8,
+        actionRequired: 2,
+        onHold: 1,
+      },
     })),
   };
 
@@ -36,5 +39,6 @@ describe('OpenForAustraliaDashboardComponent', () => {
     expect(text).toContain('2 students require action');
     expect(text).toContain('Available after Payments & Controls');
     expect(text).not.toContain('$');
+    expect(api.dashboard).toHaveBeenCalledTimes(1);
   });
 });

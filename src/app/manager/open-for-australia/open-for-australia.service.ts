@@ -5,6 +5,7 @@ import { environment } from 'src/environments/environment';
 import { PersistanceService } from '../../shared/services/persistance.service';
 import type {
   OpenForAustraliaStudentList,
+  OpenForAustraliaDashboard,
   OpenForAustraliaWorkspace,
 } from './open-for-australia.types';
 
@@ -18,6 +19,12 @@ export class OpenForAustraliaService {
 
   workspace(): Observable<OpenForAustraliaWorkspace> {
     return this.http.get<OpenForAustraliaWorkspace>(this.workspaceBase, {
+      headers: this.headers(),
+    });
+  }
+
+  dashboard(): Observable<OpenForAustraliaDashboard> {
+    return this.http.get<OpenForAustraliaDashboard>(`${this.workspaceBase}/dashboard`, {
       headers: this.headers(),
     });
   }
