@@ -56,22 +56,24 @@
         }
       </label>
     </div>
-    <div
-      class="table-head"
-      [class.superadmin-cols]="isSuperAdmin"
-      aria-hidden="true"
-    >
-      <div>Name</div>
-      <div>Username</div>
-      <div>Email</div>
-      @if (isSuperAdmin) {
-      <div>Company</div>
-      }
-      <div>Site</div>
-      <div>Type</div>
-      <div>Status</div>
-      <div class="actions-col">Actions</div>
-    </div>
+    @if ((filteredUsers$ | async)?.length && !(loading$ | async)) {
+      <div
+        class="table-head"
+        [class.superadmin-cols]="isSuperAdmin"
+        aria-hidden="true"
+      >
+        <div>Name</div>
+        <div>Username</div>
+        <div>Email</div>
+        @if (isSuperAdmin) {
+        <div>Company</div>
+        }
+        <div>Site</div>
+        <div>Type</div>
+        <div>Status</div>
+        <div class="actions-col">Actions</div>
+      </div>
+    }
   </div>
   } @if ((error$ | async); as err) { @if (!isErrorDismissed(err)) {
   <div class="error">
@@ -85,15 +87,7 @@
       x
     </button>
   </div>
-  } } @if ((loading$ | async)) {
-  <div class="screen-loader" aria-live="polite" aria-busy="true">
-    <div class="loader-card">
-      <div class="loader-ring" aria-hidden="true"></div>
-      <div class="loader-bar" aria-hidden="true"></div>
-      <div class="loader-text">Loading…</div>
-    </div>
-  </div>
-  }
+  } }
 
   <!-- FORM MODE -->
   @if ((viewMode$ | async) === 'form') { @if (editingUser$ | async; as user) {
@@ -545,7 +539,15 @@
   <!-- LIST MODE -->
   @if ((viewMode$ | async) === 'list') {
   <section class="list" #usersList>
-    @if (filteredUsers$ | async; as users) {
+    @if (loading$ | async) {
+    <div class="list-loader" aria-live="polite" aria-busy="true">
+      <div class="loader-content">
+        <div class="loader-ring" aria-hidden="true"></div>
+        <div class="loader-bar" aria-hidden="true"></div>
+        <div class="loader-text">Loading users…</div>
+      </div>
+    </div>
+    } @else if (filteredUsers$ | async; as users) {
     <!-- Desktop table -->
     @if (users.length) {
     <div class="table">
@@ -667,7 +669,10 @@
       }
     </div>
     } @if (!users.length && !(loading$ | async)) {
-    <div class="empty">No users found.</div>
+    <div class="empty list-empty" data-testid="users-empty">
+      <strong>No users found</strong>
+      <span>No records match the current filters.</span>
+    </div>
     }
     <div class="infinite-sentinel" #infiniteSentinel></div>
     }

@@ -57,7 +57,8 @@ describe('OpenForAustraliaStudentsPageComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Manage active and historical');
-    expect(fixture.nativeElement.querySelector('.list-loader .loader-card')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.list-loader .loader-content')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.list-loader .loader-card')).toBeNull();
     expect(fixture.nativeElement.querySelector('.screen-loader')).toBeNull();
   });
 

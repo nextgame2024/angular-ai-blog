@@ -55,13 +55,15 @@
         }
       </label>
     </div>
-    <div class="table-head" aria-hidden="true">
-      <div>Name</div>
-      <div>Email</div>
-      <div>Mobile</div>
-      <div>Status</div>
-      <div class="actions-col">Actions</div>
-    </div>
+    @if ((clientsRaw$ | async)?.length && !(loading$ | async)) {
+      <div class="table-head" aria-hidden="true">
+        <div>Name</div>
+        <div>Email</div>
+        <div>Mobile</div>
+        <div>Status</div>
+        <div class="actions-col">Actions</div>
+      </div>
+    }
   </div>
   } @if ((error$ | async); as err) { @if (!isErrorDismissed(err)) {
   <div class="error">
@@ -75,15 +77,7 @@
       x
     </button>
   </div>
-  } } @if ((loading$ | async) || (contactsLoading$ | async)) {
-  <div class="screen-loader" aria-live="polite" aria-busy="true">
-    <div class="loader-card">
-      <div class="loader-ring" aria-hidden="true"></div>
-      <div class="loader-bar" aria-hidden="true"></div>
-      <div class="loader-text">Loading…</div>
-    </div>
-  </div>
-  }
+  } }
 
   <!-- FORM MODE -->
   @if ((viewMode$ | async) === 'form') { @if (editingClient$ | async; as client)
@@ -382,7 +376,15 @@
       <!-- Contacts list -->
       @if ((contactsViewMode$ | async) === 'list') {
       <div class="contacts-list" #contactsList>
-        @if ((contacts$ | async); as contacts) {
+        @if (contactsLoading$ | async) {
+        <div class="list-loader" aria-live="polite" aria-busy="true">
+          <div class="loader-content">
+            <div class="loader-ring" aria-hidden="true"></div>
+            <div class="loader-bar" aria-hidden="true"></div>
+            <div class="loader-text">Loading contacts…</div>
+          </div>
+        </div>
+        } @else if ((contacts$ | async); as contacts) {
         <!-- Desktop table -->
         @if (contacts.length) {
         <div class="table contacts-table">
@@ -684,7 +686,15 @@
   <!-- LIST MODE -->
   @if ((viewMode$ | async) === 'list') {
   <section class="list" #clientsList>
-    @if (clientsRaw$ | async; as clients) {
+    @if (loading$ | async) {
+    <div class="list-loader" aria-live="polite" aria-busy="true">
+      <div class="loader-content">
+        <div class="loader-ring" aria-hidden="true"></div>
+        <div class="loader-bar" aria-hidden="true"></div>
+        <div class="loader-text">Loading clients…</div>
+      </div>
+    </div>
+    } @else if (clientsRaw$ | async; as clients) {
     <!-- Desktop table -->
     @if (clients.length) {
     <div class="table">
@@ -803,7 +813,10 @@
       }
     </div>
     } @if (!clients.length && !(loading$ | async)) {
-    <div class="empty">No clients found.</div>
+    <div class="empty list-empty" data-testid="clients-empty">
+      <strong>No clients found</strong>
+      <span>No records match the current filters.</span>
+    </div>
     } }
     <div class="infinite-sentinel" #infiniteSentinel></div>
   </section>

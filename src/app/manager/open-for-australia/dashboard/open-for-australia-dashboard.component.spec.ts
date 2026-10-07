@@ -19,10 +19,16 @@ describe('OpenForAustraliaDashboardComponent', () => {
         onHold: 1,
       },
     })),
+    hasDashboardCache: jasmine.createSpy().and.returnValue(false),
+    dashboardCachedAt: jasmine.createSpy().and.returnValue(123456789),
   };
 
   beforeEach(async () => {
     api.dashboard.calls.reset();
+    api.hasDashboardCache.calls.reset();
+    api.hasDashboardCache.and.returnValue(false);
+    api.dashboardCachedAt.calls.reset();
+    api.dashboardCachedAt.and.returnValue(123456789);
     api.dashboard.and.returnValue(of({
       workspace: {
         packId: 'open-for-australia', version: '0.1.0', tenantId: 'tenant-1',
@@ -55,7 +61,22 @@ describe('OpenForAustraliaDashboardComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Operations Dashboard');
-    expect(fixture.nativeElement.querySelector('.dashboard-content-loader .loader-card')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.dashboard-content-loader .loader-content')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.dashboard-content-loader .loader-card')).toBeNull();
     expect(fixture.nativeElement.querySelector('.screen-loader')).toBeNull();
+  });
+
+  it('keeps the current metrics visible while a manual refresh is running', () => {
+    fixture.detectChanges();
+    api.hasDashboardCache.and.returnValue(true);
+    api.dashboard.and.returnValue(new Subject());
+
+    fixture.componentInstance.load(true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('11 total student records');
+    expect(fixture.nativeElement.textContent).toContain('Refreshing…');
+    expect(fixture.nativeElement.querySelector('.dashboard-content-loader')).toBeNull();
+    expect(api.dashboard).toHaveBeenCalledWith({ refresh: true });
   });
 });

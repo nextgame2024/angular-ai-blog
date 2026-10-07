@@ -56,15 +56,17 @@
           }
         </label>
       </div>
-      <div class="table-head" aria-hidden="true">
-        <div>Company</div>
-        <div>Legal Name</div>
-        <div>ABN</div>
-        <div>Email</div>
-        <div>Mobile</div>
-        <div>Status</div>
-        <div class="actions-col">Actions</div>
-      </div>
+      @if ((filteredCompanies$ | async)?.length && !(loading$ | async)) {
+        <div class="table-head" aria-hidden="true">
+          <div>Company</div>
+          <div>Legal Name</div>
+          <div>ABN</div>
+          <div>Email</div>
+          <div>Mobile</div>
+          <div>Status</div>
+          <div class="actions-col">Actions</div>
+        </div>
+      }
     </div>
   }
 
@@ -82,20 +84,6 @@
         </button>
       </div>
     }
-  }
-
-  @if ((loading$ | async)) {
-    <div
-      class="screen-loader"
-      aria-live="polite"
-      aria-busy="true"
-      >
-      <div class="loader-card">
-        <div class="loader-ring" aria-hidden="true"></div>
-        <div class="loader-bar" aria-hidden="true"></div>
-        <div class="loader-text">Loading…</div>
-      </div>
-    </div>
   }
 
   @if ((viewMode$ | async) === 'form') {
@@ -515,8 +503,12 @@
             </form>
           </section>
         } @else {
-          <section class="card">
-            <div class="empty">Loading company details…</div>
+          <section class="content-loader" aria-live="polite" aria-busy="true">
+            <div class="loader-content">
+              <div class="loader-ring" aria-hidden="true"></div>
+              <div class="loader-bar" aria-hidden="true"></div>
+              <div class="loader-text">Loading company details…</div>
+            </div>
           </section>
         }
       }
@@ -524,7 +516,15 @@
 
     @if ((viewMode$ | async) === 'list' && isSuperAdmin) {
       <section class="list" #companiesList>
-        @if (filteredCompanies$ | async; as companies) {
+        @if (loading$ | async) {
+          <div class="list-loader" aria-live="polite" aria-busy="true">
+            <div class="loader-content">
+              <div class="loader-ring" aria-hidden="true"></div>
+              <div class="loader-bar" aria-hidden="true"></div>
+              <div class="loader-text">Loading companies…</div>
+            </div>
+          </div>
+        } @else if (filteredCompanies$ | async; as companies) {
           @if (companies.length) {
             <div class="table">
               <div class="thead">
@@ -637,8 +637,9 @@
             </div>
           }
           @if (!companies.length && !(loading$ | async)) {
-            <div class="empty">
-              No companies found.
+            <div class="empty list-empty" data-testid="companies-empty">
+              <strong>No companies found</strong>
+              <span>No records match the current filters.</span>
             </div>
           }
           <div class="infinite-sentinel" #infiniteSentinel></div>

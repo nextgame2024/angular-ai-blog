@@ -9,10 +9,23 @@
       <h1 id="operations-dashboard-title">Operations Dashboard</h1>
       <p>A single view of student operations requiring attention.</p>
     </div>
-    @if (workspace) {
-      <span class="role-badge">{{ formatRole(workspace.role) }}</span>
-    }
+    <div class="dashboard-actions">
+      @if (lastUpdatedAt) {
+        <small>Updated {{ lastUpdatedAt | date:'shortTime' }}</small>
+      }
+      <button type="button" class="refresh-button" (click)="load(true)" [disabled]="refreshing || loading">
+        <span aria-hidden="true" [class.spinning]="refreshing">↻</span>
+        {{ refreshing ? 'Refreshing…' : 'Refresh' }}
+      </button>
+      @if (workspace) {
+        <span class="role-badge">{{ formatRole(workspace.role) }}</span>
+      }
+    </div>
   </header>
+
+  @if (refreshError) {
+    <div class="refresh-error" role="alert">{{ refreshError }}</div>
+  }
 
   @if (error) {
     <section class="state state-error" role="alert">
@@ -22,7 +35,7 @@
     </section>
   } @else if (loading) {
     <section class="dashboard-content-loader" aria-live="polite" aria-busy="true">
-      <div class="loader-card">
+      <div class="loader-content">
         <div class="loader-ring" aria-hidden="true"></div>
         <div class="loader-bar" aria-hidden="true"></div>
         <div class="loader-text">Loading...</div>
