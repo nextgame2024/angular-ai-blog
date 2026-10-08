@@ -5,31 +5,31 @@ import type { Observable } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { PersistanceService } from '../../shared/services/persistance.service';
 import type {
-  OpenForAustraliaStudentList,
-  OpenForAustraliaDashboard,
-  OpenForAustraliaWorkspace,
-} from './open-for-australia.types';
+  StudentOperationsStudentList,
+  StudentOperationsDashboard,
+  StudentOperationsWorkspace,
+} from './student-operations.types';
 
 @Injectable({ providedIn: 'root' })
-export class OpenForAustraliaService {
+export class StudentOperationsService {
   private readonly http = inject(HttpClient);
   private readonly persistence = inject(PersistanceService);
   private readonly workspaceBase = environment.sophiaRuntimeApiUrl
     .replace(/\/+$/, '')
-    .replace(/\/runtime$/, '/business-packs/open-for-australia/v1/workspace');
-  private dashboardCache: OpenForAustraliaDashboard | null = null;
+    .replace(/\/runtime$/, '/business-packs/student-operations/v1/workspace');
+  private dashboardCache: StudentOperationsDashboard | null = null;
   private dashboardCacheCredential: string | null = null;
   private dashboardCacheTimestamp: number | null = null;
-  private dashboardRequest$: Observable<OpenForAustraliaDashboard> | null = null;
+  private dashboardRequest$: Observable<StudentOperationsDashboard> | null = null;
   private dashboardRequestCredential: string | null = null;
 
-  workspace(): Observable<OpenForAustraliaWorkspace> {
-    return this.http.get<OpenForAustraliaWorkspace>(this.workspaceBase, {
+  workspace(): Observable<StudentOperationsWorkspace> {
+    return this.http.get<StudentOperationsWorkspace>(this.workspaceBase, {
       headers: this.headers(),
     });
   }
 
-  dashboard(options: { refresh?: boolean } = {}): Observable<OpenForAustraliaDashboard> {
+  dashboard(options: { refresh?: boolean } = {}): Observable<StudentOperationsDashboard> {
     const credential = this.accessToken();
     this.clearDashboardForChangedCredential(credential);
 
@@ -41,7 +41,7 @@ export class OpenForAustraliaService {
       return this.dashboardRequest$;
     }
 
-    const request$ = this.http.get<OpenForAustraliaDashboard>(
+    const request$ = this.http.get<StudentOperationsDashboard>(
       `${this.workspaceBase}/dashboard`,
       { headers: this.headers(credential) },
     ).pipe(
@@ -89,7 +89,7 @@ export class OpenForAustraliaService {
     status?: string;
     advisor?: string;
     college?: string;
-  }): Observable<OpenForAustraliaStudentList> {
+  }): Observable<StudentOperationsStudentList> {
     let params = new HttpParams()
       .set('page', String(input.page))
       .set('limit', String(input.limit));
@@ -97,7 +97,7 @@ export class OpenForAustraliaService {
     if (input.status) params = params.set('status', input.status);
     if (input.advisor) params = params.set('advisor', input.advisor);
     if (input.college) params = params.set('college', input.college);
-    return this.http.get<OpenForAustraliaStudentList>(`${this.workspaceBase}/students`, {
+    return this.http.get<StudentOperationsStudentList>(`${this.workspaceBase}/students`, {
       headers: this.headers(),
       params,
     });

@@ -8,21 +8,21 @@ import { Subject, debounceTime, distinctUntilChanged, forkJoin, takeUntil } from
 import {
   ManagerSelectComponent, type ManagerSelectOption,
 } from '../../components/shared/manager-select/manager-select.component';
-import { OpenForAustraliaService } from '../open-for-australia.service';
+import { StudentOperationsService } from '../student-operations.service';
 import type {
-  OpenForAustraliaStudentList,
-  OpenForAustraliaStudentSummary,
-  OpenForAustraliaWorkspace,
-} from '../open-for-australia.types';
+  StudentOperationsStudentList,
+  StudentOperationsStudentSummary,
+  StudentOperationsWorkspace,
+} from '../student-operations.types';
 
 @Component({
-  selector: 'app-open-for-australia-students-page',
+  selector: 'app-student-operations-students-page',
   imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
-  templateUrl: './open-for-australia-students.page.html',
-  styleUrls: ['./open-for-australia-students.page.css'],
+  templateUrl: './student-operations-students.page.html',
+  styleUrls: ['./student-operations-students.page.css'],
 })
-export class OpenForAustraliaStudentsPageComponent implements OnInit, AfterViewInit, OnDestroy {
-  private readonly api = inject(OpenForAustraliaService);
+export class StudentOperationsStudentsPageComponent implements OnInit, AfterViewInit, OnDestroy {
+  private readonly api = inject(StudentOperationsService);
   private readonly destroy$ = new Subject<void>();
   private observer?: IntersectionObserver;
   private requestVersion = 0;
@@ -50,8 +50,8 @@ export class OpenForAustraliaStudentsPageComponent implements OnInit, AfterViewI
     { value: 'me', label: 'Assigned to me' },
   ];
 
-  workspace: OpenForAustraliaWorkspace | null = null;
-  students: OpenForAustraliaStudentSummary[] = [];
+  workspace: StudentOperationsWorkspace | null = null;
+  students: StudentOperationsStudentSummary[] = [];
   page = 1;
   total = 0;
   loadingInitial = true;
@@ -121,7 +121,7 @@ export class OpenForAustraliaStudentsPageComponent implements OnInit, AfterViewI
     });
   }
 
-  private applyResult(result: OpenForAustraliaStudentList, reset: boolean): void {
+  private applyResult(result: StudentOperationsStudentList, reset: boolean): void {
     const next = reset ? result.students : [...this.students, ...result.students];
     this.students = Array.from(
       new Map(next.map((student) => [student.studentId, student])).values(),
@@ -137,7 +137,7 @@ export class OpenForAustraliaStudentsPageComponent implements OnInit, AfterViewI
     this.loadingInitial = false;
     this.loadingMore = false;
     this.error = Number(error?.status) === 403
-      ? 'This account does not have Open For Australia workspace access.'
+      ? 'This account does not have Student Operations workspace access.'
       : 'The student register could not be loaded.';
   }
 

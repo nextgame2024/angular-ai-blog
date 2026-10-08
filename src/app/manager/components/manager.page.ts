@@ -43,7 +43,7 @@ import {
 } from '../store/projects/manager.selectors';
 import type { BmProject } from '../types/projects.interface';
 import type { WorkspaceProfile } from '../types/company.interface';
-import { OpenForAustraliaDashboardComponent } from '../open-for-australia/dashboard/open-for-australia-dashboard.component';
+import { StudentOperationsDashboardComponent } from '../student-operations/dashboard/student-operations-dashboard.component';
 
 type MenuItem = {
   label: string;
@@ -89,7 +89,7 @@ function formatDisplayDate(dateIso: string): string {
       ReactiveFormsModule,
       GoogleMapsModule,
       RouterModule,
-      OpenForAustraliaDashboardComponent,
+      StudentOperationsDashboardComponent,
     ],
     providers: [ManagerScheduleProjectsService],
     templateUrl: './manager.page.html',
@@ -160,7 +160,7 @@ export class ManagerPageComponent implements OnDestroy {
   readonly menu: MenuItem[] = [
     {
       label: 'Students',
-      route: '/manager/open-for-australia/students',
+      route: '/manager/student-operations/students',
       icon: 'students',
     },
     { label: 'Clients', route: '/manager/clients', icon: 'clients' },

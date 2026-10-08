@@ -1,19 +1,19 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
-import { OpenForAustraliaService } from '../open-for-australia.service';
-import type { OpenForAustraliaWorkspace } from '../open-for-australia.types';
+import { StudentOperationsService } from '../student-operations.service';
+import type { StudentOperationsWorkspace } from '../student-operations.types';
 
 @Component({
-  selector: 'app-open-for-australia-dashboard',
+  selector: 'app-student-operations-dashboard',
   imports: [CommonModule, RouterModule],
-  templateUrl: './open-for-australia-dashboard.component.html',
-  styleUrls: ['./open-for-australia-dashboard.component.css'],
+  templateUrl: './student-operations-dashboard.component.html',
+  styleUrls: ['./student-operations-dashboard.component.css'],
 })
-export class OpenForAustraliaDashboardComponent implements OnInit {
-  private readonly api = inject(OpenForAustraliaService);
+export class StudentOperationsDashboardComponent implements OnInit {
+  private readonly api = inject(StudentOperationsService);
 
-  workspace: OpenForAustraliaWorkspace | null = null;
+  workspace: StudentOperationsWorkspace | null = null;
   activeStudents = 0;
   actionRequired = 0;
   onHold = 0;
@@ -49,7 +49,7 @@ export class OpenForAustraliaDashboardComponent implements OnInit {
         this.loading = false;
         this.refreshing = false;
         const message = Number(error?.status) === 403
-          ? 'This account does not have Open For Australia workspace access.'
+          ? 'This account does not have Student Operations workspace access.'
           : 'The operations dashboard could not be loaded.';
         if (hasCachedDashboard) {
           this.refreshError = `${message} The last loaded values are still displayed.`;

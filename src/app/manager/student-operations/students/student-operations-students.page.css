@@ -231,8 +231,8 @@
   display: grid;
   place-items: center;
   min-height: 320px;
-  border: 1px dashed #cbd5df;
-  border-radius: 0.85rem;
+  /* border: 1px dashed #cbd5df;
+  border-radius: 0.85rem; */
   background: white;
   padding: 2rem 1rem;
   color: #647386;
@@ -258,7 +258,7 @@
 }
 .state[data-testid="ofa-students-empty"] {
   flex: 1 1 320px;
-  min-height: 320px;
+  min-height: 385px;
 }
 .loader-content {
   display: grid;

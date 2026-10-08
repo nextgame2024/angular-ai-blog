@@ -1,15 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, Subject } from 'rxjs';
-import { OpenForAustraliaService } from '../open-for-australia.service';
-import { OpenForAustraliaDashboardComponent } from './open-for-australia-dashboard.component';
+import { StudentOperationsService } from '../student-operations.service';
+import { StudentOperationsDashboardComponent } from './student-operations-dashboard.component';
 
-describe('OpenForAustraliaDashboardComponent', () => {
-  let fixture: ComponentFixture<OpenForAustraliaDashboardComponent>;
+describe('StudentOperationsDashboardComponent', () => {
+  let fixture: ComponentFixture<StudentOperationsDashboardComponent>;
   const api = {
     dashboard: jasmine.createSpy().and.returnValue(of({
       workspace: {
-        packId: 'open-for-australia', version: '0.1.0', tenantId: 'tenant-1',
+        packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
         role: 'operations', authorizationRevision: 1, workspaceRoutes: ['students'],
       },
       summary: {
@@ -31,19 +31,19 @@ describe('OpenForAustraliaDashboardComponent', () => {
     api.dashboardCachedAt.and.returnValue(123456789);
     api.dashboard.and.returnValue(of({
       workspace: {
-        packId: 'open-for-australia', version: '0.1.0', tenantId: 'tenant-1',
+        packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
         role: 'operations', authorizationRevision: 1, workspaceRoutes: ['students'],
       },
       summary: { totalStudents: 11, activeStudents: 8, actionRequired: 2, onHold: 1 },
     }));
     await TestBed.configureTestingModule({
-      imports: [OpenForAustraliaDashboardComponent],
+      imports: [StudentOperationsDashboardComponent],
       providers: [
         provideRouter([]),
-        { provide: OpenForAustraliaService, useValue: api },
+        { provide: StudentOperationsService, useValue: api },
       ],
     }).compileComponents();
-    fixture = TestBed.createComponent(OpenForAustraliaDashboardComponent);
+    fixture = TestBed.createComponent(StudentOperationsDashboardComponent);
   });
 
   it('shows only evidence-backed student metrics and labels pending finance data', () => {

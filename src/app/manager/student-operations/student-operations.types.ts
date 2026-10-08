@@ -1,15 +1,15 @@
-export type OpenForAustraliaRole = 'chief_executive' | 'operations' | 'advisor';
+export type StudentOperationsRole = 'chief_executive' | 'operations' | 'advisor';
 
-export interface OpenForAustraliaWorkspace {
-  packId: 'open-for-australia';
+export interface StudentOperationsWorkspace {
+  packId: 'student-operations';
   version: string;
   tenantId: string;
-  role: OpenForAustraliaRole;
+  role: StudentOperationsRole;
   authorizationRevision: number;
   workspaceRoutes: string[];
 }
 
-export interface OpenForAustraliaStudentSummary {
+export interface StudentOperationsStudentSummary {
   studentId: string;
   studentReference: string;
   legalName: string;
@@ -22,15 +22,15 @@ export interface OpenForAustraliaStudentSummary {
   maskedFields: string[];
 }
 
-export interface OpenForAustraliaStudentList {
-  students: OpenForAustraliaStudentSummary[];
+export interface StudentOperationsStudentList {
+  students: StudentOperationsStudentSummary[];
   page: number;
   limit: number;
   total: number;
 }
 
-export interface OpenForAustraliaDashboard {
-  workspace: OpenForAustraliaWorkspace;
+export interface StudentOperationsDashboard {
+  workspace: StudentOperationsWorkspace;
   summary: {
     totalStudents: number;
     activeStudents: number;

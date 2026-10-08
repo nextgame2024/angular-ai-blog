@@ -46,7 +46,7 @@ import { ManagerSitesService } from '../../services/manager.sites.service';
 
 import type { BmUser } from '../../services/manager.service';
 import { ManagerService } from '../../services/manager.service';
-import { OpenForAustraliaService } from '../../open-for-australia/open-for-australia.service';
+import { StudentOperationsService } from '../../student-operations/student-operations.service';
 
 @Component({
     selector: 'app-manager-users-page',
@@ -102,7 +102,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     { value: 'advisor', label: 'Advisor' },
   ];
   private pendingRoleAssignment: { companyId: string; roleKey: string | null } | null = null;
-  private readonly openForAustraliaPackId = 'open-for-australia';
+  private readonly studentOperationsPackId = 'student-operations';
 
   @ViewChild('usersList') usersListRef?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
@@ -160,7 +160,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     private managerApi: ManagerService,
     private sitesApi: ManagerSitesService,
     private actions$: Actions,
-    private openForAustraliaApi: OpenForAustraliaService,
+    private studentOperationsApi: StudentOperationsService,
     private host: ElementRef<HTMLElement>,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
@@ -468,7 +468,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     this.roleAuthorityResolved = !userId;
     if (!userId) return;
 
-    this.openForAustraliaApi.workspace().pipe(take(1)).subscribe({
+    this.studentOperationsApi.workspace().pipe(take(1)).subscribe({
       next: (workspace) => {
         if (this.roleAuthorityUserId !== userId) return;
         this.canAdministerStudentOperationsRoles = workspace.role === 'chief_executive';
@@ -844,7 +844,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     this.managerApi.getBusinessPackAssignment({
       companyId,
       userId: user.id,
-      packId: this.openForAustraliaPackId,
+      packId: this.studentOperationsPackId,
     }).pipe(take(1)).subscribe({
       next: (assignment) => {
         const role = assignment?.status === 'active' ? assignment.roleKey || '' : '';
@@ -868,7 +868,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     this.managerApi.setBusinessPackAssignment({
       companyId: pending.companyId,
       userId: user.id,
-      packId: this.openForAustraliaPackId,
+      packId: this.studentOperationsPackId,
       roleKey: pending.roleKey,
     }).pipe(take(1)).subscribe({
       next: () => {

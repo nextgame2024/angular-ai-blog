@@ -90,7 +90,7 @@ import {
   managerToolkitReducer,
 } from './store/toolkit/manager.reducer';
 import { MANAGER_SCHEDULE_ROUTE } from './schedule.routes';
-import { OpenForAustraliaStudentsPageComponent } from './open-for-australia/students/open-for-australia-students.page';
+import { StudentOperationsStudentsPageComponent } from './student-operations/students/student-operations-students.page';
 
 export const MANAGER_ROUTES: Route[] = [
   {
@@ -116,8 +116,8 @@ export const MANAGER_ROUTES: Route[] = [
       },
 
       {
-        path: 'open-for-australia/students',
-        component: OpenForAustraliaStudentsPageComponent,
+        path: 'student-operations/students',
+        component: StudentOperationsStudentsPageComponent,
         data: { title: 'Students', fullscreen: true },
       },
       {

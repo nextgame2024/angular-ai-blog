@@ -20,14 +20,14 @@ describe('ManagerService business-pack role administration', () => {
   it('updates a named role rather than an enabled boolean', () => {
     service.setBusinessPackAssignment({
       companyId: 'company-1', userId: 'user-1',
-      packId: 'open-for-australia', roleKey: 'advisor',
+      packId: 'student-operations', roleKey: 'advisor',
     }).subscribe();
     const request = http.expectOne((candidate) =>
       candidate.url.endsWith('/bm/business-pack-entitlements/user-1'),
     );
     expect(request.request.method).toBe('PUT');
     expect(request.request.body.assignment).toEqual({
-      companyId: 'company-1', packId: 'open-for-australia', roleKey: 'advisor',
+      companyId: 'company-1', packId: 'student-operations', roleKey: 'advisor',
     });
     expect(request.request.body.assignment.enabled).toBeUndefined();
     request.flush({ assignment: null });

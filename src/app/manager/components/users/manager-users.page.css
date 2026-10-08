@@ -321,8 +321,8 @@
   min-height: 285px;
   display: grid;
   place-items: center;
-  box-sizing: border-box;
-  border: 1px dashed #cbd5df;
+  /* box-sizing: border-box;
+  border: 1px dashed #cbd5df; */
   border-radius: 0.85rem;
   background: #fff;
   padding: 2rem 1rem;
@@ -602,7 +602,6 @@
   gap: 0.65rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-
 
 .avatar-image {
   width: 140px;
