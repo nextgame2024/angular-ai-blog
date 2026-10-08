@@ -105,4 +105,40 @@ describe('StudentOperationsService', () => {
     expect(request.request.url).not.toContain('/tenants/');
     request.flush({ students: [], page: 2, limit: 20, total: 0 });
   });
+
+  it('creates a student with idempotency and invalidates the dashboard cache', () => {
+    service.dashboard().subscribe();
+    http.expectOne((candidate) => candidate.url.endsWith('/workspace/dashboard')).flush({
+      workspace: { packId: 'student-operations' },
+      summary: { totalStudents: 0, activeStudents: 0, actionRequired: 0, onHold: 0 },
+    });
+    service.createStudent({
+      studentReference: 'STU-001', legalName: 'Synthetic Student', preferredName: null,
+      email: 'student@example.invalid', currentStage: 'new_application', status: 'active',
+      advisorIdentityUserId: null, collegeName: null,
+    }, 'create-student-001').subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith('/workspace/students'));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.headers.get('Idempotency-Key')).toBe('create-student-001');
+    request.flush({ studentId: 'student-1' });
+
+    service.dashboard().subscribe();
+    http.expectOne((candidate) => candidate.url.endsWith('/workspace/dashboard')).flush({
+      workspace: { packId: 'student-operations' },
+      summary: { totalStudents: 1, activeStudents: 1, actionRequired: 0, onHold: 0 },
+    });
+  });
+
+  it('updates a student with its record version and idempotency key', () => {
+    service.updateStudent('student-1', {
+      studentReference: 'STU-001', legalName: 'Synthetic Student', preferredName: null,
+      email: 'student@example.invalid', currentStage: 'new_application', status: 'active',
+      advisorIdentityUserId: null, collegeName: null, recordVersion: 3,
+    }, 'update-student-001').subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith('/workspace/students/student-1'));
+    expect(request.request.method).toBe('PATCH');
+    expect(request.request.body.recordVersion).toBe(3);
+    expect(request.request.headers.get('Idempotency-Key')).toBe('update-student-001');
+    request.flush({ studentId: 'student-1', recordVersion: 4 });
+  });
 });

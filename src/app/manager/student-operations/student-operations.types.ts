@@ -29,6 +29,25 @@ export interface StudentOperationsStudentList {
   total: number;
 }
 
+export interface StudentOperationsStudentDetail extends StudentOperationsStudentSummary {
+  advisorIdentityUserId: string | null;
+  recordVersion: number;
+  createdAt: string;
+  updatedAt: string;
+  idempotentReplay?: boolean;
+}
+
+export interface StudentOperationsStudentWrite {
+  studentReference: string;
+  legalName: string;
+  preferredName: string | null;
+  email: string;
+  currentStage: string;
+  status: string;
+  advisorIdentityUserId: string | null;
+  collegeName: string | null;
+}
+
 export interface StudentOperationsDashboard {
   workspace: StudentOperationsWorkspace;
   summary: {

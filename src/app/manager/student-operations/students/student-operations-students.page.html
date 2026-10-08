@@ -2,71 +2,105 @@
   <div class="list-header">
     <nav class="breadcrumb" aria-label="Breadcrumb">
       <a routerLink="/manager/menu">Menu</a><span class="sep">/</span><span>Students</span>
+      @if (viewMode === 'form') { <span class="sep">/</span><span>{{ editingStudent ? 'Edit' : 'Create' }}</span> }
     </nav>
     <header class="students-toolbar">
       <div class="title">
-        <h3 id="students-title">Students</h3>
-        <p class="sub">Manage active and historical student records and operational status.</p>
+        <h3 id="students-title">{{ viewMode === 'form' ? (editingStudent ? 'Edit Student' : 'Create Student') : 'Students' }}</h3>
+        <p class="sub">
+          {{ viewMode === 'form' ? 'Maintain the operational student record.' : 'Manage active and historical student records and operational status.' }}
+        </p>
       </div>
-      @if (workspace) { <span class="role-badge">{{ formatLabel(workspace.role) }}</span> }
+      <div class="toolbar-actions">
+        @if (viewMode === 'list' && workspace) { <span class="role-badge">{{ formatLabel(workspace.role) }}</span> }
+        @if (viewMode === 'list' && canManage) {
+          <button type="button" class="primary-action" (click)="openCreate()"><span aria-hidden="true">＋</span> Create</button>
+        }
+        @if (viewMode === 'form') {
+          <button type="button" class="secondary-action" (click)="cancelForm()" [disabled]="saving">Cancel</button>
+          <button type="button" class="primary-action" (click)="saveStudent()" [disabled]="saving || loadingForm">
+            {{ saving ? 'Saving…' : 'Save & Finish' }}
+          </button>
+        }
+      </div>
     </header>
-    @if (privacyNoteVisible) {
-      <div class="privacy-note">
-        <span>This register excludes restricted identity documents and sensitive financial details.</span>
-        <button type="button" class="privacy-dismiss" (click)="dismissPrivacyNote()" aria-label="Dismiss privacy notice">×</button>
+    @if (viewMode === 'list') {
+      @if (privacyNoteVisible) {
+        <div class="privacy-note">
+          <span>This register excludes restricted identity documents and sensitive financial details.</span>
+          <button type="button" class="privacy-dismiss" (click)="dismissPrivacyNote()" aria-label="Dismiss privacy notice">×</button>
+        </div>
+      }
+      <div class="filters" aria-label="Student filters">
+        <label class="search-field">
+          <span class="search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          </span>
+          <input [formControl]="search" type="search" placeholder="Search by name, reference or email" aria-label="Search students" />
+          @if (search.value) { <button type="button" class="clear" (click)="clearSearch()" aria-label="Clear search">×</button> }
+        </label>
+        <app-manager-select [formControl]="status" [options]="statusOptions" placeholder="All statuses"></app-manager-select>
+        <label class="plain-field"><input [formControl]="college" type="search" placeholder="College name" aria-label="Filter by college" /></label>
+        <app-manager-select [formControl]="advisor" [options]="advisorFilterOptions" placeholder="All assignments"></app-manager-select>
       </div>
     }
-    <div class="filters" aria-label="Student filters">
-      <label class="search-field">
-        <span class="search-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
-        </span>
-        <input [formControl]="search" type="search" placeholder="Search by name, reference or email" aria-label="Search students" />
-        @if (search.value) { <button type="button" class="clear" (click)="clearSearch()" aria-label="Clear search">×</button> }
-      </label>
-      <app-manager-select [formControl]="status" [options]="statusOptions" placeholder="All statuses"></app-manager-select>
-      <label class="plain-field"><input [formControl]="college" type="search" placeholder="College name" aria-label="Filter by college" /></label>
-      <app-manager-select [formControl]="advisor" [options]="advisorOptions" placeholder="All assignments"></app-manager-select>
-    </div>
   </div>
 
-  @if (error) {
+  @if (viewMode === 'form') {
+    @if (formError) { <div class="form-error" role="alert">{{ formError }}</div> }
+    @if (loadingForm) {
+      <div class="list-loader form-loader" aria-live="polite" aria-busy="true">
+        <div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading student…</div></div>
+      </div>
+    } @else {
+      <form class="student-form" [formGroup]="studentForm" (ngSubmit)="saveStudent()">
+        <div class="form-grid">
+          <label><span>Student reference *</span><input formControlName="studentReference" autocomplete="off" /></label>
+          <label><span>Legal name *</span><input formControlName="legalName" autocomplete="name" /></label>
+          <label><span>Preferred name</span><input formControlName="preferredName" autocomplete="off" /></label>
+          <label><span>Email *</span><input formControlName="email" type="email" autocomplete="email" /></label>
+          <label><span>College</span><input formControlName="collegeName" autocomplete="organization" /></label>
+          <label><span>Stage *</span><app-manager-select formControlName="currentStage" [options]="stageOptions"></app-manager-select></label>
+          <label><span>Status *</span><app-manager-select formControlName="status" [options]="formStatusOptions"></app-manager-select></label>
+          <label><span>Advisor</span><app-manager-select formControlName="advisorIdentityUserId" [options]="advisorOptions"></app-manager-select></label>
+        </div>
+        @if (studentForm.invalid && studentForm.touched) {
+          <p class="validation-message">Complete the required fields and check their format.</p>
+        }
+        <button type="submit" class="visually-hidden">Save</button>
+      </form>
+    }
+  } @else if (error) {
     <div class="state state-error" role="alert">
       <strong>Students unavailable</strong><span>{{ error }}</span>
       <button type="button" (click)="retry()">Try again</button>
     </div>
   } @else if (loadingInitial) {
     <div class="list-loader" aria-live="polite" aria-busy="true">
-      <div class="loader-content">
-        <div class="loader-ring" aria-hidden="true"></div>
-        <div class="loader-bar" aria-hidden="true"></div>
-        <div class="loader-text">Loading students…</div>
-      </div>
+      <div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading students…</div></div>
     </div>
   } @else if (!students.length) {
-    <div class="state" data-testid="ofa-students-empty">
+    <div class="state" data-testid="student-operations-students-empty">
       <strong>No students found</strong><span>No records match the current filters.</span>
     </div>
   } @else {
     <div class="table" role="table" aria-label="Students">
-      <div class="thead" role="row">
+      <div class="thead" role="row" [class.with-actions]="canManage">
         <div>Student</div><div>Reference</div><div>College</div><div>Stage</div><div>Status</div><div>Advisor</div>
+        @if (canManage) { <div>Actions</div> }
       </div>
       @for (student of students; track student.studentId) {
-        <div class="trow" role="row">
+        <div class="trow" role="row" [class.with-actions]="canManage">
           <div class="student"><strong>{{ student.legalName }}</strong><small>{{ student.email }}</small></div>
-          <div>{{ student.studentReference }}</div>
-          <div>{{ student.collegeName || 'Not assigned' }}</div>
+          <div>{{ student.studentReference }}</div><div>{{ student.collegeName || 'Not assigned' }}</div>
           <div>{{ formatLabel(student.currentStage) }}</div>
           <div><span class="status status-{{ student.status }}">{{ formatLabel(student.status) }}</span></div>
           <div>{{ student.advisorAssigned ? 'Assigned' : 'Unassigned' }}</div>
+          @if (canManage) { <div><button type="button" class="edit-action" (click)="openEdit(student)">Edit</button></div> }
         </div>
       }
     </div>
-    <footer class="list-footer">
-      <span>Showing {{ students.length }} of {{ total }}</span>
-      @if (loadingMore) { <span class="loading-more">Loading more…</span> }
-    </footer>
+    <footer class="list-footer"><span>Showing {{ students.length }} of {{ total }}</span>@if (loadingMore) { <span class="loading-more">Loading more…</span> }</footer>
   }
   <div #infiniteSentinel class="infinite-sentinel" aria-hidden="true"></div>
 </section>

@@ -6,6 +6,8 @@ import { environment } from 'src/environments/environment';
 import { PersistanceService } from '../../shared/services/persistance.service';
 import type {
   StudentOperationsStudentList,
+  StudentOperationsStudentDetail,
+  StudentOperationsStudentWrite,
   StudentOperationsDashboard,
   StudentOperationsWorkspace,
 } from './student-operations.types';
@@ -103,6 +105,43 @@ export class StudentOperationsService {
     });
   }
 
+  student(studentId: string): Observable<StudentOperationsStudentDetail> {
+    return this.http.get<StudentOperationsStudentDetail>(
+      `${this.workspaceBase}/students/${encodeURIComponent(studentId)}`,
+      { headers: this.headers() },
+    );
+  }
+
+  advisors(): Observable<{ advisorIdentityUserIds: string[] }> {
+    return this.http.get<{ advisorIdentityUserIds: string[] }>(
+      `${this.workspaceBase}/advisors`,
+      { headers: this.headers() },
+    );
+  }
+
+  createStudent(
+    value: StudentOperationsStudentWrite,
+    idempotencyKey: string,
+  ): Observable<StudentOperationsStudentDetail> {
+    return this.http.post<StudentOperationsStudentDetail>(
+      `${this.workspaceBase}/students`,
+      value,
+      { headers: this.writeHeaders(idempotencyKey) },
+    ).pipe(tap(() => this.invalidateDashboard()));
+  }
+
+  updateStudent(
+    studentId: string,
+    value: StudentOperationsStudentWrite & { recordVersion: number },
+    idempotencyKey: string,
+  ): Observable<StudentOperationsStudentDetail> {
+    return this.http.patch<StudentOperationsStudentDetail>(
+      `${this.workspaceBase}/students/${encodeURIComponent(studentId)}`,
+      value,
+      { headers: this.writeHeaders(idempotencyKey) },
+    ).pipe(tap(() => this.invalidateDashboard()));
+  }
+
   private accessToken(): string | null {
     return this.persistence.get<string>('accessToken')
       ?? this.persistence.get<string>('token')
@@ -113,6 +152,10 @@ export class StudentOperationsService {
     return token
       ? new HttpHeaders({ Authorization: `Token ${token}` })
       : new HttpHeaders();
+  }
+
+  private writeHeaders(idempotencyKey: string): HttpHeaders {
+    return this.headers().set('Idempotency-Key', idempotencyKey);
   }
 
   private clearDashboardForChangedCredential(credential: string | null): void {
