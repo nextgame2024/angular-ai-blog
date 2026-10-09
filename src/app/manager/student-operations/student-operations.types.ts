@@ -57,3 +57,45 @@ export interface StudentOperationsDashboard {
     onHold: number;
   };
 }
+
+export interface XeroConnectionSummary {
+  connectionId: string;
+  tenantId: string;
+  tenantName: string;
+  tenantType: string;
+  tenantShortCode: string | null;
+  status: string;
+  healthStatus: string;
+  lastTestedAt: string | null;
+  lastErrorCode: string | null;
+}
+
+export interface XeroConnectionStatus {
+  provider: 'xero';
+  configured: boolean;
+  mode: 'read_only';
+  requestedScopes: string[];
+  connections: XeroConnectionSummary[];
+}
+
+export interface XeroConnectionTest {
+  connectionId: string;
+  verifiedAt: string;
+  organisation: {
+    organisationId: string;
+    name: string;
+    legalName: string | null;
+    organisationType: string | null;
+    shortCode: string | null;
+    baseCurrency: string | null;
+    countryCode: string | null;
+    isDemoCompany: boolean;
+  };
+  bankAccounts: Array<{
+    accountId: string;
+    code: string | null;
+    name: string;
+    status: string | null;
+    bankAccountType: string | null;
+  }>;
+}

@@ -10,6 +10,8 @@ import type {
   StudentOperationsStudentWrite,
   StudentOperationsDashboard,
   StudentOperationsWorkspace,
+  XeroConnectionStatus,
+  XeroConnectionTest,
 } from './student-operations.types';
 
 @Injectable({ providedIn: 'root' })
@@ -140,6 +142,28 @@ export class StudentOperationsService {
       value,
       { headers: this.writeHeaders(idempotencyKey) },
     ).pipe(tap(() => this.invalidateDashboard()));
+  }
+
+  xeroStatus(): Observable<XeroConnectionStatus> {
+    return this.http.get<XeroConnectionStatus>(`${this.workspaceBase}/integrations/xero`, {
+      headers: this.headers(),
+    });
+  }
+
+  beginXeroAuthorization(): Observable<{ authorizationUrl: string; expiresInSeconds: number }> {
+    return this.http.post<{ authorizationUrl: string; expiresInSeconds: number }>(
+      `${this.workspaceBase}/integrations/xero/authorization`,
+      {},
+      { headers: this.headers() },
+    );
+  }
+
+  testXeroConnection(connectionId: string): Observable<XeroConnectionTest> {
+    return this.http.post<XeroConnectionTest>(
+      `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/test`,
+      {},
+      { headers: this.headers() },
+    );
   }
 
   private accessToken(): string | null {

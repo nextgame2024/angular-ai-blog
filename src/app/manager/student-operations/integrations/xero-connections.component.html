@@ -1,0 +1,62 @@
+@if (visible) {
+  <section class="xero-section" aria-labelledby="xero-connections-title">
+    <div class="section-heading">
+      <div>
+        <h4 id="xero-connections-title">Xero connection</h4>
+        <p>Connect accounting organisations securely. This first phase is read-only.</p>
+      </div>
+      <button type="button" class="btn primary" (click)="connect()"
+        [disabled]="connecting || loading || !status?.configured">
+        <span class="btn-icon" aria-hidden="true">+</span>
+        {{ connecting ? 'Opening Xero…' : 'Connect Xero' }}
+      </button>
+    </div>
+
+    @if (notice) { <div class="message success" role="status">{{ notice }}</div> }
+    @if (error) { <div class="message error" role="alert">{{ error }}</div> }
+
+    @if (loading) {
+      <div class="list-loader" aria-live="polite" aria-busy="true">
+        <div class="loader-ring" aria-hidden="true"></div>
+        <span>Loading Xero connections…</span>
+      </div>
+    } @else if (status && !status.configured) {
+      <div class="empty-state">
+        <strong>Server configuration required</strong>
+        <span>Add the Xero developer-app credentials to Sophia Runtime before connecting an organisation.</span>
+      </div>
+    } @else if (status && status.connections.length) {
+      <div class="connections">
+        @for (connection of status.connections; track connection.connectionId) {
+          <article class="connection-row">
+            <div>
+              <strong>{{ connection.tenantName }}</strong>
+              <span>Read-only · {{ connection.healthStatus === 'healthy' ? 'Verified' : 'Not verified' }}</span>
+              @if (connection.lastTestedAt) {
+                <small>Last tested {{ connection.lastTestedAt | date:'short' }}</small>
+              }
+            </div>
+            <button type="button" class="btn secondary" (click)="test(connection.connectionId)"
+              [disabled]="!!testingConnectionId">
+              {{ testingConnectionId === connection.connectionId ? 'Testing…' : 'Test connection' }}
+            </button>
+          </article>
+        }
+      </div>
+    } @else if (status) {
+      <div class="empty-state">
+        <strong>No Xero organisations connected</strong>
+        <span>Connect an accounting organisation. Additional organisations can be added independently later.</span>
+      </div>
+    }
+
+    @if (lastTest?.bankAccounts?.length) {
+      <div class="test-result">
+        <strong>Available bank accounts</strong>
+        @for (account of lastTest!.bankAccounts; track account.accountId) {
+          <span>{{ account.name }}{{ account.code ? ' · ' + account.code : '' }}</span>
+        }
+      </div>
+    }
+  </section>
+}

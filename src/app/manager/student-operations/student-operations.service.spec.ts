@@ -141,4 +141,35 @@ describe('StudentOperationsService', () => {
     expect(request.request.headers.get('Idempotency-Key')).toBe('update-student-001');
     request.flush({ studentId: 'student-1', recordVersion: 4 });
   });
+
+  it('loads the current agency Xero connection status', () => {
+    service.xeroStatus().subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/workspace/integrations/xero',
+    ));
+    expect(request.request.method).toBe('GET');
+    expect(request.request.headers.get('Authorization')).toBe('Token business-manager-token');
+    request.flush({ configured: true, connections: [] });
+  });
+
+  it('starts Xero authorization without accepting a browser-selected agency', () => {
+    service.beginXeroAuthorization().subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/workspace/integrations/xero/authorization',
+    ));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    expect(request.request.url).not.toContain('/tenants/');
+    request.flush({ authorizationUrl: 'https://login.xero.com/example', expiresInSeconds: 600 });
+  });
+
+  it('tests a connected Xero organisation using an encoded connection id', () => {
+    service.testXeroConnection('connection/id').subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/workspace/integrations/xero/connections/connection%2Fid/test',
+    ));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush({ organisation: { name: 'Agency Trust' }, bankAccounts: [] });
+  });
 });
