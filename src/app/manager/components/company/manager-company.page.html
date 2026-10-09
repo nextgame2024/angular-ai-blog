@@ -303,6 +303,9 @@
           </div>
         </form>
       </section>
+      @if (companyForm.get('workspace_profile')?.value === 'student_operations') {
+        <app-xero-connections></app-xero-connections>
+      }
     } @else {
       @if (isSuperAdmin) {
         <div class="form-header">
@@ -502,9 +505,6 @@
               </div>
             </form>
           </section>
-          @if (companyForm.get('workspace_profile')?.value === 'student_operations') {
-            <app-xero-connections></app-xero-connections>
-          }
         } @else {
           <section class="content-loader" aria-live="polite" aria-busy="true">
             <div class="loader-content">
