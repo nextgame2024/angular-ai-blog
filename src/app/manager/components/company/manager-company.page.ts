@@ -67,6 +67,11 @@ export class ManagerCompanyPageComponent implements OnInit, OnDestroy {
   currentUser: CurrentUserInterface | null = null;
   isSuperAdmin = false;
 
+  get isStudentOperationsCompany(): boolean {
+    return this.companyForm.controls.workspace_profile.value === 'student_operations'
+      || this.currentUser?.workspaceProfile === 'student_operations';
+  }
+
   private infiniteObserver?: IntersectionObserver;
   private isLoadingMore = false;
   private closeAfterSave = false;

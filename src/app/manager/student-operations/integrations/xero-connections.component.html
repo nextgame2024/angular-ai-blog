@@ -1,4 +1,4 @@
-@if (visible) {
+@if (visible || checkingAccess) {
   <section class="xero-section" aria-labelledby="xero-connections-title">
     <div class="section-heading">
       <div>
@@ -15,7 +15,12 @@
     @if (notice) { <div class="message success" role="status">{{ notice }}</div> }
     @if (error) { <div class="message error" role="alert">{{ error }}</div> }
 
-    @if (loading) {
+    @if (checkingAccess) {
+      <div class="list-loader" aria-live="polite" aria-busy="true">
+        <div class="loader-ring" aria-hidden="true"></div>
+        <span>Checking Xero access…</span>
+      </div>
+    } @else if (loading) {
       <div class="list-loader" aria-live="polite" aria-busy="true">
         <div class="loader-ring" aria-hidden="true"></div>
         <span>Loading Xero connections…</span>

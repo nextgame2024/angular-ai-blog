@@ -18,6 +18,7 @@ export class XeroConnectionsComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
 
   visible = false;
+  checkingAccess = true;
   loading = false;
   connecting = false;
   testingConnectionId: string | null = null;
@@ -30,9 +31,18 @@ export class XeroConnectionsComponent implements OnInit, OnDestroy {
     this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
       next: (workspace) => {
         this.visible = workspace.role === 'chief_executive';
+        this.checkingAccess = false;
         if (this.visible) this.loadStatus();
       },
-      error: () => { this.visible = false; },
+      error: (response) => {
+        this.checkingAccess = false;
+        if (response?.status === 403) {
+          this.visible = false;
+          return;
+        }
+        this.visible = true;
+        this.error = 'Xero access could not be verified. Refresh this section and try again.';
+      },
     });
     const outcome = this.route.snapshot.queryParamMap.get('xero');
     if (outcome === 'connected') this.notice = 'Xero authorization completed. Verify the connected organisation below.';

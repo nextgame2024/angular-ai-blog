@@ -64,4 +64,15 @@ describe('ManagerCompanyPageComponent', () => {
     expect(fixture.nativeElement.querySelector('app-xero-connections')).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Xero connection');
   });
+
+  it('keeps Xero management mounted after a full-page return while company state reloads', () => {
+    fixture.componentInstance.companyForm.controls.workspace_profile.setValue('project_map');
+    fixture.componentInstance.currentUser = {
+      id: 'chief-1', companyId: 'company-1', workspaceProfile: 'student_operations',
+    } as never;
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.isStudentOperationsCompany).toBeTrue();
+    expect(fixture.nativeElement.querySelector('app-xero-connections')).not.toBeNull();
+  });
 });

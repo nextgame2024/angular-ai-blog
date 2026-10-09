@@ -303,7 +303,7 @@
           </div>
         </form>
       </section>
-      @if (companyForm.get('workspace_profile')?.value === 'student_operations') {
+      @if (isStudentOperationsCompany) {
         <app-xero-connections></app-xero-connections>
       }
     } @else {
