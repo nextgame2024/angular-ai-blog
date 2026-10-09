@@ -63,7 +63,23 @@ describe('StudentOperationsStudentsPageComponent', () => {
       role: 'advisor', authorizationRevision: 1, workspaceRoutes: ['students'],
     }));
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.primary-action')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.btn.primary')).toBeNull();
+  });
+
+  it('highlights invalid required fields and shows the standard validation toast', () => {
+    fixture.detectChanges();
+    fixture.componentInstance.openCreate();
+    fixture.detectChanges();
+
+    fixture.componentInstance.saveStudent();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('input[formControlName="studentReference"]')).toHaveClass('ng-invalid');
+    expect(fixture.nativeElement.querySelector('input[formControlName="studentReference"]')).toHaveClass('ng-touched');
+    expect(fixture.nativeElement.querySelector('.form-toast.error')?.textContent).toContain(
+      'Please complete the required student fields',
+    );
+    expect(api.createStudent).not.toHaveBeenCalled();
   });
 
   it('submits a validated student create with an idempotency key', () => {

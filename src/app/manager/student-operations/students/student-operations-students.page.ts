@@ -33,6 +33,8 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private requestVersion = 0;
   private saveRequestKey = '';
   private saveFingerprint = '';
+  private formToastTimer: ReturnType<typeof setTimeout> | null = null;
+  private formToastCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
   @ViewChild('studentsList') studentsList?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinel?: ElementRef<HTMLElement>;
@@ -93,6 +95,8 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   saving = false;
   error = '';
   formError = '';
+  formToastMessage: string | null = null;
+  formToastClosing = false;
   privacyNoteVisible = true;
 
   get hasMore(): boolean { return this.students.length < this.total; }
@@ -116,6 +120,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
 
   ngOnDestroy(): void {
     this.observer?.disconnect();
+    this.clearFormToastTimers();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -183,7 +188,10 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   saveStudent(): void {
     if (!this.canManage || this.saving) return;
     this.studentForm.markAllAsTouched();
-    if (this.studentForm.invalid) return;
+    if (this.studentForm.invalid) {
+      this.showFormToast('Please complete the required student fields and check their format before using Save & Finish.');
+      return;
+    }
     const raw = this.studentForm.getRawValue();
     const value: StudentOperationsStudentWrite = {
       studentReference: raw.studentReference!.trim(),
@@ -335,6 +343,31 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private resetSaveRequest(): void {
     this.saveRequestKey = '';
     this.saveFingerprint = '';
+  }
+
+  private showFormToast(message: string): void {
+    this.clearFormToastTimers();
+    this.formToastMessage = message;
+    this.formToastClosing = false;
+
+    this.formToastTimer = window.setTimeout(() => {
+      this.formToastClosing = true;
+      this.formToastCloseTimer = window.setTimeout(() => {
+        this.formToastMessage = null;
+        this.formToastClosing = false;
+      }, 220);
+    }, 3200);
+  }
+
+  private clearFormToastTimers(): void {
+    if (this.formToastTimer) {
+      clearTimeout(this.formToastTimer);
+      this.formToastTimer = null;
+    }
+    if (this.formToastCloseTimer) {
+      clearTimeout(this.formToastCloseTimer);
+      this.formToastCloseTimer = null;
+    }
   }
 
   private writeError(error: any, fallback: string): string {

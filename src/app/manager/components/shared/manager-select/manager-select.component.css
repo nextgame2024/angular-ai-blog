@@ -30,6 +30,11 @@
   box-shadow: 0 0 0 3px rgba(16, 224, 199, 0.15);
 }
 
+:host(.ng-invalid.ng-touched) .select-trigger {
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
 .select-trigger:disabled {
   opacity: 0.6;
   cursor: not-allowed;

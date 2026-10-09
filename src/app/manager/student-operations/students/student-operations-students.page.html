@@ -14,11 +14,18 @@
       <div class="toolbar-actions">
         @if (viewMode === 'list' && workspace) { <span class="role-badge">{{ formatLabel(workspace.role) }}</span> }
         @if (viewMode === 'list' && canManage) {
-          <button type="button" class="primary-action" (click)="openCreate()"><span aria-hidden="true">＋</span> Create</button>
+          <button type="button" class="btn primary" (click)="openCreate()">
+            <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span>
+            Create
+          </button>
         }
         @if (viewMode === 'form') {
-          <button type="button" class="secondary-action" (click)="cancelForm()" [disabled]="saving">Cancel</button>
-          <button type="button" class="primary-action" (click)="saveStudent()" [disabled]="saving || loadingForm">
+          <button type="button" class="btn" (click)="cancelForm()" [disabled]="saving">
+            <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 6l12 12"></path><path d="M18 6l-12 12"></path></svg></span>
+            Cancel
+          </button>
+          <button type="button" class="btn primary" (click)="saveStudent()" [disabled]="saving || loadingForm">
+            <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 5h11l3 3v11H5z"></path><path d="M9 5v6h6V5"></path></svg></span>
             {{ saving ? 'Saving…' : 'Save & Finish' }}
           </button>
         }
@@ -64,9 +71,6 @@
           <label><span>Status *</span><app-manager-select formControlName="status" [options]="formStatusOptions"></app-manager-select></label>
           <label><span>Advisor</span><app-manager-select formControlName="advisorIdentityUserId" [options]="advisorOptions"></app-manager-select></label>
         </div>
-        @if (studentForm.invalid && studentForm.touched) {
-          <p class="validation-message">Complete the required fields and check their format.</p>
-        }
         <button type="submit" class="visually-hidden">Save</button>
       </form>
     }
@@ -96,7 +100,12 @@
           <div>{{ formatLabel(student.currentStage) }}</div>
           <div><span class="status status-{{ student.status }}">{{ formatLabel(student.status) }}</span></div>
           <div>{{ student.advisorAssigned ? 'Assigned' : 'Unassigned' }}</div>
-          @if (canManage) { <div><button type="button" class="edit-action" (click)="openEdit(student)">Edit</button></div> }
+          @if (canManage) {
+            <div><button type="button" class="btn small secondary" (click)="openEdit(student)">
+              <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l11-11-4-4L4 16v4z"></path><path d="M13.5 6.5l4 4"></path></svg></span>
+              Edit
+            </button></div>
+          }
         </div>
       }
     </div>
@@ -104,3 +113,8 @@
   }
   <div #infiniteSentinel class="infinite-sentinel" aria-hidden="true"></div>
 </section>
+@if (formToastMessage) {
+  <div class="form-toast-wrap" aria-live="assertive">
+    <div class="form-toast error" role="alert" [class.closing]="formToastClosing">{{ formToastMessage }}</div>
+  </div>
+}
