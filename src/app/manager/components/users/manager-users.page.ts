@@ -43,6 +43,7 @@ import { selectCurrentUser } from '../../../auth/store/reducers';
 import type { CurrentUserInterface } from '../../../shared/types/currentUser.interface';
 import { ManagerCompanyService } from '../../services/manager.company.service';
 import { ManagerSitesService } from '../../services/manager.sites.service';
+import { NavigationLinksProjectsService } from '../../services/navigation.links.projects.service';
 
 import type { BmUser } from '../../services/manager.service';
 import { ManagerService } from '../../services/manager.service';
@@ -77,6 +78,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   private canLoadMore = false;
   private isLoading = false;
   private closeAfterSave = false;
+  private editingUserId: string | null = null;
   dismissedErrors = new Set<string>();
   isConfirmModalOpen = false;
   confirmModalTitle = '';
@@ -91,6 +93,9 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   isSuperAdmin = false;
   companyOptions: ManagerSelectOption[] = [];
   siteOptions: ManagerSelectOption[] = [];
+  showSiteField = false;
+  selectedCompanyWorkspaceProfile = '';
+  private companyWorkspaceProfiles = new Map<string, string>();
   roleAdministrationError = '';
   canAdministerStudentOperationsRoles = false;
   roleAuthorityResolved = false;
@@ -122,6 +127,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     { value: 'employee', label: 'Employee' },
     { value: 'supplier', label: 'Supplier' },
     { value: 'client', label: 'Client' },
+    { value: 'student', label: 'Student' },
+    { value: 'advisor', label: 'Advisor' },
   ];
 
   defaultAvatar =
@@ -149,6 +156,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     image: [''],
     bio: [''],
     businessPackRole: [''],
+    studentId: [''],
+    studentNameInXero: [''],
   });
 
   constructor(
@@ -159,6 +168,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     private companyApi: ManagerCompanyService,
     private managerApi: ManagerService,
     private sitesApi: ManagerSitesService,
+    private navigationLinksApi: NavigationLinksProjectsService,
     private actions$: Actions,
     private studentOperationsApi: StudentOperationsService,
     private host: ElementRef<HTMLElement>,
@@ -229,6 +239,10 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         const wasSuperAdmin = this.isSuperAdmin;
         this.currentUser = user ?? null;
         this.isSuperAdmin = user?.id === this.superAdminId;
+        if (!this.isSuperAdmin) {
+          this.selectedCompanyWorkspaceProfile = user?.workspaceProfile ?? '';
+          this.loadSiteLinkVisibility(user?.companyId ?? '');
+        }
         this.syncCompanyControlRules();
         this.resolveRoleAdministrationAuthority(user ?? null);
         if (this.isSuperAdmin && !wasSuperAdmin) {
@@ -266,6 +280,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       });
 
     this.editingUser$.pipe(takeUntil(this.destroy$)).subscribe((u) => {
+      this.editingUserId = u?.id ?? null;
       if (!u) return;
 
       this.resetAvatarState();
@@ -284,7 +299,15 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         image: u.image ?? '',
         bio: u.bio ?? '',
         businessPackRole: '',
+        studentId: u.studentId ?? '',
+        studentNameInXero: u.studentNameInXero ?? '',
       });
+      if (this.isSuperAdmin) {
+        this.selectedCompanyWorkspaceProfile = u.workspaceProfile
+          || this.companyWorkspaceProfiles.get(u.companyId || '')
+          || '';
+        this.loadSiteLinkVisibility(u.companyId || '');
+      }
       if (this.isSuperAdmin) {
         this.loadSitesForCompany(u.companyId ?? undefined);
         this.userForm.controls.siteId.setValue(u.siteId ?? '', {
@@ -309,6 +332,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
         this.userForm.controls.siteId.setValue('', { emitEvent: false });
         this.userForm.controls.businessPackRole.setValue('', { emitEvent: false });
         this.roleAdministrationError = '';
+        this.selectedCompanyWorkspaceProfile = this.companyWorkspaceProfiles.get(companyId || '') || '';
+        this.loadSiteLinkVisibility(companyId || '');
         this.loadSitesForCompany(companyId || undefined);
       });
   }
@@ -331,6 +356,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   trackByUser = (_: number, u: BmUser) => u.id;
 
   openCreate(): void {
+    this.editingUserId = null;
     this.scrollContentToTop();
     this.resetAvatarState();
     this.roleAdministrationError = '';
@@ -352,6 +378,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       image: '',
       bio: '',
       businessPackRole: '',
+      studentId: '',
+      studentNameInXero: '',
     });
 
     this.userForm.controls.password.clearValidators();
@@ -381,6 +409,14 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   saveUser(): void {
     if (!this.ensureAvatarUploadComplete()) return;
 
+    if (this.userForm.controls.type.value === 'advisor'
+      && this.canAdministerStudentOperationsRoles
+      && this.editingUserId === this.currentUser?.id) {
+      this.roleAdministrationError = 'You cannot change your own Chief Executive role to Advisor.';
+      this.closeAfterSave = false;
+      return;
+    }
+
     if (this.userForm.invalid) {
       this.userForm.markAllAsTouched();
       return;
@@ -389,9 +425,12 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     const payload: any = this.userForm.getRawValue();
     const selectedRole = String(payload.businessPackRole || '').trim();
     delete payload.businessPackRole;
+    delete payload.studentId;
 
     if (!payload.password) delete payload.password;
-    if (!payload.siteId) delete payload.siteId;
+    if (!this.showSiteField) delete payload.siteId;
+    else if (!payload.siteId) payload.siteId = null;
+    if (!this.showStudentNameInXero) delete payload.studentNameInXero;
 
     if (this.isSuperAdmin) {
       payload.companyId = String(payload.companyId || '').trim();
@@ -407,7 +446,10 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     const roleCompanyId = this.isSuperAdmin
       ? String(payload.companyId || '').trim()
       : String(this.currentUser?.companyId || '').trim();
-    this.pendingRoleAssignment = this.canAdministerStudentOperationsRoles && roleCompanyId
+    this.pendingRoleAssignment = payload.type !== 'advisor'
+      && this.canAdministerStudentOperationsRoles
+      && this.selectedCompanyUsesStudentOperations()
+      && roleCompanyId === this.currentUser?.companyId
       ? { companyId: roleCompanyId, roleKey: selectedRole || null }
       : null;
 
@@ -457,7 +499,25 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   selectedCompanyUsesStudentOperations(): boolean {
-    return this.canAdministerStudentOperationsRoles;
+    return this.selectedCompanyWorkspaceProfile === 'student_operations';
+  }
+
+  get showStudentOperationsRole(): boolean {
+    return this.selectedCompanyUsesStudentOperations()
+      && this.userForm.controls.type.value !== 'advisor'
+      && this.canAdministerStudentOperationsRoles
+      && (!this.isSuperAdmin
+        || this.userForm.controls.companyId.value === this.currentUser?.companyId);
+  }
+
+  get showStudentNameInXero(): boolean {
+    return this.selectedCompanyUsesStudentOperations()
+      && this.userForm.controls.type.value === 'student';
+  }
+
+  get showStudentId(): boolean {
+    return this.userForm.controls.type.value === 'student'
+      || !!this.userForm.controls.studentId.value;
   }
 
   private resolveRoleAdministrationAuthority(user: CurrentUserInterface | null): void {
@@ -781,6 +841,13 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
             value: company.companyId,
             label: company.companyName || company.companyId,
           }));
+          this.companyWorkspaceProfiles = new Map(
+            (items || []).map((company) => [company.companyId, company.workspaceProfile || '']),
+          );
+          this.selectedCompanyWorkspaceProfile = this.companyWorkspaceProfiles.get(
+            this.userForm.controls.companyId.value || '',
+          ) || '';
+          this.loadSiteLinkVisibility(this.userForm.controls.companyId.value || '');
           if (
             this.isSuperAdmin &&
             !this.userForm.controls.companyId.value &&
@@ -829,6 +896,26 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
           this.userForm.controls.siteId.setValue('', { emitEvent: false });
         },
       });
+  }
+
+  private loadSiteLinkVisibility(companyId: string): void {
+    this.showSiteField = false;
+    if (!companyId) return;
+    this.navigationLinksApi.listNavigationLinks({
+      page: 1, limit: 100, companyId, navigationType: 'menu', active: true,
+    }).pipe(take(1)).subscribe({
+      next: ({ items }) => {
+        const selectedCompanyId = this.isSuperAdmin
+          ? this.userForm.controls.companyId.value
+          : this.currentUser?.companyId;
+        if (selectedCompanyId !== companyId) return;
+        this.showSiteField = items.some((link) =>
+          link.companyId === companyId
+          && link.navigationLabel.trim().toLowerCase() === 'sites',
+        );
+      },
+      error: () => { this.showSiteField = false; },
+    });
   }
 
   private loadBusinessPackRole(user: BmUser): void {

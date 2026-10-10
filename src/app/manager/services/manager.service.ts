@@ -55,7 +55,7 @@ export interface BmClientContact {
 ========================= */
 
 export type UserStatus = 'active' | 'archived' | string;
-export type UserType = 'employee' | 'supplier' | 'client' | string;
+export type UserType = 'employee' | 'supplier' | 'client' | 'student' | 'advisor' | string;
 
 export interface BmUser {
   id: string; // UUID
@@ -80,8 +80,11 @@ export interface BmUser {
   // IMPORTANT: company_id exists in DB but NOT used in UI
   companyId?: string | null;
   companyName?: string | null;
+  workspaceProfile?: string | null;
   siteId?: string | null;
   siteName?: string | null;
+  studentId?: string | null;
+  studentNameInXero?: string | null;
   hasProcesses?: boolean;
 }
 
@@ -246,7 +249,7 @@ export class ManagerService {
     const safe = { ...payload };
     delete safe.company_id;
     if (!safe.companyId) delete safe.companyId;
-    if (!safe.siteId) safe.siteId = null;
+    if (safe.siteId === '') safe.siteId = null;
     const target = userId ? `${this.usersBase}/${userId}` : this.userBase;
     return this.http.put<{ user: BmUser }>(target, { user: safe }).pipe(
       map((res) => res.user),

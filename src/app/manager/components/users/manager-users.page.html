@@ -68,7 +68,6 @@
         @if (isSuperAdmin) {
         <div>Company</div>
         }
-        <div>Site</div>
         <div>Type</div>
         <div>Status</div>
         <div class="actions-col">Actions</div>
@@ -146,20 +145,6 @@
         <small class="error-text"> Company is required. </small>
         }
       </label>
-      }
-      @if (selectedCompanyUsesStudentOperations()) {
-      <label class="company-picker">
-        <span>Student operations role</span>
-        <app-manager-select
-          formControlName="businessPackRole"
-          [options]="businessPackRoleOptions"
-          placeholder="Select role"
-        ></app-manager-select>
-        <small>Chief Executives can assign roles only to users in their own student operations company.</small>
-      </label>
-      }
-      @if (currentUser?.workspaceProfile === 'student_operations' && roleAuthorityResolved && !canAdministerStudentOperationsRoles) {
-        <div class="role-notice">Only your company’s Chief Executive can assign student operations roles.</div>
       }
       @if (roleAdministrationError) {
         <div class="error" role="alert">{{ roleAdministrationError }}</div>
@@ -249,6 +234,7 @@
           </label>
         </div>
       </div>
+      <div class="grid-2">
       <label class="address-label">
         <span>Address</span>
         <div class="address-field">
@@ -276,15 +262,6 @@
           }
         </div>
       </label>
-      <div class="grid-2">
-        <label>
-          <span>Site</span>
-          <app-manager-select
-            formControlName="siteId"
-            [options]="siteOptions"
-            placeholder="Select site"
-          ></app-manager-select>
-        </label>
         <label>
           <span>Type *</span>
           <app-manager-select
@@ -293,6 +270,28 @@
             placeholder="Select type"
           ></app-manager-select>
         </label>
+      </div>
+      @if (showSiteField) {
+      <div class="grid-2"><label>
+        <span>Site</span>
+        <app-manager-select formControlName="siteId" [options]="siteOptions" placeholder="Select site"></app-manager-select>
+      </label></div>
+      }
+      <div class="grid-2">
+        @if (showStudentOperationsRole) {
+        <label>
+          <span>Student operations role</span>
+          <app-manager-select formControlName="businessPackRole" [options]="businessPackRoleOptions" placeholder="Select role"></app-manager-select>
+        </label>
+        }
+        @if (showStudentId) {
+        <label>
+          <span>Student ID</span>
+          <input formControlName="studentId" readonly placeholder="Assigned when saved" />
+        </label>
+        }
+      </div>
+      <div class="grid-2">
         <label>
           <span>Status</span>
           <app-manager-select
@@ -301,6 +300,12 @@
             placeholder="Select status"
           ></app-manager-select>
         </label>
+        @if (showStudentNameInXero) {
+        <label>
+          <span>Student name in Xero</span>
+          <input formControlName="studentNameInXero" placeholder="Name as recorded in Xero" />
+        </label>
+        }
       </div>
       <label>
         <span>Notes</span>
@@ -368,20 +373,6 @@
         <small class="error-text"> Company is required. </small>
         }
       </label>
-      }
-      @if (selectedCompanyUsesStudentOperations()) {
-      <label class="company-picker">
-        <span>Student operations role</span>
-        <app-manager-select
-          formControlName="businessPackRole"
-          [options]="businessPackRoleOptions"
-          placeholder="Select role"
-        ></app-manager-select>
-        <small>Chief Executives can assign roles only to users in their own student operations company.</small>
-      </label>
-      }
-      @if (currentUser?.workspaceProfile === 'student_operations' && roleAuthorityResolved && !canAdministerStudentOperationsRoles) {
-        <div class="role-notice">Only your company’s Chief Executive can assign student operations roles.</div>
       }
       @if (roleAdministrationError) {
         <div class="error" role="alert">{{ roleAdministrationError }}</div>
@@ -471,6 +462,7 @@
           </label>
         </div>
       </div>
+      <div class="grid-2">
       <label class="address-label">
         <span>Address</span>
         <div class="address-field">
@@ -498,15 +490,6 @@
           }
         </div>
       </label>
-      <div class="grid-2">
-        <label>
-          <span>Site</span>
-          <app-manager-select
-            formControlName="siteId"
-            [options]="siteOptions"
-            placeholder="Select site"
-          ></app-manager-select>
-        </label>
         <label>
           <span>Type *</span>
           <app-manager-select
@@ -515,6 +498,28 @@
             placeholder="Select type"
           ></app-manager-select>
         </label>
+      </div>
+      @if (showSiteField) {
+      <div class="grid-2"><label>
+        <span>Site</span>
+        <app-manager-select formControlName="siteId" [options]="siteOptions" placeholder="Select site"></app-manager-select>
+      </label></div>
+      }
+      <div class="grid-2">
+        @if (showStudentOperationsRole) {
+        <label>
+          <span>Student operations role</span>
+          <app-manager-select formControlName="businessPackRole" [options]="businessPackRoleOptions" placeholder="Select role"></app-manager-select>
+        </label>
+        }
+        @if (showStudentId) {
+        <label>
+          <span>Student ID</span>
+          <input formControlName="studentId" readonly placeholder="Assigned when saved" />
+        </label>
+        }
+      </div>
+      <div class="grid-2">
         <label>
           <span>Status</span>
           <app-manager-select
@@ -523,13 +528,19 @@
             placeholder="Select status"
           ></app-manager-select>
         </label>
+        @if (showStudentNameInXero) {
+        <label>
+          <span>Student name in Xero</span>
+          <input formControlName="studentNameInXero" placeholder="Name as recorded in Xero" />
+        </label>
+        }
       </div>
       <label>
-        <span>Bio</span>
+        <span>Notes</span>
         <textarea
           formControlName="bio"
           rows="3"
-          placeholder="Bio..."
+          placeholder="Notes..."
         ></textarea>
       </label>
     </form>
@@ -558,7 +569,6 @@
         @if (isSuperAdmin) {
         <div>Company</div>
         }
-        <div>Site</div>
         <div>Type</div>
         <div>Status</div>
         <div class="actions-col">Actions</div>
@@ -571,7 +581,6 @@
         @if (isSuperAdmin) {
         <div class="cell muted">{{ u.companyName || '—' }}</div>
         }
-        <div class="cell muted">{{ u.siteName || '—' }}</div>
         <div class="cell muted">{{ formatUserType(u.type) }}</div>
         <div class="cell">
           <span class="badge" [class.archived]="u.status === 'archived'">
@@ -630,7 +639,6 @@
           @if (isSuperAdmin) {
           <div><span>Company:</span> {{ u.companyName || '—' }}</div>
           }
-          <div><span>Site:</span> {{ u.siteName || '—' }}</div>
           <div><span>Type:</span> {{ formatUserType(u.type) }}</div>
           <div><span>Mobile:</span> {{ u.cel || '—' }}</div>
         </div>
