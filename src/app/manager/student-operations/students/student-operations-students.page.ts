@@ -441,6 +441,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             this.pollXeroSync(true);
           } else {
             this.loadingXero = false;
+            this.xeroError = state === 'failed' ? this.xeroSyncFailureMessage(status) : '';
           }
         },
         error: () => { this.xeroError = 'Xero synchronization status could not be loaded.'; },
@@ -477,7 +478,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             }
             this.loadingXero = false;
             if (state === 'failed') {
-              this.xeroError = 'The Xero refresh failed. Existing student information is still available.';
+              this.xeroError = this.xeroSyncFailureMessage(status);
               return;
             }
             this.xeroError = '';
@@ -490,6 +491,21 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
           },
         });
     }, delay);
+  }
+
+  private xeroSyncFailureMessage(status: XeroStudentSyncStatus): string {
+    if (status.lastErrorCode === 'xero_unavailable' || status.lastErrorCode === 'xero_rate_limited') {
+      const retry = status.nextScheduledSyncAt
+        ? ` An automatic retry is scheduled for ${new Intl.DateTimeFormat('en-AU', {
+          day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
+        }).format(new Date(status.nextScheduledSyncAt))}.`
+        : ' An automatic retry has been scheduled.';
+      return `Xero is temporarily unavailable.${retry} Existing student information remains available.`;
+    }
+    if (status.lastErrorCode === 'xero_authorization_rejected') {
+      return 'The Xero authorization requires attention. Reconnect the TRUST organisation from Company.';
+    }
+    return 'The Xero refresh failed. Existing student information remains available.';
   }
 
   private loadXeroCandidates(reset: boolean): void {

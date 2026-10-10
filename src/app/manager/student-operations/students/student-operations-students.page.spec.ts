@@ -294,6 +294,36 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No students found');
   });
 
+  it('explains transient Xero failures and the scheduled retry', () => {
+    api.workspace.and.returnValue(of({
+      packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
+      role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
+    }));
+    api.xeroStatus.and.returnValue(of({
+      configured: true,
+      connections: [{
+        connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+        organisationRole: 'trust', missingStudentDiscoveryScopes: [],
+      }],
+    }));
+    api.xeroStudentSyncStatus.and.returnValue(of({
+      configured: true, organisationRole: 'trust', lastSuccessfulSyncAt: null,
+      lastErrorCode: 'xero_unavailable', nextScheduledSyncAt: '2026-10-10T01:33:34Z',
+      latestRun: {
+        syncRunId: 'run-1', connectionId: 'connection-1', mode: 'initial', triggerType: 'manual',
+        status: 'failed', contactCount: 1000, invoiceCount: 0, candidateCount: 0,
+        errorCode: 'xero_unavailable', createdAt: '2026-10-10T01:18:17Z',
+        startedAt: '2026-10-10T01:18:18Z', completedAt: '2026-10-10T01:18:34Z',
+      },
+    }));
+
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Xero is temporarily unavailable');
+    expect(fixture.nativeElement.textContent).toContain('automatic retry is scheduled');
+    expect(fixture.nativeElement.textContent).toContain('Existing student information remains available');
+  });
+
   it('backs off status polling while a Xero refresh remains active', fakeAsync(() => {
     api.workspace.and.returnValue(of({
       packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
