@@ -82,6 +82,10 @@ export interface XeroStudentCandidate {
   invoiceCount: number;
   latestInvoiceNumber: string | null;
   latestInvoiceDate: string | null;
+  latestInvoiceReference: string | null;
+  concept: string | null;
+  advisorName: string | null;
+  collegeName: string | null;
   nextPaymentDate: string | null;
   nextPaymentAmount: number | null;
   totalInvoiced: number;

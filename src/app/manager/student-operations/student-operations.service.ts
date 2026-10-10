@@ -171,10 +171,18 @@ export class StudentOperationsService {
 
   xeroStudentCandidates(
     connectionId: string,
-    input: { page: number; limit: number; q?: string },
+    input: {
+      page: number;
+      limit: number;
+      q?: string;
+      sort?: 'student' | 'studentReference' | 'invoiceDate' | 'invoiceReference' | 'concept' | 'advisor' | 'college' | 'invoices' | 'nextPayment' | 'paymentState';
+      direction?: 'asc' | 'desc';
+    },
   ): Observable<XeroStudentCandidateResult> {
     let params = new HttpParams().set('page', String(input.page)).set('limit', String(input.limit));
     if (input.q) params = params.set('q', input.q);
+    if (input.sort) params = params.set('sort', input.sort);
+    if (input.direction) params = params.set('direction', input.direction);
     return this.http.get<XeroStudentCandidateResult>(
       `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-candidates`,
       { headers: this.headers(), params },

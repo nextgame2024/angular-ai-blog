@@ -104,8 +104,8 @@
     <section class="xero-candidates" aria-labelledby="xero-candidates-title">
       <header class="candidate-header">
         <div>
-          <h4 id="xero-candidates-title">Students found in Xero invoices ({{ xeroCandidates.total }})</h4>
-          <p>Review each contact before creating its operational student record. Xero financial values remain read-only.</p>
+          <h4 id="xero-candidates-title">Potential students from Xero ({{ xeroCandidates.total }})</h4>
+          <p>Derived from TRUST sales invoices. Review each contact before creating its operational student record.</p>
         </div>
         <span class="source-badge">{{ xeroConnection?.tenantName }}</span>
       </header>
@@ -114,12 +114,27 @@
       } @else {
         <div class="candidate-table" role="table" aria-label="Xero student candidates">
           <div class="candidate-row candidate-head" role="row">
-            <div>Student</div><div>Reference</div><div>Invoices</div><div>Next payment</div><div>Payment state</div><div>Action</div>
+            <div role="columnheader" [attr.aria-sort]="candidateSortAria('student')"><button type="button" class="sort-button" (click)="sortXeroCandidates('student')">Student <span>{{ candidateSortIcon('student') }}</span></button></div>
+            <div role="columnheader" [attr.aria-sort]="candidateSortAria('studentReference')"><button type="button" class="sort-button" (click)="sortXeroCandidates('studentReference')">Student ref. <span>{{ candidateSortIcon('studentReference') }}</span></button></div>
+            <div role="columnheader" [attr.aria-sort]="candidateSortAria('invoiceDate')"><button type="button" class="sort-button" (click)="sortXeroCandidates('invoiceDate')">Latest invoice <span>{{ candidateSortIcon('invoiceDate') }}</span></button></div>
+            <div role="columnheader" [attr.aria-sort]="candidateSortAria('invoiceReference')"><button type="button" class="sort-button" (click)="sortXeroCandidates('invoiceReference')">Xero reference <span>{{ candidateSortIcon('invoiceReference') }}</span></button></div>
+            <div role="columnheader" [attr.aria-sort]="candidateSortAria('concept')"><button type="button" class="sort-button" (click)="sortXeroCandidates('concept')">Concept <span>{{ candidateSortIcon('concept') }}</span></button></div>
+            <div role="columnheader" [attr.aria-sort]="candidateSortAria('advisor')"><button type="button" class="sort-button" (click)="sortXeroCandidates('advisor')">Advisor <span>{{ candidateSortIcon('advisor') }}</span></button></div>
+            <div role="columnheader" [attr.aria-sort]="candidateSortAria('college')"><button type="button" class="sort-button" (click)="sortXeroCandidates('college')">College <span>{{ candidateSortIcon('college') }}</span></button></div>
+            <div role="columnheader" [attr.aria-sort]="candidateSortAria('invoices')"><button type="button" class="sort-button" (click)="sortXeroCandidates('invoices')">Invoices <span>{{ candidateSortIcon('invoices') }}</span></button></div>
+            <div role="columnheader" [attr.aria-sort]="candidateSortAria('nextPayment')"><button type="button" class="sort-button" (click)="sortXeroCandidates('nextPayment')">Next payment <span>{{ candidateSortIcon('nextPayment') }}</span></button></div>
+            <div role="columnheader" [attr.aria-sort]="candidateSortAria('paymentState')"><button type="button" class="sort-button" (click)="sortXeroCandidates('paymentState')">Payment <span>{{ candidateSortIcon('paymentState') }}</span></button></div>
+            <div role="columnheader">Action</div>
           </div>
           @for (candidate of xeroCandidates.candidates; track candidate.xeroContactId) {
             <div class="candidate-row" role="row">
               <div class="student"><strong>{{ candidate.legalName }}</strong><small>{{ candidate.email || 'Email requires review' }}</small></div>
               <div>{{ candidate.suggestedStudentReference || 'Generated on review' }}</div>
+              <div><strong>{{ candidate.latestInvoiceNumber || '—' }}</strong><small>{{ formatDate(candidate.latestInvoiceDate) }}</small></div>
+              <div>{{ candidate.latestInvoiceReference || '—' }}</div>
+              <div class="candidate-detail" [title]="candidate.concept || ''">{{ candidate.concept || '—' }}</div>
+              <div>{{ candidate.advisorName || 'Not recorded in Xero' }}</div>
+              <div>{{ candidate.collegeName || 'Not recorded in Xero' }}</div>
               <div>{{ candidate.invoiceCount }} · {{ formatMoney(candidate.totalInvoiced, candidate.currencyCode) }}</div>
               <div><strong>{{ formatDate(candidate.nextPaymentDate) }}</strong><small>{{ formatMoney(candidate.nextPaymentAmount, candidate.currencyCode) }}</small></div>
               <div><span class="status payment-{{ candidate.paymentStatus }}">{{ formatLabel(candidate.paymentStatus) }}</span></div>
@@ -163,11 +178,11 @@
     <div class="list-loader" aria-live="polite" aria-busy="true">
       <div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading students…</div></div>
     </div>
-  } @else if (!students.length) {
+  } @else if (!students.length && !(xeroCandidates?.total)) {
     <div class="state" data-testid="student-operations-students-empty">
       <strong>No students found</strong><span>No records match the current filters.</span>
     </div>
-  } @else {
+  } @else if (students.length) {
     <div class="table" role="table" aria-label="Students">
       <div class="thead" role="row" [class.with-actions]="canManage">
         <div>Student</div><div>Reference</div><div>College</div><div>Stage</div><div>Status</div><div>Advisor</div>

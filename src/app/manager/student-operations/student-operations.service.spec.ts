@@ -174,7 +174,9 @@ describe('StudentOperationsService', () => {
   });
 
   it('pages stored invoice-derived candidates without calling Xero from the browser', () => {
-    service.xeroStudentCandidates('connection/id', { page: 2, limit: 20, q: 'student' }).subscribe();
+    service.xeroStudentCandidates('connection/id', {
+      page: 2, limit: 20, q: 'student', sort: 'invoiceDate', direction: 'desc',
+    }).subscribe();
     const request = http.expectOne((candidate) => candidate.url.endsWith(
       '/workspace/integrations/xero/connections/connection%2Fid/student-candidates',
     ));
@@ -182,6 +184,8 @@ describe('StudentOperationsService', () => {
     expect(request.request.params.get('page')).toBe('2');
     expect(request.request.params.get('limit')).toBe('20');
     expect(request.request.params.get('q')).toBe('student');
+    expect(request.request.params.get('sort')).toBe('invoiceDate');
+    expect(request.request.params.get('direction')).toBe('desc');
     request.flush({ candidates: [], page: 2, limit: 20, total: 0 });
   });
 

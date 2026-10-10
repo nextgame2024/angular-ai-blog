@@ -337,10 +337,10 @@
 }
 .candidate-row {
   display: grid;
-  grid-template-columns: 1.45fr 0.85fr 0.9fr 1fr 0.75fr 0.8fr;
+  grid-template-columns: 1.45fr 0.8fr 0.8fr 0.9fr 1.25fr 0.8fr 0.9fr 0.75fr 0.9fr 0.7fr 0.8fr;
   align-items: center;
   gap: 0.75rem;
-  min-width: 850px;
+  min-width: 1580px;
   padding: 0.75rem 0.85rem;
   border-top: 1px solid #e9edf2;
   color: #465268;
@@ -353,6 +353,26 @@
   font-weight: 800;
 }
 .candidate-row > div > small { display: block; margin-top: 0.18rem; color: #78869a; }
+.candidate-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  cursor: pointer;
+}
+.sort-button span { color: #728097; font-size: 0.76rem; }
+.sort-button:hover,
+.sort-button:focus-visible { color: #087f73; }
 .payment-paid { background: #e4f8f0; color: #14785e; }
 .payment-due { background: #fff1df; color: #9a5a05; }
 .payment-overdue { background: #ffebee; color: #a83042; }

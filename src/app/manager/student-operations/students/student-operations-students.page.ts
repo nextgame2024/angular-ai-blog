@@ -22,6 +22,9 @@ import type {
   XeroStudentSyncStatus,
 } from '../student-operations.types';
 
+type XeroCandidateSort = 'student' | 'studentReference' | 'invoiceDate' | 'invoiceReference'
+  | 'concept' | 'advisor' | 'college' | 'invoices' | 'nextPayment' | 'paymentState';
+
 @Component({
   selector: 'app-student-operations-students-page',
   imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
@@ -40,6 +43,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private syncPollStartedAt = 0;
   private readonly syncPollMaxDurationMs = 15 * 60 * 1000;
   private requestVersion = 0;
+  private candidateRequestVersion = 0;
   private saveRequestKey = '';
   private saveFingerprint = '';
   private reviewingXeroContactId: string | null = null;
@@ -48,7 +52,11 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
 
   @ViewChild('studentsList') studentsList?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinel?: ElementRef<HTMLElement>;
-  @ViewChild('candidateSentinel') candidateSentinel?: ElementRef<HTMLElement>;
+  private candidateSentinel?: ElementRef<HTMLElement>;
+  @ViewChild('candidateSentinel') set candidateSentinelRef(value: ElementRef<HTMLElement> | undefined) {
+    this.candidateSentinel = value;
+    if (value) queueMicrotask(() => this.setupCandidateInfiniteScroll());
+  }
 
   readonly search = new FormControl('', { nonNullable: true });
   readonly status = new FormControl('', { nonNullable: true });
@@ -114,6 +122,8 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   xeroCandidates: XeroStudentCandidateResult | null = null;
   xeroSync: XeroStudentSyncStatus | null = null;
   candidatePage = 1;
+  candidateSort: XeroCandidateSort = 'student';
+  candidateSortDirection: 'asc' | 'desc' = 'asc';
   loadingMoreCandidates = false;
   loadingXero = false;
   xeroError = '';
@@ -189,6 +199,26 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     if (!value) return '—';
     return new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
       .format(new Date(`${value}T00:00:00Z`));
+  }
+
+  sortXeroCandidates(sort: XeroCandidateSort): void {
+    if (this.candidateSort === sort) {
+      this.candidateSortDirection = this.candidateSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.candidateSort = sort;
+      this.candidateSortDirection = 'asc';
+    }
+    this.loadXeroCandidates(true);
+  }
+
+  candidateSortAria(sort: XeroCandidateSort): 'ascending' | 'descending' | 'none' {
+    if (this.candidateSort !== sort) return 'none';
+    return this.candidateSortDirection === 'asc' ? 'ascending' : 'descending';
+  }
+
+  candidateSortIcon(sort: XeroCandidateSort): string {
+    if (this.candidateSort !== sort) return '↕';
+    return this.candidateSortDirection === 'asc' ? '↑' : '↓';
   }
 
   refreshStudentsFromXero(): void {
@@ -510,14 +540,18 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
 
   private loadXeroCandidates(reset: boolean): void {
     if (!this.xeroConnection || this.xeroNeedsReconnect || this.loadingMoreCandidates) return;
+    const version = ++this.candidateRequestVersion;
     const page = reset ? 1 : this.candidatePage + 1;
     if (!reset) this.loadingMoreCandidates = true;
     this.api.xeroStudentCandidates(this.xeroConnection.connectionId, {
       page,
       limit: this.pageSize,
       q: this.search.value.trim() || undefined,
+      sort: this.candidateSort,
+      direction: this.candidateSortDirection,
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (result) => {
+        if (version !== this.candidateRequestVersion) return;
         const candidates = reset
           ? result.candidates
           : [...(this.xeroCandidates?.candidates ?? []), ...result.candidates];
@@ -530,6 +564,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
         queueMicrotask(() => this.setupCandidateInfiniteScroll());
       },
       error: () => {
+        if (version !== this.candidateRequestVersion) return;
         this.loadingMoreCandidates = false;
         this.xeroError = 'Stored Xero student candidates could not be loaded.';
       },
@@ -544,7 +579,10 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
       if (entries[0]?.isIntersecting && this.hasMoreCandidates && !this.loadingMoreCandidates) {
         this.loadXeroCandidates(false);
       }
-    }, { rootMargin: '200px 0px', threshold: 0.1 });
+    }, {
+      root: this.studentsList?.nativeElement.closest('.content') as HTMLElement | null,
+      rootMargin: '300px 0px', threshold: 0.1,
+    });
     this.candidateObserver.observe(sentinel);
   }
 
