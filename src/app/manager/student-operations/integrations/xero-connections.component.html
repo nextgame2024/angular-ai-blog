@@ -41,7 +41,7 @@
                 <small>Last tested {{ connection.lastTestedAt | date:'short' }}</small>
               }
               @if (connection.missingStudentDiscoveryScopes.length) {
-                <small class="scope-warning">Reconnect to enable read-only student discovery from invoices.</small>
+                <small class="scope-warning">Reconnect to enable read-only invoice, credit note, prepayment and overpayment access.</small>
               }
               @if (connection.organisationRole === 'trust') {
                 <small class="role-label">Student source · TRUST</small>

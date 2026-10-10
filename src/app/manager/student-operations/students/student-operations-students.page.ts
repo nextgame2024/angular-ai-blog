@@ -267,6 +267,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             configured: true,
             organisationRole: 'trust',
             lastSuccessfulSyncAt: this.xeroSync?.lastSuccessfulSyncAt ?? null,
+            lastFullSyncAt: this.xeroSync?.lastFullSyncAt ?? null,
             lastErrorCode: null,
             nextScheduledSyncAt: this.xeroSync?.nextScheduledSyncAt ?? null,
             latestRun: run,

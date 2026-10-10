@@ -257,6 +257,12 @@ describe('StudentOperationsStudentsPageComponent', () => {
   });
 
   it('shows one paged row per Xero invoice and preserves server sorting', () => {
+    api.xeroStudentSyncStatus.and.returnValue(of({
+      configured: true, organisationRole: 'trust',
+      lastSuccessfulSyncAt: '2026-10-10T10:23:00Z',
+      lastFullSyncAt: '2026-10-10T08:22:00Z',
+      lastErrorCode: null, nextScheduledSyncAt: null, latestRun: null,
+    }));
     api.workspace.and.returnValue(of({
       packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
       role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
@@ -272,6 +278,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
       page: 1, limit: 25, total: 7793, totalPages: 312,
       invoiceTotal: 7545, creditNoteTotal: 200,
       prepaymentTotal: 30, overpaymentTotal: 18,
+      statusTotals: { draft: 1277, awaitingApproval: 14, awaitingPayment: 652, paid: 5850 },
       invoices: [{
         xeroInvoiceId: '77777777-7777-4777-8777-777777777777',
         xeroContactId: '44444444-4444-4444-8444-444444444444',
@@ -286,7 +293,10 @@ describe('StudentOperationsStudentsPageComponent', () => {
     fixture.detectChanges();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('TRUST sales transactions (7793)');
+    expect(fixture.nativeElement.textContent).toContain('Last checked:');
+    expect(fixture.nativeElement.textContent).toContain('Last full refresh:');
     expect(fixture.nativeElement.textContent).toContain('7545 invoices · 200 credit notes · 30 prepayments · 18 overpayments');
+    expect(fixture.nativeElement.textContent).toContain('Draft: 1277 · Awaiting approval: 14 · Awaiting payment: 652 · Paid: 5850');
     expect(fixture.nativeElement.textContent).toContain('INV-10035');
     expect(fixture.nativeElement.textContent).toContain('Student One');
     expect(fixture.nativeElement.textContent).toContain('S15 Paulina');

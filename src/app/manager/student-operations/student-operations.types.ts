@@ -158,6 +158,12 @@ export interface XeroStudentInvoiceResult {
   creditNoteTotal?: number;
   prepaymentTotal?: number;
   overpaymentTotal?: number;
+  statusTotals?: {
+    draft: number;
+    awaitingApproval: number;
+    awaitingPayment: number;
+    paid: number;
+  };
 }
 
 export interface XeroStudentSyncRun {
@@ -182,6 +188,7 @@ export interface XeroStudentSyncStatus {
   configured: boolean;
   organisationRole: 'trust' | 'operating' | 'unassigned' | null;
   lastSuccessfulSyncAt: string | null;
+  lastFullSyncAt?: string | null;
   lastErrorCode: string | null;
   nextScheduledSyncAt: string | null;
   latestRun: XeroStudentSyncRun | null;

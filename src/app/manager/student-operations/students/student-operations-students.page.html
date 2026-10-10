@@ -67,7 +67,10 @@
             } @else if (xeroRunActive) {
               <span>{{ xeroSyncProgress }}</span>
             } @else {
-              <span>Last synchronized: {{ formatSyncTime(xeroSync?.lastSuccessfulSyncAt || null) }}</span>
+              <span>Last checked: {{ formatSyncTime(xeroSync?.lastSuccessfulSyncAt || null) }}</span>
+              @if (xeroSync?.lastFullSyncAt !== undefined) {
+                <span>Last full refresh: {{ xeroSync?.lastFullSyncAt ? formatSyncTime(xeroSync!.lastFullSyncAt!) : 'Not completed' }}</span>
+              }
             }
             @if (xeroNotice) { <span class="xero-notice">{{ xeroNotice }}</span> }
             @if (xeroError) { <span class="xero-error" role="alert">{{ xeroError }}</span> }
@@ -105,9 +108,12 @@
       <header class="candidate-header">
         <div>
           <h4 id="xero-invoices-title">TRUST sales transactions ({{ xeroInvoices.total }})</h4>
-          <p>Matches Xero’s sales register, including invoices, customer credit notes, prepayments and overpayments.</p>
+          <p>Imported sales invoices, customer credit notes, prepayments and overpayments. Deleted and voided transactions are excluded.</p>
           @if (xeroInvoices.invoiceTotal !== undefined && xeroInvoices.creditNoteTotal !== undefined) {
             <p>{{ xeroInvoices.invoiceTotal }} invoices · {{ xeroInvoices.creditNoteTotal }} credit notes · {{ xeroInvoices.prepaymentTotal || 0 }} prepayments · {{ xeroInvoices.overpaymentTotal || 0 }} overpayments</p>
+          }
+          @if (xeroInvoices.statusTotals; as counts) {
+            <p>Draft: {{ counts.draft }} · Awaiting approval: {{ counts.awaitingApproval }} · Awaiting payment: {{ counts.awaitingPayment }} · Paid: {{ counts.paid }}</p>
           }
         </div>
         <span class="source-badge">{{ xeroConnection?.tenantName }}</span>
