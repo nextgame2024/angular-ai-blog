@@ -108,6 +108,7 @@ export type XeroStudentInvoiceSort = 'invoiceNumber' | 'reference' | 'student' |
 export interface XeroStudentInvoice {
   xeroInvoiceId: string;
   xeroContactId: string;
+  documentType?: 'invoice' | 'credit_note' | 'prepayment' | 'overpayment';
   invoiceNumber: string | null;
   reference: string | null;
   studentName: string;
@@ -153,6 +154,10 @@ export interface XeroStudentInvoiceResult {
   limit: number;
   total: number;
   totalPages: number;
+  invoiceTotal?: number;
+  creditNoteTotal?: number;
+  prepaymentTotal?: number;
+  overpaymentTotal?: number;
 }
 
 export interface XeroStudentSyncRun {

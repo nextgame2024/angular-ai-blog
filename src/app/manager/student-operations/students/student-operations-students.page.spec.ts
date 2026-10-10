@@ -270,6 +270,8 @@ describe('StudentOperationsStudentsPageComponent', () => {
     }));
     api.xeroStudentInvoices.and.returnValue(of({
       page: 1, limit: 25, total: 7793, totalPages: 312,
+      invoiceTotal: 7545, creditNoteTotal: 200,
+      prepaymentTotal: 30, overpaymentTotal: 18,
       invoices: [{
         xeroInvoiceId: '77777777-7777-4777-8777-777777777777',
         xeroContactId: '44444444-4444-4444-8444-444444444444',
@@ -283,7 +285,8 @@ describe('StudentOperationsStudentsPageComponent', () => {
     }));
     fixture.detectChanges();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('TRUST invoices (7793)');
+    expect(fixture.nativeElement.textContent).toContain('TRUST sales transactions (7793)');
+    expect(fixture.nativeElement.textContent).toContain('7545 invoices · 200 credit notes · 30 prepayments · 18 overpayments');
     expect(fixture.nativeElement.textContent).toContain('INV-10035');
     expect(fixture.nativeElement.textContent).toContain('Student One');
     expect(fixture.nativeElement.textContent).toContain('S15 Paulina');

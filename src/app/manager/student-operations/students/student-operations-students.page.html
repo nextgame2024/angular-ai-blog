@@ -104,8 +104,11 @@
     <section class="xero-candidates" aria-labelledby="xero-invoices-title">
       <header class="candidate-header">
         <div>
-          <h4 id="xero-invoices-title">TRUST invoices ({{ xeroInvoices.total }})</h4>
-          <p>One row per Xero sales invoice. Open an invoice for line items, tracking and student review.</p>
+          <h4 id="xero-invoices-title">TRUST sales transactions ({{ xeroInvoices.total }})</h4>
+          <p>Matches Xero’s sales register, including invoices, customer credit notes, prepayments and overpayments.</p>
+          @if (xeroInvoices.invoiceTotal !== undefined && xeroInvoices.creditNoteTotal !== undefined) {
+            <p>{{ xeroInvoices.invoiceTotal }} invoices · {{ xeroInvoices.creditNoteTotal }} credit notes · {{ xeroInvoices.prepaymentTotal || 0 }} prepayments · {{ xeroInvoices.overpaymentTotal || 0 }} overpayments</p>
+          }
         </div>
         <span class="source-badge">{{ xeroConnection?.tenantName }}</span>
       </header>
@@ -133,7 +136,12 @@
             <tbody>
               @for (invoice of xeroInvoices.invoices; track invoice.xeroInvoiceId) {
                 <tr>
-                  <td data-label="Number"><button type="button" class="invoice-link" (click)="openInvoiceDetail(invoice)">{{ invoice.invoiceNumber || '—' }}</button></td>
+                  <td data-label="Number">
+                    <button type="button" class="invoice-link" (click)="openInvoiceDetail(invoice)">{{ invoice.invoiceNumber || '—' }}</button>
+                    @if (invoice.documentType === 'credit_note') { <small>Credit note</small> }
+                    @if (invoice.documentType === 'prepayment') { <small>Prepayment</small> }
+                    @if (invoice.documentType === 'overpayment') { <small>Overpayment</small> }
+                  </td>
                   <td data-label="Ref / College">{{ invoice.reference || '—' }}</td>
                   <td data-label="To" class="student"><strong>{{ invoice.studentName }}</strong><small>{{ invoice.studentEmail || 'Email requires review' }}</small></td>
                   <td data-label="Date">{{ formatDate(invoice.invoiceDate) }}</td>
@@ -146,7 +154,7 @@
                   <td data-label="Payment track">{{ invoice.paymentTrack || '—' }}</td>
                   <td data-label="Actions" class="invoice-actions">
                     <button type="button" class="btn small" (click)="openInvoiceDetail(invoice)">Details</button>
-                    @if (invoice.reviewStatus === 'pending' && invoice.status !== 'voided' && invoice.status !== 'deleted') {
+                    @if ((!invoice.documentType || invoice.documentType === 'invoice') && invoice.reviewStatus === 'pending' && invoice.status !== 'voided' && invoice.status !== 'deleted') {
                       <button type="button" class="btn small secondary" (click)="reviewXeroInvoice(invoice)">Review student</button>
                     } @else if (invoice.reviewStatus === 'accepted') {
                       <span class="reviewed-label">Student created</span>
@@ -240,7 +248,7 @@
       <header>
         <div>
           <span class="dialog-eyebrow">Xero invoice</span>
-          <h3 id="invoice-dialog-title">{{ selectedXeroInvoice?.invoiceNumber || 'Invoice details' }}</h3>
+          <h3 id="invoice-dialog-title">{{ selectedXeroInvoice?.invoiceNumber || (selectedXeroInvoice?.documentType === 'credit_note' ? 'Credit note details' : selectedXeroInvoice?.documentType === 'prepayment' ? 'Prepayment details' : selectedXeroInvoice?.documentType === 'overpayment' ? 'Overpayment details' : 'Invoice details') }}</h3>
         </div>
         <button type="button" class="dialog-close" (click)="closeInvoiceDetail()" aria-label="Close invoice details">×</button>
       </header>
