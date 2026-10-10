@@ -108,6 +108,9 @@ export interface XeroStudentSyncRun {
   invoiceCount: number;
   candidateCount: number;
   errorCode: string | null;
+  providerStatus?: number | null;
+  providerCorrelationId?: string | null;
+  retryAfterSeconds?: number | null;
   createdAt: string;
   startedAt: string | null;
   completedAt: string | null;
