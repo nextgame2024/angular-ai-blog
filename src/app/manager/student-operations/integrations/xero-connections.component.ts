@@ -22,10 +22,16 @@ export class XeroConnectionsComponent implements OnInit, OnDestroy {
   loading = false;
   connecting = false;
   testingConnectionId: string | null = null;
+  assigningTrustConnectionId: string | null = null;
   status: XeroConnectionStatus | null = null;
   error = '';
   notice = '';
   lastTest: XeroConnectionTest | null = null;
+
+  get needsStudentDiscoveryScopeUpgrade(): boolean {
+    return Boolean(this.status?.connections.some((connection) =>
+      connection.missingStudentDiscoveryScopes?.length));
+  }
 
   ngOnInit(): void {
     this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
@@ -107,6 +113,24 @@ export class XeroConnectionsComponent implements OnInit, OnDestroy {
       error: () => {
         this.testingConnectionId = null;
         this.error = 'Xero could not verify this organisation. Reconnect it and try again.';
+      },
+    });
+  }
+
+  useAsTrust(connectionId: string): void {
+    if (this.assigningTrustConnectionId) return;
+    this.assigningTrustConnectionId = connectionId;
+    this.error = '';
+    this.notice = '';
+    this.api.configureXeroTrust(connectionId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.assigningTrustConnectionId = null;
+        this.notice = 'The TRUST organisation is now the read-only student accounting source.';
+        this.loadStatus();
+      },
+      error: () => {
+        this.assigningTrustConnectionId = null;
+        this.error = 'The TRUST organisation could not be assigned. Try again.';
       },
     });
   }

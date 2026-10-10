@@ -46,6 +46,7 @@ export interface StudentOperationsStudentWrite {
   status: string;
   advisorIdentityUserId: string | null;
   collegeName: string | null;
+  xeroCandidateSource?: { connectionId: string; contactId: string };
 }
 
 export interface StudentOperationsDashboard {
@@ -53,6 +54,7 @@ export interface StudentOperationsDashboard {
   summary: {
     totalStudents: number;
     activeStudents: number;
+    newApplications: number;
     actionRequired: number;
     onHold: number;
   };
@@ -68,6 +70,56 @@ export interface XeroConnectionSummary {
   healthStatus: string;
   lastTestedAt: string | null;
   lastErrorCode: string | null;
+  organisationRole: 'trust' | 'operating' | 'unassigned' | null;
+  missingStudentDiscoveryScopes: string[];
+}
+
+export interface XeroStudentCandidate {
+  xeroContactId: string;
+  legalName: string;
+  email: string | null;
+  suggestedStudentReference: string | null;
+  invoiceCount: number;
+  latestInvoiceNumber: string | null;
+  latestInvoiceDate: string | null;
+  nextPaymentDate: string | null;
+  nextPaymentAmount: number | null;
+  totalInvoiced: number;
+  totalPaid: number;
+  amountDue: number;
+  currencyCode: string | null;
+  paymentStatus: 'paid' | 'due' | 'overdue';
+}
+
+export interface XeroStudentCandidateResult {
+  candidates: XeroStudentCandidate[];
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface XeroStudentSyncRun {
+  syncRunId: string;
+  connectionId: string;
+  mode: 'initial' | 'incremental' | 'reconciliation';
+  triggerType: 'manual' | 'schedule' | 'webhook' | 'connection';
+  status: 'queued' | 'processing' | 'succeeded' | 'failed';
+  contactCount: number;
+  invoiceCount: number;
+  candidateCount: number;
+  errorCode: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface XeroStudentSyncStatus {
+  configured: boolean;
+  organisationRole: 'trust' | 'operating' | 'unassigned' | null;
+  lastSuccessfulSyncAt: string | null;
+  lastErrorCode: string | null;
+  nextScheduledSyncAt: string | null;
+  latestRun: XeroStudentSyncRun | null;
 }
 
 export interface XeroConnectionStatus {

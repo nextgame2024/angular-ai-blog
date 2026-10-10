@@ -12,14 +12,93 @@
   box-sizing: border-box;
 }
 .list-header {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 6;
   margin: -0.75rem -0.75rem 0;
   padding: 0.75rem;
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   background: rgba(248, 250, 252, 0.95);
   backdrop-filter: blur(6px);
+}
+.overview {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.85rem;
+}
+.xero-sync {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  border: 1px solid #d8e4ec;
+  border-radius: 0.75rem;
+  background: #fff;
+  padding: 0.65rem 0.75rem;
+}
+.xero-sync > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+}
+.xero-sync strong { color: #172033; }
+.xero-sync span { color: #66758a; font-size: 0.8rem; }
+.xero-sync .xero-error { color: #9b2536; }
+.xero-sync-error { border-color: #f2b8c0; background: #fff8f9; }
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.metric,
+.xero-insight {
+  min-width: 0;
+  border: 1px solid #dfe7ef;
+  border-radius: 0.85rem;
+  background: #fff;
+  padding: 0.9rem 1rem;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.035);
+}
+.metric {
+  display: grid;
+  align-content: center;
+  gap: 0.2rem;
+  min-height: 94px;
+  border-top: 3px solid #22b88f;
+}
+.metric-new { border-top-color: #4f8ff7; }
+.metric-action { border-top-color: #f05d6f; }
+.metric-hold { border-top-color: #9368e9; }
+.metric-label {
+  color: #66758a;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.metric strong {
+  color: #172033;
+  font-size: 1.6rem;
+  line-height: 1.1;
+}
+.metric small,
+.xero-insight span {
+  color: #758399;
+  font-size: 0.75rem;
+}
+.xero-insight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: linear-gradient(145deg, #fbfaff, #f4fffd);
+}
+.xero-insight > strong { color: #5b4de6; }
+.xero-insight .xero-error { color: #9b2536; }
+.insight-action {
+  width: 100%;
+  justify-content: center;
+  margin-top: auto;
 }
 .breadcrumb {
   display: flex;
@@ -210,6 +289,72 @@
   border-radius: 0.85rem;
   background: white;
 }
+.xero-candidates {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid #d8e4ec;
+  border-radius: 0.9rem;
+  background: #fff;
+  padding: 1rem;
+}
+.candidate-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.candidate-header h4 { margin: 0; color: #172033; }
+.candidate-header p { margin: 0.25rem 0 0; color: #69778b; font-size: 0.84rem; }
+.source-badge {
+  flex: 0 0 auto;
+  border: 1px solid #bce8df;
+  border-radius: 999px;
+  background: #eafaf6;
+  color: #087f73;
+  padding: 0.38rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.candidate-warning {
+  border-left: 4px solid #e3a329;
+  border-radius: 0 0.5rem 0.5rem 0;
+  background: #fff8e8;
+  padding: 0.65rem 0.8rem;
+  color: #80520a;
+  font-size: 0.82rem;
+}
+.candidate-empty {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  color: #69778b;
+}
+.candidate-table {
+  overflow-x: auto;
+  border: 1px solid #e1e7ee;
+  border-radius: 0.75rem;
+}
+.candidate-row {
+  display: grid;
+  grid-template-columns: 1.45fr 0.85fr 0.9fr 1fr 0.75fr 0.8fr;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 850px;
+  padding: 0.75rem 0.85rem;
+  border-top: 1px solid #e9edf2;
+  color: #465268;
+  font-size: 0.82rem;
+}
+.candidate-head {
+  border-top: 0;
+  background: #f8fafc;
+  color: #46556a;
+  font-weight: 800;
+}
+.candidate-row > div > small { display: block; margin-top: 0.18rem; color: #78869a; }
+.payment-paid { background: #e4f8f0; color: #14785e; }
+.payment-due { background: #fff1df; color: #9a5a05; }
+.payment-overdue { background: #ffebee; color: #a83042; }
 .thead,
 .trow {
   display: grid;
@@ -462,6 +607,8 @@
   }
 }
 @media (max-width: 900px) {
+  .overview { grid-template-columns: 1fr; }
+  .metrics { grid-template-columns: 1fr 1fr; }
   .filters {
     grid-template-columns: 1fr 1fr;
   }
@@ -494,4 +641,6 @@
   .filters {
     grid-template-columns: 1fr;
   }
+  .metrics { grid-template-columns: 1fr; }
+  .candidate-header { flex-direction: column; }
 }

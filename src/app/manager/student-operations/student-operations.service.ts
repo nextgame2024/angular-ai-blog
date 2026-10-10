@@ -12,6 +12,9 @@ import type {
   StudentOperationsWorkspace,
   XeroConnectionStatus,
   XeroConnectionTest,
+  XeroStudentCandidateResult,
+  XeroStudentSyncRun,
+  XeroStudentSyncStatus,
 } from './student-operations.types';
 
 @Injectable({ providedIn: 'root' })
@@ -161,6 +164,41 @@ export class StudentOperationsService {
   testXeroConnection(connectionId: string): Observable<XeroConnectionTest> {
     return this.http.post<XeroConnectionTest>(
       `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/test`,
+      {},
+      { headers: this.headers() },
+    );
+  }
+
+  xeroStudentCandidates(
+    connectionId: string,
+    input: { page: number; limit: number; q?: string },
+  ): Observable<XeroStudentCandidateResult> {
+    let params = new HttpParams().set('page', String(input.page)).set('limit', String(input.limit));
+    if (input.q) params = params.set('q', input.q);
+    return this.http.get<XeroStudentCandidateResult>(
+      `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-candidates`,
+      { headers: this.headers(), params },
+    );
+  }
+
+  xeroStudentSyncStatus(connectionId: string): Observable<XeroStudentSyncStatus> {
+    return this.http.get<XeroStudentSyncStatus>(
+      `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-sync`,
+      { headers: this.headers() },
+    );
+  }
+
+  refreshXeroStudents(connectionId: string): Observable<XeroStudentSyncRun> {
+    return this.http.post<XeroStudentSyncRun>(
+      `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-sync`,
+      {},
+      { headers: this.headers() },
+    );
+  }
+
+  configureXeroTrust(connectionId: string): Observable<{ connectionId: string; organisationRole: 'trust' }> {
+    return this.http.post<{ connectionId: string; organisationRole: 'trust' }>(
+      `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-role/trust`,
       {},
       { headers: this.headers() },
     );

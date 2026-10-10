@@ -15,6 +15,20 @@ describe('StudentOperationsStudentsPageComponent', () => {
     students: jasmine.createSpy().and.returnValue(of({
       students: [], page: 1, limit: 20, total: 0,
     })),
+    dashboard: jasmine.createSpy().and.returnValue(of({
+      workspace: {},
+      summary: { totalStudents: 0, activeStudents: 0, newApplications: 0, actionRequired: 0, onHold: 0 },
+    })),
+    xeroStatus: jasmine.createSpy().and.returnValue(of({ configured: true, connections: [] })),
+    xeroStudentCandidates: jasmine.createSpy().and.returnValue(of({
+      candidates: [], page: 1, limit: 20, total: 0,
+    })),
+    xeroStudentSyncStatus: jasmine.createSpy().and.returnValue(of({
+      configured: false, organisationRole: null, lastSuccessfulSyncAt: null,
+      lastErrorCode: null, nextScheduledSyncAt: null, latestRun: null,
+    })),
+    refreshXeroStudents: jasmine.createSpy(),
+    beginXeroAuthorization: jasmine.createSpy().and.returnValue(of({ authorizationUrl: 'https://login.xero.test' })),
     advisors: jasmine.createSpy().and.returnValue(of({ advisorIdentityUserIds: [] })),
     student: jasmine.createSpy(),
     createStudent: jasmine.createSpy(),
@@ -30,6 +44,11 @@ describe('StudentOperationsStudentsPageComponent', () => {
     api.workspace.calls.reset();
     api.students.calls.reset();
     api.advisors.calls.reset();
+    api.dashboard.calls.reset();
+    api.xeroStatus.calls.reset();
+    api.xeroStudentCandidates.calls.reset();
+    api.xeroStudentSyncStatus.calls.reset();
+    api.refreshXeroStudents.calls.reset();
     api.createStudent.calls.reset();
     managerApi.listUsers.calls.reset();
     api.workspace.and.returnValue(of({
@@ -37,6 +56,15 @@ describe('StudentOperationsStudentsPageComponent', () => {
       role: 'operations', authorizationRevision: 1, workspaceRoutes: ['students'],
     }));
     api.students.and.returnValue(of({ students: [], page: 1, limit: 20, total: 0 }));
+    api.dashboard.and.returnValue(of({
+      workspace: {},
+      summary: { totalStudents: 0, activeStudents: 0, newApplications: 0, actionRequired: 0, onHold: 0 },
+    }));
+    api.xeroStatus.and.returnValue(of({ configured: true, connections: [] }));
+    api.xeroStudentSyncStatus.and.returnValue(of({
+      configured: false, organisationRole: null, lastSuccessfulSyncAt: null,
+      lastErrorCode: null, nextScheduledSyncAt: null, latestRun: null,
+    }));
     await TestBed.configureTestingModule({
       imports: [StudentOperationsStudentsPageComponent],
       providers: [
@@ -98,6 +126,40 @@ describe('StudentOperationsStudentsPageComponent', () => {
     );
   });
 
+  it('links an accepted Xero candidate after the student is created', () => {
+    const connectionId = '44444444-4444-4444-8444-444444444444';
+    const contactId = '55555555-5555-4555-8555-555555555555';
+    api.xeroStatus.and.returnValue(of({
+      configured: true,
+      connections: [{
+        connectionId, tenantId: 'xero-tenant', tenantName: 'Agency Trust',
+        tenantType: 'ORGANISATION', tenantShortCode: null, status: 'active',
+        healthStatus: 'healthy', lastTestedAt: null, lastErrorCode: null,
+        organisationRole: 'trust', missingStudentDiscoveryScopes: [],
+      }],
+    }));
+    api.workspace.and.returnValue(of({
+      packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
+      role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
+    }));
+    api.createStudent.and.returnValue(of({ studentId: 'student-1' }));
+    fixture.detectChanges();
+    fixture.componentInstance.reviewXeroCandidate({
+      xeroContactId: contactId, legalName: 'Candidate Student', email: 'candidate@example.invalid',
+      suggestedStudentReference: 'STU-XERO', invoiceCount: 1, latestInvoiceNumber: 'INV-1',
+      latestInvoiceDate: '2026-10-01', nextPaymentDate: null, nextPaymentAmount: null,
+      totalInvoiced: 100, totalPaid: 100, amountDue: 0, currencyCode: 'AUD', paymentStatus: 'paid',
+    });
+    fixture.componentInstance.saveStudent();
+
+    expect(api.createStudent).toHaveBeenCalledWith(
+      jasmine.objectContaining({
+        xeroCandidateSource: { connectionId, contactId },
+      }),
+      jasmine.any(String),
+    );
+  });
+
   it('shows entitlement denial without exposing workspace data', () => {
     api.workspace.and.returnValue(throwError(() => ({ status: 403 })));
     fixture.detectChanges();
@@ -125,5 +187,80 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain(
       'This register excludes restricted identity documents',
     );
+  });
+
+  it('shows dashboard-style student metrics without fabricated trend percentages', () => {
+    api.dashboard.and.returnValue(of({
+      workspace: {},
+      summary: { totalStudents: 12, activeStudents: 8, newApplications: 3, actionRequired: 2, onHold: 1 },
+    }));
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Active students');
+    expect(text).toContain('New applications');
+    expect(text).toContain('Action required');
+    expect(text).not.toContain('vs. previous month');
+  });
+
+  it('lets a Chief Executive review an invoice-derived contact before creating a student', () => {
+    api.workspace.and.returnValue(of({
+      packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
+      role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
+    }));
+    api.xeroStatus.and.returnValue(of({
+      configured: true,
+      connections: [{
+        connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+        missingStudentDiscoveryScopes: [],
+      }],
+    }));
+    api.xeroStudentCandidates.and.returnValue(of({
+      page: 1, limit: 20, total: 1,
+      candidates: [{
+        xeroContactId: '44444444-4444-4444-8444-444444444444', legalName: 'Student One',
+        email: 'student.one@example.invalid', suggestedStudentReference: 'STU-100', invoiceCount: 2,
+        latestInvoiceNumber: 'TRUST-002', latestInvoiceDate: '2026-10-01', nextPaymentDate: '2026-10-20',
+        nextPaymentAmount: 400, totalInvoiced: 1500, totalPaid: 1100, amountDue: 400,
+        currencyCode: 'AUD', paymentStatus: 'due',
+      }],
+    }));
+    fixture.detectChanges();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Students found in Xero invoices (1)');
+    expect(fixture.nativeElement.textContent).toContain('Student One');
+
+    fixture.nativeElement.querySelector('.candidate-row .btn.secondary').click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.studentForm.value).toEqual(jasmine.objectContaining({
+      studentReference: 'STU-100', legalName: 'Student One', email: 'student.one@example.invalid',
+    }));
+  });
+
+  it('queues a background Xero refresh and keeps cached records visible', () => {
+    api.workspace.and.returnValue(of({
+      packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
+      role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
+    }));
+    api.xeroStatus.and.returnValue(of({
+      configured: true,
+      connections: [{
+        connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+        missingStudentDiscoveryScopes: [],
+      }],
+    }));
+    api.refreshXeroStudents.and.returnValue(of({
+      syncRunId: 'run-1', connectionId: 'connection-1', mode: 'initial', triggerType: 'manual',
+      status: 'queued', contactCount: 0, invoiceCount: 0, candidateCount: 0,
+      errorCode: null, createdAt: '2026-10-10T00:00:00Z', startedAt: null, completedAt: null,
+    }));
+    fixture.detectChanges();
+
+    fixture.nativeElement.querySelector('.xero-sync .btn').click();
+    fixture.detectChanges();
+
+    expect(api.refreshXeroStudents).toHaveBeenCalledWith('connection-1');
+    expect(fixture.nativeElement.textContent).toContain('Refreshing in the background');
+    expect(fixture.nativeElement.textContent).toContain('No students found');
   });
 });

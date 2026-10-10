@@ -8,7 +8,7 @@
       <button type="button" class="btn primary" (click)="connect()"
         [disabled]="connecting || loading || !status?.configured">
         <span class="btn-icon" aria-hidden="true">+</span>
-        {{ connecting ? 'Opening Xero…' : 'Connect Xero' }}
+        {{ connecting ? 'Opening Xero…' : (needsStudentDiscoveryScopeUpgrade ? 'Reconnect Xero' : 'Connect Xero') }}
       </button>
     </div>
 
@@ -40,11 +40,25 @@
               @if (connection.lastTestedAt) {
                 <small>Last tested {{ connection.lastTestedAt | date:'short' }}</small>
               }
+              @if (connection.missingStudentDiscoveryScopes.length) {
+                <small class="scope-warning">Reconnect to enable read-only student discovery from invoices.</small>
+              }
+              @if (connection.organisationRole === 'trust') {
+                <small class="role-label">Student source · TRUST</small>
+              }
             </div>
-            <button type="button" class="btn secondary" (click)="test(connection.connectionId)"
-              [disabled]="!!testingConnectionId">
-              {{ testingConnectionId === connection.connectionId ? 'Testing…' : 'Test connection' }}
-            </button>
+            <div class="connection-actions">
+              @if (connection.organisationRole !== 'trust') {
+                <button type="button" class="btn secondary" (click)="useAsTrust(connection.connectionId)"
+                  [disabled]="!!assigningTrustConnectionId || !!testingConnectionId">
+                  {{ assigningTrustConnectionId === connection.connectionId ? 'Assigning…' : 'Use as TRUST' }}
+                </button>
+              }
+              <button type="button" class="btn secondary" (click)="test(connection.connectionId)"
+                [disabled]="!!testingConnectionId || !!assigningTrustConnectionId">
+                {{ testingConnectionId === connection.connectionId ? 'Testing…' : 'Test connection' }}
+              </button>
+            </div>
           </article>
         }
       </div>

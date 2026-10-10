@@ -32,6 +32,52 @@
       </div>
     </header>
     @if (viewMode === 'list') {
+      <div class="overview" aria-label="Student summary">
+        <div class="metrics">
+          <article class="metric metric-active">
+            <span class="metric-label">Active students</span>
+            <strong>{{ summary.activeStudents }}</strong>
+            <small>{{ summary.totalStudents }} total records</small>
+          </article>
+          <article class="metric metric-new">
+            <span class="metric-label">New applications</span>
+            <strong>{{ summary.newApplications }}</strong>
+            <small>Current operational stage</small>
+          </article>
+          <article class="metric metric-action">
+            <span class="metric-label">Action required</span>
+            <strong>{{ summary.actionRequired }}</strong>
+            <small>Needs staff attention</small>
+          </article>
+          <article class="metric metric-hold">
+            <span class="metric-label">On hold</span>
+            <strong>{{ summary.onHold }}</strong>
+            <small>Paused records</small>
+          </article>
+        </div>
+      </div>
+      @if (isChiefExecutive) {
+        <div class="xero-sync" [class.xero-sync-error]="xeroError" aria-live="polite">
+          <div>
+            <strong>Xero TRUST data</strong>
+            @if (xeroNeedsReconnect) {
+              <span>Connection permissions need attention. Reconnect from Company.</span>
+            } @else if (!xeroConnection) {
+              <span>No TRUST organisation is configured. Connect it from Company.</span>
+            } @else if (loadingXero) {
+              <span>Refreshing in the background. Existing records remain available.</span>
+            } @else {
+              <span>Last synchronized: {{ formatSyncTime(xeroSync?.lastSuccessfulSyncAt || null) }}</span>
+            }
+            @if (xeroError) { <span class="xero-error" role="alert">{{ xeroError }}</span> }
+          </div>
+          <button type="button" class="btn primary" (click)="refreshStudentsFromXero()"
+            [disabled]="loadingXero || xeroNeedsReconnect || !xeroConnection">
+            <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5"></path><path d="M18 3v4h-4"></path><path d="M20 12a8 8 0 0 1-14 5"></path><path d="M6 21v-4h4"></path></svg></span>
+            {{ loadingXero ? 'Refreshing…' : 'Refresh' }}
+          </button>
+        </div>
+      }
       @if (privacyNoteVisible) {
         <div class="privacy-note">
           <span>This register excludes restricted identity documents and sensitive financial details.</span>
@@ -52,6 +98,39 @@
       </div>
     }
   </div>
+
+  @if (viewMode === 'list' && xeroCandidates && xeroCandidates.total > 0) {
+    <section class="xero-candidates" aria-labelledby="xero-candidates-title">
+      <header class="candidate-header">
+        <div>
+          <h4 id="xero-candidates-title">Students found in Xero invoices ({{ xeroCandidates.total }})</h4>
+          <p>Review each contact before creating its operational student record. Xero financial values remain read-only.</p>
+        </div>
+        <span class="source-badge">{{ xeroConnection?.tenantName }}</span>
+      </header>
+      @if (!xeroCandidates.candidates.length) {
+        <div class="candidate-empty">No student contacts were found in the available sales invoices.</div>
+      } @else {
+        <div class="candidate-table" role="table" aria-label="Xero student candidates">
+          <div class="candidate-row candidate-head" role="row">
+            <div>Student</div><div>Reference</div><div>Invoices</div><div>Next payment</div><div>Payment state</div><div>Action</div>
+          </div>
+          @for (candidate of xeroCandidates.candidates; track candidate.xeroContactId) {
+            <div class="candidate-row" role="row">
+              <div class="student"><strong>{{ candidate.legalName }}</strong><small>{{ candidate.email || 'Email requires review' }}</small></div>
+              <div>{{ candidate.suggestedStudentReference || 'Generated on review' }}</div>
+              <div>{{ candidate.invoiceCount }} · {{ formatMoney(candidate.totalInvoiced, candidate.currencyCode) }}</div>
+              <div><strong>{{ formatDate(candidate.nextPaymentDate) }}</strong><small>{{ formatMoney(candidate.nextPaymentAmount, candidate.currencyCode) }}</small></div>
+              <div><span class="status payment-{{ candidate.paymentStatus }}">{{ formatLabel(candidate.paymentStatus) }}</span></div>
+              <div><button type="button" class="btn small secondary" (click)="reviewXeroCandidate(candidate)">Review & create</button></div>
+            </div>
+          }
+        </div>
+        <div #candidateSentinel class="infinite-sentinel" aria-hidden="true"></div>
+        @if (loadingMoreCandidates) { <div class="loading-more">Loading more Xero records…</div> }
+      }
+    </section>
+  }
 
   @if (viewMode === 'form') {
     @if (formError) { <div class="form-error" role="alert">{{ formError }}</div> }

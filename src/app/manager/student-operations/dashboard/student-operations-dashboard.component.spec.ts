@@ -15,6 +15,7 @@ describe('StudentOperationsDashboardComponent', () => {
       summary: {
         totalStudents: 11,
         activeStudents: 8,
+        newApplications: 3,
         actionRequired: 2,
         onHold: 1,
       },
@@ -34,7 +35,7 @@ describe('StudentOperationsDashboardComponent', () => {
         packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
         role: 'operations', authorizationRevision: 1, workspaceRoutes: ['students'],
       },
-      summary: { totalStudents: 11, activeStudents: 8, actionRequired: 2, onHold: 1 },
+      summary: { totalStudents: 11, activeStudents: 8, newApplications: 3, actionRequired: 2, onHold: 1 },
     }));
     await TestBed.configureTestingModule({
       imports: [StudentOperationsDashboardComponent],

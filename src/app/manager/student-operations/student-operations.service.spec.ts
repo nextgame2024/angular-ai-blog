@@ -172,4 +172,43 @@ describe('StudentOperationsService', () => {
     expect(request.request.body).toEqual({});
     request.flush({ organisation: { name: 'Agency Trust' }, bankAccounts: [] });
   });
+
+  it('pages stored invoice-derived candidates without calling Xero from the browser', () => {
+    service.xeroStudentCandidates('connection/id', { page: 2, limit: 20, q: 'student' }).subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/workspace/integrations/xero/connections/connection%2Fid/student-candidates',
+    ));
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('limit')).toBe('20');
+    expect(request.request.params.get('q')).toBe('student');
+    request.flush({ candidates: [], page: 2, limit: 20, total: 0 });
+  });
+
+  it('queues and reads durable Xero student synchronization', () => {
+    service.refreshXeroStudents('connection/id').subscribe();
+    const refresh = http.expectOne((candidate) => candidate.url.endsWith(
+      '/workspace/integrations/xero/connections/connection%2Fid/student-sync',
+    ));
+    expect(refresh.request.method).toBe('POST');
+    refresh.flush({ syncRunId: 'run-1', status: 'queued' });
+
+    service.xeroStudentSyncStatus('connection/id').subscribe();
+    const status = http.expectOne((candidate) => candidate.url.endsWith(
+      '/workspace/integrations/xero/connections/connection%2Fid/student-sync',
+    ));
+    expect(status.request.method).toBe('GET');
+    status.flush({ configured: true, latestRun: { syncRunId: 'run-1', status: 'queued' } });
+  });
+
+  it('assigns an explicit TRUST organisation for student synchronization', () => {
+    service.configureXeroTrust('connection/id').subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/workspace/integrations/xero/connections/connection%2Fid/student-role/trust',
+    ));
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush({ connectionId: 'connection/id', organisationRole: 'trust' });
+  });
+
 });
