@@ -386,7 +386,30 @@
   font-weight: inherit;
   cursor: pointer;
 }
-.sort-button span { color: #728097; font-size: 0.76rem; }
+.sort-indicator {
+  position: relative;
+  width: 8px;
+  height: 12px;
+  flex: 0 0 8px;
+}
+.sort-indicator::before,
+.sort-indicator::after {
+  content: "";
+  position: absolute;
+  left: 1px;
+  border-right: 3px solid transparent;
+  border-left: 3px solid transparent;
+}
+.sort-indicator::before {
+  top: 1px;
+  border-bottom: 4px solid #b5beca;
+}
+.sort-indicator::after {
+  bottom: 1px;
+  border-top: 4px solid #b5beca;
+}
+.invoice-table th[aria-sort="ascending"] .sort-indicator::before { border-bottom-color: #334155; }
+.invoice-table th[aria-sort="descending"] .sort-indicator::after { border-top-color: #334155; }
 .sort-button:hover,
 .sort-button:focus-visible { color: #087f73; }
 .payment-paid { background: #e4f8f0; color: #14785e; }
@@ -853,6 +876,10 @@
 :host-context(html.dark) .invoice-table td { border-color: #2d3a4d; }
 :host-context(html.dark) .invoice-table th { background: #172235; color: #c7d3e2; }
 :host-context(html.dark) .invoice-table { color: #c7d3e2; }
+:host-context(html.dark) .sort-indicator::before { border-bottom-color: #64748b; }
+:host-context(html.dark) .sort-indicator::after { border-top-color: #64748b; }
+:host-context(html.dark) .invoice-table th[aria-sort="ascending"] .sort-indicator::before { border-bottom-color: #e2e8f0; }
+:host-context(html.dark) .invoice-table th[aria-sort="descending"] .sort-indicator::after { border-top-color: #e2e8f0; }
 :host-context(html.dark) .invoice-table .student small,
 :host-context(html.dark) .invoice-pagination { color: #91a2ba; }
 :host-context(html.dark) .invoice-link { color: #68c7ff; }

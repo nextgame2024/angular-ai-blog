@@ -126,6 +126,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   invoiceSort: XeroStudentInvoiceSort = 'date';
   invoiceSortDirection: 'asc' | 'desc' = 'desc';
   loadingInvoices = false;
+  loadingXeroContext = true;
   loadingXero = false;
   xeroError = '';
   xeroNotice = '';
@@ -222,11 +223,6 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   invoiceSortAria(sort: XeroStudentInvoiceSort): 'ascending' | 'descending' | 'none' {
     if (this.invoiceSort !== sort) return 'none';
     return this.invoiceSortDirection === 'asc' ? 'ascending' : 'descending';
-  }
-
-  invoiceSortIcon(sort: XeroStudentInvoiceSort): string {
-    if (this.invoiceSort !== sort) return '↕';
-    return this.invoiceSortDirection === 'asc' ? '↑' : '↓';
   }
 
   goToInvoicePage(page: number): void {
@@ -432,6 +428,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
           this.summary = dashboard.summary;
           this.applyResult(result, true);
           if (workspace.role === 'chief_executive') this.loadXeroContext();
+          else this.loadingXeroContext = false;
         },
         error: (error) => this.handleError(error, version),
       });
@@ -464,6 +461,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     if (version !== this.requestVersion) return;
     this.loadingInitial = false;
     this.loadingMore = false;
+    this.loadingXeroContext = false;
     this.error = Number(error?.status) === 403
       ? 'This account does not have Student Operations workspace access.'
       : 'The student register could not be loaded.';
@@ -481,6 +479,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
 
   private loadXeroContext(): void {
+    this.loadingXeroContext = true;
     this.api.xeroStatus().pipe(takeUntil(this.destroy$)).subscribe({
       next: (status) => {
         const active = status.connections.filter((connection) => connection.status === 'active');
@@ -492,9 +491,14 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
         if (this.xeroConnection && !this.xeroNeedsReconnect) {
           this.loadXeroSyncStatus();
           this.loadXeroInvoices(1);
+        } else {
+          this.loadingXeroContext = false;
         }
       },
-      error: () => { this.xeroError = 'Xero connection status could not be loaded.'; },
+      error: () => {
+        this.loadingXeroContext = false;
+        this.xeroError = 'Xero connection status could not be loaded.';
+      },
     });
   }
 
@@ -592,10 +596,12 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
         if (version !== this.invoiceRequestVersion) return;
         this.xeroInvoices = result;
         this.loadingInvoices = false;
+        this.loadingXeroContext = false;
       },
       error: () => {
         if (version !== this.invoiceRequestVersion) return;
         this.loadingInvoices = false;
+        this.loadingXeroContext = false;
         this.xeroError = 'Stored Xero invoices could not be loaded.';
       },
     });

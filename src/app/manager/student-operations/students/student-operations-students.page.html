@@ -117,17 +117,17 @@
         <div class="invoice-table-scroll" [class.is-loading]="loadingInvoices">
           <table class="invoice-table">
             <thead><tr>
-              <th [attr.aria-sort]="invoiceSortAria('invoiceNumber')"><button class="sort-button" type="button" (click)="sortXeroInvoices('invoiceNumber')">Number <span>{{ invoiceSortIcon('invoiceNumber') }}</span></button></th>
-              <th [attr.aria-sort]="invoiceSortAria('reference')"><button class="sort-button" type="button" (click)="sortXeroInvoices('reference')">Ref / College <span>{{ invoiceSortIcon('reference') }}</span></button></th>
-              <th [attr.aria-sort]="invoiceSortAria('student')"><button class="sort-button" type="button" (click)="sortXeroInvoices('student')">To <span>{{ invoiceSortIcon('student') }}</span></button></th>
-              <th [attr.aria-sort]="invoiceSortAria('date')"><button class="sort-button" type="button" (click)="sortXeroInvoices('date')">Date <span>{{ invoiceSortIcon('date') }}</span></button></th>
-              <th [attr.aria-sort]="invoiceSortAria('dueDate')"><button class="sort-button" type="button" (click)="sortXeroInvoices('dueDate')">Due date <span>{{ invoiceSortIcon('dueDate') }}</span></button></th>
-              <th class="money" [attr.aria-sort]="invoiceSortAria('paid')"><button class="sort-button" type="button" (click)="sortXeroInvoices('paid')">Paid <span>{{ invoiceSortIcon('paid') }}</span></button></th>
-              <th class="money" [attr.aria-sort]="invoiceSortAria('due')"><button class="sort-button" type="button" (click)="sortXeroInvoices('due')">Due <span>{{ invoiceSortIcon('due') }}</span></button></th>
-              <th [attr.aria-sort]="invoiceSortAria('status')"><button class="sort-button" type="button" (click)="sortXeroInvoices('status')">Status <span>{{ invoiceSortIcon('status') }}</span></button></th>
-              <th [attr.aria-sort]="invoiceSortAria('sent')"><button class="sort-button" type="button" (click)="sortXeroInvoices('sent')">Sent <span>{{ invoiceSortIcon('sent') }}</span></button></th>
-              <th [attr.aria-sort]="invoiceSortAria('advisor')"><button class="sort-button" type="button" (click)="sortXeroInvoices('advisor')">Advisor <span>{{ invoiceSortIcon('advisor') }}</span></button></th>
-              <th [attr.aria-sort]="invoiceSortAria('paymentTrack')"><button class="sort-button" type="button" (click)="sortXeroInvoices('paymentTrack')">Payment track <span>{{ invoiceSortIcon('paymentTrack') }}</span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('invoiceNumber')"><button class="sort-button" type="button" (click)="sortXeroInvoices('invoiceNumber')">Number <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('reference')"><button class="sort-button" type="button" (click)="sortXeroInvoices('reference')">Ref / College <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('student')"><button class="sort-button" type="button" (click)="sortXeroInvoices('student')">To <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('date')"><button class="sort-button" type="button" (click)="sortXeroInvoices('date')">Date <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('dueDate')"><button class="sort-button" type="button" (click)="sortXeroInvoices('dueDate')">Due date <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th class="money" [attr.aria-sort]="invoiceSortAria('paid')"><button class="sort-button" type="button" (click)="sortXeroInvoices('paid')">Paid <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th class="money" [attr.aria-sort]="invoiceSortAria('due')"><button class="sort-button" type="button" (click)="sortXeroInvoices('due')">Due <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('status')"><button class="sort-button" type="button" (click)="sortXeroInvoices('status')">Status <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('sent')"><button class="sort-button" type="button" (click)="sortXeroInvoices('sent')">Sent <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('advisor')"><button class="sort-button" type="button" (click)="sortXeroInvoices('advisor')">Advisor <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('paymentTrack')"><button class="sort-button" type="button" (click)="sortXeroInvoices('paymentTrack')">Payment track <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th>Actions</th>
             </tr></thead>
             <tbody>
@@ -200,7 +200,7 @@
       <strong>Students unavailable</strong><span>{{ error }}</span>
       <button type="button" (click)="retry()">Try again</button>
     </div>
-  } @else if (loadingInitial) {
+  } @else if (loadingInitial || loadingXeroContext || (loadingInvoices && !xeroInvoices)) {
     <div class="list-loader" aria-live="polite" aria-busy="true">
       <div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading students…</div></div>
     </div>

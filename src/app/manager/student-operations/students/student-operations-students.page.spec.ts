@@ -188,6 +188,50 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(fixture.nativeElement.querySelector('.screen-loader')).toBeNull();
   });
 
+  it('does not flash the empty state while the Xero register is still loading', () => {
+    const xeroStatus$ = new Subject<any>();
+    const xeroInvoices$ = new Subject<any>();
+    api.workspace.and.returnValue(of({
+      packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
+      role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
+    }));
+    api.xeroStatus.and.returnValue(xeroStatus$);
+    api.xeroStudentInvoices.and.returnValue(xeroInvoices$);
+
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.list-loader')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('No students found');
+
+    xeroStatus$.next({
+      configured: true,
+      connections: [{
+        connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+        organisationRole: 'trust', missingStudentDiscoveryScopes: [],
+      }],
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.list-loader')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('No students found');
+
+    xeroInvoices$.next({
+      page: 1, limit: 25, total: 1, totalPages: 1,
+      invoices: [{
+        xeroInvoiceId: '77777777-7777-4777-8777-777777777777',
+        xeroContactId: '44444444-4444-4444-8444-444444444444',
+        invoiceNumber: 'INV-1', reference: 'ATI', studentName: 'Student One',
+        studentEmail: null, suggestedStudentReference: null, invoiceDate: '2026-10-01',
+        dueDate: '2026-10-10', status: 'draft', currencyCode: 'AUD', total: 100,
+        amountPaid: 0, amountDue: 100, sentToContact: false, concept: 'Tuition',
+        advisorName: null, collegeName: 'ATI', paymentTrack: null,
+        reviewStatus: 'pending', studentId: null,
+      }],
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.list-loader')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('INV-1');
+    expect(fixture.nativeElement.textContent).not.toContain('No students found');
+  });
+
   it('allows the privacy notice to be dismissed', () => {
     fixture.detectChanges();
     fixture.nativeElement.querySelector('.privacy-dismiss').click();
@@ -245,6 +289,8 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('S15 Paulina');
     expect(fixture.nativeElement.textContent).toContain('Pending');
     expect(fixture.nativeElement.textContent).not.toContain('No students found');
+    expect(fixture.nativeElement.querySelectorAll('.sort-indicator').length).toBe(11);
+    expect(fixture.nativeElement.textContent).not.toContain('↕');
 
     fixture.componentInstance.sortXeroInvoices('dueDate');
     fixture.detectChanges();
@@ -312,7 +358,8 @@ describe('StudentOperationsStudentsPageComponent', () => {
 
     expect(api.refreshXeroStudents).toHaveBeenCalledWith('connection-1');
     expect(fixture.nativeElement.textContent).toContain('Waiting for the background worker');
-    expect(fixture.nativeElement.textContent).toContain('No students found');
+    expect(fixture.nativeElement.textContent).toContain('No invoices match the current search');
+    expect(fixture.nativeElement.textContent).not.toContain('No students found');
   });
 
   it('shows page-level Xero progress while preserving the student register', () => {
@@ -341,7 +388,8 @@ describe('StudentOperationsStudentsPageComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('500 contacts and 125 invoices processed');
-    expect(fixture.nativeElement.textContent).toContain('No students found');
+    expect(fixture.nativeElement.textContent).toContain('No invoices match the current search');
+    expect(fixture.nativeElement.textContent).not.toContain('No students found');
   });
 
   it('explains transient Xero failures and the scheduled retry', () => {
