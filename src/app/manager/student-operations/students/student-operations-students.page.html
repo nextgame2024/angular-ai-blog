@@ -1,14 +1,14 @@
 <section class="students-shell" #studentsList aria-labelledby="students-title">
   <div class="list-header">
     <nav class="breadcrumb" aria-label="Breadcrumb">
-      <a routerLink="/manager/menu">Menu</a><span class="sep">/</span><span>Students</span>
+      <a routerLink="/manager/menu">Menu</a><span class="sep">/</span><span>Payments and Control</span>
       @if (viewMode === 'form') { <span class="sep">/</span><span>{{ editingStudent ? 'Edit' : 'Create' }}</span> }
     </nav>
     <header class="students-toolbar">
       <div class="title">
-        <h3 id="students-title">{{ viewMode === 'form' ? (editingStudent ? 'Edit Student' : 'Create Student') : 'Students' }}</h3>
+        <h3 id="students-title">{{ viewMode === 'form' ? (editingStudent ? 'Edit Student' : 'Create Student') : 'Payments and Control' }}</h3>
         <p class="sub">
-          {{ viewMode === 'form' ? 'Maintain the operational student record.' : 'Manage active and historical student records and operational status.' }}
+          {{ viewMode === 'form' ? 'Maintain the operational student record.' : 'Review TRUST transactions and associated student records.' }}
         </p>
       </div>
       <div class="toolbar-actions">
@@ -211,12 +211,12 @@
     }
   } @else if (error) {
     <div class="state state-error" role="alert">
-      <strong>Students unavailable</strong><span>{{ error }}</span>
+      <strong>Payments and Control unavailable</strong><span>{{ error }}</span>
       <button type="button" (click)="retry()">Try again</button>
     </div>
   } @else if (loadingInitial || loadingXeroContext || (loadingInvoices && !xeroInvoices)) {
     <div class="list-loader" aria-live="polite" aria-busy="true">
-      <div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading students…</div></div>
+      <div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading records…</div></div>
     </div>
   } @else if (!students.length && !xeroInvoices) {
     <div class="state" data-testid="student-operations-students-empty">

@@ -91,6 +91,7 @@ import {
 } from './store/toolkit/manager.reducer';
 import { MANAGER_SCHEDULE_ROUTE } from './schedule.routes';
 import { StudentOperationsStudentsPageComponent } from './student-operations/students/student-operations-students.page';
+import { ManagerStudentsPageComponent } from './students/manager-students.page';
 
 export const MANAGER_ROUTES: Route[] = [
   {
@@ -117,7 +118,17 @@ export const MANAGER_ROUTES: Route[] = [
 
       {
         path: 'student-operations/students',
+        redirectTo: '/manager/payments-and-control',
+        pathMatch: 'full',
+      },
+      {
+        path: 'payments-and-control',
         component: StudentOperationsStudentsPageComponent,
+        data: { title: 'Payments and Control', fullscreen: true },
+      },
+      {
+        path: 'students',
+        component: ManagerStudentsPageComponent,
         data: { title: 'Students', fullscreen: true },
       },
       {

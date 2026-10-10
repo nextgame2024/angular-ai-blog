@@ -16,9 +16,9 @@ describe('Sophia Admin navigation entitlement options', () => {
     expect(SOPHIA_ADMIN_MODULE_OPTIONS[15].value).toBe('ADM-16');
   });
 
-  it('offers Students as a configurable Business Manager menu module', () => {
-    expect(MENU_NAVIGATION_LABEL_OPTIONS).toContain(jasmine.objectContaining({
-      value: 'Students', label: 'Students',
-    }));
+  it('offers Payments and Control and Students as separate menu modules in the requested order', () => {
+    expect(MENU_NAVIGATION_LABEL_OPTIONS.slice(0, 5).map((option) => option.value)).toEqual([
+      'Clients', 'Users', 'Company', 'Payments and Control', 'Students',
+    ]);
   });
 });

@@ -92,15 +92,16 @@ export const SOPHIA_ADMIN_MODULE_OPTIONS: NavigationLabelOption[] = [
 ];
 
 export const MENU_NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = [
-  { value: 'Students', label: 'Students' },
   { value: 'Clients', label: 'Clients' },
+  { value: 'Users', label: 'Users' },
+  { value: 'Company', label: 'Company' },
+  { value: 'Payments and Control', label: 'Payments and Control' },
+  { value: 'Students', label: 'Students' },
   { value: 'Sites', label: 'Sites' },
   { value: 'Pallets', label: 'Pallets' },
   { value: 'Projects', label: 'Projects' },
   { value: 'Project types', label: 'Project types' },
   { value: 'Scheduling', label: 'Scheduling' },
-  { value: 'Users', label: 'Users' },
-  { value: 'Company', label: 'Company' },
   { value: 'Navigation links', label: 'Navigation links' },
   { value: 'Suppliers', label: 'Suppliers' },
   { value: 'Materials', label: 'Materials' },

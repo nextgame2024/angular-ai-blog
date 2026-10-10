@@ -1,0 +1,16 @@
+:host { display: block; min-height: 100%; color: #172033; }
+.students-page { display: grid; align-content: start; gap: 1rem; min-height: 100%; box-sizing: border-box; }
+.breadcrumb { display: flex; align-items: center; gap: 0.4rem; color: #66758a; font-size: 0.8rem; }
+.breadcrumb a { color: #475569; text-decoration: none; }
+.breadcrumb a:hover, .breadcrumb a:focus-visible { text-decoration: underline; }
+h1 { margin: 0; font-size: 1.25rem; }
+.empty-state { display: grid; place-content: center; gap: 0.4rem; min-height: 14rem; border: 1px solid #dfe7ef; border-radius: 0.85rem; background: #fff; text-align: center; }
+.empty-state p { margin: 0; color: #66758a; }
+@media (max-width: 640px) {
+  .students-page { gap: 0.75rem; }
+  .empty-state { min-height: 12rem; padding: 1.25rem; }
+}
+:host-context(html.dark) { color: #e6edf6; }
+:host-context(html.dark) .breadcrumb, :host-context(html.dark) .empty-state p { color: #9cadc3; }
+:host-context(html.dark) .breadcrumb a { color: #c1d0e6; }
+:host-context(html.dark) .empty-state { border-color: #334155; background: #1e293b; }

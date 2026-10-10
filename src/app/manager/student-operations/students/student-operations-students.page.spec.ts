@@ -182,7 +182,8 @@ describe('StudentOperationsStudentsPageComponent', () => {
     api.students.and.returnValue(new Subject());
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Manage active and historical');
+    expect(fixture.nativeElement.textContent).toContain('Payments and Control');
+    expect(fixture.nativeElement.textContent).toContain('Review TRUST transactions and associated student records.');
     expect(fixture.nativeElement.querySelector('.list-loader .loader-content')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.list-loader .loader-card')).toBeNull();
     expect(fixture.nativeElement.querySelector('.screen-loader')).toBeNull();

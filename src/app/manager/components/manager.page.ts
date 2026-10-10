@@ -158,12 +158,15 @@ export class ManagerPageComponent implements OnDestroy {
   readonly searchCtrl = new FormControl<string>('', { nonNullable: true });
 
   readonly menu: MenuItem[] = [
-    {
-      label: 'Students',
-      route: '/manager/student-operations/students',
-      icon: 'students',
-    },
     { label: 'Clients', route: '/manager/clients', icon: 'clients' },
+    { label: 'Users', route: '/manager/users', icon: 'users' },
+    { label: 'Company', route: '/manager/company', icon: 'company' },
+    {
+      label: 'Payments and Control',
+      route: '/manager/payments-and-control',
+      icon: 'payments-and-control',
+    },
+    { label: 'Students', route: '/manager/students', icon: 'students' },
     { label: 'Sites', route: '/manager/sites', icon: 'sites' },
     { label: 'Pallets', route: '/manager/pallets', icon: 'pallets' },
     { label: 'Projects', route: '/manager/projects', icon: 'projects' },
@@ -173,8 +176,6 @@ export class ManagerPageComponent implements OnDestroy {
       icon: 'project-types',
     },
     { label: 'Scheduling', route: '/manager/scheduling', icon: 'schedule' },
-    { label: 'Users', route: '/manager/users', icon: 'users' },
-    { label: 'Company', route: '/manager/company', icon: 'company' },
     {
       label: 'Navigation links',
       route: '/manager/navigation-links',
@@ -588,7 +589,11 @@ export class ManagerPageComponent implements OnDestroy {
       const labels = (links || [])
         .map((link) => link.navigationLabel)
         .filter((label): label is string => !!label);
-      this.activeMenuLabels$$.set(new Set(labels));
+      const activeLabels = new Set(labels);
+      // Existing installations granted the former Students screen through this label.
+      // Keep that entitlement visible at its new location while adding the empty Students page.
+      if (activeLabels.has('Students')) activeLabels.add('Payments and Control');
+      this.activeMenuLabels$$.set(activeLabels);
     } catch {
       if (requestToken !== this.menuLoadToken) return;
       this.activeMenuLabels$$.set(new Set());
