@@ -102,6 +102,59 @@ export interface XeroStudentCandidateResult {
   total: number;
 }
 
+export type XeroStudentInvoiceSort = 'invoiceNumber' | 'reference' | 'student' | 'date'
+  | 'dueDate' | 'paid' | 'due' | 'status' | 'sent' | 'advisor' | 'paymentTrack';
+
+export interface XeroStudentInvoice {
+  xeroInvoiceId: string;
+  xeroContactId: string;
+  invoiceNumber: string | null;
+  reference: string | null;
+  studentName: string;
+  studentEmail: string | null;
+  suggestedStudentReference: string | null;
+  invoiceDate: string | null;
+  dueDate: string | null;
+  status: string;
+  currencyCode: string | null;
+  total: number;
+  amountPaid: number;
+  amountDue: number;
+  sentToContact: boolean;
+  concept: string | null;
+  advisorName: string | null;
+  collegeName: string | null;
+  paymentTrack: string | null;
+  reviewStatus: 'pending' | 'accepted' | 'ignored';
+  studentId: string | null;
+}
+
+export interface XeroStudentInvoiceLineItem {
+  lineItemId: string | null;
+  itemCode: string | null;
+  description: string | null;
+  quantity: number | null;
+  unitAmount: number | null;
+  discountRate: number | null;
+  accountCode: string | null;
+  taxType: string | null;
+  taxAmount: number | null;
+  lineAmount: number | null;
+  tracking: Array<{ name: string; option: string }>;
+}
+
+export interface XeroStudentInvoiceDetail extends XeroStudentInvoice {
+  lineItems: XeroStudentInvoiceLineItem[];
+}
+
+export interface XeroStudentInvoiceResult {
+  invoices: XeroStudentInvoice[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
 export interface XeroStudentSyncRun {
   syncRunId: string;
   connectionId: string;

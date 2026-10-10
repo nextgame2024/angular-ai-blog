@@ -189,6 +189,31 @@ describe('StudentOperationsService', () => {
     request.flush({ candidates: [], page: 2, limit: 20, total: 0 });
   });
 
+  it('pages and sorts stored Xero invoices without calling Xero from the browser', () => {
+    service.xeroStudentInvoices('connection/id', {
+      page: 312, limit: 25, q: 'ATI', sort: 'dueDate', direction: 'desc',
+    }).subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/workspace/integrations/xero/connections/connection%2Fid/student-invoices',
+    ));
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('page')).toBe('312');
+    expect(request.request.params.get('limit')).toBe('25');
+    expect(request.request.params.get('q')).toBe('ATI');
+    expect(request.request.params.get('sort')).toBe('dueDate');
+    expect(request.request.params.get('direction')).toBe('desc');
+    request.flush({ invoices: [], page: 312, limit: 25, total: 7793, totalPages: 312 });
+  });
+
+  it('loads stored Xero invoice detail by encoded id', () => {
+    service.xeroStudentInvoice('connection/id', 'invoice/id').subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/workspace/integrations/xero/connections/connection%2Fid/student-invoices/invoice%2Fid',
+    ));
+    expect(request.request.method).toBe('GET');
+    request.flush({ xeroInvoiceId: 'invoice/id', lineItems: [] });
+  });
+
   it('queues and reads durable Xero student synchronization', () => {
     service.refreshXeroStudents('connection/id').subscribe();
     const refresh = http.expectOne((candidate) => candidate.url.endsWith(

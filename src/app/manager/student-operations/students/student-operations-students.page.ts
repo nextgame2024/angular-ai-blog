@@ -17,13 +17,12 @@ import type {
   StudentOperationsStudentWrite,
   StudentOperationsWorkspace,
   XeroConnectionSummary,
-  XeroStudentCandidate,
-  XeroStudentCandidateResult,
+  XeroStudentInvoice,
+  XeroStudentInvoiceDetail,
+  XeroStudentInvoiceResult,
+  XeroStudentInvoiceSort,
   XeroStudentSyncStatus,
 } from '../student-operations.types';
-
-type XeroCandidateSort = 'student' | 'studentReference' | 'invoiceDate' | 'invoiceReference'
-  | 'concept' | 'advisor' | 'college' | 'invoices' | 'nextPayment' | 'paymentState';
 
 @Component({
   selector: 'app-student-operations-students-page',
@@ -37,13 +36,12 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private readonly fb = inject(FormBuilder);
   private readonly destroy$ = new Subject<void>();
   private observer?: IntersectionObserver;
-  private candidateObserver?: IntersectionObserver;
   private syncPollTimer: ReturnType<typeof setTimeout> | null = null;
   private syncPollAttempt = 0;
   private syncPollStartedAt = 0;
   private readonly syncPollMaxDurationMs = 15 * 60 * 1000;
   private requestVersion = 0;
-  private candidateRequestVersion = 0;
+  private invoiceRequestVersion = 0;
   private saveRequestKey = '';
   private saveFingerprint = '';
   private reviewingXeroContactId: string | null = null;
@@ -52,16 +50,12 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
 
   @ViewChild('studentsList') studentsList?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinel?: ElementRef<HTMLElement>;
-  private candidateSentinel?: ElementRef<HTMLElement>;
-  @ViewChild('candidateSentinel') set candidateSentinelRef(value: ElementRef<HTMLElement> | undefined) {
-    this.candidateSentinel = value;
-    if (value) queueMicrotask(() => this.setupCandidateInfiniteScroll());
-  }
 
   readonly search = new FormControl('', { nonNullable: true });
   readonly status = new FormControl('', { nonNullable: true });
   readonly advisor = new FormControl('', { nonNullable: true });
   readonly college = new FormControl('', { nonNullable: true });
+  readonly invoicePageSize = new FormControl('25', { nonNullable: true });
   readonly pageSize = 20;
   readonly statusOptions: ManagerSelectOption[] = [
     { value: '', label: 'All statuses' },
@@ -72,6 +66,11 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     { value: 'archived', label: 'Archived' },
   ];
   readonly formStatusOptions: ManagerSelectOption[] = this.statusOptions.slice(1);
+  readonly invoicePageSizeOptions: ManagerSelectOption[] = [
+    { value: '25', label: '25 per page' },
+    { value: '50', label: '50 per page' },
+    { value: '100', label: '100 per page' },
+  ];
   readonly stageOptions: ManagerSelectOption[] = [
     { value: 'new_application', label: 'New application' },
     { value: 'pre_payment_audit', label: 'Pre-payment audit' },
@@ -119,12 +118,14 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   privacyNoteVisible = true;
   summary = { totalStudents: 0, activeStudents: 0, newApplications: 0, actionRequired: 0, onHold: 0 };
   xeroConnection: XeroConnectionSummary | null = null;
-  xeroCandidates: XeroStudentCandidateResult | null = null;
+  xeroInvoices: XeroStudentInvoiceResult | null = null;
+  selectedXeroInvoice: XeroStudentInvoiceDetail | null = null;
+  loadingInvoiceDetail = false;
+  invoiceDetailError = '';
   xeroSync: XeroStudentSyncStatus | null = null;
-  candidatePage = 1;
-  candidateSort: XeroCandidateSort = 'student';
-  candidateSortDirection: 'asc' | 'desc' = 'asc';
-  loadingMoreCandidates = false;
+  invoiceSort: XeroStudentInvoiceSort = 'date';
+  invoiceSortDirection: 'asc' | 'desc' = 'desc';
+  loadingInvoices = false;
   loadingXero = false;
   xeroError = '';
   xeroNotice = '';
@@ -137,8 +138,13 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   get xeroNeedsReconnect(): boolean {
     return Boolean(this.xeroConnection?.missingStudentDiscoveryScopes?.length);
   }
-  get hasMoreCandidates(): boolean {
-    return Boolean(this.xeroCandidates && this.xeroCandidates.candidates.length < this.xeroCandidates.total);
+  get invoicePageStart(): number {
+    if (!this.xeroInvoices?.total) return 0;
+    return (this.xeroInvoices.page - 1) * this.xeroInvoices.limit + 1;
+  }
+  get invoicePageEnd(): number {
+    if (!this.xeroInvoices) return 0;
+    return Math.min(this.xeroInvoices.page * this.xeroInvoices.limit, this.xeroInvoices.total);
   }
   get xeroRunActive(): boolean {
     return this.xeroSync?.latestRun?.status === 'queued' || this.xeroSync?.latestRun?.status === 'processing';
@@ -160,20 +166,22 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
       debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$),
     ).subscribe(() => {
       this.resetAndLoad();
-      if (this.xeroConnection) this.loadXeroCandidates(true);
+      if (this.xeroConnection) this.loadXeroInvoices(1);
     });
     this.status.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => this.resetAndLoad());
     this.advisor.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => this.resetAndLoad());
     this.college.valueChanges.pipe(
       debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$),
     ).subscribe(() => this.resetAndLoad());
+    this.invoicePageSize.valueChanges.pipe(
+      distinctUntilChanged(), takeUntil(this.destroy$),
+    ).subscribe(() => this.loadXeroInvoices(1));
   }
 
   ngAfterViewInit(): void { queueMicrotask(() => this.setupInfiniteScroll()); }
 
   ngOnDestroy(): void {
     this.observer?.disconnect();
-    this.candidateObserver?.disconnect();
     if (this.syncPollTimer) clearTimeout(this.syncPollTimer);
     this.clearFormToastTimers();
     this.destroy$.next();
@@ -201,24 +209,54 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
       .format(new Date(`${value}T00:00:00Z`));
   }
 
-  sortXeroCandidates(sort: XeroCandidateSort): void {
-    if (this.candidateSort === sort) {
-      this.candidateSortDirection = this.candidateSortDirection === 'asc' ? 'desc' : 'asc';
+  sortXeroInvoices(sort: XeroStudentInvoiceSort): void {
+    if (this.invoiceSort === sort) {
+      this.invoiceSortDirection = this.invoiceSortDirection === 'asc' ? 'desc' : 'asc';
     } else {
-      this.candidateSort = sort;
-      this.candidateSortDirection = 'asc';
+      this.invoiceSort = sort;
+      this.invoiceSortDirection = sort === 'date' || sort === 'dueDate' ? 'desc' : 'asc';
     }
-    this.loadXeroCandidates(true);
+    this.loadXeroInvoices(1);
   }
 
-  candidateSortAria(sort: XeroCandidateSort): 'ascending' | 'descending' | 'none' {
-    if (this.candidateSort !== sort) return 'none';
-    return this.candidateSortDirection === 'asc' ? 'ascending' : 'descending';
+  invoiceSortAria(sort: XeroStudentInvoiceSort): 'ascending' | 'descending' | 'none' {
+    if (this.invoiceSort !== sort) return 'none';
+    return this.invoiceSortDirection === 'asc' ? 'ascending' : 'descending';
   }
 
-  candidateSortIcon(sort: XeroCandidateSort): string {
-    if (this.candidateSort !== sort) return '↕';
-    return this.candidateSortDirection === 'asc' ? '↑' : '↓';
+  invoiceSortIcon(sort: XeroStudentInvoiceSort): string {
+    if (this.invoiceSort !== sort) return '↕';
+    return this.invoiceSortDirection === 'asc' ? '↑' : '↓';
+  }
+
+  goToInvoicePage(page: number): void {
+    if (!this.xeroInvoices || this.loadingInvoices) return;
+    const target = Math.max(1, Math.min(page, this.xeroInvoices.totalPages || 1));
+    if (target !== this.xeroInvoices.page) this.loadXeroInvoices(target);
+  }
+
+  openInvoiceDetail(invoice: XeroStudentInvoice): void {
+    if (!this.xeroConnection || this.loadingInvoiceDetail) return;
+    this.loadingInvoiceDetail = true;
+    this.invoiceDetailError = '';
+    this.selectedXeroInvoice = null;
+    this.api.xeroStudentInvoice(this.xeroConnection.connectionId, invoice.xeroInvoiceId)
+      .pipe(takeUntil(this.destroy$)).subscribe({
+        next: (detail) => {
+          this.selectedXeroInvoice = detail;
+          this.loadingInvoiceDetail = false;
+        },
+        error: () => {
+          this.invoiceDetailError = 'The stored invoice details could not be loaded.';
+          this.loadingInvoiceDetail = false;
+        },
+      });
+  }
+
+  closeInvoiceDetail(): void {
+    this.selectedXeroInvoice = null;
+    this.invoiceDetailError = '';
+    this.loadingInvoiceDetail = false;
   }
 
   refreshStudentsFromXero(): void {
@@ -253,15 +291,16 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     }).format(new Date(value));
   }
 
-  reviewXeroCandidate(candidate: XeroStudentCandidate): void {
+  reviewXeroInvoice(candidate: XeroStudentInvoice): void {
     if (!this.canManage) return;
     this.openCreate();
     this.reviewingXeroContactId = candidate.xeroContactId;
     const fallbackReference = `XERO-${candidate.xeroContactId.replaceAll('-', '').slice(0, 12).toUpperCase()}`;
     this.studentForm.patchValue({
       studentReference: candidate.suggestedStudentReference || fallbackReference,
-      legalName: candidate.legalName,
-      email: candidate.email || '',
+      legalName: candidate.studentName,
+      email: candidate.studentEmail || '',
+      collegeName: candidate.reference || '',
       currentStage: 'new_application',
       status: 'active',
     });
@@ -363,7 +402,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     request.pipe(takeUntil(this.destroy$)).subscribe({
       next: (student) => {
         this.saving = false;
-        if (this.reviewingXeroContactId) this.loadXeroCandidates(true);
+        if (this.reviewingXeroContactId) this.loadXeroInvoices(this.xeroInvoices?.page ?? 1);
         this.viewMode = 'list';
         this.editingStudent = null;
         this.reviewingXeroContactId = null;
@@ -452,7 +491,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
         }
         if (this.xeroConnection && !this.xeroNeedsReconnect) {
           this.loadXeroSyncStatus();
-          this.loadXeroCandidates(true);
+          this.loadXeroInvoices(1);
         }
       },
       error: () => { this.xeroError = 'Xero connection status could not be loaded.'; },
@@ -513,7 +552,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             }
             this.xeroError = '';
             this.xeroNotice = '';
-            this.loadXeroCandidates(true);
+            this.loadXeroInvoices(this.xeroInvoices?.page ?? 1);
           },
           error: () => {
             this.loadingXero = false;
@@ -538,52 +577,28 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     return 'The Xero refresh failed. Existing student information remains available.';
   }
 
-  private loadXeroCandidates(reset: boolean): void {
-    if (!this.xeroConnection || this.xeroNeedsReconnect || this.loadingMoreCandidates) return;
-    const version = ++this.candidateRequestVersion;
-    const page = reset ? 1 : this.candidatePage + 1;
-    if (!reset) this.loadingMoreCandidates = true;
-    this.api.xeroStudentCandidates(this.xeroConnection.connectionId, {
+  private loadXeroInvoices(page: number): void {
+    if (!this.xeroConnection || this.xeroNeedsReconnect) return;
+    const version = ++this.invoiceRequestVersion;
+    this.loadingInvoices = true;
+    this.api.xeroStudentInvoices(this.xeroConnection.connectionId, {
       page,
-      limit: this.pageSize,
+      limit: Number(this.invoicePageSize.value),
       q: this.search.value.trim() || undefined,
-      sort: this.candidateSort,
-      direction: this.candidateSortDirection,
+      sort: this.invoiceSort,
+      direction: this.invoiceSortDirection,
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (result) => {
-        if (version !== this.candidateRequestVersion) return;
-        const candidates = reset
-          ? result.candidates
-          : [...(this.xeroCandidates?.candidates ?? []), ...result.candidates];
-        this.xeroCandidates = {
-          ...result,
-          candidates: Array.from(new Map(candidates.map((candidate) => [candidate.xeroContactId, candidate])).values()),
-        };
-        this.candidatePage = result.page;
-        this.loadingMoreCandidates = false;
-        queueMicrotask(() => this.setupCandidateInfiniteScroll());
+        if (version !== this.invoiceRequestVersion) return;
+        this.xeroInvoices = result;
+        this.loadingInvoices = false;
       },
       error: () => {
-        if (version !== this.candidateRequestVersion) return;
-        this.loadingMoreCandidates = false;
-        this.xeroError = 'Stored Xero student candidates could not be loaded.';
+        if (version !== this.invoiceRequestVersion) return;
+        this.loadingInvoices = false;
+        this.xeroError = 'Stored Xero invoices could not be loaded.';
       },
     });
-  }
-
-  private setupCandidateInfiniteScroll(): void {
-    const sentinel = this.candidateSentinel?.nativeElement;
-    if (!sentinel) return;
-    this.candidateObserver?.disconnect();
-    this.candidateObserver = new IntersectionObserver((entries) => {
-      if (entries[0]?.isIntersecting && this.hasMoreCandidates && !this.loadingMoreCandidates) {
-        this.loadXeroCandidates(false);
-      }
-    }, {
-      root: this.studentsList?.nativeElement.closest('.content') as HTMLElement | null,
-      rootMargin: '300px 0px', threshold: 0.1,
-    });
-    this.candidateObserver.observe(sentinel);
   }
 
   private advisorLookup() {

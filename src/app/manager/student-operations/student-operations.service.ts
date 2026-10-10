@@ -13,6 +13,9 @@ import type {
   XeroConnectionStatus,
   XeroConnectionTest,
   XeroStudentCandidateResult,
+  XeroStudentInvoiceDetail,
+  XeroStudentInvoiceResult,
+  XeroStudentInvoiceSort,
   XeroStudentSyncRun,
   XeroStudentSyncStatus,
 } from './student-operations.types';
@@ -186,6 +189,33 @@ export class StudentOperationsService {
     return this.http.get<XeroStudentCandidateResult>(
       `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-candidates`,
       { headers: this.headers(), params },
+    );
+  }
+
+  xeroStudentInvoices(
+    connectionId: string,
+    input: {
+      page: number;
+      limit: number;
+      q?: string;
+      sort?: XeroStudentInvoiceSort;
+      direction?: 'asc' | 'desc';
+    },
+  ): Observable<XeroStudentInvoiceResult> {
+    let params = new HttpParams().set('page', String(input.page)).set('limit', String(input.limit));
+    if (input.q) params = params.set('q', input.q);
+    if (input.sort) params = params.set('sort', input.sort);
+    if (input.direction) params = params.set('direction', input.direction);
+    return this.http.get<XeroStudentInvoiceResult>(
+      `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-invoices`,
+      { headers: this.headers(), params },
+    );
+  }
+
+  xeroStudentInvoice(connectionId: string, invoiceId: string): Observable<XeroStudentInvoiceDetail> {
+    return this.http.get<XeroStudentInvoiceDetail>(
+      `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-invoices/${encodeURIComponent(invoiceId)}`,
+      { headers: this.headers() },
     );
   }
 

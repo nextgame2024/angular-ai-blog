@@ -21,9 +21,10 @@ describe('StudentOperationsStudentsPageComponent', () => {
       summary: { totalStudents: 0, activeStudents: 0, newApplications: 0, actionRequired: 0, onHold: 0 },
     })),
     xeroStatus: jasmine.createSpy().and.returnValue(of({ configured: true, connections: [] })),
-    xeroStudentCandidates: jasmine.createSpy().and.returnValue(of({
-      candidates: [], page: 1, limit: 20, total: 0,
+    xeroStudentInvoices: jasmine.createSpy().and.returnValue(of({
+      invoices: [], page: 1, limit: 25, total: 0, totalPages: 0,
     })),
+    xeroStudentInvoice: jasmine.createSpy(),
     xeroStudentSyncStatus: jasmine.createSpy().and.returnValue(of({
       configured: false, organisationRole: null, lastSuccessfulSyncAt: null,
       lastErrorCode: null, nextScheduledSyncAt: null, latestRun: null,
@@ -47,7 +48,8 @@ describe('StudentOperationsStudentsPageComponent', () => {
     api.advisors.calls.reset();
     api.dashboard.calls.reset();
     api.xeroStatus.calls.reset();
-    api.xeroStudentCandidates.calls.reset();
+    api.xeroStudentInvoices.calls.reset();
+    api.xeroStudentInvoice.calls.reset();
     api.xeroStudentSyncStatus.calls.reset();
     api.refreshXeroStudents.calls.reset();
     api.createStudent.calls.reset();
@@ -62,7 +64,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
       summary: { totalStudents: 0, activeStudents: 0, newApplications: 0, actionRequired: 0, onHold: 0 },
     }));
     api.xeroStatus.and.returnValue(of({ configured: true, connections: [] }));
-    api.xeroStudentCandidates.and.returnValue(of({ candidates: [], page: 1, limit: 20, total: 0 }));
+    api.xeroStudentInvoices.and.returnValue(of({ invoices: [], page: 1, limit: 25, total: 0, totalPages: 0 }));
     api.xeroStudentSyncStatus.and.returnValue(of({
       configured: false, organisationRole: null, lastSuccessfulSyncAt: null,
       lastErrorCode: null, nextScheduledSyncAt: null, latestRun: null,
@@ -148,12 +150,14 @@ describe('StudentOperationsStudentsPageComponent', () => {
     }));
     api.createStudent.and.returnValue(of({ studentId: 'student-1' }));
     fixture.detectChanges();
-    fixture.componentInstance.reviewXeroCandidate({
-      xeroContactId: contactId, legalName: 'Candidate Student', email: 'candidate@example.invalid',
-      suggestedStudentReference: 'STU-XERO', invoiceCount: 1, latestInvoiceNumber: 'INV-1',
-      latestInvoiceDate: '2026-10-01', latestInvoiceReference: 'ENROL-1', concept: 'Tuition',
-      advisorName: 'Advisor One', collegeName: 'College One', nextPaymentDate: null, nextPaymentAmount: null,
-      totalInvoiced: 100, totalPaid: 100, amountDue: 0, currencyCode: 'AUD', paymentStatus: 'paid',
+    fixture.componentInstance.reviewXeroInvoice({
+      xeroInvoiceId: '77777777-7777-4777-8777-777777777777', xeroContactId: contactId,
+      invoiceNumber: 'INV-1', reference: 'College One', studentName: 'Candidate Student',
+      studentEmail: 'candidate@example.invalid', suggestedStudentReference: 'STU-XERO',
+      invoiceDate: '2026-10-01', dueDate: '2026-10-10', status: 'paid', currencyCode: 'AUD',
+      total: 100, amountPaid: 100, amountDue: 0, sentToContact: true, concept: 'Tuition',
+      advisorName: 'Advisor One', collegeName: 'College One', paymentTrack: 'Paid',
+      reviewStatus: 'pending', studentId: null,
     });
     fixture.componentInstance.saveStudent();
 
@@ -208,7 +212,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(text).not.toContain('vs. previous month');
   });
 
-  it('lets a Chief Executive review an invoice-derived contact before creating a student', () => {
+  it('shows one paged row per Xero invoice and preserves server sorting', () => {
     api.workspace.and.returnValue(of({
       packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
       role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
@@ -220,50 +224,42 @@ describe('StudentOperationsStudentsPageComponent', () => {
         missingStudentDiscoveryScopes: [],
       }],
     }));
-    api.xeroStudentCandidates.and.returnValue(of({
-      page: 1, limit: 20, total: 1,
-      candidates: [{
-        xeroContactId: '44444444-4444-4444-8444-444444444444', legalName: 'Student One',
-        email: 'student.one@example.invalid', suggestedStudentReference: 'STU-100', invoiceCount: 2,
-        latestInvoiceNumber: 'TRUST-002', latestInvoiceDate: '2026-10-01', nextPaymentDate: '2026-10-20',
-        latestInvoiceReference: 'ENROL-2', concept: 'Diploma tuition',
-        advisorName: 'Maria Lopez', collegeName: 'Example College',
-        nextPaymentAmount: 400, totalInvoiced: 1500, totalPaid: 1100, amountDue: 400,
-        currencyCode: 'AUD', paymentStatus: 'due',
+    api.xeroStudentInvoices.and.returnValue(of({
+      page: 1, limit: 25, total: 7793, totalPages: 312,
+      invoices: [{
+        xeroInvoiceId: '77777777-7777-4777-8777-777777777777',
+        xeroContactId: '44444444-4444-4444-8444-444444444444',
+        invoiceNumber: 'INV-10035', reference: 'ATI', studentName: 'Student One',
+        studentEmail: 'student.one@example.invalid', suggestedStudentReference: 'STU-100',
+        invoiceDate: '2029-10-01', dueDate: '2029-10-01', status: 'draft', currencyCode: 'AUD',
+        total: 2200, amountPaid: 0, amountDue: 2200, sentToContact: false,
+        concept: 'Diploma tuition', advisorName: 'S15 Paulina', collegeName: 'ATI',
+        paymentTrack: 'Pending', reviewStatus: 'pending', studentId: null,
       }],
     }));
     fixture.detectChanges();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Potential students from Xero (1)');
+    expect(fixture.nativeElement.textContent).toContain('TRUST invoices (7793)');
+    expect(fixture.nativeElement.textContent).toContain('INV-10035');
     expect(fixture.nativeElement.textContent).toContain('Student One');
-    expect(fixture.nativeElement.textContent).toContain('Diploma tuition');
+    expect(fixture.nativeElement.textContent).toContain('S15 Paulina');
+    expect(fixture.nativeElement.textContent).toContain('Pending');
     expect(fixture.nativeElement.textContent).not.toContain('No students found');
 
-    fixture.nativeElement.querySelector('[aria-sort="none"] .sort-button').click();
+    fixture.componentInstance.sortXeroInvoices('dueDate');
     fixture.detectChanges();
-    expect(api.xeroStudentCandidates).toHaveBeenCalledWith('connection-1', jasmine.objectContaining({
-      page: 1, sort: jasmine.any(String), direction: 'asc',
+    expect(api.xeroStudentInvoices).toHaveBeenCalledWith('connection-1', jasmine.objectContaining({
+      page: 1, limit: 25, sort: 'dueDate', direction: 'desc',
     }));
 
-    fixture.nativeElement.querySelector('.candidate-row .btn.secondary').click();
+    fixture.nativeElement.querySelector('.invoice-actions .btn.secondary').click();
     fixture.detectChanges();
     expect(fixture.componentInstance.studentForm.value).toEqual(jasmine.objectContaining({
-      studentReference: 'STU-100', legalName: 'Student One', email: 'student.one@example.invalid',
+      studentReference: 'STU-100', legalName: 'Student One', email: 'student.one@example.invalid', collegeName: 'ATI',
     }));
   });
 
-  it('keeps the selected server sort when infinite scroll loads the next Xero page', () => {
-    const observerCallbacks: IntersectionObserverCallback[] = [];
-    globalThis.IntersectionObserver = class {
-      readonly root = null;
-      readonly rootMargin = '';
-      readonly thresholds = [];
-      constructor(callback: IntersectionObserverCallback) { observerCallbacks.push(callback); }
-      disconnect(): void {}
-      observe(): void {}
-      takeRecords(): IntersectionObserverEntry[] { return []; }
-      unobserve(): void {}
-    } as unknown as typeof IntersectionObserver;
+  it('uses explicit pagination and keeps the selected server sort on the next page', () => {
     api.workspace.and.returnValue(of({
       packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
       role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
@@ -275,41 +271,19 @@ describe('StudentOperationsStudentsPageComponent', () => {
         organisationRole: 'trust', missingStudentDiscoveryScopes: [],
       }],
     }));
-    api.xeroStudentCandidates.and.callFake((_connectionId: string, input: { page: number }) => of({
+    api.xeroStudentInvoices.and.callFake((_connectionId: string, input: { page: number }) => of({
       page: input.page,
-      limit: 20,
-      total: 40,
-      candidates: [{
-        xeroContactId: `44444444-4444-4444-8444-44444444444${input.page}`,
-        legalName: `Student ${input.page}`,
-        email: null,
-        suggestedStudentReference: null,
-        invoiceCount: 1,
-        latestInvoiceNumber: `INV-${input.page}`,
-        latestInvoiceDate: '2026-10-01',
-        latestInvoiceReference: null,
-        concept: null,
-        advisorName: null,
-        collegeName: null,
-        nextPaymentDate: null,
-        nextPaymentAmount: null,
-        totalInvoiced: 100,
-        totalPaid: 100,
-        amountDue: 0,
-        currencyCode: 'AUD',
-        paymentStatus: 'paid' as const,
-      }],
+      limit: 25, total: 50, totalPages: 2,
+      invoices: [],
     }));
 
     fixture.detectChanges();
-    fixture.componentInstance.sortXeroCandidates('invoiceDate');
-    fixture.detectChanges();
-    (fixture.componentInstance as any).setupCandidateInfiniteScroll();
-    observerCallbacks.at(-1)?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    fixture.componentInstance.sortXeroInvoices('invoiceNumber');
+    fixture.componentInstance.goToInvoicePage(2);
 
-    expect(api.xeroStudentCandidates).toHaveBeenCalledWith('connection-1', jasmine.objectContaining({
+    expect(api.xeroStudentInvoices).toHaveBeenCalledWith('connection-1', jasmine.objectContaining({
       page: 2,
-      sort: 'invoiceDate',
+      sort: 'invoiceNumber',
       direction: 'asc',
     }));
   });

@@ -100,50 +100,76 @@
     }
   </div>
 
-  @if (viewMode === 'list' && xeroCandidates && xeroCandidates.total > 0) {
-    <section class="xero-candidates" aria-labelledby="xero-candidates-title">
+  @if (viewMode === 'list' && xeroInvoices) {
+    <section class="xero-candidates" aria-labelledby="xero-invoices-title">
       <header class="candidate-header">
         <div>
-          <h4 id="xero-candidates-title">Potential students from Xero ({{ xeroCandidates.total }})</h4>
-          <p>Derived from TRUST sales invoices. Review each contact before creating its operational student record.</p>
+          <h4 id="xero-invoices-title">TRUST invoices ({{ xeroInvoices.total }})</h4>
+          <p>One row per Xero sales invoice. Open an invoice for line items, tracking and student review.</p>
         </div>
         <span class="source-badge">{{ xeroConnection?.tenantName }}</span>
       </header>
-      @if (!xeroCandidates.candidates.length) {
-        <div class="candidate-empty">No student contacts were found in the available sales invoices.</div>
+      @if (loadingInvoices && !xeroInvoices.invoices.length) {
+        <div class="candidate-empty" aria-live="polite">Loading Xero invoices…</div>
+      } @else if (!xeroInvoices.invoices.length) {
+        <div class="candidate-empty">No invoices match the current search.</div>
       } @else {
-        <div class="candidate-table" role="table" aria-label="Xero student candidates">
-          <div class="candidate-row candidate-head" role="row">
-            <div role="columnheader" [attr.aria-sort]="candidateSortAria('student')"><button type="button" class="sort-button" (click)="sortXeroCandidates('student')">Student <span>{{ candidateSortIcon('student') }}</span></button></div>
-            <div role="columnheader" [attr.aria-sort]="candidateSortAria('studentReference')"><button type="button" class="sort-button" (click)="sortXeroCandidates('studentReference')">Student ref. <span>{{ candidateSortIcon('studentReference') }}</span></button></div>
-            <div role="columnheader" [attr.aria-sort]="candidateSortAria('invoiceDate')"><button type="button" class="sort-button" (click)="sortXeroCandidates('invoiceDate')">Latest invoice <span>{{ candidateSortIcon('invoiceDate') }}</span></button></div>
-            <div role="columnheader" [attr.aria-sort]="candidateSortAria('invoiceReference')"><button type="button" class="sort-button" (click)="sortXeroCandidates('invoiceReference')">Xero reference <span>{{ candidateSortIcon('invoiceReference') }}</span></button></div>
-            <div role="columnheader" [attr.aria-sort]="candidateSortAria('concept')"><button type="button" class="sort-button" (click)="sortXeroCandidates('concept')">Concept <span>{{ candidateSortIcon('concept') }}</span></button></div>
-            <div role="columnheader" [attr.aria-sort]="candidateSortAria('advisor')"><button type="button" class="sort-button" (click)="sortXeroCandidates('advisor')">Advisor <span>{{ candidateSortIcon('advisor') }}</span></button></div>
-            <div role="columnheader" [attr.aria-sort]="candidateSortAria('college')"><button type="button" class="sort-button" (click)="sortXeroCandidates('college')">College <span>{{ candidateSortIcon('college') }}</span></button></div>
-            <div role="columnheader" [attr.aria-sort]="candidateSortAria('invoices')"><button type="button" class="sort-button" (click)="sortXeroCandidates('invoices')">Invoices <span>{{ candidateSortIcon('invoices') }}</span></button></div>
-            <div role="columnheader" [attr.aria-sort]="candidateSortAria('nextPayment')"><button type="button" class="sort-button" (click)="sortXeroCandidates('nextPayment')">Next payment <span>{{ candidateSortIcon('nextPayment') }}</span></button></div>
-            <div role="columnheader" [attr.aria-sort]="candidateSortAria('paymentState')"><button type="button" class="sort-button" (click)="sortXeroCandidates('paymentState')">Payment <span>{{ candidateSortIcon('paymentState') }}</span></button></div>
-            <div role="columnheader">Action</div>
-          </div>
-          @for (candidate of xeroCandidates.candidates; track candidate.xeroContactId) {
-            <div class="candidate-row" role="row">
-              <div class="student"><strong>{{ candidate.legalName }}</strong><small>{{ candidate.email || 'Email requires review' }}</small></div>
-              <div>{{ candidate.suggestedStudentReference || 'Generated on review' }}</div>
-              <div><strong>{{ candidate.latestInvoiceNumber || '—' }}</strong><small>{{ formatDate(candidate.latestInvoiceDate) }}</small></div>
-              <div>{{ candidate.latestInvoiceReference || '—' }}</div>
-              <div class="candidate-detail" [title]="candidate.concept || ''">{{ candidate.concept || '—' }}</div>
-              <div>{{ candidate.advisorName || 'Not recorded in Xero' }}</div>
-              <div>{{ candidate.collegeName || 'Not recorded in Xero' }}</div>
-              <div>{{ candidate.invoiceCount }} · {{ formatMoney(candidate.totalInvoiced, candidate.currencyCode) }}</div>
-              <div><strong>{{ formatDate(candidate.nextPaymentDate) }}</strong><small>{{ formatMoney(candidate.nextPaymentAmount, candidate.currencyCode) }}</small></div>
-              <div><span class="status payment-{{ candidate.paymentStatus }}">{{ formatLabel(candidate.paymentStatus) }}</span></div>
-              <div><button type="button" class="btn small secondary" (click)="reviewXeroCandidate(candidate)">Review & create</button></div>
-            </div>
-          }
+        <div class="invoice-table-scroll" [class.is-loading]="loadingInvoices">
+          <table class="invoice-table">
+            <thead><tr>
+              <th [attr.aria-sort]="invoiceSortAria('invoiceNumber')"><button class="sort-button" type="button" (click)="sortXeroInvoices('invoiceNumber')">Number <span>{{ invoiceSortIcon('invoiceNumber') }}</span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('reference')"><button class="sort-button" type="button" (click)="sortXeroInvoices('reference')">Ref / College <span>{{ invoiceSortIcon('reference') }}</span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('student')"><button class="sort-button" type="button" (click)="sortXeroInvoices('student')">To <span>{{ invoiceSortIcon('student') }}</span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('date')"><button class="sort-button" type="button" (click)="sortXeroInvoices('date')">Date <span>{{ invoiceSortIcon('date') }}</span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('dueDate')"><button class="sort-button" type="button" (click)="sortXeroInvoices('dueDate')">Due date <span>{{ invoiceSortIcon('dueDate') }}</span></button></th>
+              <th class="money" [attr.aria-sort]="invoiceSortAria('paid')"><button class="sort-button" type="button" (click)="sortXeroInvoices('paid')">Paid <span>{{ invoiceSortIcon('paid') }}</span></button></th>
+              <th class="money" [attr.aria-sort]="invoiceSortAria('due')"><button class="sort-button" type="button" (click)="sortXeroInvoices('due')">Due <span>{{ invoiceSortIcon('due') }}</span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('status')"><button class="sort-button" type="button" (click)="sortXeroInvoices('status')">Status <span>{{ invoiceSortIcon('status') }}</span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('sent')"><button class="sort-button" type="button" (click)="sortXeroInvoices('sent')">Sent <span>{{ invoiceSortIcon('sent') }}</span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('advisor')"><button class="sort-button" type="button" (click)="sortXeroInvoices('advisor')">Advisor <span>{{ invoiceSortIcon('advisor') }}</span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('paymentTrack')"><button class="sort-button" type="button" (click)="sortXeroInvoices('paymentTrack')">Payment track <span>{{ invoiceSortIcon('paymentTrack') }}</span></button></th>
+              <th>Actions</th>
+            </tr></thead>
+            <tbody>
+              @for (invoice of xeroInvoices.invoices; track invoice.xeroInvoiceId) {
+                <tr>
+                  <td data-label="Number"><button type="button" class="invoice-link" (click)="openInvoiceDetail(invoice)">{{ invoice.invoiceNumber || '—' }}</button></td>
+                  <td data-label="Ref / College">{{ invoice.reference || '—' }}</td>
+                  <td data-label="To" class="student"><strong>{{ invoice.studentName }}</strong><small>{{ invoice.studentEmail || 'Email requires review' }}</small></td>
+                  <td data-label="Date">{{ formatDate(invoice.invoiceDate) }}</td>
+                  <td data-label="Due date">{{ formatDate(invoice.dueDate) }}</td>
+                  <td data-label="Paid" class="money">{{ formatMoney(invoice.amountPaid, invoice.currencyCode) }}</td>
+                  <td data-label="Due" class="money">{{ formatMoney(invoice.amountDue, invoice.currencyCode) }}</td>
+                  <td data-label="Status"><span class="status invoice-status-{{ invoice.status }}">{{ formatLabel(invoice.status) }}</span></td>
+                  <td data-label="Sent">{{ invoice.sentToContact ? 'Yes' : 'No' }}</td>
+                  <td data-label="Advisor">{{ invoice.advisorName || '—' }}</td>
+                  <td data-label="Payment track">{{ invoice.paymentTrack || '—' }}</td>
+                  <td data-label="Actions" class="invoice-actions">
+                    <button type="button" class="btn small" (click)="openInvoiceDetail(invoice)">Details</button>
+                    @if (invoice.reviewStatus === 'pending' && invoice.status !== 'voided' && invoice.status !== 'deleted') {
+                      <button type="button" class="btn small secondary" (click)="reviewXeroInvoice(invoice)">Review student</button>
+                    } @else if (invoice.reviewStatus === 'accepted') {
+                      <span class="reviewed-label">Student created</span>
+                    } @else {
+                      <span class="reviewed-label">Not reviewable</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
         </div>
-        <div #candidateSentinel class="infinite-sentinel" aria-hidden="true"></div>
-        @if (loadingMoreCandidates) { <div class="loading-more">Loading more Xero records…</div> }
+        <footer class="invoice-pagination" aria-label="Xero invoice pagination">
+          <span>Showing {{ invoicePageStart }}–{{ invoicePageEnd }} of {{ xeroInvoices.total }}</span>
+          <app-manager-select class="page-size" [formControl]="invoicePageSize" [options]="invoicePageSizeOptions"></app-manager-select>
+          <div class="page-buttons">
+            <button type="button" (click)="goToInvoicePage(1)" [disabled]="xeroInvoices.page <= 1 || loadingInvoices" aria-label="First page">«</button>
+            <button type="button" (click)="goToInvoicePage(xeroInvoices.page - 1)" [disabled]="xeroInvoices.page <= 1 || loadingInvoices" aria-label="Previous page">‹</button>
+            <span>Page {{ xeroInvoices.page }} of {{ xeroInvoices.totalPages }}</span>
+            <button type="button" (click)="goToInvoicePage(xeroInvoices.page + 1)" [disabled]="xeroInvoices.page >= xeroInvoices.totalPages || loadingInvoices" aria-label="Next page">›</button>
+            <button type="button" (click)="goToInvoicePage(xeroInvoices.totalPages)" [disabled]="xeroInvoices.page >= xeroInvoices.totalPages || loadingInvoices" aria-label="Last page">»</button>
+          </div>
+        </footer>
       }
     </section>
   }
@@ -178,7 +204,7 @@
     <div class="list-loader" aria-live="polite" aria-busy="true">
       <div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading students…</div></div>
     </div>
-  } @else if (!students.length && !(xeroCandidates?.total)) {
+  } @else if (!students.length && !xeroInvoices) {
     <div class="state" data-testid="student-operations-students-empty">
       <strong>No students found</strong><span>No records match the current filters.</span>
     </div>
@@ -208,6 +234,60 @@
   }
   <div #infiniteSentinel class="infinite-sentinel" aria-hidden="true"></div>
 </section>
+@if (loadingInvoiceDetail || invoiceDetailError || selectedXeroInvoice) {
+  <div class="invoice-dialog-backdrop" role="presentation">
+    <section class="invoice-dialog" role="dialog" aria-modal="true" aria-labelledby="invoice-dialog-title">
+      <header>
+        <div>
+          <span class="dialog-eyebrow">Xero invoice</span>
+          <h3 id="invoice-dialog-title">{{ selectedXeroInvoice?.invoiceNumber || 'Invoice details' }}</h3>
+        </div>
+        <button type="button" class="dialog-close" (click)="closeInvoiceDetail()" aria-label="Close invoice details">×</button>
+      </header>
+      @if (loadingInvoiceDetail) {
+        <div class="dialog-state">Loading invoice details…</div>
+      } @else if (invoiceDetailError) {
+        <div class="dialog-state error" role="alert">{{ invoiceDetailError }}</div>
+      } @else if (selectedXeroInvoice) {
+        <div class="invoice-summary">
+          <div><span>Student</span><strong>{{ selectedXeroInvoice.studentName }}</strong></div>
+          <div><span>College / Reference</span><strong>{{ selectedXeroInvoice.reference || '—' }}</strong></div>
+          <div><span>Issue date</span><strong>{{ formatDate(selectedXeroInvoice.invoiceDate) }}</strong></div>
+          <div><span>Due date</span><strong>{{ formatDate(selectedXeroInvoice.dueDate) }}</strong></div>
+          <div><span>Advisor</span><strong>{{ selectedXeroInvoice.advisorName || '—' }}</strong></div>
+          <div><span>Payment track</span><strong>{{ selectedXeroInvoice.paymentTrack || '—' }}</strong></div>
+        </div>
+        <div class="invoice-lines-wrap">
+          <table class="invoice-lines">
+            <thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Disc.</th><th>Account</th><th>Tax</th><th>Tracking</th><th>Amount</th></tr></thead>
+            <tbody>
+              @for (line of selectedXeroInvoice.lineItems; track line.lineItemId || $index) {
+                <tr>
+                  <td data-label="Item">{{ line.itemCode || '—' }}</td>
+                  <td data-label="Description">{{ line.description || '—' }}</td>
+                  <td data-label="Qty">{{ line.quantity ?? '—' }}</td>
+                  <td data-label="Price">{{ formatMoney(line.unitAmount, selectedXeroInvoice.currencyCode) }}</td>
+                  <td data-label="Discount">{{ line.discountRate === null ? '—' : line.discountRate + '%' }}</td>
+                  <td data-label="Account">{{ line.accountCode || '—' }}</td>
+                  <td data-label="Tax">{{ formatMoney(line.taxAmount, selectedXeroInvoice.currencyCode) }}</td>
+                  <td data-label="Tracking"><span class="tracking-list">@for (track of line.tracking; track track.name) { <small>{{ track.name }}: {{ track.option }}</small> }</span></td>
+                  <td data-label="Amount">{{ formatMoney(line.lineAmount, selectedXeroInvoice.currencyCode) }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="9">No line items were stored. Run Refresh once after deploying the migration.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <footer class="invoice-totals">
+          <span>Total <strong>{{ formatMoney(selectedXeroInvoice.total, selectedXeroInvoice.currencyCode) }}</strong></span>
+          <span>Paid <strong>{{ formatMoney(selectedXeroInvoice.amountPaid, selectedXeroInvoice.currencyCode) }}</strong></span>
+          <span>Due <strong>{{ formatMoney(selectedXeroInvoice.amountDue, selectedXeroInvoice.currencyCode) }}</strong></span>
+        </footer>
+      }
+    </section>
+  </div>
+}
 @if (formToastMessage) {
   <div class="form-toast-wrap" aria-live="assertive">
     <div class="form-toast error" role="alert" [class.closing]="formToastClosing">{{ formToastMessage }}</div>
