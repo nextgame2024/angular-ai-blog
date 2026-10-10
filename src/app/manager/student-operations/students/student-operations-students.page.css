@@ -45,6 +45,7 @@
 }
 .xero-sync strong { color: #172033; }
 .xero-sync span { color: #66758a; font-size: 0.8rem; }
+.xero-sync .xero-notice { color: #80520a; }
 .xero-sync .xero-error { color: #9b2536; }
 .xero-sync-error { border-color: #f2b8c0; background: #fff8f9; }
 .metrics {

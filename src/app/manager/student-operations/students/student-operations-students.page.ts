@@ -36,6 +36,9 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private observer?: IntersectionObserver;
   private candidateObserver?: IntersectionObserver;
   private syncPollTimer: ReturnType<typeof setTimeout> | null = null;
+  private syncPollAttempt = 0;
+  private syncPollStartedAt = 0;
+  private readonly syncPollMaxDurationMs = 15 * 60 * 1000;
   private requestVersion = 0;
   private saveRequestKey = '';
   private saveFingerprint = '';
@@ -114,6 +117,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   loadingMoreCandidates = false;
   loadingXero = false;
   xeroError = '';
+  xeroNotice = '';
 
   get hasMore(): boolean { return this.students.length < this.total; }
   get canManage(): boolean {
@@ -125,6 +129,19 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
   get hasMoreCandidates(): boolean {
     return Boolean(this.xeroCandidates && this.xeroCandidates.candidates.length < this.xeroCandidates.total);
+  }
+  get xeroRunActive(): boolean {
+    return this.xeroSync?.latestRun?.status === 'queued' || this.xeroSync?.latestRun?.status === 'processing';
+  }
+  get xeroSyncProgress(): string {
+    const run = this.xeroSync?.latestRun;
+    if (!run || run.status === 'queued') return 'Waiting for the background worker.';
+    const progress: string[] = [];
+    if (run.contactCount > 0) progress.push(`${run.contactCount} contacts`);
+    if (run.invoiceCount > 0) progress.push(`${run.invoiceCount} invoices`);
+    return progress.length
+      ? `Refreshing in the background · ${progress.join(' and ')} processed.`
+      : 'Refreshing in the background. Existing records remain available.';
   }
 
   ngOnInit(): void {
@@ -178,6 +195,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     if (!this.isChiefExecutive || this.loadingXero || this.xeroNeedsReconnect || !this.xeroConnection) return;
     this.loadingXero = true;
     this.xeroError = '';
+    this.xeroNotice = '';
     this.api.refreshXeroStudents(this.xeroConnection.connectionId)
       .pipe(takeUntil(this.destroy$)).subscribe({
         next: (run) => {
@@ -189,7 +207,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             nextScheduledSyncAt: this.xeroSync?.nextScheduledSyncAt ?? null,
             latestRun: run,
           };
-          this.pollXeroSync();
+          this.pollXeroSync(true);
         },
         error: (error) => {
           this.loadingXero = false;
@@ -420,7 +438,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
           const state = status.latestRun?.status;
           if (state === 'queued' || state === 'processing') {
             this.loadingXero = true;
-            this.pollXeroSync();
+            this.pollXeroSync(true);
           } else {
             this.loadingXero = false;
           }
@@ -429,10 +447,24 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
       });
   }
 
-  private pollXeroSync(): void {
+  private pollXeroSync(reset = false): void {
     if (!this.xeroConnection) return;
     if (this.syncPollTimer) clearTimeout(this.syncPollTimer);
+    if (reset) {
+      this.syncPollAttempt = 0;
+      this.syncPollStartedAt = Date.now();
+      this.xeroNotice = '';
+    }
+    if (Date.now() - this.syncPollStartedAt >= this.syncPollMaxDurationMs) {
+      this.syncPollTimer = null;
+      this.loadingXero = false;
+      this.xeroNotice = 'The refresh is still running. You can leave this page and check its progress later.';
+      return;
+    }
+    const delay = Math.min(2000 * (2 ** Math.floor(this.syncPollAttempt / 2)), 15_000);
+    this.syncPollAttempt += 1;
     this.syncPollTimer = setTimeout(() => {
+      this.syncPollTimer = null;
       if (!this.xeroConnection) return;
       this.api.xeroStudentSyncStatus(this.xeroConnection.connectionId)
         .pipe(takeUntil(this.destroy$)).subscribe({
@@ -449,6 +481,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
               return;
             }
             this.xeroError = '';
+            this.xeroNotice = '';
             this.loadXeroCandidates(true);
           },
           error: () => {
@@ -456,7 +489,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             this.xeroError = 'Xero synchronization status could not be refreshed.';
           },
         });
-    }, 2000);
+    }, delay);
   }
 
   private loadXeroCandidates(reset: boolean): void {

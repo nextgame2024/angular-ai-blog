@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { StudentOperationsService } from '../student-operations.service';
@@ -61,6 +61,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
       summary: { totalStudents: 0, activeStudents: 0, newApplications: 0, actionRequired: 0, onHold: 0 },
     }));
     api.xeroStatus.and.returnValue(of({ configured: true, connections: [] }));
+    api.xeroStudentCandidates.and.returnValue(of({ candidates: [], page: 1, limit: 20, total: 0 }));
     api.xeroStudentSyncStatus.and.returnValue(of({
       configured: false, organisationRole: null, lastSuccessfulSyncAt: null,
       lastErrorCode: null, nextScheduledSyncAt: null, latestRun: null,
@@ -260,7 +261,73 @@ describe('StudentOperationsStudentsPageComponent', () => {
     fixture.detectChanges();
 
     expect(api.refreshXeroStudents).toHaveBeenCalledWith('connection-1');
-    expect(fixture.nativeElement.textContent).toContain('Refreshing in the background');
+    expect(fixture.nativeElement.textContent).toContain('Waiting for the background worker');
     expect(fixture.nativeElement.textContent).toContain('No students found');
   });
+
+  it('shows page-level Xero progress while preserving the student register', () => {
+    api.workspace.and.returnValue(of({
+      packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
+      role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
+    }));
+    api.xeroStatus.and.returnValue(of({
+      configured: true,
+      connections: [{
+        connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+        organisationRole: 'trust', missingStudentDiscoveryScopes: [],
+      }],
+    }));
+    api.xeroStudentSyncStatus.and.returnValue(of({
+      configured: true, organisationRole: 'trust', lastSuccessfulSyncAt: null,
+      lastErrorCode: null, nextScheduledSyncAt: null,
+      latestRun: {
+        syncRunId: 'run-1', connectionId: 'connection-1', mode: 'initial', triggerType: 'manual',
+        status: 'processing', contactCount: 500, invoiceCount: 125, candidateCount: 0,
+        errorCode: null, createdAt: '2026-10-10T00:00:00Z',
+        startedAt: '2026-10-10T00:00:01Z', completedAt: null,
+      },
+    }));
+
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('500 contacts and 125 invoices processed');
+    expect(fixture.nativeElement.textContent).toContain('No students found');
+  });
+
+  it('backs off status polling while a Xero refresh remains active', fakeAsync(() => {
+    api.workspace.and.returnValue(of({
+      packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
+      role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
+    }));
+    api.xeroStatus.and.returnValue(of({
+      configured: true,
+      connections: [{
+        connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+        organisationRole: 'trust', missingStudentDiscoveryScopes: [],
+      }],
+    }));
+    api.xeroStudentSyncStatus.and.returnValue(of({
+      configured: true, organisationRole: 'trust', lastSuccessfulSyncAt: null,
+      lastErrorCode: null, nextScheduledSyncAt: null,
+      latestRun: {
+        syncRunId: 'run-1', connectionId: 'connection-1', mode: 'initial', triggerType: 'manual',
+        status: 'processing', contactCount: 0, invoiceCount: 0, candidateCount: 0,
+        errorCode: null, createdAt: '2026-10-10T00:00:00Z',
+        startedAt: '2026-10-10T00:00:01Z', completedAt: null,
+      },
+    }));
+    fixture.detectChanges();
+    expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(1);
+
+    tick(2000);
+    expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(2);
+    tick(2000);
+    expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(3);
+    tick(3999);
+    expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(3);
+    tick(1);
+    expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(4);
+
+    fixture.destroy();
+  }));
 });

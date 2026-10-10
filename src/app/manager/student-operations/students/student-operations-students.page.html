@@ -64,17 +64,18 @@
               <span>Connection permissions need attention. Reconnect from Company.</span>
             } @else if (!xeroConnection) {
               <span>No TRUST organisation is configured. Connect it from Company.</span>
-            } @else if (loadingXero) {
-              <span>Refreshing in the background. Existing records remain available.</span>
+            } @else if (xeroRunActive) {
+              <span>{{ xeroSyncProgress }}</span>
             } @else {
               <span>Last synchronized: {{ formatSyncTime(xeroSync?.lastSuccessfulSyncAt || null) }}</span>
             }
+            @if (xeroNotice) { <span class="xero-notice">{{ xeroNotice }}</span> }
             @if (xeroError) { <span class="xero-error" role="alert">{{ xeroError }}</span> }
           </div>
           <button type="button" class="btn primary" (click)="refreshStudentsFromXero()"
             [disabled]="loadingXero || xeroNeedsReconnect || !xeroConnection">
             <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5"></path><path d="M18 3v4h-4"></path><path d="M20 12a8 8 0 0 1-14 5"></path><path d="M6 21v-4h4"></path></svg></span>
-            {{ loadingXero ? 'Refreshing…' : 'Refresh' }}
+            {{ loadingXero ? 'Refreshing…' : (xeroRunActive ? 'Check progress' : 'Refresh') }}
           </button>
         </div>
       }
