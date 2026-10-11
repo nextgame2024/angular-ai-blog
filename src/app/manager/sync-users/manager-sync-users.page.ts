@@ -96,10 +96,10 @@ export class ManagerSyncUsersPageComponent implements OnInit, OnDestroy {
         void this.load();
         return;
       }
-      if (this.running || this.data.automatic)
+      if (this.running)
         this.poll = setTimeout(
           () => void this.load(true),
-          this.running ? 2000 : 15000,
+          2000,
         );
     } catch (e: any) {
       if (token === this.request)

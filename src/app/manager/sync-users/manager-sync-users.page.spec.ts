@@ -96,11 +96,10 @@ describe('Sync users review', () => {
     );
     expect(page.selected).toBeNull();
   });
-  it('allows pending records to be reviewed during automatic reconciliation', async () => {
+  it('allows pending records to be reviewed during a manually started sync', async () => {
     api.list.and.returnValue(
       of({
         ...result,
-        automatic: true,
         runs: [{ ...result.runs[0], mode: 'apply', status: 'processing' }],
       }),
     );
@@ -116,6 +115,13 @@ describe('Sync users review', () => {
     review?.click();
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.review-panel')).toBeTruthy();
+  });
+  it('does not poll an idle page for a legacy automatic setting', async () => {
+    api.list.and.returnValue(of({ ...result, automatic: true }));
+    const page = fixture.componentInstance;
+    await page.load();
+    expect(page.running).toBeFalse();
+    expect((page as any).poll).toBeUndefined();
   });
   for (const width of [390, 1440])
     for (const dark of [false, true]) {

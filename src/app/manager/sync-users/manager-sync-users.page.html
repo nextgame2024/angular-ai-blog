@@ -51,12 +51,13 @@
       run.processed_count }} processed · {{ run.created_count }} users created
       @if (run.error) { <span class="error-text"> · {{ run.error }}</span> }
     </p>
-    } @if (data.automatic) {
+    }
     <p>
-      New Xero refreshes will also reconcile Student users. Pending records
-      remain here for review, including while a sync is running.
+      Check records previews imported contacts. Student users are created only
+      when you select Sync ready users. Xero refreshes do not start a user sync.
+      Pending records remain available for review while a sync is running.
     </p>
-    } }
+    }
     <div class="filters">
       <label
         >Find a student<input
