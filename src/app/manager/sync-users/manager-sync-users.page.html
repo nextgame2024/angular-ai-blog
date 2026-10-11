@@ -1,0 +1,258 @@
+<section class="sync-page">
+  <header>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a><span>/</span
+      ><span>Sync users</span>
+    </nav>
+    <div class="toolbar">
+      <div>
+        <h1>Sync users</h1>
+        <p>
+          Create Student users from imported Xero contacts and resolve records
+          needing attention.
+        </p>
+      </div>
+      <div class="actions">
+        <button
+          class="btn secondary"
+          (click)="run('preview')"
+          [disabled]="saving || loading || running || !!error"
+        >
+          Check records
+        </button>
+        <button
+          class="btn primary"
+          (click)="run('apply')"
+          [disabled]="saving || loading || running || !data?.runs?.length || !!error"
+        >
+          Sync ready users
+        </button>
+      </div>
+    </div>
+    @if (data) {
+    <div class="counts" aria-label="Sync summary">
+      <div>
+        <strong>{{ data.counts['ready'] || 0 }}</strong><span>Ready</span>
+      </div>
+      <div>
+        <strong>{{ data.counts['pending'] || 0 }}</strong
+        ><span>Pending action</span>
+      </div>
+      <div>
+        <strong>{{ data.counts['linked'] || 0 }}</strong><span>Linked</span>
+      </div>
+      <div>
+        <strong>{{ data.counts['excluded'] || 0 }}</strong><span>Excluded</span>
+      </div>
+    </div>
+    @if (data.runs[0]; as run) {
+    <p role="status">
+      {{ run.mode === 'preview' ? 'Check' : 'Sync' }}: {{ run.status }} · {{
+      run.processed_count }} processed · {{ run.created_count }} users created
+      @if (run.error) { <span class="error-text"> · {{ run.error }}</span> }
+    </p>
+    } @if (data.automatic) {
+    <p>
+      New Xero refreshes will also reconcile Student users. Pending records
+      remain here for review.
+    </p>
+    } }
+    <div class="filters">
+      <label
+        >Find a student<input
+          type="search"
+          [formControl]="search"
+          (keyup.enter)="filter()"
+          placeholder="Student or Xero name"
+      /></label>
+      <label
+        >Status<app-manager-select [options]="options" [formControl]="status"
+      /></label>
+      <button class="btn secondary" (click)="filter()" [disabled]="loading">
+        Search
+      </button>
+    </div>
+  </header>
+  @if (error) {
+  <div class="error" role="alert">
+    {{ error }} <button class="btn secondary" (click)="load()">Retry</button>
+  </div>
+  } @if (toast) {
+  <div class="form-toast-wrap" role="status">{{ toast }}</div>
+  }
+  <div [attr.aria-busy]="loading" class="list-region">
+    @if (loading && !data) {
+    <div class="empty" role="status">Loading sync records…</div>
+    } @else if (data) { @if (data.records.length) {
+    <div class="records">
+      @for (row of data.records; track row.id) {
+      <article class="record">
+        <div>
+          <strong
+            >{{ row.resolution_name || row.display_name || 'Name needs review'
+            }}</strong
+          >
+          <details>
+            <summary>
+              {{ row.source_names.length }} Xero name(s) · {{ row.record_count
+              }} transactions
+            </summary>
+            @for (name of row.source_names; track name) {
+            <p>{{ name }}</p>
+            }
+          </details>
+        </div>
+        <div>
+          <span class="field-label">Email</span>{{ row.resolution_email ||
+          row.emails.join(', ') || 'Not provided' }}
+        </div>
+        <div>
+          <span class="badge" [class.pending]="row.status === 'pending'"
+            >{{ row.status }}</span
+          >
+          @if (row.reason) {
+          <p>{{ row.reason }}</p>
+          } @if (row.student_id) {
+          <p>{{ row.student_id }}</p>
+          }
+        </div>
+        <div class="actions">
+          @if (!row.student_id || row.status === 'pending') {
+          <button
+            class="btn secondary"
+            (click)="edit(row)"
+            [disabled]="running || saving"
+          >
+            Review
+          </button>
+          }
+        </div>
+      </article>
+      }
+    </div>
+    <nav class="pagination" aria-label="Record pages">
+      <span>{{ data.total }} records · Page {{ page }} of {{ pages }}</span>
+      <div class="actions">
+        <button
+          class="btn secondary"
+          (click)="move(-1)"
+          [disabled]="page <= 1 || loading"
+        >
+          Previous</button
+        ><button
+          class="btn secondary"
+          (click)="move(1)"
+          [disabled]="page >= pages || loading"
+        >
+          Next
+        </button>
+      </div>
+    </nav>
+    } @else {
+    <div class="empty" role="status">
+      {{ running ? 'Checking imported records…' : data.runs.length ? 'No records
+      match this filter.' : 'Choose Check records to review the imported Xero
+      contacts.' }}
+    </div>
+    } @if (data.runs.length) {
+    <details class="history">
+      <summary>Recent runs</summary>
+      @for (run of data.runs; track run.id) {
+      <p>
+        {{ run.created_at | date:'medium' }} · {{ run.mode }} · {{ run.status }}
+        · {{ run.created_count }} created @if (run.error) { · {{ run.error }} }
+      </p>
+      }
+    </details>
+    } }
+  </div>
+  @if (selected; as row) {
+  <div class="review-backdrop" (keydown.escape)="!saving && (selected = null)">
+    <section
+      class="review-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="review-title"
+      tabindex="-1"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <h2 id="review-title">Review student</h2>
+      <p>{{ row.source_names.join(' / ') }}</p>
+      <p>
+        Confirm these Xero names belong to the same student. Your decision
+        applies to all {{ row.record_count }} transactions in this group.
+      </p>
+      @if (row.student_id) {
+      <p>
+        Existing Student ID: {{ row.student_id }}. Existing links will be
+        preserved.
+      </p>
+      } @if (row.reason) {
+      <p class="error-text">{{ row.reason }}</p>
+      }
+      <form [formGroup]="form" (ngSubmit)="resolve('correct')">
+        <label
+          >Student name<input
+            formControlName="name"
+            [class.invalid]="form.controls.name.touched && form.controls.name.invalid"
+        /></label>
+        <label
+          >Email<input
+            type="email"
+            formControlName="email"
+            [class.invalid]="form.controls.email.touched && form.controls.email.invalid"
+        /></label>
+        @if (row.emails.length > 1) {
+        <p>Source emails: {{ row.emails.join(', ') }}</p>
+        }
+        <button class="btn primary" type="submit" [disabled]="saving">
+          Save correction
+        </button>
+        @if (!row.student_id) {
+        <hr />
+        <label
+          >Or link an existing Student ID<input
+            formControlName="studentId"
+            placeholder="STD-123"
+            [class.invalid]="form.controls.studentId.touched && form.controls.studentId.invalid"
+        /></label>
+        <button
+          class="btn secondary"
+          type="button"
+          (click)="resolve('link')"
+          [disabled]="saving"
+        >
+          Link existing student
+        </button>
+        <hr />
+        <p>
+          If this is an organisation or another non-student contact, exclude it
+          from user creation.
+        </p>
+        }
+        <div class="actions">
+          @if (!row.student_id) {
+          <button
+            class="btn secondary"
+            type="button"
+            (click)="resolve('exclude')"
+            [disabled]="saving"
+          >
+            Exclude record
+          </button>
+          }
+          <button
+            class="btn secondary"
+            type="button"
+            (click)="selected = null"
+            [disabled]="saving"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
+  </div>
+  }
+</section>

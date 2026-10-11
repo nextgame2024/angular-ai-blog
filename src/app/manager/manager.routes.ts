@@ -132,6 +132,11 @@ export const MANAGER_ROUTES: Route[] = [
         data: { title: 'Students', fullscreen: true },
       },
       {
+        path: 'sync-users',
+        loadComponent: () => import('./sync-users/manager-sync-users.page').then(m => m.ManagerSyncUsersPageComponent),
+        data: { title: 'Sync users', fullscreen: true },
+      },
+      {
         path: 'dashboard',
         component: ManagerToolkitDashboardPageComponent,
         providers: [

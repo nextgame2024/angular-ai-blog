@@ -97,6 +97,7 @@ export const MENU_NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = [
   { value: 'Company', label: 'Company' },
   { value: 'Payments and Control', label: 'Payments and Control' },
   { value: 'Students', label: 'Students' },
+  { value: 'Sync users', label: 'Sync users' },
   { value: 'Sites', label: 'Sites' },
   { value: 'Pallets', label: 'Pallets' },
   { value: 'Projects', label: 'Projects' },
