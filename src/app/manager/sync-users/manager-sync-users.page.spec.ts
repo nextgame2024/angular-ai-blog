@@ -96,6 +96,27 @@ describe('Sync users review', () => {
     );
     expect(page.selected).toBeNull();
   });
+  it('allows pending records to be reviewed during automatic reconciliation', async () => {
+    api.list.and.returnValue(
+      of({
+        ...result,
+        automatic: true,
+        runs: [{ ...result.runs[0], mode: 'apply', status: 'processing' }],
+      }),
+    );
+    fixture.detectChanges();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    const review = Array.from(element.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Review',
+    );
+    expect(review).toBeTruthy();
+    expect(review?.disabled).toBeFalse();
+    review?.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.review-panel')).toBeTruthy();
+  });
   for (const width of [390, 1440])
     for (const dark of [false, true]) {
       it(`fits ${width}px in ${dark ? 'dark' : 'light'} mode, including review controls`, async () => {

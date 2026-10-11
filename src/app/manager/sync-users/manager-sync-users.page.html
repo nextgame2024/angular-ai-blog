@@ -54,7 +54,7 @@
     } @if (data.automatic) {
     <p>
       New Xero refreshes will also reconcile Student users. Pending records
-      remain here for review.
+      remain here for review, including while a sync is running.
     </p>
     } }
     <div class="filters">
@@ -121,7 +121,7 @@
           <button
             class="btn secondary"
             (click)="edit(row)"
-            [disabled]="running || saving"
+            [disabled]="saving"
           >
             Review
           </button>
