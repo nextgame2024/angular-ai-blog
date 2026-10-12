@@ -337,26 +337,18 @@ export const managerReducer = createReducer(
   /* =========================
      Users - load
   ========================= */
-  on(ManagerActions.loadUsers, (state, { page }) => ({
+  on(ManagerActions.loadUsers, (state, { page, limit }) => ({
     ...state,
     usersLoading: true,
     usersError: null,
     usersPage: page,
+    usersLimit: limit ?? state.usersLimit,
   })),
 
   on(ManagerActions.loadUsersSuccess, (state, { result }) => ({
     ...state,
     usersLoading: false,
-    users: sortUsers(
-      result.page > 1
-        ? [
-            ...state.users,
-            ...(result.items ?? []).filter(
-              (u: BmUser) => !state.users.some((p) => p.id === u.id),
-            ),
-          ]
-        : (result.items ?? []),
-    ),
+    users: result.items ?? [],
     usersPage: result.page,
     usersLimit: result.limit,
     usersTotal: result.total,
@@ -432,19 +424,14 @@ export const managerReducer = createReducer(
     usersError: null,
   })),
 
-  on(ManagerActions.archiveUserSuccess, (state, { userId, action }) => {
-    const isDeleted = action === 'deleted';
-    const users = isDeleted
-      ? state.users.filter((u: BmUser) => u.id !== userId)
-      : state.users.map((u: BmUser) =>
-          u.id === userId ? { ...u, status: 'archived' } : u,
-        );
+  on(ManagerActions.archiveUserSuccess, (state, { userId }) => {
+    const users = state.users.filter((u: BmUser) => u.id !== userId);
 
     return {
       ...state,
       usersLoading: false,
       users: sortUsers(users),
-      usersTotal: isDeleted ? Math.max(state.usersTotal - 1, 0) : state.usersTotal,
+      usersTotal: Math.max(state.usersTotal - 1, 0),
     };
   }),
 

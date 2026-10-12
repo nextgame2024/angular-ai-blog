@@ -9,6 +9,7 @@ import { ManagerService } from '../services/manager.service';
 import {
   selectManagerClientsSearchQuery,
   selectManagerUsersSearchQuery,
+  selectManagerUsersLimit,
   selectManagerEditingClientId,
   selectManagerEditingContactId,
   selectManagerEditingUser,
@@ -195,9 +196,9 @@ export class ManagerEffects {
   loadUsers$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerActions.loadUsers),
-      withLatestFrom(this.store.select(selectManagerUsersSearchQuery)),
-      switchMap(([{ page }, q]) =>
-        this.api.listUsers({ page, limit: 20, q: q || undefined }).pipe(
+      withLatestFrom(this.store.select(selectManagerUsersSearchQuery), this.store.select(selectManagerUsersLimit)),
+      switchMap(([{ page, sort, direction }, q, limit]) =>
+        this.api.listUsers({ page, limit, q: q || undefined, status: 'active', sort, direction }).pipe(
           map((result) => ManagerActions.loadUsersSuccess({ result })),
           catchError((err) =>
             of(

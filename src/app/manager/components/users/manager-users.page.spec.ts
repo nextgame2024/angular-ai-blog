@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Actions } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
-import { provideMockStore } from '@ngrx/store/testing';
+import { MockStore, provideMockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
 import { selectCurrentUser } from '../../../auth/store/reducers';
 import { AvatarUploadService } from '../../../settings/components/settings/services/avatar-upload.service';
@@ -14,7 +14,7 @@ import { NavigationLinksProjectsService } from '../../services/navigation.links.
 import { StudentOperationsService } from '../../student-operations/student-operations.service';
 import {
   selectManagerEditingUser, selectManagerUsers, selectManagerUsersError,
-  selectManagerUsersLoading, selectManagerUsersPage, selectManagerUsersSearchQuery,
+  selectManagerUsersLoading, selectManagerUsersPage, selectManagerUsersLimit, selectManagerUsersSearchQuery,
   selectManagerUsersTotal, selectManagerUsersViewMode,
 } from '../../store/manager.selectors';
 import { ManagerUsersPageComponent } from './manager-users.page';
@@ -37,6 +37,7 @@ describe('Manager Users Student Operations fields', () => {
           { selector: selectManagerUsersError, value: null },
           { selector: selectManagerUsersTotal, value: 0 },
           { selector: selectManagerUsersPage, value: 1 },
+          { selector: selectManagerUsersLimit, value: 25 },
           { selector: selectManagerUsersViewMode, value: 'form' },
           { selector: selectManagerUsersSearchQuery, value: '' },
           { selector: selectManagerEditingUser, value: null },
@@ -123,5 +124,53 @@ describe('Manager Users Student Operations fields', () => {
 
     expect(store.dispatch).not.toHaveBeenCalled();
     expect(component.roleAdministrationError).toContain('cannot change your own Chief Executive role');
+  });
+
+  it('requests explicit pages and a new server page size', () => {
+    const component = fixture.componentInstance;
+    spyOn(store, 'dispatch');
+    component.totalUsers = 80;
+    component.goToPage(2);
+    expect(store.dispatch).toHaveBeenCalledWith(jasmine.objectContaining({ page: 2 }));
+
+    component.pageSizeCtrl.setValue('50');
+    expect(store.dispatch).toHaveBeenCalledWith(jasmine.objectContaining({ page: 1, limit: 50 }));
+  });
+
+  it('toggles the requested server sort and keeps it for later pages', () => {
+    const component = fixture.componentInstance;
+    spyOn(store, 'dispatch');
+    component.totalUsers = 80;
+
+    component.sortUsersBy('email');
+    expect(component.userSortAria('email')).toBe('ascending');
+    expect(store.dispatch).toHaveBeenCalledWith(jasmine.objectContaining({
+      page: 1, sort: 'email', direction: 'asc',
+    }));
+
+    component.sortUsersBy('email');
+    expect(component.userSortAria('email')).toBe('descending');
+    component.goToPage(2);
+    expect(store.dispatch).toHaveBeenCalledWith(jasmine.objectContaining({
+      page: 2, sort: 'email', direction: 'desc',
+    }));
+  });
+
+  it('renders sortable desktop table headers while keeping Actions unsortable', () => {
+    const mockStore = TestBed.inject(MockStore);
+    mockStore.overrideSelector(selectManagerUsersViewMode, 'list');
+    mockStore.overrideSelector(selectManagerUsers, [{
+      id: 'student-1', username: 'jane.doe', name: 'Jane Doe',
+      email: 'jane@example.com', status: 'active',
+    }]);
+    mockStore.overrideSelector(selectManagerUsersTotal, 1);
+    mockStore.refreshState();
+    fixture.detectChanges();
+
+    const table = fixture.nativeElement.querySelector('.user-table') as HTMLTableElement;
+    expect(table).not.toBeNull();
+    expect(table.querySelectorAll('thead .sort-button').length).toBe(5);
+    expect(table.querySelector('th[aria-sort="ascending"]')?.textContent).toContain('Name');
+    expect(table.querySelector('thead th:last-child button')).toBeNull();
   });
 });

@@ -56,23 +56,6 @@
         }
       </label>
     </div>
-    @if ((filteredUsers$ | async)?.length && !(loading$ | async)) {
-      <div
-        class="table-head"
-        [class.superadmin-cols]="isSuperAdmin"
-        aria-hidden="true"
-      >
-        <div>Name</div>
-        <div>Username</div>
-        <div>Email</div>
-        @if (isSuperAdmin) {
-        <div>Company</div>
-        }
-        <div>Type</div>
-        <div>Status</div>
-        <div class="actions-col">Actions</div>
-      </div>
-    }
   </div>
   } @if ((error$ | async); as err) { @if (!isErrorDismissed(err)) {
   <div class="error">
@@ -549,7 +532,7 @@
 
   <!-- LIST MODE -->
   @if ((viewMode$ | async) === 'list') {
-  <section class="list" #usersList>
+  <section class="list">
     @if (loading$ | async) {
     <div class="list-loader" aria-live="polite" aria-busy="true">
       <div class="loader-content">
@@ -558,36 +541,30 @@
         <div class="loader-text">Loading users…</div>
       </div>
     </div>
-    } @else if (filteredUsers$ | async; as users) {
+    } @else if (usersRaw$ | async; as users) {
     <!-- Desktop table -->
     @if (users.length) {
-    <div class="table">
-      <div class="thead" [class.superadmin-cols]="isSuperAdmin">
-        <div>Name</div>
-        <div>Username</div>
-        <div>Email</div>
-        @if (isSuperAdmin) {
-        <div>Company</div>
-        }
-        <div>Type</div>
-        <div>Status</div>
-        <div class="actions-col">Actions</div>
-      </div>
-      @for (u of users; track trackByUser($index, u)) {
-      <div class="trow" [class.superadmin-cols]="isSuperAdmin">
-        <div class="cell strong">{{ u.name || '—' }}</div>
-        <div class="cell muted">{{ u.username }}</div>
-        <div class="cell muted">{{ u.email || '—' }}</div>
-        @if (isSuperAdmin) {
-        <div class="cell muted">{{ u.companyName || '—' }}</div>
-        }
-        <div class="cell muted">{{ formatUserType(u.type) }}</div>
-        <div class="cell">
-          <span class="badge" [class.archived]="u.status === 'archived'">
-            {{ u.status || 'active' }}
-          </span>
-        </div>
-        <div class="cell actions-col">
+    <div class="table-wrap">
+      <table class="user-table">
+        <thead><tr>
+          <th scope="col" [attr.aria-sort]="userSortAria('name')"><button type="button" class="sort-button" (click)="sortUsersBy('name')">Name <span class="sort-indicator" aria-hidden="true"></span></button></th>
+          <th scope="col" [attr.aria-sort]="userSortAria('username')"><button type="button" class="sort-button" (click)="sortUsersBy('username')">Username <span class="sort-indicator" aria-hidden="true"></span></button></th>
+          <th scope="col" [attr.aria-sort]="userSortAria('email')"><button type="button" class="sort-button" (click)="sortUsersBy('email')">Email <span class="sort-indicator" aria-hidden="true"></span></button></th>
+          @if (isSuperAdmin) { <th scope="col" [attr.aria-sort]="userSortAria('company')"><button type="button" class="sort-button" (click)="sortUsersBy('company')">Company <span class="sort-indicator" aria-hidden="true"></span></button></th> }
+          <th scope="col" [attr.aria-sort]="userSortAria('type')"><button type="button" class="sort-button" (click)="sortUsersBy('type')">Type <span class="sort-indicator" aria-hidden="true"></span></button></th>
+          <th scope="col" [attr.aria-sort]="userSortAria('status')"><button type="button" class="sort-button" (click)="sortUsersBy('status')">Status <span class="sort-indicator" aria-hidden="true"></span></button></th>
+          <th scope="col">Actions</th>
+        </tr></thead>
+        <tbody>
+        @for (u of users; track trackByUser($index, u)) {
+        <tr>
+          <td class="strong">{{ u.name || '—' }}</td>
+          <td>{{ u.username }}</td>
+          <td>{{ u.email || '—' }}</td>
+          @if (isSuperAdmin) { <td>{{ u.companyName || '—' }}</td> }
+          <td>{{ formatUserType(u.type) }}</td>
+          <td><span class="badge">{{ u.status || 'active' }}</span></td>
+          <td class="row-actions">
           <button
             class="btn small secondary"
             type="button"
@@ -617,9 +594,11 @@
             </span>
             {{ u.hasProcesses ? 'Archive' : 'Delete' }}
           </button>
-        </div>
-      </div>
-      }
+          </td>
+        </tr>
+        }
+        </tbody>
+      </table>
     </div>
     }
     <!-- Mobile cards -->
@@ -682,7 +661,19 @@
       <span>No records match the current filters.</span>
     </div>
     }
-    <div class="infinite-sentinel" #infiniteSentinel></div>
+    @if (totalUsers) {
+    <footer class="users-pagination" aria-label="Users pagination">
+      <span>Showing {{ pageStart }}–{{ pageEnd }} of {{ totalUsers }}</span>
+      <app-manager-select class="page-size" [formControl]="pageSizeCtrl" [options]="pageSizeOptions"></app-manager-select>
+      <div class="page-buttons">
+        <button type="button" (click)="goToPage(1)" [disabled]="currentPage <= 1 || isLoading" aria-label="First page">«</button>
+        <button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1 || isLoading" aria-label="Previous page">‹</button>
+        <span>Page {{ currentPage }} of {{ totalPages }}</span>
+        <button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages || isLoading" aria-label="Next page">›</button>
+        <button type="button" (click)="goToPage(totalPages)" [disabled]="currentPage >= totalPages || isLoading" aria-label="Last page">»</button>
+      </div>
+    </footer>
+    }
     }
   </section>
   }

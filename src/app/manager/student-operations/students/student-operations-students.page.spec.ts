@@ -189,6 +189,31 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(fixture.nativeElement.querySelector('.screen-loader')).toBeNull();
   });
 
+  it('pins the list header and table headings above the scrolling register', () => {
+    fixture.detectChanges();
+    fixture.componentInstance.xeroInvoices = {
+      page: 1, limit: 25, total: 1, totalPages: 1,
+      invoices: [{
+        xeroInvoiceId: 'invoice-1', invoiceNumber: 'INV-1', reference: 'ATI',
+        studentName: 'Student One', studentEmail: null, invoiceDate: '2026-10-01',
+        dueDate: '2026-10-10', status: 'draft', currencyCode: 'AUD',
+        amountPaid: 0, amountDue: 100, sentToContact: false,
+        advisorName: null, paymentTrack: null, reviewStatus: 'pending',
+      }],
+    } as any;
+    fixture.detectChanges();
+
+    const header = fixture.nativeElement.querySelector('.list-header') as HTMLElement;
+    const register = fixture.nativeElement.querySelector('.invoice-table-scroll') as HTMLElement;
+    const tableHeading = fixture.nativeElement.querySelector('.invoice-table th') as HTMLElement;
+    expect(getComputedStyle(header).position).toBe('sticky');
+    expect(getComputedStyle(register).overflowY).toBe('auto');
+    expect(getComputedStyle(tableHeading).position).toBe('sticky');
+    expect(header.querySelector('.filters')).not.toBeNull();
+    expect(register.getBoundingClientRect().height).toBeGreaterThan(100);
+    expect(register.querySelector('tbody tr')).not.toBeNull();
+  });
+
   it('does not flash the empty state while the Xero register is still loading', () => {
     const xeroStatus$ = new Subject<any>();
     const xeroInvoices$ = new Subject<any>();

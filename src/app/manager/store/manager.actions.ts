@@ -3,6 +3,8 @@ import {
   BmClient,
   BmClientContact,
   BmUser,
+  BmUserSort,
+  BmUserSortDirection,
   PagedResult,
 } from '../services/manager.service';
 import { ClientFormTab } from './manager.state';
@@ -63,7 +65,7 @@ export const ManagerActions = createActionGroup({
     /* =========================
        Users
     ========================= */
-    'Load Users': props<{ page: number }>(),
+    'Load Users': props<{ page: number; limit?: number; sort?: BmUserSort; direction?: BmUserSortDirection }>(),
     'Load Users Success': props<{ result: PagedResult<BmUser> }>(),
     'Load Users Failure': props<{ error: string }>(),
 

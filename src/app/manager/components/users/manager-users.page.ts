@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit } from '@angular/core';
 import {
   FormBuilder,
   FormControl,
@@ -9,12 +9,10 @@ import {
 import { RouterModule } from '@angular/router';
 import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
-import { combineLatest, Observable, Subject, of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import {
   debounceTime,
   distinctUntilChanged,
-  map,
-  startWith,
   switchMap,
   take,
   takeUntil,
@@ -28,6 +26,7 @@ import {
   selectManagerUsersLoading,
   selectManagerUsersTotal,
   selectManagerUsersPage,
+  selectManagerUsersLimit,
   selectManagerUsersViewMode,
   selectManagerEditingUser,
 } from '../../store/manager.selectors';
@@ -45,7 +44,7 @@ import { ManagerCompanyService } from '../../services/manager.company.service';
 import { ManagerSitesService } from '../../services/manager.sites.service';
 import { NavigationLinksProjectsService } from '../../services/navigation.links.projects.service';
 
-import type { BmUser } from '../../services/manager.service';
+import type { BmUser, BmUserSort, BmUserSortDirection } from '../../services/manager.service';
 import { ManagerService } from '../../services/manager.service';
 import { StudentOperationsService } from '../../student-operations/student-operations.service';
 
@@ -69,14 +68,18 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
 
   searchQuery$ = this.store.select(selectManagerUsersSearchQuery);
   searchCtrl: FormControl<string>;
-  filteredUsers$!: Observable<BmUser[]>;
-  canLoadMore$!: Observable<boolean>;
-
-  private infiniteObserver?: IntersectionObserver;
-  private isLoadingMore = false;
-  private currentPage = 1;
-  private canLoadMore = false;
-  private isLoading = false;
+  readonly pageSizeOptions: ManagerSelectOption[] = [
+    { value: '25', label: '25 per page' },
+    { value: '50', label: '50 per page' },
+    { value: '100', label: '100 per page' },
+  ];
+  pageSizeCtrl = new FormControl('25', { nonNullable: true });
+  currentPage = 1;
+  pageLimit = 25;
+  totalUsers = 0;
+  isLoading = false;
+  userSort: BmUserSort = 'name';
+  userSortDirection: BmUserSortDirection = 'asc';
   private closeAfterSave = false;
   private editingUserId: string | null = null;
   dismissedErrors = new Set<string>();
@@ -108,9 +111,6 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   ];
   private pendingRoleAssignment: { companyId: string; roleKey: string | null } | null = null;
   private readonly studentOperationsPackId = 'student-operations';
-
-  @ViewChild('usersList') usersListRef?: ElementRef<HTMLElement>;
-  @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
 
   addressSuggestions: TownPlannerV2AddressSuggestion[] = [];
   showAddressSuggestions = false;
@@ -175,43 +175,18 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
 
-    this.filteredUsers$ = combineLatest([
-      this.usersRaw$,
-      this.searchCtrl.valueChanges.pipe(startWith('')),
-    ]).pipe(
-      map(([users, query]) => {
-        const q = (query || '').trim().toLowerCase();
-        if (!q) return users;
-        return users.filter((u) => {
-          return (
-            u.username?.toLowerCase().includes(q) ||
-            u.name?.toLowerCase().includes(q) ||
-            u.email?.toLowerCase().includes(q) ||
-            u.companyName?.toLowerCase().includes(q) ||
-            u.siteName?.toLowerCase().includes(q) ||
-            u.type?.toLowerCase().includes(q) ||
-            u.status?.toLowerCase().includes(q)
-          );
-        });
-      }),
-    );
-
-    this.canLoadMore$ = combineLatest([
-      this.total$,
-      this.usersRaw$,
-      this.loading$,
-    ]).pipe(
-      map(([total, users, loading]) => !loading && users.length < total),
-    );
     this.page$.pipe(takeUntil(this.destroy$)).subscribe((page) => {
       this.currentPage = page || 1;
     });
-    this.canLoadMore$.pipe(takeUntil(this.destroy$)).subscribe((canLoad) => {
-      this.canLoadMore = canLoad;
+    this.total$.pipe(takeUntil(this.destroy$)).subscribe((total) => {
+      this.totalUsers = total || 0;
     });
     this.loading$.pipe(takeUntil(this.destroy$)).subscribe((loading) => {
       this.isLoading = loading;
-      if (!loading) this.isLoadingMore = false;
+    });
+    this.store.select(selectManagerUsersLimit).pipe(takeUntil(this.destroy$)).subscribe((limit) => {
+      this.pageLimit = limit || 25;
+      this.pageSizeCtrl.setValue(String(this.pageLimit), { emitEvent: false });
     });
 
     this.actions$
@@ -230,8 +205,6 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.store.dispatch(ManagerActions.loadUsers({ page: 1 }));
-
     this.store
       .select(selectCurrentUser)
       .pipe(takeUntil(this.destroy$))
@@ -257,7 +230,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       if (this.searchCtrl.value !== (query || '')) {
         this.searchCtrl.setValue(query || '', { emitEvent: false });
       }
-      this.store.dispatch(ManagerActions.loadUsers({ page: 1 }));
+      this.store.dispatch(ManagerActions.loadUsers({ page: 1, sort: this.userSort, direction: this.userSortDirection }));
     });
 
     this.searchCtrl.valueChanges
@@ -271,13 +244,10 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
           ManagerActions.setUsersSearchQuery({ query: query || '' }),
         ),
       );
-
-    this.viewMode$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((mode) => {
-        if (mode !== 'list') return;
-        setTimeout(() => this.setupInfiniteScroll(), 0);
-      });
+    this.pageSizeCtrl.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((value) => this.store.dispatch(ManagerActions.loadUsers({ page: 1, limit: Number(value), sort: this.userSort, direction: this.userSortDirection })));
+    this.actions$.pipe(ofType(ManagerActions.saveUserSuccess, ManagerActions.archiveUserSuccess), takeUntil(this.destroy$))
+      .subscribe(() => this.store.dispatch(ManagerActions.loadUsers({ page: Math.min(this.currentPage, this.totalPages), sort: this.userSort, direction: this.userSortDirection })));
 
     this.editingUser$.pipe(takeUntil(this.destroy$)).subscribe((u) => {
       this.editingUserId = u?.id ?? null;
@@ -339,7 +309,6 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.infiniteObserver?.disconnect();
     this.destroy$.next();
     this.destroy$.complete();
     this.revokePreview();
@@ -553,29 +522,28 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  private setupInfiniteScroll(): void {
-    const sentinel = this.infiniteSentinelRef?.nativeElement;
-    const list = this.usersListRef?.nativeElement;
-    if (!sentinel || !list) return;
+  get totalPages(): number { return Math.max(1, Math.ceil(this.totalUsers / this.pageLimit)); }
+  get pageStart(): number { return this.totalUsers ? (this.currentPage - 1) * this.pageLimit + 1 : 0; }
+  get pageEnd(): number { return Math.min(this.currentPage * this.pageLimit, this.totalUsers); }
 
-    this.infiniteObserver?.disconnect();
+  sortUsersBy(sort: BmUserSort): void {
+    if (this.isLoading) return;
+    this.userSortDirection = this.userSort === sort && this.userSortDirection === 'asc' ? 'desc' : 'asc';
+    this.userSort = sort;
+    this.store.dispatch(ManagerActions.loadUsers({ page: 1, sort, direction: this.userSortDirection }));
+  }
 
-    const scrollRoot = list.closest('.content') as HTMLElement | null;
+  userSortAria(sort: BmUserSort): 'ascending' | 'descending' | 'none' {
+    if (this.userSort !== sort) return 'none';
+    return this.userSortDirection === 'asc' ? 'ascending' : 'descending';
+  }
 
-    this.infiniteObserver = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (!entry?.isIntersecting) return;
-        this.tryLoadMore();
-      },
-      {
-        root: scrollRoot,
-        rootMargin: '200px 0px',
-        threshold: 0.1,
-      },
-    );
-
-    this.infiniteObserver.observe(sentinel);
+  goToPage(page: number): void {
+    if (this.isLoading) return;
+    const target = Math.max(1, Math.min(page, this.totalPages));
+    if (target === this.currentPage) return;
+    this.store.dispatch(ManagerActions.loadUsers({ page: target, sort: this.userSort, direction: this.userSortDirection }));
+    this.scrollContentToTop();
   }
 
   private openConfirmModal(options: {
@@ -622,12 +590,6 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
     this.isConfirmModalOpen = false;
     this.confirmModalConfirmAction = null;
     this.confirmModalCancelAction = null;
-  }
-
-  private tryLoadMore(): void {
-    if (!this.canLoadMore || this.isLoading || this.isLoadingMore) return;
-    this.isLoadingMore = true;
-    this.store.dispatch(ManagerActions.loadUsers({ page: this.currentPage + 1 }));
   }
 
   onAvatarSelected(event: Event): void {

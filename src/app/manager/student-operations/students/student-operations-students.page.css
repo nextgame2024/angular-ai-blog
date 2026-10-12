@@ -8,12 +8,14 @@
   flex-direction: column;
   gap: 0.85rem;
   height: 100%;
-  min-height: 100%;
+  min-height: 0;
   box-sizing: border-box;
 }
 .list-header {
-  position: relative;
+  position: sticky;
+  top: 0;
   z-index: 6;
+  flex: 0 0 auto;
   margin: -0.75rem -0.75rem 0;
   padding: 0.75rem;
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
@@ -292,7 +294,10 @@
 }
 .xero-candidates {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 0.75rem;
+  flex: 1 1 360px;
+  min-height: 360px;
   border: 1px solid #d8e4ec;
   border-radius: 0.9rem;
   background: #fff;
@@ -331,7 +336,9 @@
   color: #69778b;
 }
 .invoice-table-scroll {
-  overflow-x: auto;
+  min-height: 160px;
+  overflow: auto;
+  overscroll-behavior: contain;
   border: 1px solid #e1e7ee;
   border-radius: 0.75rem;
   transition: opacity 160ms ease;
@@ -340,7 +347,8 @@
 .invoice-table {
   width: 100%;
   min-width: 1560px;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   color: #465268;
   font-size: 0.82rem;
 }
@@ -352,6 +360,9 @@
   vertical-align: middle;
 }
 .invoice-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   background: #f8fafc;
   color: #46556a;
   font-weight: 800;
@@ -790,6 +801,15 @@
   }
 }
 @media (max-width: 640px) {
+  .students-shell { height: auto; min-height: 100%; }
+  .list-header { display: flex; flex-direction: column; max-height: 60dvh; overflow-y: auto; overscroll-behavior: contain; }
+  .breadcrumb { order: 0; }
+  .students-toolbar { order: 1; }
+  .filters { order: 2; }
+  .overview { order: 3; }
+  .xero-sync { order: 4; }
+  .privacy-note { order: 5; }
+  .xero-candidates { flex: none; min-height: 0; grid-template-rows: auto; }
   .students-toolbar {
     flex-direction: column;
   }
@@ -800,7 +820,7 @@
   .candidate-header { flex-direction: column; }
   .xero-candidates { padding: 0.75rem; }
   .source-badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
-  .invoice-table-scroll { overflow: visible; border: 0; }
+  .invoice-table-scroll { min-height: 0; overflow: visible; border: 0; }
   .invoice-table,
   .invoice-table tbody,
   .invoice-table tr,

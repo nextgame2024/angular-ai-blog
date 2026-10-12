@@ -76,7 +76,7 @@ export const initialManagerState: ManagerState = {
   usersLoading: false,
   usersError: null,
   usersPage: 1,
-  usersLimit: 20,
+  usersLimit: 25,
   usersTotal: 0,
   usersViewMode: 'list',
   editingUserId: null,

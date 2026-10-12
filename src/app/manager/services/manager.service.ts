@@ -55,6 +55,8 @@ export interface BmClientContact {
 ========================= */
 
 export type UserStatus = 'active' | 'archived' | string;
+export type BmUserSort = 'name' | 'username' | 'email' | 'company' | 'type' | 'status';
+export type BmUserSortDirection = 'asc' | 'desc';
 export type UserType = 'employee' | 'supplier' | 'client' | 'student' | 'advisor' | string;
 
 export interface BmUser {
@@ -213,6 +215,8 @@ export class ManagerService {
     status?: string;
     type?: string;
     companyId?: string;
+    sort?: BmUserSort;
+    direction?: BmUserSortDirection;
   }): Observable<PagedResult<BmUser>> {
     let httpParams = new HttpParams()
       .set('page', String(params.page ?? 1))
@@ -221,6 +225,8 @@ export class ManagerService {
     if (params.status) httpParams = httpParams.set('status', params.status);
     if (params.type) httpParams = httpParams.set('type', params.type);
     if (params.companyId) httpParams = httpParams.set('companyId', params.companyId);
+    if (params.sort) httpParams = httpParams.set('sort', params.sort);
+    if (params.direction) httpParams = httpParams.set('direction', params.direction);
 
     return this.http
       .get<ListUsersResponse>(this.usersBase, { params: httpParams })
