@@ -32,91 +32,78 @@
       </div>
     </header>
     @if (viewMode === 'list') {
-      <div class="overview" aria-label="Student summary">
+      <div class="overview" aria-label="TRUST transaction summary">
         <div class="metrics">
-          <article class="metric metric-active">
-            <span class="metric-label">Active students</span>
-            <strong>{{ summary.activeStudents }}</strong>
-            <small>{{ summary.totalStudents }} total records</small>
-          </article>
-          <article class="metric metric-new">
-            <span class="metric-label">New applications</span>
-            <strong>{{ summary.newApplications }}</strong>
-            <small>Current operational stage</small>
-          </article>
-          <article class="metric metric-action">
-            <span class="metric-label">Action required</span>
-            <strong>{{ summary.actionRequired }}</strong>
-            <small>Needs staff attention</small>
-          </article>
-          <article class="metric metric-hold">
-            <span class="metric-label">On hold</span>
-            <strong>{{ summary.onHold }}</strong>
-            <small>Paused records</small>
-          </article>
+          <article class="metric"><span class="metric-label">Invoices</span><strong>{{ xeroInvoices?.invoiceTotal ?? '—' }}</strong></article>
+          <article class="metric"><span class="metric-label">Credit notes</span><strong>{{ xeroInvoices?.creditNoteTotal ?? '—' }}</strong></article>
+          <article class="metric"><span class="metric-label">Prepayments</span><strong>{{ xeroInvoices?.prepaymentTotal ?? '—' }}</strong></article>
+          <article class="metric"><span class="metric-label">Overpayments</span><strong>{{ xeroInvoices?.overpaymentTotal ?? '—' }}</strong></article>
+          <article class="metric"><span class="metric-label">Draft</span><strong>{{ xeroInvoices?.statusTotals?.draft ?? '—' }}</strong></article>
+          <article class="metric"><span class="metric-label">Awaiting approval</span><strong>{{ xeroInvoices?.statusTotals?.awaitingApproval ?? '—' }}</strong></article>
+          <article class="metric"><span class="metric-label">Awaiting payment</span><strong>{{ xeroInvoices?.statusTotals?.awaitingPayment ?? '—' }}</strong></article>
+          <article class="metric"><span class="metric-label">Paid</span><strong>{{ xeroInvoices?.statusTotals?.paid ?? '—' }}</strong></article>
         </div>
       </div>
-      @if (isChiefExecutive) {
-        <div class="xero-sync" [class.xero-sync-error]="xeroError" aria-live="polite">
-          <div>
-            <strong>Xero TRUST data</strong>
-            @if (xeroNeedsReconnect) {
-              <span>Connection permissions need attention. Reconnect from Company.</span>
-            } @else if (!xeroConnection) {
-              <span>No TRUST organisation is configured. Connect it from Company.</span>
-            } @else if (xeroRunActive) {
-              <span>{{ xeroSyncProgress }}</span>
-            } @else {
-              <span>Last checked: {{ formatSyncTime(xeroSync?.lastSuccessfulSyncAt || null) }}</span>
-              @if (xeroSync?.lastFullSyncAt !== undefined) {
-                <span>Last full refresh: {{ xeroSync?.lastFullSyncAt ? formatSyncTime(xeroSync!.lastFullSyncAt!) : 'Not completed' }}</span>
-              }
-            }
-            @if (xeroNotice) { <span class="xero-notice">{{ xeroNotice }}</span> }
-            @if (xeroError) { <span class="xero-error" role="alert">{{ xeroError }}</span> }
-          </div>
-          <button type="button" class="btn primary" (click)="refreshStudentsFromXero()"
-            [disabled]="loadingXero || xeroNeedsReconnect || !xeroConnection">
-            <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5"></path><path d="M18 3v4h-4"></path><path d="M20 12a8 8 0 0 1-14 5"></path><path d="M6 21v-4h4"></path></svg></span>
-            {{ loadingXero ? 'Refreshing…' : (xeroRunActive ? 'Check progress' : 'Refresh') }}
-          </button>
-        </div>
-      }
-      @if (privacyNoteVisible) {
-        <div class="privacy-note">
-          <span>This register excludes restricted identity documents and sensitive financial details.</span>
-          <button type="button" class="privacy-dismiss" (click)="dismissPrivacyNote()" aria-label="Dismiss privacy notice">×</button>
-        </div>
-      }
-      <div class="filters" aria-label="Student filters">
+      <div class="filters" aria-label="Transaction filters">
         <label class="search-field">
           <span class="search-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
           </span>
-          <input [formControl]="search" type="search" placeholder="Search by name, reference or email" aria-label="Search students" />
+          <input [formControl]="search" type="search" placeholder="Search by name, reference or email" aria-label="Search transactions" />
           @if (search.value) { <button type="button" class="clear" (click)="clearSearch()" aria-label="Clear search">×</button> }
         </label>
-        <app-manager-select [formControl]="status" [options]="statusOptions" placeholder="All statuses"></app-manager-select>
-        <label class="plain-field"><input [formControl]="college" type="search" placeholder="College name" aria-label="Filter by college" /></label>
-        <app-manager-select [formControl]="advisor" [options]="advisorFilterOptions" placeholder="All assignments"></app-manager-select>
+        <app-manager-select [formControl]="invoiceStatus" [options]="invoiceStatusOptions" placeholder="All statuses"></app-manager-select>
+        <p-datepicker [formControl]="invoiceDateRange" selectionMode="range" dateFormat="dd/mm/yy"
+          [readonlyInput]="true" [showIcon]="true" [showButtonBar]="true" [showClear]="true"
+          appendTo="body" styleClass="invoice-date-range" placeholder="Date range"
+          ariaLabel="Invoice date range"></p-datepicker>
+        <app-manager-select [formControl]="paymentTrack" [options]="paymentTrackOptions" placeholder="All payment tracks"></app-manager-select>
+        @if (invoiceFilterError) { <span class="filter-error" role="alert">{{ invoiceFilterError }}</span> }
       </div>
     }
   </div>
 
+  <ng-template #xeroSyncPanel>
+    <div class="xero-sync" [class.xero-sync-error]="xeroError" aria-live="polite">
+      <div class="xero-sync-details">
+        @if (xeroNeedsReconnect) {
+          <span>Connection permissions need attention. Reconnect from Company.</span>
+        } @else if (!xeroConnection) {
+          <span>No TRUST organisation is configured. Connect it from Company.</span>
+        } @else if (xeroRunActive) {
+          <span>{{ xeroSyncProgress }}</span>
+        } @else {
+          <span>Last checked: {{ formatSyncTime(xeroSync?.lastSuccessfulSyncAt || null) }}</span>
+          @if (xeroSync?.lastFullSyncAt !== undefined) {
+            <span>Last full refresh: {{ xeroSync?.lastFullSyncAt ? formatSyncTime(xeroSync!.lastFullSyncAt!) : 'Not completed' }}</span>
+          }
+        }
+        @if (xeroNotice) { <span class="xero-notice">{{ xeroNotice }}</span> }
+        @if (xeroError) { <span class="xero-error" role="alert">{{ xeroError }}</span> }
+      </div>
+      <button type="button" class="btn primary" (click)="refreshStudentsFromXero()"
+        [disabled]="loadingXero || xeroNeedsReconnect || !xeroConnection">
+        <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5"></path><path d="M18 3v4h-4"></path><path d="M20 12a8 8 0 0 1-14 5"></path><path d="M6 21v-4h4"></path></svg></span>
+        {{ loadingXero ? 'Refreshing…' : (xeroRunActive ? 'Check progress' : 'Refresh') }}
+      </button>
+    </div>
+  </ng-template>
+
+  @if (viewMode === 'list' && !xeroInvoices && isChiefExecutive) {
+    <ng-container [ngTemplateOutlet]="xeroSyncPanel"></ng-container>
+  }
+
   @if (viewMode === 'list' && xeroInvoices) {
     <section class="xero-candidates" aria-labelledby="xero-invoices-title">
       <header class="candidate-header">
-        <div>
-          <h4 id="xero-invoices-title">TRUST sales transactions ({{ xeroInvoices.total }})</h4>
+        <div class="candidate-heading">
+          <div class="candidate-title-row">
+            <h4 id="xero-invoices-title">TRUST sales transactions ({{ xeroInvoices.total }})</h4>
+            @if (xeroConnection?.tenantName) { <span class="source-badge">{{ xeroConnection?.tenantName }}</span> }
+          </div>
           <p>Imported sales invoices, customer credit notes, prepayments and overpayments. Deleted and voided transactions are excluded.</p>
-          @if (xeroInvoices.invoiceTotal !== undefined && xeroInvoices.creditNoteTotal !== undefined) {
-            <p>{{ xeroInvoices.invoiceTotal }} invoices · {{ xeroInvoices.creditNoteTotal }} credit notes · {{ xeroInvoices.prepaymentTotal || 0 }} prepayments · {{ xeroInvoices.overpaymentTotal || 0 }} overpayments</p>
-          }
-          @if (xeroInvoices.statusTotals; as counts) {
-            <p>Draft: {{ counts.draft }} · Awaiting approval: {{ counts.awaitingApproval }} · Awaiting payment: {{ counts.awaitingPayment }} · Paid: {{ counts.paid }}</p>
-          }
         </div>
-        <span class="source-badge">{{ xeroConnection?.tenantName }}</span>
+        @if (isChiefExecutive) { <ng-container [ngTemplateOutlet]="xeroSyncPanel"></ng-container> }
       </header>
       @if (loadingInvoices && !xeroInvoices.invoices.length) {
         <div class="candidate-empty" aria-live="polite">Loading Xero invoices…</div>
@@ -154,7 +141,7 @@
                   <td data-label="Due date">{{ formatDate(invoice.dueDate) }}</td>
                   <td data-label="Paid" class="money">{{ formatMoney(invoice.amountPaid, invoice.currencyCode) }}</td>
                   <td data-label="Due" class="money">{{ formatMoney(invoice.amountDue, invoice.currencyCode) }}</td>
-                  <td data-label="Status"><span class="status invoice-status-{{ invoice.status }}">{{ formatLabel(invoice.status) }}</span></td>
+                  <td data-label="Status"><span class="status invoice-status-{{ invoice.status }}">{{ invoiceStatusLabel(invoice.status) }}</span></td>
                   <td data-label="Sent">{{ invoice.sentToContact ? 'Yes' : 'No' }}</td>
                   <td data-label="Advisor">{{ invoice.advisorName || '—' }}</td>
                   <td data-label="Payment track">{{ invoice.paymentTrack || '—' }}</td>
@@ -300,6 +287,14 @@
         </footer>
       }
     </section>
+  </div>
+}
+@if (viewMode === 'list' && privacyNoteVisible) {
+  <div class="privacy-toast-wrap" aria-live="polite">
+    <div class="privacy-note" role="status" [class.closing]="privacyNoteClosing">
+      <span>This register excludes restricted identity documents and sensitive financial details.</span>
+      <button type="button" class="privacy-dismiss" (click)="dismissPrivacyNote()" aria-label="Dismiss privacy notice">×</button>
+    </div>
   </div>
 }
 @if (formToastMessage) {

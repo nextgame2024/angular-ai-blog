@@ -24,6 +24,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
     xeroStudentInvoices: jasmine.createSpy().and.returnValue(of({
       invoices: [], page: 1, limit: 25, total: 0, totalPages: 0,
     })),
+    xeroStudentInvoicePaymentTracks: jasmine.createSpy().and.returnValue(of({ paymentTracks: ['Pending'] })),
     xeroStudentInvoice: jasmine.createSpy(),
     xeroStudentSyncStatus: jasmine.createSpy().and.returnValue(of({
       configured: false, organisationRole: null, lastSuccessfulSyncAt: null,
@@ -49,6 +50,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
     api.dashboard.calls.reset();
     api.xeroStatus.calls.reset();
     api.xeroStudentInvoices.calls.reset();
+    api.xeroStudentInvoicePaymentTracks.calls.reset();
     api.xeroStudentInvoice.calls.reset();
     api.xeroStudentSyncStatus.calls.reset();
     api.refreshXeroStudents.calls.reset();
@@ -65,6 +67,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
     }));
     api.xeroStatus.and.returnValue(of({ configured: true, connections: [] }));
     api.xeroStudentInvoices.and.returnValue(of({ invoices: [], page: 1, limit: 25, total: 0, totalPages: 0 }));
+    api.xeroStudentInvoicePaymentTracks.and.returnValue(of({ paymentTracks: ['Pending'] }));
     api.xeroStudentSyncStatus.and.returnValue(of({
       configured: false, organisationRole: null, lastSuccessfulSyncAt: null,
       lastErrorCode: null, nextScheduledSyncAt: null, latestRun: null,
@@ -190,6 +193,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
   });
 
   it('pins the list header and table headings above the scrolling register', () => {
+    fixture.nativeElement.style.height = '760px';
     fixture.detectChanges();
     fixture.componentInstance.xeroInvoices = {
       page: 1, limit: 25, total: 1, totalPages: 1,
@@ -211,6 +215,9 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(getComputedStyle(tableHeading).position).toBe('sticky');
     expect(header.querySelector('.filters')).not.toBeNull();
     expect(register.getBoundingClientRect().height).toBeGreaterThan(100);
+    const shell = fixture.nativeElement.querySelector('.students-shell') as HTMLElement;
+    const card = fixture.nativeElement.querySelector('.xero-candidates') as HTMLElement;
+    expect(shell.getBoundingClientRect().bottom - card.getBoundingClientRect().bottom).toBeLessThan(30);
     expect(register.querySelector('tbody tr')).not.toBeNull();
   });
 
@@ -260,6 +267,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
 
   it('allows the privacy notice to be dismissed', () => {
     fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.privacy-toast-wrap')).not.toBeNull();
     fixture.nativeElement.querySelector('.privacy-dismiss').click();
     fixture.detectChanges();
 
@@ -268,18 +276,31 @@ describe('StudentOperationsStudentsPageComponent', () => {
     );
   });
 
-  it('shows dashboard-style student metrics without fabricated trend percentages', () => {
-    api.dashboard.and.returnValue(of({
-      workspace: {},
-      summary: { totalStudents: 12, activeStudents: 8, newApplications: 3, actionRequired: 2, onHold: 1 },
-    }));
+  it('automatically removes the privacy toast after a few seconds', fakeAsync(() => {
+    fixture.detectChanges();
+    tick(4220);
     fixture.detectChanges();
 
-    const text = fixture.nativeElement.textContent;
-    expect(text).toContain('Active students');
-    expect(text).toContain('New applications');
-    expect(text).toContain('Action required');
-    expect(text).not.toContain('vs. previous month');
+    expect(fixture.nativeElement.querySelector('.privacy-toast-wrap')).toBeNull();
+  }));
+
+  it('shows compact Xero totals once, without the unrelated student dashboard cards', () => {
+    fixture.detectChanges();
+    fixture.componentInstance.xeroInvoices = {
+      invoices: [], page: 1, limit: 25, total: 7784, totalPages: 312,
+      invoiceTotal: 7536, creditNoteTotal: 31, prepaymentTotal: 0, overpaymentTotal: 217,
+      statusTotals: { draft: 1262, awaitingApproval: 14, awaitingPayment: 653, paid: 5855 },
+    };
+    fixture.detectChanges();
+
+    const cards = Array.from(fixture.nativeElement.querySelectorAll('.metric')) as HTMLElement[];
+    expect(cards.length).toBe(8);
+    expect(cards.map((card) => card.textContent?.trim())).toEqual([
+      'Invoices7536', 'Credit notes31', 'Prepayments0', 'Overpayments217',
+      'Draft1262', 'Awaiting approval14', 'Awaiting payment653', 'Paid5855',
+    ]);
+    expect(fixture.nativeElement.querySelector('.candidate-header')?.textContent).not.toContain('7536 invoices');
+    expect(fixture.nativeElement.textContent).not.toContain('Active students');
   });
 
   it('shows one paged row per Xero invoice and preserves server sorting', () => {
@@ -321,8 +342,8 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('TRUST sales transactions (7793)');
     expect(fixture.nativeElement.textContent).toContain('Last checked:');
     expect(fixture.nativeElement.textContent).toContain('Last full refresh:');
-    expect(fixture.nativeElement.textContent).toContain('7545 invoices · 200 credit notes · 30 prepayments · 18 overpayments');
-    expect(fixture.nativeElement.textContent).toContain('Draft: 1277 · Awaiting approval: 14 · Awaiting payment: 652 · Paid: 5850');
+    expect(fixture.nativeElement.querySelector('.metric')?.textContent).toContain('7545');
+    expect(fixture.nativeElement.querySelectorAll('.metric')[5]?.textContent).toContain('14');
     expect(fixture.nativeElement.textContent).toContain('INV-10035');
     expect(fixture.nativeElement.textContent).toContain('Student One');
     expect(fixture.nativeElement.textContent).toContain('S15 Paulina');
@@ -343,6 +364,68 @@ describe('StudentOperationsStudentsPageComponent', () => {
       studentReference: 'STU-100', legalName: 'Student One', email: 'student.one@example.invalid', collegeName: 'ATI',
     }));
   });
+
+  it('filters the invoice register on the server and debounces search without reloading students', fakeAsync(() => {
+    api.workspace.and.returnValue(of({
+      packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
+      role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
+    }));
+    api.xeroStatus.and.returnValue(of({
+      configured: true,
+      connections: [{ connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+        missingStudentDiscoveryScopes: [] }],
+    }));
+    fixture.detectChanges();
+    const dateInput = fixture.nativeElement.querySelector('.invoice-date-range input') as HTMLInputElement;
+    expect(dateInput).not.toBeNull();
+    expect(dateInput.readOnly).toBeTrue();
+    const datePicker = fixture.nativeElement.querySelector('.invoice-date-range') as HTMLElement;
+    const calendarButton = datePicker.querySelector('.p-datepicker-dropdown') as HTMLElement;
+    expect(getComputedStyle(datePicker).display).toBe('flex');
+    expect(calendarButton).not.toBeNull();
+    expect(calendarButton.getBoundingClientRect().top).toBeCloseTo(dateInput.getBoundingClientRect().top, 0);
+    expect(fixture.nativeElement.querySelectorAll('.filters input[type="date"]').length).toBe(0);
+    expect(fixture.componentInstance.paymentTrackOptions.map((option) => option.label))
+      .toEqual(['All payment tracks', 'Pending']);
+    expect(fixture.componentInstance.invoiceStatusLabel('submitted')).toBe('Awaiting approval');
+    expect(fixture.componentInstance.invoiceStatusLabel('authorised')).toBe('Awaiting payment');
+    api.xeroStudentInvoices.calls.reset();
+    const studentRequests = api.students.calls.count();
+
+    fixture.componentInstance.invoiceStatus.setValue('DRAFT');
+    fixture.componentInstance.paymentTrack.setValue('Pending');
+    tick(150);
+    api.xeroStudentInvoices.calls.reset();
+    fixture.componentInstance.invoiceDateRange.setValue([new Date(2026, 0, 1)]);
+    tick(150);
+    expect(api.xeroStudentInvoices).not.toHaveBeenCalled();
+    fixture.componentInstance.invoiceDateRange.setValue([new Date(2026, 11, 31), new Date(2026, 0, 1)]);
+    expect(api.xeroStudentInvoices).not.toHaveBeenCalled();
+    fixture.componentInstance.invoiceDateRange.setValue([new Date(2026, 0, 1), new Date(2026, 11, 31)]);
+    expect(api.xeroStudentInvoices).toHaveBeenCalledTimes(1);
+    expect(api.xeroStudentInvoices).toHaveBeenCalledWith('connection-1', jasmine.objectContaining({
+      page: 1, status: 'DRAFT', dateFrom: '2026-01-01', dateTo: '2026-12-31', paymentTrack: 'Pending',
+    }));
+
+    api.xeroStudentInvoices.calls.reset();
+    fixture.componentInstance.invoiceDateRange.setValue(null);
+    expect(api.xeroStudentInvoices).toHaveBeenCalledTimes(1);
+    const clearedQuery = api.xeroStudentInvoices.calls.mostRecent().args[1];
+    expect(clearedQuery.dateFrom).toBeUndefined();
+    expect(clearedQuery.dateTo).toBeUndefined();
+
+    api.xeroStudentInvoices.calls.reset();
+    fixture.componentInstance.search.setValue('Fab');
+    tick(100);
+    fixture.componentInstance.search.setValue('Fabian');
+    tick(299);
+    expect(api.xeroStudentInvoices).not.toHaveBeenCalled();
+    tick(1);
+    expect(api.xeroStudentInvoices).toHaveBeenCalledOnceWith('connection-1', jasmine.objectContaining({
+      q: 'Fabian', page: 1,
+    }));
+    expect(api.students.calls.count()).toBe(studentRequests);
+  }));
 
   it('uses explicit pagination and keeps the selected server sort on the next page', () => {
     api.workspace.and.returnValue(of({
@@ -392,6 +475,11 @@ describe('StudentOperationsStudentsPageComponent', () => {
     }));
     fixture.detectChanges();
 
+    expect(fixture.nativeElement.querySelector('.list-header .xero-sync')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.candidate-title-row .source-badge')?.textContent)
+      .toContain('Example TRUST');
+    expect(fixture.nativeElement.querySelector('.candidate-header .xero-sync-details')?.textContent)
+      .toContain('Last checked:');
     fixture.nativeElement.querySelector('.xero-sync .btn').click();
     fixture.detectChanges();
 

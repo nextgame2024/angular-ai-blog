@@ -198,17 +198,32 @@ export class StudentOperationsService {
       page: number;
       limit: number;
       q?: string;
+      status?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      paymentTrack?: string;
       sort?: XeroStudentInvoiceSort;
       direction?: 'asc' | 'desc';
     },
   ): Observable<XeroStudentInvoiceResult> {
     let params = new HttpParams().set('page', String(input.page)).set('limit', String(input.limit));
     if (input.q) params = params.set('q', input.q);
+    if (input.status) params = params.set('status', input.status);
+    if (input.dateFrom) params = params.set('dateFrom', input.dateFrom);
+    if (input.dateTo) params = params.set('dateTo', input.dateTo);
+    if (input.paymentTrack) params = params.set('paymentTrack', input.paymentTrack);
     if (input.sort) params = params.set('sort', input.sort);
     if (input.direction) params = params.set('direction', input.direction);
     return this.http.get<XeroStudentInvoiceResult>(
       `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-invoices`,
       { headers: this.headers(), params },
+    );
+  }
+
+  xeroStudentInvoicePaymentTracks(connectionId: string): Observable<{ paymentTracks: string[] }> {
+    return this.http.get<{ paymentTracks: string[] }>(
+      `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-invoices/payment-tracks`,
+      { headers: this.headers() },
     );
   }
 

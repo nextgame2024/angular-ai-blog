@@ -1,6 +1,7 @@
 :host {
   display: block;
-  min-height: 100%;
+  height: 100%;
+  min-height: 0;
   color: #172033;
 }
 .students-shell {
@@ -23,10 +24,7 @@
   backdrop-filter: blur(6px);
 }
 .overview {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 0.75rem;
-  margin-top: 0.85rem;
+  margin-top: 0.65rem;
 }
 .xero-sync {
   display: flex;
@@ -39,21 +37,28 @@
   background: #fff;
   padding: 0.65rem 0.75rem;
 }
-.xero-sync > div {
+.xero-sync-details {
   display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.65rem;
+  flex-direction: column;
+  gap: 0.2rem;
 }
-.xero-sync strong { color: #172033; }
 .xero-sync span { color: #66758a; font-size: 0.8rem; }
 .xero-sync .xero-notice { color: #80520a; }
 .xero-sync .xero-error { color: #9b2536; }
 .xero-sync-error { border-color: #f2b8c0; background: #fff8f9; }
+.candidate-header .xero-sync {
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.candidate-header .xero-sync .btn { flex: 0 0 auto; }
 .metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: 0.5rem;
 }
 .metric,
 .xero-insight {
@@ -67,21 +72,22 @@
 .metric {
   display: grid;
   align-content: center;
-  gap: 0.2rem;
-  min-height: 94px;
-  border-top: 3px solid #22b88f;
+  gap: 0.15rem;
+  min-height: 62px;
+  padding: 0.5rem 0.7rem;
+  border-top: 2px solid #22b88f;
 }
-.metric-new { border-top-color: #4f8ff7; }
-.metric-action { border-top-color: #f05d6f; }
-.metric-hold { border-top-color: #9368e9; }
+.metric:nth-child(4n + 2) { border-top-color: #4f8ff7; }
+.metric:nth-child(4n + 3) { border-top-color: #f05d6f; }
+.metric:nth-child(4n + 4) { border-top-color: #9368e9; }
 .metric-label {
   color: #66758a;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
 }
 .metric strong {
   color: #172033;
-  font-size: 1.6rem;
+  font-size: 1.25rem;
   line-height: 1.1;
 }
 .metric small,
@@ -194,20 +200,30 @@
   font-weight: 700;
   white-space: nowrap;
 }
+.privacy-toast-wrap {
+  position: fixed;
+  top: 1.1rem;
+  right: 1.1rem;
+  z-index: 120;
+}
 .privacy-note {
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-top: 0.65rem;
-  border-left: 4px solid #18b89d;
+  max-width: min(460px, calc(100vw - 2rem));
+  border: 1px solid #70cdbd;
   background: #eefbf8;
-  padding: 0.65rem 0.75rem 0.65rem 0.9rem;
+  padding: 0.7rem 0.85rem;
   color: #3f625b;
-  border-radius: 0 0.55rem 0.55rem 0;
+  border-radius: 0.75rem;
   font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.18);
+  animation: form-toast-in 220ms ease-out forwards;
 }
+.privacy-note.closing { animation: form-toast-out 220ms ease-in forwards; }
 .privacy-dismiss {
   flex: 0 0 auto;
   width: 26px;
@@ -264,6 +280,42 @@
 .plain-field input {
   padding-left: 0.9rem;
 }
+:host ::ng-deep .invoice-date-range {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+:host ::ng-deep .invoice-date-range .p-datepicker-input {
+  flex: 1 1 auto;
+  width: 1%;
+  min-width: 0;
+  min-height: 44px;
+  border-radius: 14px 0 0 14px;
+  border-color: rgba(15, 23, 42, 0.1);
+  background: rgba(255, 255, 255, 0.9);
+  color: #172033;
+  font: inherit;
+}
+:host ::ng-deep .invoice-date-range .p-datepicker-dropdown {
+  flex: 0 0 44px;
+  width: 44px;
+  min-height: 44px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-inline-start: 0;
+  border-radius: 0 14px 14px 0;
+  background: rgba(255, 255, 255, 0.9);
+  color: #64748b;
+}
+:host ::ng-deep .invoice-date-range .p-datepicker-dropdown:hover {
+  background: #f3f8f7;
+  color: #176f64;
+}
+:host ::ng-deep .invoice-date-range .p-datepicker-input:focus {
+  border-color: #72d5c4;
+  box-shadow: 0 0 0 3px rgba(24, 184, 157, 0.1);
+}
+.filter-error { grid-column: 1 / -1; color: #9b2536; font-size: 0.8rem; }
 .clear {
   border: 0;
   background: transparent;
@@ -305,9 +357,16 @@
 }
 .candidate-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+.candidate-heading { min-width: 0; }
+.candidate-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.65rem;
 }
 .candidate-header h4 { margin: 0; color: #172033; }
 .candidate-header p { margin: 0.25rem 0 0; color: #69778b; font-size: 0.84rem; }
@@ -773,8 +832,8 @@
   }
 }
 @media (max-width: 900px) {
-  .overview { grid-template-columns: 1fr; }
-  .metrics { grid-template-columns: 1fr 1fr; }
+  .metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .candidate-header { align-items: flex-start; flex-direction: column; }
   .filters {
     grid-template-columns: 1fr 1fr;
   }
@@ -801,14 +860,13 @@
   }
 }
 @media (max-width: 640px) {
+  :host { height: auto; min-height: 100%; }
   .students-shell { height: auto; min-height: 100%; }
   .list-header { display: flex; flex-direction: column; max-height: 60dvh; overflow-y: auto; overscroll-behavior: contain; }
   .breadcrumb { order: 0; }
   .students-toolbar { order: 1; }
   .filters { order: 2; }
   .overview { order: 3; }
-  .xero-sync { order: 4; }
-  .privacy-note { order: 5; }
   .xero-candidates { flex: none; min-height: 0; grid-template-rows: auto; }
   .students-toolbar {
     flex-direction: column;
@@ -816,8 +874,10 @@
   .filters {
     grid-template-columns: 1fr;
   }
-  .metrics { grid-template-columns: 1fr; }
-  .candidate-header { flex-direction: column; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .privacy-toast-wrap { top: calc(env(safe-area-inset-top) + 4rem); right: 0.75rem; left: 0.75rem; }
+  .privacy-note { max-width: none; }
+  .candidate-header .xero-sync { align-items: stretch; flex-wrap: wrap; width: 100%; }
   .xero-candidates { padding: 0.75rem; }
   .source-badge { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
   .invoice-table-scroll { min-height: 0; overflow: visible; border: 0; }
@@ -877,8 +937,8 @@
 :host-context(html.dark) .xero-sync,
 :host-context(html.dark) .xero-candidates,
 :host-context(html.dark) .table { background: #111b2b; border-color: #2d3a4d; box-shadow: none; }
+:host-context(html.dark) .candidate-header .xero-sync { background: transparent; border: 0; }
 :host-context(html.dark) .metric strong,
-:host-context(html.dark) .xero-sync strong,
 :host-context(html.dark) .candidate-header h4,
 :host-context(html.dark) .title h3 { color: #edf4fc; }
 :host-context(html.dark) .metric-label,
@@ -887,7 +947,22 @@
 :host-context(html.dark) .candidate-header p { color: #9cadc3; }
 :host-context(html.dark) .search-field,
 :host-context(html.dark) .plain-field { background: #111b2b; border-color: #334155; }
-:host-context(html.dark) .privacy-note { background: #102d2b; color: #b9ded7; }
+:host-context(html.dark) ::ng-deep .invoice-date-range .p-datepicker-input {
+  background: #111b2b;
+  border-color: #334155;
+  color: #e5edf7;
+}
+:host-context(html.dark) ::ng-deep .invoice-date-range .p-datepicker-dropdown {
+  background: #111b2b;
+  border-color: #334155;
+  color: #9cadc3;
+}
+:host-context(html.dark) ::ng-deep .invoice-date-range .p-datepicker-dropdown:hover {
+  background: #1b2a3d;
+  color: #e5edf7;
+}
+:host-context(html.dark) .filter-error { color: #fda4af; }
+:host-context(html.dark) .privacy-note { background: #102d2b; border-color: #286b60; color: #b9ded7; }
 :host-context(html.dark) .privacy-dismiss { background: #1b3b38; color: #c8ebe5; }
 :host-context(html.dark) .source-badge,
 :host-context(html.dark) .role-badge { background: #10352f; border-color: #286b60; color: #74e2d1; }

@@ -191,7 +191,8 @@ describe('StudentOperationsService', () => {
 
   it('pages and sorts stored Xero invoices without calling Xero from the browser', () => {
     service.xeroStudentInvoices('connection/id', {
-      page: 312, limit: 25, q: 'ATI', sort: 'dueDate', direction: 'desc',
+      page: 312, limit: 25, q: 'ATI', status: 'DRAFT', dateFrom: '2026-01-01',
+      dateTo: '2026-12-31', paymentTrack: 'Pending', sort: 'dueDate', direction: 'desc',
     }).subscribe();
     const request = http.expectOne((candidate) => candidate.url.endsWith(
       '/workspace/integrations/xero/connections/connection%2Fid/student-invoices',
@@ -200,9 +201,24 @@ describe('StudentOperationsService', () => {
     expect(request.request.params.get('page')).toBe('312');
     expect(request.request.params.get('limit')).toBe('25');
     expect(request.request.params.get('q')).toBe('ATI');
+    expect(request.request.params.get('status')).toBe('DRAFT');
+    expect(request.request.params.get('dateFrom')).toBe('2026-01-01');
+    expect(request.request.params.get('dateTo')).toBe('2026-12-31');
+    expect(request.request.params.get('paymentTrack')).toBe('Pending');
     expect(request.request.params.get('sort')).toBe('dueDate');
     expect(request.request.params.get('direction')).toBe('desc');
     request.flush({ invoices: [], page: 312, limit: 25, total: 7793, totalPages: 312 });
+  });
+
+  it('loads payment track choices once from the stored invoice register', () => {
+    service.xeroStudentInvoicePaymentTracks('connection/id').subscribe((result) => {
+      expect(result.paymentTracks).toEqual(['Pending', 'Complete']);
+    });
+    const request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/workspace/integrations/xero/connections/connection%2Fid/student-invoices/payment-tracks',
+    ));
+    expect(request.request.method).toBe('GET');
+    request.flush({ paymentTracks: ['Pending', 'Complete'] });
   });
 
   it('loads stored Xero invoice detail by encoded id', () => {

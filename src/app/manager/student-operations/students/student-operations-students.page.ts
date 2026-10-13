@@ -4,7 +4,8 @@ import {
 } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { Subject, debounceTime, distinctUntilChanged, forkJoin, map, takeUntil } from 'rxjs';
+import { DatePickerModule } from 'primeng/datepicker';
+import { Subject, Subscription, debounceTime, distinctUntilChanged, forkJoin, map, merge, takeUntil } from 'rxjs';
 import { ManagerService } from '../../services/manager.service';
 import {
   ManagerSelectComponent, type ManagerSelectOption,
@@ -26,7 +27,7 @@ import type {
 
 @Component({
   selector: 'app-student-operations-students-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, DatePickerModule],
   templateUrl: './student-operations-students.page.html',
   styleUrls: ['./student-operations-students.page.css'],
 })
@@ -42,19 +43,24 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private readonly syncPollMaxDurationMs = 15 * 60 * 1000;
   private requestVersion = 0;
   private invoiceRequestVersion = 0;
+  private invoiceRequestSubscription?: Subscription;
   private saveRequestKey = '';
   private saveFingerprint = '';
   private reviewingXeroContactId: string | null = null;
   private formToastTimer: ReturnType<typeof setTimeout> | null = null;
   private formToastCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private privacyToastTimer: ReturnType<typeof setTimeout> | null = null;
+  private privacyToastCloseTimer: ReturnType<typeof setTimeout> | null = null;
 
   @ViewChild('studentsList') studentsList?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinel?: ElementRef<HTMLElement>;
 
   readonly search = new FormControl('', { nonNullable: true });
-  readonly status = new FormControl('', { nonNullable: true });
-  readonly advisor = new FormControl('', { nonNullable: true });
-  readonly college = new FormControl('', { nonNullable: true });
+  readonly invoiceStatus = new FormControl('', { nonNullable: true });
+  readonly invoiceDateRange = new FormControl<Date[] | null>(null);
+  private appliedInvoiceDateFrom = '';
+  private appliedInvoiceDateTo = '';
+  readonly paymentTrack = new FormControl('', { nonNullable: true });
   readonly invoicePageSize = new FormControl('25', { nonNullable: true });
   readonly pageSize = 20;
   readonly statusOptions: ManagerSelectOption[] = [
@@ -66,6 +72,14 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     { value: 'archived', label: 'Archived' },
   ];
   readonly formStatusOptions: ManagerSelectOption[] = this.statusOptions.slice(1);
+  readonly invoiceStatusOptions: ManagerSelectOption[] = [
+    { value: '', label: 'All statuses' },
+    { value: 'DRAFT', label: 'Draft' },
+    { value: 'SUBMITTED', label: 'Awaiting approval' },
+    { value: 'AUTHORISED', label: 'Awaiting payment' },
+    { value: 'PAID', label: 'Paid' },
+  ];
+  paymentTrackOptions: ManagerSelectOption[] = [{ value: '', label: 'All payment tracks' }];
   readonly invoicePageSizeOptions: ManagerSelectOption[] = [
     { value: '25', label: '25 per page' },
     { value: '50', label: '50 per page' },
@@ -81,12 +95,6 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     { value: 'collections', label: 'Collections' },
     { value: 'commission_recovery', label: 'Commission recovery' },
     { value: 'completed', label: 'Completed' },
-  ];
-  readonly advisorFilterOptions: ManagerSelectOption[] = [
-    { value: '', label: 'All assignments' },
-    { value: 'assigned', label: 'Assigned' },
-    { value: 'unassigned', label: 'Unassigned' },
-    { value: 'me', label: 'Assigned to me' },
   ];
   advisorOptions: ManagerSelectOption[] = [{ value: '', label: 'Unassigned' }];
 
@@ -116,6 +124,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   formToastMessage: string | null = null;
   formToastClosing = false;
   privacyNoteVisible = true;
+  privacyNoteClosing = false;
   summary = { totalStudents: 0, activeStudents: 0, newApplications: 0, actionRequired: 0, onHold: 0 };
   xeroConnection: XeroConnectionSummary | null = null;
   xeroInvoices: XeroStudentInvoiceResult | null = null;
@@ -130,6 +139,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   loadingXero = false;
   xeroError = '';
   xeroNotice = '';
+  invoiceFilterError = '';
 
   get hasMore(): boolean { return this.students.length < this.total; }
   get canManage(): boolean {
@@ -162,18 +172,22 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
 
   ngOnInit(): void {
+    this.privacyToastTimer = setTimeout(() => {
+      this.privacyNoteClosing = true;
+      this.privacyToastCloseTimer = setTimeout(() => { this.privacyNoteVisible = false; }, 220);
+    }, 4000);
     this.loadInitial();
     this.search.valueChanges.pipe(
-      debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$),
+      debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$),
     ).subscribe(() => {
-      this.resetAndLoad();
+      if (!this.xeroConnection) this.resetAndLoad();
       if (this.xeroConnection) this.loadXeroInvoices(1);
     });
-    this.status.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => this.resetAndLoad());
-    this.advisor.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => this.resetAndLoad());
-    this.college.valueChanges.pipe(
-      debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$),
-    ).subscribe(() => this.resetAndLoad());
+    merge(this.invoiceStatus.valueChanges, this.paymentTrack.valueChanges)
+      .pipe(debounceTime(150), takeUntil(this.destroy$))
+      .subscribe(() => this.loadXeroInvoices(1));
+    this.invoiceDateRange.valueChanges.pipe(takeUntil(this.destroy$))
+      .subscribe((range) => this.applyInvoiceDateRange(range));
     this.invoicePageSize.valueChanges.pipe(
       distinctUntilChanged(), takeUntil(this.destroy$),
     ).subscribe(() => this.loadXeroInvoices(1));
@@ -183,7 +197,10 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
 
   ngOnDestroy(): void {
     this.observer?.disconnect();
+    this.invoiceRequestSubscription?.unsubscribe();
     if (this.syncPollTimer) clearTimeout(this.syncPollTimer);
+    if (this.privacyToastTimer) clearTimeout(this.privacyToastTimer);
+    if (this.privacyToastCloseTimer) clearTimeout(this.privacyToastCloseTimer);
     this.clearFormToastTimers();
     this.destroy$.next();
     this.destroy$.complete();
@@ -191,10 +208,19 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
 
   retry(): void { this.workspace ? this.resetAndLoad() : this.loadInitial(); }
   clearSearch(): void { this.search.setValue(''); }
-  dismissPrivacyNote(): void { this.privacyNoteVisible = false; }
+  dismissPrivacyNote(): void {
+    if (this.privacyToastTimer) clearTimeout(this.privacyToastTimer);
+    if (this.privacyToastCloseTimer) clearTimeout(this.privacyToastCloseTimer);
+    this.privacyNoteVisible = false;
+  }
 
   formatLabel(value: string): string {
     return value.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  invoiceStatusLabel(value: string): string {
+    return this.invoiceStatusOptions.find((option) => option.value.toLowerCase() === value.toLowerCase())?.label
+      ?? this.formatLabel(value);
   }
 
   formatMoney(value: number | null, currencyCode: string | null): string {
@@ -491,6 +517,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
         }
         if (this.xeroConnection && !this.xeroNeedsReconnect) {
           this.loadXeroSyncStatus();
+          this.loadPaymentTracks();
           this.loadXeroInvoices(1);
         } else {
           this.loadingXeroContext = false;
@@ -557,6 +584,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             }
             this.xeroError = '';
             this.xeroNotice = '';
+            this.loadPaymentTracks();
             this.loadXeroInvoices(this.xeroInvoices?.page ?? 1);
           },
           error: () => {
@@ -584,12 +612,17 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
 
   private loadXeroInvoices(page: number): void {
     if (!this.xeroConnection || this.xeroNeedsReconnect) return;
+    this.invoiceRequestSubscription?.unsubscribe();
     const version = ++this.invoiceRequestVersion;
     this.loadingInvoices = true;
-    this.api.xeroStudentInvoices(this.xeroConnection.connectionId, {
+    this.invoiceRequestSubscription = this.api.xeroStudentInvoices(this.xeroConnection.connectionId, {
       page,
       limit: Number(this.invoicePageSize.value),
       q: this.search.value.trim() || undefined,
+      status: this.invoiceStatus.value || undefined,
+      dateFrom: this.appliedInvoiceDateFrom || undefined,
+      dateTo: this.appliedInvoiceDateTo || undefined,
+      paymentTrack: this.paymentTrack.value || undefined,
       sort: this.invoiceSort,
       direction: this.invoiceSortDirection,
     }).pipe(takeUntil(this.destroy$)).subscribe({
@@ -606,6 +639,55 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
         this.xeroError = 'Stored Xero invoices could not be loaded.';
       },
     });
+  }
+
+  private applyInvoiceDateRange(range: Date[] | null): void {
+    if (!range?.length) {
+      this.invoiceFilterError = '';
+      if (!this.appliedInvoiceDateFrom && !this.appliedInvoiceDateTo) return;
+      this.appliedInvoiceDateFrom = '';
+      this.appliedInvoiceDateTo = '';
+      this.loadXeroInvoices(1);
+      return;
+    }
+    const [start, end] = range;
+    if (!start || !end) {
+      this.invoiceFilterError = '';
+      return;
+    }
+    if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+      this.invoiceFilterError = 'Choose valid dates from the calendar.';
+      return;
+    }
+    const from = this.localDate(start);
+    const to = this.localDate(end);
+    if (from > to) {
+      this.invoiceFilterError = 'The end date must be on or after the start date.';
+      return;
+    }
+    this.invoiceFilterError = '';
+    if (from === this.appliedInvoiceDateFrom && to === this.appliedInvoiceDateTo) return;
+    this.appliedInvoiceDateFrom = from;
+    this.appliedInvoiceDateTo = to;
+    this.loadXeroInvoices(1);
+  }
+
+  private localDate(date: Date): string {
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  private loadPaymentTracks(): void {
+    if (!this.xeroConnection) return;
+    this.api.xeroStudentInvoicePaymentTracks(this.xeroConnection.connectionId)
+      .pipe(takeUntil(this.destroy$)).subscribe({
+        next: ({ paymentTracks }) => {
+          this.paymentTrackOptions = [
+            { value: '', label: 'All payment tracks' },
+            ...paymentTracks.map((track) => ({ value: track, label: track })),
+          ];
+        },
+        error: () => { this.paymentTrackOptions = [{ value: '', label: 'All payment tracks' }]; },
+      });
   }
 
   private advisorLookup() {
@@ -640,9 +722,6 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     return {
       page, limit: this.pageSize,
       q: this.search.value.trim() || undefined,
-      status: this.status.value || undefined,
-      advisor: this.advisor.value || undefined,
-      college: this.college.value.trim() || undefined,
     };
   }
 
