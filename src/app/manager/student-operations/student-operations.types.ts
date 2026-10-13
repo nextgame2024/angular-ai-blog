@@ -60,6 +60,74 @@ export interface StudentOperationsDashboard {
   };
 }
 
+export type StudentRegisterStatus = 'healthy' | 'action_required' | 'overdue' | 'no_vigente' | 'not_started';
+export type StudentRegisterSort = 'name' | 'studentId' | 'advisor' | 'college' | 'stage' | 'nextPayment' | 'status';
+
+export interface StudentRegisterQuery {
+  page: number;
+  limit: number;
+  q?: string;
+  status?: StudentRegisterStatus;
+  advisorId?: string;
+  collegeId?: string;
+  from?: string;
+  to?: string;
+  attentionThisWeek?: boolean;
+  sortBy?: StudentRegisterSort;
+  sortDir?: 'asc' | 'desc';
+}
+
+export interface StudentRegisterRow {
+  userId: string;
+  studentProfileId: string | null;
+  studentReference: string;
+  legalName: string;
+  email: string;
+  caseId: string | null;
+  caseReference: string | null;
+  currentStage: string | null;
+  advisorUserId: string | null;
+  advisorName: string | null;
+  collegeId: string | null;
+  collegeName: string | null;
+  status: StudentRegisterStatus;
+  attentionReason: string | null;
+  caseCount: number;
+  cases: Array<{
+    caseId: string;
+    caseReference: string;
+    lifecycleStatus: string;
+    openedOn: string;
+  }>;
+  nextPayment: {
+    caseId: string;
+    dueOn: string;
+    amount?: string;
+    currency?: string;
+  } | null;
+}
+
+export interface StudentRegisterResult {
+  students: StudentRegisterRow[];
+  page: number;
+  limit: number;
+  total: number;
+  summary: {
+    total: number;
+    activeStudents: number;
+    newApplications: number;
+    actionRequired: number;
+    noVigente: number;
+    attentionThisWeek: number;
+    lastUpdated: string | null;
+    trend: { available: boolean; reason?: string };
+  };
+  options: {
+    advisors: Array<{ userId: string; name: string }>;
+    colleges: Array<{ collegeId: string; name: string }>;
+  };
+}
+
 export interface XeroConnectionSummary {
   connectionId: string;
   tenantId: string;

@@ -106,6 +106,28 @@ describe('StudentOperationsService', () => {
     request.flush({ students: [], page: 2, limit: 20, total: 0 });
   });
 
+  it('sends Students register filters through the identity-bound workspace', () => {
+    service.studentRegister({
+      page: 2, limit: 25, q: 'Joselin', advisorId: 'advisor-1',
+      from: '2026-10-01', to: '2026-10-14', attentionThisWeek: true,
+      sortBy: 'nextPayment', sortDir: 'desc',
+    }).subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith(
+      '/api/business-packs/student-operations/v1/workspace/student-register',
+    ));
+    expect(request.request.method).toBe('GET');
+    expect(request.request.headers.get('Authorization')).toBe('Token business-manager-token');
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('q')).toBe('Joselin');
+    expect(request.request.params.get('from')).toBe('2026-10-01');
+    expect(request.request.params.get('to')).toBe('2026-10-14');
+    expect(request.request.params.get('attentionThisWeek')).toBe('true');
+    expect(request.request.params.get('sortBy')).toBe('nextPayment');
+    expect(request.request.params.get('sortDir')).toBe('desc');
+    expect(request.request.url).not.toContain('/tenants/');
+    request.flush({ students: [], page: 2, limit: 25, total: 0 });
+  });
+
   it('creates a student with idempotency and invalidates the dashboard cache', () => {
     service.dashboard().subscribe();
     http.expectOne((candidate) => candidate.url.endsWith('/workspace/dashboard')).flush({

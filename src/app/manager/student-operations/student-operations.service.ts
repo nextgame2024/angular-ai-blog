@@ -10,6 +10,8 @@ import type {
   StudentOperationsStudentWrite,
   StudentOperationsDashboard,
   StudentOperationsWorkspace,
+  StudentRegisterQuery,
+  StudentRegisterResult,
   XeroConnectionStatus,
   XeroConnectionTest,
   XeroStudentCandidateResult,
@@ -110,6 +112,25 @@ export class StudentOperationsService {
     return this.http.get<StudentOperationsStudentList>(`${this.workspaceBase}/students`, {
       headers: this.headers(),
       params,
+    });
+  }
+
+  studentRegister(input: StudentRegisterQuery): Observable<StudentRegisterResult> {
+    let params = new HttpParams()
+      .set('page', String(input.page))
+      .set('limit', String(input.limit));
+    if (input.q) params = params.set('q', input.q);
+    if (input.status) params = params.set('status', input.status);
+    if (input.advisorId) params = params.set('advisorId', input.advisorId);
+    if (input.collegeId) params = params.set('collegeId', input.collegeId);
+    if (input.from && input.to) {
+      params = params.set('from', input.from).set('to', input.to);
+    }
+    if (input.attentionThisWeek) params = params.set('attentionThisWeek', 'true');
+    if (input.sortBy) params = params.set('sortBy', input.sortBy);
+    if (input.sortDir) params = params.set('sortDir', input.sortDir);
+    return this.http.get<StudentRegisterResult>(`${this.workspaceBase}/student-register`, {
+      headers: this.headers(), params,
     });
   }
 

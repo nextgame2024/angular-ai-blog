@@ -1,12 +1,141 @@
 <section class="students-page" aria-labelledby="students-page-title">
-  <nav class="breadcrumb" aria-label="Breadcrumb">
-    <a routerLink="/manager/menu">Menu</a><span aria-hidden="true">/</span><span>Students</span>
-  </nav>
-  <header>
-    <h1 id="students-page-title">Students</h1>
-  </header>
-  <div class="empty-state" role="status">
-    <strong>Students module</strong>
-    <p>This page is ready for the student records module.</p>
+  <div class="page-chrome">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a routerLink="/manager/menu">Menu</a><span aria-hidden="true">/</span><span>Students</span>
+    </nav>
+    <header class="page-header">
+      <div>
+        <h1 id="students-page-title">Students</h1>
+        <p>Manage active student records and operational status.</p>
+      </div>
+      <div class="header-period">
+        <span class="calendar-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M7 3v4M17 3v4M3 10h18"></path></svg>
+        </span>
+        <div class="header-dates">
+          <strong>{{ today | date:'EEE, d MMM y' }}</strong>
+          <span>Last updated {{ result?.summary?.lastUpdated ? (result?.summary?.lastUpdated | date:'shortTime') : '—' }}</span>
+        </div>
+        <app-manager-select class="period-select" [formControl]="period" [options]="periodOptions" aria-label="Student date period"></app-manager-select>
+      </div>
+    </header>
+
+    <div class="summary-grid" aria-label="Student summary">
+      <article class="summary-card active-card">
+        <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"></circle><path d="M2 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 4 5v1"></path></svg></span>
+        <div><span class="metric-label">Active Students</span><strong>{{ result?.summary?.activeStudents ?? '—' }}</strong><small>Students with a current case</small></div>
+      </article>
+      <article class="summary-card applications-card">
+        <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7zM15 3v5h4M10 13h6M10 17h4"></path></svg></span>
+        <div><span class="metric-label">New Applications</span><strong>{{ result?.summary?.newApplications ?? '—' }}</strong><small>{{ result?.summary?.trend?.reason || 'In the selected period' }}</small></div>
+      </article>
+      <article class="summary-card attention-card">
+        <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 10 18H2zM12 9v5M12 18h.01"></path></svg></span>
+        <div><span class="metric-label">Action Required</span><strong>{{ result?.summary?.actionRequired ?? '—' }}</strong><small>Includes overdue obligations</small></div>
+      </article>
+      <article class="summary-card vigente-card">
+        <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 21v-2a8 8 0 0 1 16 0v2M9 13h6"></path></svg></span>
+        <div><span class="metric-label">No Vigente</span><strong>{{ result?.summary?.noVigente ?? '—' }}</strong><small>Case history, none current</small></div>
+      </article>
+      <article class="summary-card insight-card">
+        <div class="insight-heading"><span aria-hidden="true">✦</span><strong>Sophia Insight</strong></div>
+        <p>Sophia has identified <strong>{{ result?.summary?.attentionThisWeek ?? '—' }}</strong> students requiring attention this week.</p>
+        <button type="button" class="btn insight-button" (click)="viewAttention()" [disabled]="loading || !result">
+          <span aria-hidden="true">▷</span> View students
+        </button>
+      </article>
+    </div>
+
+    <div class="filters" aria-label="Student filters">
+      <label class="search-field">
+        <span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg></span>
+        <input type="search" [formControl]="search" placeholder="Search by name, student ID or email…" aria-label="Search students" />
+        @if (search.value) { <button type="button" class="clear-search" (click)="clearSearch()" aria-label="Clear search">×</button> }
+      </label>
+      <app-manager-select [formControl]="status" [options]="statusOptions" aria-label="Filter by status"></app-manager-select>
+      <app-manager-select [formControl]="advisor" [options]="advisorOptions" aria-label="Filter by advisor"></app-manager-select>
+      <app-manager-select [formControl]="college" [options]="collegeOptions" aria-label="Filter by college"></app-manager-select>
+      <div class="date-filter" [class.invalid]="!!dateError">
+        <p-datepicker [formControl]="dateRange" selectionMode="range" dateFormat="dd/mm/yy"
+          [readonlyInput]="true" [showIcon]="true" [showButtonBar]="true" [showClear]="true"
+          appendTo="body" styleClass="student-date-range" placeholder="Date range"
+          ariaLabel="Case opened date range"></p-datepicker>
+      </div>
+      @if (dateError) { <span class="date-error" role="alert">{{ dateError }}</span> }
+    </div>
   </div>
+
+  <section class="register" aria-label="Student records">
+    <div class="register-heading">
+      <h2>Students ({{ total }})</h2>
+      <div class="register-actions">
+        <button type="button" class="btn case-button" disabled title="New Case will be available in the next Student module task">＋ New Case</button>
+        <button type="button" class="btn add-button" disabled title="Add student will be available in the next Student module task">＋ Add student</button>
+      </div>
+    </div>
+    @if (attentionActive) {
+      <div class="active-filter">Showing students requiring attention this week
+        <button type="button" (click)="clearAttention()">Clear filter</button>
+      </div>
+    }
+    @if (error) {
+      <div class="error-banner" role="alert">{{ error }} <button type="button" class="btn" (click)="retry()">Retry</button></div>
+    }
+    <div class="register-content" [attr.aria-busy]="loading">
+      @if (loading && !result) {
+        <div class="list-loader" role="status"><span class="loader-ring" aria-hidden="true"></span>Loading students…</div>
+      } @else if (!loading && !error && !rows.length) {
+        <div class="empty-state" role="status"><strong>No students found</strong><span>No records match the current filters.</span></div>
+      } @else {
+        <div class="table-wrap">
+          <table class="student-table">
+            <thead><tr>
+              <th scope="col" [attr.aria-sort]="sortAria('name')"><button type="button" class="sort-button" (click)="sort('name')">Student <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" [attr.aria-sort]="sortAria('studentId')"><button type="button" class="sort-button" (click)="sort('studentId')">Student ID <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" [attr.aria-sort]="sortAria('advisor')"><button type="button" class="sort-button" (click)="sort('advisor')">Advisor <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" [attr.aria-sort]="sortAria('college')"><button type="button" class="sort-button" (click)="sort('college')">College <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" [attr.aria-sort]="sortAria('stage')"><button type="button" class="sort-button" (click)="sort('stage')">Current Stage <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" [attr.aria-sort]="sortAria('nextPayment')"><button type="button" class="sort-button" (click)="sort('nextPayment')">Next Payment <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" [attr.aria-sort]="sortAria('status')"><button type="button" class="sort-button" (click)="sort('status')">Status <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col">Cases</th><th scope="col">Actions</th>
+            </tr></thead>
+            <tbody>
+              @for (student of rows; track student.userId) {
+                <tr>
+                  <td><div class="student-identity">
+                    <span class="avatar" [class.tone-1]="avatarTone(student.legalName) === 1" [class.tone-2]="avatarTone(student.legalName) === 2" [class.tone-3]="avatarTone(student.legalName) === 3">{{ initials(student.legalName) }}</span>
+                    <span><strong>{{ student.legalName }}</strong><small>{{ student.email }}</small></span>
+                  </div></td>
+                  <td class="reference">{{ student.studentReference }}</td>
+                  <td>{{ student.advisorName || '—' }}</td>
+                  <td>{{ student.collegeName || '—' }}</td>
+                  <td><span>{{ stageLabel(student.currentStage) }}</span>@if (student.caseReference) { <small class="case-context">{{ student.caseReference }}</small> }</td>
+                  <td>@if (student.nextPayment; as payment) { <span>{{ dateLabel(payment.dueOn) }}</span><small class="payment-amount">{{ moneyLabel(payment) }}</small> } @else { — }</td>
+                  <td><span class="status-pill" [class.healthy]="student.status === 'healthy'" [class.action]="student.status === 'action_required'" [class.overdue]="student.status === 'overdue'" [class.vigente]="student.status === 'no_vigente'">{{ statusLabel(student.status) }}</span>@if (student.attentionReason) { <small class="attention-reason">{{ student.attentionReason }}</small> }</td>
+                  <td><div class="case-list">@for (studentCase of student.cases; track studentCase.caseId) { <span class="case-label" [title]="studentCase.caseReference + ' details are coming in the next task'">{{ studentCase.caseReference }}</span> } @empty { <span class="muted">No cases</span> }</div></td>
+                  <td><div class="row-actions"><button type="button" class="btn edit-button" disabled title="Edit will be available in the next Student module task">Edit</button><button type="button" class="btn delete-button" disabled title="Archive will be available in the next Student module task">Delete</button></div></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="student-cards">
+          @for (student of rows; track student.userId) {
+            <article class="student-card">
+              <div class="card-top"><div class="student-identity"><span class="avatar" [class.tone-1]="avatarTone(student.legalName) === 1" [class.tone-2]="avatarTone(student.legalName) === 2" [class.tone-3]="avatarTone(student.legalName) === 3">{{ initials(student.legalName) }}</span><span><strong>{{ student.legalName }}</strong><small>{{ student.email }}</small></span></div><span class="status-pill" [class.healthy]="student.status === 'healthy'" [class.action]="student.status === 'action_required'" [class.overdue]="student.status === 'overdue'" [class.vigente]="student.status === 'no_vigente'">{{ statusLabel(student.status) }}</span></div>
+              <dl><div><dt>Student ID</dt><dd>{{ student.studentReference }}</dd></div><div><dt>Advisor</dt><dd>{{ student.advisorName || '—' }}</dd></div><div><dt>College</dt><dd>{{ student.collegeName || '—' }}</dd></div><div><dt>Current Stage</dt><dd>{{ stageLabel(student.currentStage) }}</dd></div><div><dt>Next Payment</dt><dd>@if (student.nextPayment; as payment) { {{ dateLabel(payment.dueOn) }} · {{ moneyLabel(payment) }} } @else { — }</dd></div><div><dt>Cases</dt><dd>{{ student.caseCount }}</dd></div></dl>
+              @if (student.cases.length) { <div class="mobile-cases">@for (studentCase of student.cases; track studentCase.caseId) { <span class="case-label">{{ studentCase.caseReference }}</span> }</div> }
+              <div class="row-actions"><button type="button" class="btn edit-button" disabled title="Available in the next task">Edit</button><button type="button" class="btn delete-button" disabled title="Available in the next task">Delete</button></div>
+            </article>
+          }
+        </div>
+        @if (loading) { <div class="loading-overlay" role="status">Updating students…</div> }
+      }
+    </div>
+    <footer class="pagination" aria-label="Students pagination">
+      <span>Showing {{ pageStart }}–{{ pageEnd }} of {{ total }} students</span>
+      <app-manager-select class="page-size" [formControl]="pageSize" [options]="pageSizeOptions"></app-manager-select>
+      <div class="page-buttons"><button type="button" (click)="goToPage(1)" [disabled]="currentPage <= 1 || loading" aria-label="First page">«</button><button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1 || loading" aria-label="Previous page">‹</button><span>Page {{ currentPage }} of {{ totalPages }}</span><button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages || loading" aria-label="Next page">›</button><button type="button" (click)="goToPage(totalPages)" [disabled]="currentPage >= totalPages || loading" aria-label="Last page">»</button></div>
+    </footer>
+  </section>
 </section>
