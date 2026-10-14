@@ -70,6 +70,8 @@ export interface StudentRegisterQuery {
   status?: StudentRegisterStatus;
   advisorId?: string;
   collegeId?: string;
+  advisorName?: string;
+  collegeName?: string;
   from?: string;
   to?: string;
   attentionThisWeek?: boolean;
@@ -123,8 +125,8 @@ export interface StudentRegisterResult {
     trend: { available: boolean; reason?: string };
   };
   options: {
-    advisors: Array<{ userId: string; name: string }>;
-    colleges: Array<{ collegeId: string; name: string }>;
+    advisors: Array<{ userId: string | null; name: string }>;
+    colleges: Array<{ collegeId: string | null; name: string }>;
   };
 }
 

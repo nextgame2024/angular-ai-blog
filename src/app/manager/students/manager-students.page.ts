@@ -10,6 +10,7 @@ import {
 import {
   ManagerSelectComponent, type ManagerSelectOption,
 } from '../components/shared/manager-select/manager-select.component';
+import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import type {
   StudentOperationsWorkspace, StudentRegisterQuery, StudentRegisterResult,
@@ -21,7 +22,7 @@ type QueryState = StudentRegisterQuery & { revision: number };
 
 @Component({
   selector: 'app-manager-students-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, DatePickerModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
   templateUrl: './manager-students.page.html',
   styleUrls: ['./manager-students.page.css'],
 })
@@ -35,7 +36,6 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
   readonly search = new FormControl('', { nonNullable: true });
   readonly status = new FormControl('', { nonNullable: true });
   readonly advisor = new FormControl('', { nonNullable: true });
-  readonly college = new FormControl('', { nonNullable: true });
   readonly period = new FormControl<PeriodPreset>('all', { nonNullable: true });
   readonly dateRange = new FormControl<Date[] | null>(null);
   readonly pageSize = new FormControl('25', { nonNullable: true });
@@ -61,10 +61,10 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
     { value: '100', label: '100 per page' },
   ];
   advisorOptions: ManagerSelectOption[] = [{ value: '', label: 'All advisors' }];
-  collegeOptions: ManagerSelectOption[] = [{ value: '', label: 'All colleges' }];
   workspace: StudentOperationsWorkspace | null = null;
   result: StudentRegisterResult | null = null;
   loading = true;
+  sectionsCollapsed = false;
   error = '';
   dateError = '';
   private appliedFrom = '';
@@ -108,11 +108,7 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
       this.result = result;
       this.advisorOptions = [
         { value: '', label: 'All advisors' },
-        ...result.options.advisors.map((item) => ({ value: item.userId, label: item.name })),
-      ];
-      this.collegeOptions = [
-        { value: '', label: 'All colleges' },
-        ...result.options.colleges.map((item) => ({ value: item.collegeId, label: item.name })),
+        ...result.options.advisors.map((item) => ({ value: item.name, label: item.name })),
       ];
     });
     this.search.valueChanges.pipe(
@@ -124,9 +120,7 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
         attentionThisWeek: undefined, page: 1,
       }));
     this.advisor.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe((value) => this.patchQuery({ advisorId: value || undefined, page: 1 }));
-    this.college.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe((value) => this.patchQuery({ collegeId: value || undefined, page: 1 }));
+      .subscribe((value) => this.patchQuery({ advisorName: value || undefined, page: 1 }));
     this.pageSize.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((value) => this.patchQuery({ limit: Number(value), page: 1 }));
     this.period.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))

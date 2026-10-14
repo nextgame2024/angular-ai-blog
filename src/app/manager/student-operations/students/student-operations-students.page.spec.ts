@@ -187,9 +187,32 @@ describe('StudentOperationsStudentsPageComponent', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Payments and Control');
     expect(fixture.nativeElement.textContent).toContain('Review TRUST transactions and associated student records.');
-    expect(fixture.nativeElement.querySelector('.list-loader .loader-content')).not.toBeNull();
-    expect(fixture.nativeElement.querySelector('.list-loader .loader-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-manager-list-loader .loader-ring')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-manager-list-loader .loader-bar')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('.screen-loader')).toBeNull();
+  });
+
+  it('collapses only the transaction summary while keeping filters usable without fetching again', () => {
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('.section-toggle') as HTMLButtonElement;
+    const sections = fixture.nativeElement.querySelector('#payment-summary-filters') as HTMLElement;
+    const search = sections.querySelector('.search-field input') as HTMLInputElement;
+    const invoiceRequests = api.xeroStudentInvoices.calls.count();
+    expect(button.parentElement?.classList.contains('filters')).toBeTrue();
+    expect(button.previousElementSibling?.tagName.toLowerCase()).toBe('app-manager-select');
+    button.click();
+    fixture.detectChanges();
+    expect((sections.querySelector('.overview') as HTMLElement).hidden).toBeTrue();
+    expect(sections.querySelector('.search-field input')).toBe(search);
+    expect(sections.querySelectorAll('app-manager-select').length).toBe(2);
+    expect(sections.querySelector('p-datepicker')).not.toBeNull();
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(api.xeroStudentInvoices.calls.count()).toBe(invoiceRequests);
+    button.click();
+    fixture.detectChanges();
+    expect((sections.querySelector('.overview') as HTMLElement).hidden).toBeFalse();
+    expect(sections.querySelector('.search-field input')).toBe(search);
+    expect(button.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('pins the list header and table headings above the scrolling register', () => {
@@ -219,6 +242,10 @@ describe('StudentOperationsStudentsPageComponent', () => {
     const card = fixture.nativeElement.querySelector('.xero-candidates') as HTMLElement;
     expect(shell.getBoundingClientRect().bottom - card.getBoundingClientRect().bottom).toBeLessThan(30);
     expect(register.querySelector('tbody tr')).not.toBeNull();
+    fixture.componentInstance.loadingInvoices = true;
+    fixture.detectChanges();
+    expect(register.querySelector('app-manager-list-loader.overlay-host .loader-ring')).not.toBeNull();
+    expect(register.querySelector('tbody tr')).not.toBeNull();
   });
 
   it('does not flash the empty state while the Xero register is still loading', () => {
@@ -232,7 +259,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
     api.xeroStudentInvoices.and.returnValue(xeroInvoices$);
 
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.list-loader')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-manager-list-loader')).not.toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('No students found');
 
     xeroStatus$.next({
@@ -243,7 +270,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
       }],
     });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.list-loader')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('app-manager-list-loader')).not.toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('No students found');
 
     xeroInvoices$.next({
@@ -260,7 +287,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
       }],
     });
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('.list-loader')).toBeNull();
+    expect(fixture.nativeElement.querySelector('app-manager-list-loader')).toBeNull();
     expect(fixture.nativeElement.textContent).toContain('INV-1');
     expect(fixture.nativeElement.textContent).not.toContain('No students found');
   });
@@ -283,6 +310,21 @@ describe('StudentOperationsStudentsPageComponent', () => {
 
     expect(fixture.nativeElement.querySelector('.privacy-toast-wrap')).toBeNull();
   }));
+
+  it('starts the TRUST invoice register without waiting for unrelated student or dashboard reads', () => {
+    api.workspace.and.returnValue(of({
+      packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
+      role: 'chief_executive', authorizationRevision: 1, workspaceRoutes: ['students'],
+    }));
+    api.xeroStatus.and.returnValue(of({ configured: true, connections: [{
+      connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+      organisationRole: 'trust', missingStudentDiscoveryScopes: [],
+    }] }));
+    fixture.detectChanges();
+    expect(api.xeroStudentInvoices).toHaveBeenCalled();
+    expect(api.students).not.toHaveBeenCalled();
+    expect(api.dashboard).not.toHaveBeenCalled();
+  });
 
   it('shows compact Xero totals once, without the unrelated student dashboard cards', () => {
     fixture.detectChanges();

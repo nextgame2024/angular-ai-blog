@@ -109,6 +109,7 @@ describe('StudentOperationsService', () => {
   it('sends Students register filters through the identity-bound workspace', () => {
     service.studentRegister({
       page: 2, limit: 25, q: 'Joselin', advisorId: 'advisor-1',
+      advisorName: 'S15 Paulina', collegeName: 'ATI',
       from: '2026-10-01', to: '2026-10-14', attentionThisWeek: true,
       sortBy: 'nextPayment', sortDir: 'desc',
     }).subscribe();
@@ -119,6 +120,8 @@ describe('StudentOperationsService', () => {
     expect(request.request.headers.get('Authorization')).toBe('Token business-manager-token');
     expect(request.request.params.get('page')).toBe('2');
     expect(request.request.params.get('q')).toBe('Joselin');
+    expect(request.request.params.get('advisorName')).toBe('S15 Paulina');
+    expect(request.request.params.get('collegeName')).toBe('ATI');
     expect(request.request.params.get('from')).toBe('2026-10-01');
     expect(request.request.params.get('to')).toBe('2026-10-14');
     expect(request.request.params.get('attentionThisWeek')).toBe('true');

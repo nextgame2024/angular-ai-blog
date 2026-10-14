@@ -123,6 +123,8 @@ export class StudentOperationsService {
     if (input.status) params = params.set('status', input.status);
     if (input.advisorId) params = params.set('advisorId', input.advisorId);
     if (input.collegeId) params = params.set('collegeId', input.collegeId);
+    if (input.advisorName) params = params.set('advisorName', input.advisorName);
+    if (input.collegeName) params = params.set('collegeName', input.collegeName);
     if (input.from && input.to) {
       params = params.set('from', input.from).set('to', input.to);
     }

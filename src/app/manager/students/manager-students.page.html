@@ -20,7 +20,8 @@
       </div>
     </header>
 
-    <div class="summary-grid" aria-label="Student summary">
+    <div id="student-summary-filters" class="overview-sections">
+    <div id="student-summary" class="summary-grid" aria-label="Student summary" [hidden]="sectionsCollapsed">
       <article class="summary-card active-card">
         <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"></circle><path d="M2 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 4 5v1"></path></svg></span>
         <div><span class="metric-label">Active Students</span><strong>{{ result?.summary?.activeStudents ?? '—' }}</strong><small>Students with a current case</small></div>
@@ -49,19 +50,25 @@
     <div class="filters" aria-label="Student filters">
       <label class="search-field">
         <span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg></span>
-        <input type="search" [formControl]="search" placeholder="Search by name, student ID or email…" aria-label="Search students" />
+        <input type="search" [formControl]="search" placeholder="Search by name, student ID, email or Ref / College…" aria-label="Search students, including Ref / College" />
         @if (search.value) { <button type="button" class="clear-search" (click)="clearSearch()" aria-label="Clear search">×</button> }
       </label>
       <app-manager-select [formControl]="status" [options]="statusOptions" aria-label="Filter by status"></app-manager-select>
       <app-manager-select [formControl]="advisor" [options]="advisorOptions" aria-label="Filter by advisor"></app-manager-select>
-      <app-manager-select [formControl]="college" [options]="collegeOptions" aria-label="Filter by college"></app-manager-select>
       <div class="date-filter" [class.invalid]="!!dateError">
         <p-datepicker [formControl]="dateRange" selectionMode="range" dateFormat="dd/mm/yy"
-          [readonlyInput]="true" [showIcon]="true" [showButtonBar]="true" [showClear]="true"
+          [readonlyInput]="true" [showIcon]="true" [showButtonBar]="true"
           appendTo="body" styleClass="student-date-range" placeholder="Date range"
           ariaLabel="Case opened date range"></p-datepicker>
       </div>
+      <button type="button" class="section-toggle" [attr.aria-expanded]="!sectionsCollapsed"
+        aria-controls="student-summary" [attr.aria-label]="sectionsCollapsed ? 'Show student summary' : 'Hide student summary'"
+        [attr.title]="sectionsCollapsed ? 'Show summary' : 'Hide summary'"
+        (click)="sectionsCollapsed = !sectionsCollapsed">
+        <svg viewBox="0 0 24 24" [class.collapsed]="sectionsCollapsed" aria-hidden="true"><path d="m6 14 6-6 6 6"></path></svg>
+      </button>
       @if (dateError) { <span class="date-error" role="alert">{{ dateError }}</span> }
+    </div>
     </div>
   </div>
 
@@ -83,7 +90,7 @@
     }
     <div class="register-content" [attr.aria-busy]="loading">
       @if (loading && !result) {
-        <div class="list-loader" role="status"><span class="loader-ring" aria-hidden="true"></span>Loading students…</div>
+        <app-manager-list-loader label="Loading students…"></app-manager-list-loader>
       } @else if (!loading && !error && !rows.length) {
         <div class="empty-state" role="status"><strong>No students found</strong><span>No records match the current filters.</span></div>
       } @else {
@@ -93,7 +100,7 @@
               <th scope="col" [attr.aria-sort]="sortAria('name')"><button type="button" class="sort-button" (click)="sort('name')">Student <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" [attr.aria-sort]="sortAria('studentId')"><button type="button" class="sort-button" (click)="sort('studentId')">Student ID <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" [attr.aria-sort]="sortAria('advisor')"><button type="button" class="sort-button" (click)="sort('advisor')">Advisor <span class="sort-indicator" aria-hidden="true"></span></button></th>
-              <th scope="col" [attr.aria-sort]="sortAria('college')"><button type="button" class="sort-button" (click)="sort('college')">College <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" [attr.aria-sort]="sortAria('college')"><button type="button" class="sort-button" (click)="sort('college')">Ref / College <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" [attr.aria-sort]="sortAria('stage')"><button type="button" class="sort-button" (click)="sort('stage')">Current Stage <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" [attr.aria-sort]="sortAria('nextPayment')"><button type="button" class="sort-button" (click)="sort('nextPayment')">Next Payment <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" [attr.aria-sort]="sortAria('status')"><button type="button" class="sort-button" (click)="sort('status')">Status <span class="sort-indicator" aria-hidden="true"></span></button></th>
@@ -123,13 +130,13 @@
           @for (student of rows; track student.userId) {
             <article class="student-card">
               <div class="card-top"><div class="student-identity"><span class="avatar" [class.tone-1]="avatarTone(student.legalName) === 1" [class.tone-2]="avatarTone(student.legalName) === 2" [class.tone-3]="avatarTone(student.legalName) === 3">{{ initials(student.legalName) }}</span><span><strong>{{ student.legalName }}</strong><small>{{ student.email }}</small></span></div><span class="status-pill" [class.healthy]="student.status === 'healthy'" [class.action]="student.status === 'action_required'" [class.overdue]="student.status === 'overdue'" [class.vigente]="student.status === 'no_vigente'">{{ statusLabel(student.status) }}</span></div>
-              <dl><div><dt>Student ID</dt><dd>{{ student.studentReference }}</dd></div><div><dt>Advisor</dt><dd>{{ student.advisorName || '—' }}</dd></div><div><dt>College</dt><dd>{{ student.collegeName || '—' }}</dd></div><div><dt>Current Stage</dt><dd>{{ stageLabel(student.currentStage) }}</dd></div><div><dt>Next Payment</dt><dd>@if (student.nextPayment; as payment) { {{ dateLabel(payment.dueOn) }} · {{ moneyLabel(payment) }} } @else { — }</dd></div><div><dt>Cases</dt><dd>{{ student.caseCount }}</dd></div></dl>
+              <dl><div><dt>Student ID</dt><dd>{{ student.studentReference }}</dd></div><div><dt>Advisor</dt><dd>{{ student.advisorName || '—' }}</dd></div><div><dt>Ref / College</dt><dd>{{ student.collegeName || '—' }}</dd></div><div><dt>Current Stage</dt><dd>{{ stageLabel(student.currentStage) }}</dd></div><div><dt>Next Payment</dt><dd>@if (student.nextPayment; as payment) { {{ dateLabel(payment.dueOn) }} · {{ moneyLabel(payment) }} } @else { — }</dd></div><div><dt>Cases</dt><dd>{{ student.caseCount }}</dd></div></dl>
               @if (student.cases.length) { <div class="mobile-cases">@for (studentCase of student.cases; track studentCase.caseId) { <span class="case-label">{{ studentCase.caseReference }}</span> }</div> }
               <div class="row-actions"><button type="button" class="btn edit-button" disabled title="Available in the next task">Edit</button><button type="button" class="btn delete-button" disabled title="Available in the next task">Delete</button></div>
             </article>
           }
         </div>
-        @if (loading) { <div class="loading-overlay" role="status">Updating students…</div> }
+        @if (loading) { <app-manager-list-loader label="Updating students…" [overlay]="true"></app-manager-list-loader> }
       }
     </div>
     <footer class="pagination" aria-label="Students pagination">

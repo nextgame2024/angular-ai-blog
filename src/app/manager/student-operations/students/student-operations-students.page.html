@@ -32,7 +32,8 @@
       </div>
     </header>
     @if (viewMode === 'list') {
-      <div class="overview" aria-label="TRUST transaction summary">
+      <div id="payment-summary-filters" class="overview-sections">
+      <div id="payment-summary" class="overview" aria-label="TRUST transaction summary" [hidden]="sectionsCollapsed">
         <div class="metrics">
           <article class="metric"><span class="metric-label">Invoices</span><strong>{{ xeroInvoices?.invoiceTotal ?? '—' }}</strong></article>
           <article class="metric"><span class="metric-label">Credit notes</span><strong>{{ xeroInvoices?.creditNoteTotal ?? '—' }}</strong></article>
@@ -58,7 +59,14 @@
           appendTo="body" styleClass="invoice-date-range" placeholder="Date range"
           ariaLabel="Invoice date range"></p-datepicker>
         <app-manager-select [formControl]="paymentTrack" [options]="paymentTrackOptions" placeholder="All payment tracks"></app-manager-select>
+        <button type="button" class="section-toggle" [attr.aria-expanded]="!sectionsCollapsed"
+          aria-controls="payment-summary" [attr.aria-label]="sectionsCollapsed ? 'Show transaction summary' : 'Hide transaction summary'"
+          [attr.title]="sectionsCollapsed ? 'Show summary' : 'Hide summary'"
+          (click)="sectionsCollapsed = !sectionsCollapsed">
+          <svg viewBox="0 0 24 24" [class.collapsed]="sectionsCollapsed" aria-hidden="true"><path d="m6 14 6-6 6 6"></path></svg>
+        </button>
         @if (invoiceFilterError) { <span class="filter-error" role="alert">{{ invoiceFilterError }}</span> }
+      </div>
       </div>
     }
   </div>
@@ -106,11 +114,11 @@
         @if (isChiefExecutive) { <ng-container [ngTemplateOutlet]="xeroSyncPanel"></ng-container> }
       </header>
       @if (loadingInvoices && !xeroInvoices.invoices.length) {
-        <div class="candidate-empty" aria-live="polite">Loading Xero invoices…</div>
+        <app-manager-list-loader label="Loading Xero invoices…"></app-manager-list-loader>
       } @else if (!xeroInvoices.invoices.length) {
         <div class="candidate-empty">No invoices match the current search.</div>
       } @else {
-        <div class="invoice-table-scroll" [class.is-loading]="loadingInvoices">
+        <div class="invoice-table-scroll">
           <table class="invoice-table">
             <thead><tr>
               <th [attr.aria-sort]="invoiceSortAria('invoiceNumber')"><button class="sort-button" type="button" (click)="sortXeroInvoices('invoiceNumber')">Number <span class="sort-indicator" aria-hidden="true"></span></button></th>
@@ -159,6 +167,7 @@
               }
             </tbody>
           </table>
+          @if (loadingInvoices) { <app-manager-list-loader label="Updating records…" [overlay]="true"></app-manager-list-loader> }
         </div>
         <footer class="invoice-pagination" aria-label="Xero invoice pagination">
           <span>Showing {{ invoicePageStart }}–{{ invoicePageEnd }} of {{ xeroInvoices.total }}</span>
@@ -178,9 +187,7 @@
   @if (viewMode === 'form') {
     @if (formError) { <div class="form-error" role="alert">{{ formError }}</div> }
     @if (loadingForm) {
-      <div class="list-loader form-loader" aria-live="polite" aria-busy="true">
-        <div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading student…</div></div>
-      </div>
+      <app-manager-list-loader label="Loading student…"></app-manager-list-loader>
     } @else {
       <form class="student-form" [formGroup]="studentForm" (ngSubmit)="saveStudent()">
         <div class="form-grid">
@@ -202,9 +209,7 @@
       <button type="button" (click)="retry()">Try again</button>
     </div>
   } @else if (loadingInitial || loadingXeroContext || (loadingInvoices && !xeroInvoices)) {
-    <div class="list-loader" aria-live="polite" aria-busy="true">
-      <div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-bar" aria-hidden="true"></div><div class="loader-text">Loading records…</div></div>
-    </div>
+    <app-manager-list-loader label="Loading records…"></app-manager-list-loader>
   } @else if (!students.length && !xeroInvoices) {
     <div class="state" data-testid="student-operations-students-empty">
       <strong>No students found</strong><span>No records match the current filters.</span>

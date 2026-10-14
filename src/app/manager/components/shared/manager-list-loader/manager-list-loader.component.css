@@ -1,0 +1,14 @@
+:host { display:grid; flex:1; min-height:0 }
+:host(.overlay-host) { position:absolute; inset:0; z-index:3; pointer-events:auto }
+.manager-list-loader { display:grid; place-content:center; justify-items:center; gap:.75rem; min-height:12rem; width:100%; color:#526176; background:#fff }
+.manager-list-loader.overlay { min-height:0; height:100%; background:rgba(255,255,255,.82) }
+.loader-ring { width:46px; height:46px; border:3px solid rgba(16,224,199,.25); border-top-color:#10e0c7; border-right-color:rgba(110,89,255,.45); border-radius:50%; animation:manager-loader-spin .9s linear infinite }
+.loader-bar { position:relative; width:140px; height:6px; overflow:hidden; border-radius:999px; background:rgba(15,23,42,.08) }
+.loader-bar::after { content:""; position:absolute; inset:0; width:45%; border-radius:999px; background:linear-gradient(90deg,#10e0c7,#6e59ff); animation:manager-loader-slide 1.1s ease-in-out infinite }
+.loader-text { font-size:.9rem; text-align:center }
+@keyframes manager-loader-spin { to { transform:rotate(360deg) } }
+@keyframes manager-loader-slide { 0% { transform:translateX(-100%) } 100% { transform:translateX(320%) } }
+@media (prefers-reduced-motion:reduce) { .loader-ring,.loader-bar::after { animation:none } }
+:host-context(html.dark) .manager-list-loader { color:#c7d3e2; background:#111b2b }
+:host-context(html.dark) .manager-list-loader.overlay { background:rgba(17,27,43,.82) }
+:host-context(html.dark) .loader-bar { background:rgba(226,232,240,.15) }

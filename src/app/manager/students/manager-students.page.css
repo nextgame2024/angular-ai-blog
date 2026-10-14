@@ -6,8 +6,8 @@
 .breadcrumb a { color:#475569; text-decoration:none }
 .page-header { display:flex; justify-content:space-between; align-items:center; gap:1rem; padding:.6rem 0 .75rem }
 h1,h2,p { margin:0 }
-h1 { font-size:1.35rem } h2 { font-size:1rem }
-.page-header p { color:#66758a; font-size:.85rem; margin-top:.2rem }
+h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
+.page-header p { color:inherit; opacity:.75; font-size:.9rem; margin-top:.25rem }
 .header-period { display:flex; align-items:center; gap:.6rem; white-space:nowrap }
 .calendar-icon svg,.search-icon svg,.metric-icon svg { width:1.25rem; height:1.25rem; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round }
 .calendar-icon { color:#4c6291 }
@@ -32,11 +32,17 @@ h1 { font-size:1.35rem } h2 { font-size:1rem }
 .insight-heading span { font-size:1.15rem }
 .insight-card p { font-size:.78rem; line-height:1.4 }
 .insight-card p strong { font-size:inherit }
+.summary-grid[hidden] { display:none }
+.section-toggle { display:inline-flex; align-items:center; justify-content:center; width:2rem; height:1.9rem; border:1px solid #d6dfec; border-radius:.42rem; background:#fff; color:#526783; padding:.2rem; font:inherit; cursor:pointer }
+.section-toggle:hover { background:#f2f8fa; color:#087f73 }
+.section-toggle:focus-visible { outline:2px solid #0eac9e; outline-offset:2px }
+.section-toggle svg { width:.9rem; height:.9rem; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; transition:transform .15s ease }
+.section-toggle svg.collapsed { transform:rotate(180deg) }
 .btn { border:1px solid #d6dfec; border-radius:.52rem; background:#fff; color:#182235; padding:.45rem .65rem; font:inherit; cursor:pointer }
 .btn:disabled { opacity:.5; cursor:not-allowed }
 .btn:not(:disabled):hover { filter:brightness(.96) }
 .insight-button { width:100%; border-color:#0ebcaa; background:#0eac9e; color:white; font-size:.8rem; font-weight:600 }
-.filters { display:grid; grid-template-columns:minmax(14rem,2fr) repeat(4,minmax(9rem,1fr)); align-items:start; gap:.55rem; padding-top:.7rem }
+.filters { display:grid; grid-template-columns:minmax(14rem,2fr) repeat(3,minmax(9rem,1fr)) 2rem; align-items:center; gap:.55rem; padding-top:.7rem }
 .search-field { display:flex; align-items:center; height:2.65rem; min-width:0; gap:.45rem; border:1px solid #dfe6ee; border-radius:.55rem; background:#fff; padding:0 .7rem }
 .search-field:focus-within { border-color:#23b7a9; box-shadow:0 0 0 2px #23b7a926 }
 .search-icon { display:grid; color:#8694a9 }
@@ -46,10 +52,12 @@ h1 { font-size:1.35rem } h2 { font-size:1rem }
 .clear-search { border:0; background:transparent; color:#66758a; cursor:pointer; font-size:1.1rem }
 .date-filter { min-width:0 }
 .date-filter.invalid { outline:2px solid #e45c66; border-radius:.55rem }
-.date-error { grid-column:5; font-size:.72rem; color:#bd2f43 }
-:host ::ng-deep .student-date-range { display:block; width:100% }
-:host ::ng-deep .student-date-range .p-inputtext { width:100%; height:2.65rem; min-width:0; border:1px solid #dfe6ee; border-radius:.55rem 0 0 .55rem; font-size:.84rem; background:#fff; color:#172033 }
-:host ::ng-deep .student-date-range .p-datepicker-dropdown { height:2.65rem; width:2.65rem; border:1px solid #dfe6ee; border-left:0; border-radius:0 .55rem .55rem 0; background:#fff; color:#63738d }
+.date-error { grid-column:4 / -1; font-size:.72rem; color:#bd2f43 }
+:host ::ng-deep .student-date-range { display:flex; align-items:stretch; width:100%; min-width:0 }
+:host ::ng-deep .student-date-range .p-datepicker-input { flex:1 1 auto; width:1%; min-width:0; min-height:2.65rem; border:1px solid #dfe6ee; border-radius:.55rem 0 0 .55rem; font-size:.84rem; background:#fff; color:#172033 }
+:host ::ng-deep .student-date-range .p-datepicker-dropdown { flex:0 0 2.65rem; width:2.65rem; min-height:2.65rem; border:1px solid #dfe6ee; border-left:0; border-radius:0 .55rem .55rem 0; background:#fff; color:#63738d }
+:host ::ng-deep .student-date-range .p-datepicker-dropdown:hover { background:#f3f8f7; color:#176f64 }
+:host ::ng-deep .student-date-range .p-datepicker-input:focus { border-color:#72d5c4; box-shadow:0 0 0 3px #18b89d1a }
 .register { display:flex; flex:1; flex-direction:column; min-height:0; border:1px solid #dae6f2; border-radius:.85rem; background:#fff; overflow:hidden }
 .register-heading { display:flex; justify-content:space-between; align-items:center; min-height:3.2rem; padding:.55rem .8rem; gap:.75rem }
 .register-actions,.row-actions { display:flex; align-items:center; gap:.4rem; white-space:nowrap }
@@ -68,10 +76,14 @@ h1 { font-size:1.35rem } h2 { font-size:1rem }
 .student-table th,.student-table td { padding:.35rem .45rem }
 .student-table td { height:3.7rem; border-bottom:1px solid #e6edf5; vertical-align:middle }
 .student-table tbody tr:hover { background:#f8fbfd }
-.sort-button { display:inline-flex; align-items:center; gap:.2rem; border:0; background:transparent; padding:0; color:inherit; font:inherit; font-weight:inherit; cursor:pointer }
-.sort-indicator::after { content:'↕'; color:#a1afc2; font-size:.75rem }
-th[aria-sort='ascending'] .sort-indicator::after { content:'↑'; color:#376ce5 }
-th[aria-sort='descending'] .sort-indicator::after { content:'↓'; color:#376ce5 }
+.sort-button { display:inline-flex; align-items:center; gap:.3rem; border:0; background:transparent; padding:0; color:inherit; font:inherit; font-weight:inherit; cursor:pointer }
+.sort-indicator { position:relative; width:8px; height:12px; flex:0 0 8px }
+.sort-indicator::before,.sort-indicator::after { content:""; position:absolute; left:1px; border-right:3px solid transparent; border-left:3px solid transparent }
+.sort-indicator::before { top:1px; border-bottom:4px solid #b5beca }
+.sort-indicator::after { bottom:1px; border-top:4px solid #b5beca }
+.student-table th[aria-sort='ascending'] .sort-indicator::before { border-bottom-color:#334155 }
+.student-table th[aria-sort='descending'] .sort-indicator::after { border-top-color:#334155 }
+.sort-button:hover,.sort-button:focus-visible { color:#087f73 }
 .student-identity { display:flex; align-items:center; gap:.55rem; min-width:0 }
 .student-identity > span:last-child { min-width:0; display:flex; flex-direction:column; gap:.08rem }
 .student-identity strong,.student-identity small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:15rem }
@@ -87,11 +99,8 @@ th[aria-sort='descending'] .sort-indicator::after { content:'↓'; color:#376ce5
 .row-actions .btn { padding:.28rem .4rem; font-size:.72rem }
 .edit-button { color:#6555dc; background:#f1efff; border-color:#cec5ff } .delete-button { color:#d33747; background:#fff1f1; border-color:#ffcbd2 }
 .student-cards { display:none }
-.loading-overlay { position:absolute; inset:0; display:grid; place-content:center; background:#ffffffad; color:#3d556f; font-weight:600 }
-.list-loader,.empty-state { display:grid; place-content:center; justify-items:center; flex:1; min-height:12rem; gap:.4rem; color:#66758a; text-align:center }
+.empty-state { display:grid; place-content:center; justify-items:center; flex:1; min-height:12rem; gap:.4rem; color:#66758a; text-align:center }
 .empty-state strong { color:#172033 }
-.loader-ring { width:1.35rem; height:1.35rem; border:2px solid #cdece9; border-top-color:#0aad9e; border-radius:50%; animation:spin .8s linear infinite }
-@keyframes spin { to { transform:rotate(360deg) } }
 .pagination { display:flex; align-items:center; justify-content:flex-end; gap:.7rem; flex:none; min-height:3.3rem; padding:.45rem .75rem; color:#526783; font-size:.75rem }
 .page-size { display:block; min-width:7rem }
 .page-buttons { display:flex; align-items:center; gap:.3rem; white-space:nowrap }
@@ -101,15 +110,21 @@ th[aria-sort='descending'] .sort-indicator::after { content:'↓'; color:#376ce5
 @media (max-width:900px) { .students-page { height:auto; min-height:100% } .page-chrome { position:relative } .summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)) } .filters { grid-template-columns:repeat(2,minmax(0,1fr)) } .search-field,.date-error { grid-column:1/-1 } .register { min-height:26rem } .table-wrap { display:none } .student-cards { display:grid; align-content:start; gap:.55rem; flex:1; padding:.6rem; overflow:auto } .student-card { display:grid; gap:.55rem; border:1px solid #e3ebf4; border-radius:.65rem; padding:.65rem } .card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem } .student-card dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; margin:0 } .student-card dt { color:#7889a0; font-size:.67rem } .student-card dd { margin:.1rem 0 0; font-size:.77rem } .student-card .row-actions { justify-content:flex-end } }
 @media (max-width:640px) { .page-header { align-items:flex-start; flex-direction:column } .header-period { width:100% } .header-dates { flex:1 } .period-select { min-width:9rem } .summary-card { min-height:6rem; padding:.6rem } .metric-icon { width:2rem; height:2rem } .summary-card strong { font-size:1.15rem } .insight-card { flex-direction:column; align-items:stretch } .insight-button { width:100% } .pagination { flex-wrap:wrap; justify-content:center } .register-heading { align-items:flex-start; flex-direction:column } }
 @media (max-width:400px) { .summary-grid,.filters { grid-template-columns:1fr } .search-field,.insight-card { grid-column:auto } .card-top { flex-direction:column } }
+@media (max-width:400px) { .filters { grid-template-columns:minmax(0,1fr) 2rem } .filters > .search-field,.filters > app-manager-select,.filters > .date-error { grid-column:1/-1 } }
 :host-context(html.dark) { color:#e6edf6 }
 :host-context(html.dark) .page-chrome { background:#111827 }
-:host-context(html.dark) .breadcrumb,:host-context(html.dark) .page-header p,:host-context(html.dark) .header-dates span,:host-context(html.dark) .metric-label,:host-context(html.dark) .summary-card small { color:#9cadc3 }
+:host-context(html.dark) .breadcrumb,:host-context(html.dark) .header-dates span,:host-context(html.dark) .metric-label,:host-context(html.dark) .summary-card small { color:#9cadc3 }
 :host-context(html.dark) .breadcrumb a { color:#c1d0e6 }
 :host-context(html.dark) .summary-card,:host-context(html.dark) .register,:host-context(html.dark) .student-card { background:#1e293b; border-color:#334155 }
 :host-context(html.dark) .search-field,:host-context(html.dark) .page-buttons button { background:#1e293b; border-color:#3b4c63; color:#e6edf6 }
+:host-context(html.dark) .section-toggle { background:#1e293b; border-color:#3b4c63; color:#c1d0e6 }
+:host-context(html.dark) .section-toggle:hover { background:#263449; color:#74e2d1 }
 :host-context(html.dark) .student-table th { background:#263449; color:#c1d0e6; border-color:#3b4c63 }
+:host-context(html.dark) .sort-indicator::before { border-bottom-color:#64748b }
+:host-context(html.dark) .sort-indicator::after { border-top-color:#64748b }
+:host-context(html.dark) .student-table th[aria-sort='ascending'] .sort-indicator::before { border-bottom-color:#e2e8f0 }
+:host-context(html.dark) .student-table th[aria-sort='descending'] .sort-indicator::after { border-top-color:#e2e8f0 }
 :host-context(html.dark) .student-table td { border-color:#334155 }
 :host-context(html.dark) .student-table tbody tr:hover { background:#263449 }
 :host-context(html.dark) .empty-state strong { color:#e6edf6 }
-:host-context(html.dark) .loading-overlay { background:#172033bd; color:#e6edf6 }
-:host-context(html.dark) ::ng-deep .student-date-range .p-inputtext,:host-context(html.dark) ::ng-deep .student-date-range .p-datepicker-dropdown { background:#1e293b; color:#e6edf6; border-color:#3b4c63 }
+:host-context(html.dark) ::ng-deep .student-date-range .p-datepicker-input,:host-context(html.dark) ::ng-deep .student-date-range .p-datepicker-dropdown { background:#1e293b; color:#e6edf6; border-color:#3b4c63 }

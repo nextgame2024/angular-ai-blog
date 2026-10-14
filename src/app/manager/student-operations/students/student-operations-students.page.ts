@@ -10,6 +10,7 @@ import { ManagerService } from '../../services/manager.service';
 import {
   ManagerSelectComponent, type ManagerSelectOption,
 } from '../../components/shared/manager-select/manager-select.component';
+import { ManagerListLoaderComponent } from '../../components/shared/manager-list-loader/manager-list-loader.component';
 import { StudentOperationsService } from '../student-operations.service';
 import type {
   StudentOperationsStudentDetail,
@@ -27,7 +28,7 @@ import type {
 
 @Component({
   selector: 'app-student-operations-students-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, DatePickerModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
   templateUrl: './student-operations-students.page.html',
   styleUrls: ['./student-operations-students.page.css'],
 })
@@ -116,6 +117,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   page = 1;
   total = 0;
   loadingInitial = true;
+  sectionsCollapsed = false;
   loadingMore = false;
   loadingForm = false;
   saving = false;
@@ -206,7 +208,11 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.destroy$.complete();
   }
 
-  retry(): void { this.workspace ? this.resetAndLoad() : this.loadInitial(); }
+  retry(): void {
+    if (!this.workspace) this.loadInitial();
+    else if (this.isChiefExecutive) this.loadXeroContext();
+    else this.resetAndLoad();
+  }
   clearSearch(): void { this.search.setValue(''); }
   dismissPrivacyNote(): void {
     if (this.privacyToastTimer) clearTimeout(this.privacyToastTimer);
@@ -443,22 +449,30 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     const version = ++this.requestVersion;
     this.loadingInitial = true;
     this.error = '';
-    forkJoin({
-      workspace: this.api.workspace(),
-      result: this.api.students(this.query(1)),
-      dashboard: this.api.dashboard(),
-    })
-      .pipe(takeUntil(this.destroy$)).subscribe({
-        next: ({ workspace, result, dashboard }) => {
-          if (version !== this.requestVersion) return;
-          this.workspace = workspace;
-          this.summary = dashboard.summary;
-          this.applyResult(result, true);
-          if (workspace.role === 'chief_executive') this.loadXeroContext();
-          else this.loadingXeroContext = false;
-        },
-        error: (error) => this.handleError(error, version),
-      });
+    this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (workspace) => {
+        if (version !== this.requestVersion) return;
+        this.workspace = workspace;
+        if (workspace.role === 'chief_executive') {
+          // TRUST invoices are the register for this role. Do not wait on the
+          // unrelated runtime Students/dashboard endpoints before starting it.
+          this.loadingInitial = false;
+          this.loadXeroContext();
+          return;
+        }
+        this.loadingXeroContext = false;
+        forkJoin({ result: this.api.students(this.query(1)), dashboard: this.api.dashboard() })
+          .pipe(takeUntil(this.destroy$)).subscribe({
+            next: ({ result, dashboard }) => {
+              if (version !== this.requestVersion) return;
+              this.summary = dashboard.summary;
+              this.applyResult(result, true);
+            },
+            error: (error) => this.handleError(error, version),
+          });
+      },
+      error: (error) => this.handleError(error, version),
+    });
   }
 
   private loadPage(page: number, reset: boolean): void {
@@ -521,6 +535,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
           this.loadXeroInvoices(1);
         } else {
           this.loadingXeroContext = false;
+          if (!this.xeroConnection) this.loadPage(1, true);
         }
       },
       error: () => {
