@@ -35,6 +35,7 @@ export const REAL_ESTATE_TOOL_ACTIVITY_LABELS = {
 
 export const REAL_ESTATE_MEDIA_HOSTS = [
   'files-nodejs-api.s3.ap-southeast-2.amazonaws.com',
+  'images.unsplash.com',
 ] as const;
 
 const TOOL_NAMES = [

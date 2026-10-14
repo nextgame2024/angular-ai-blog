@@ -4,7 +4,10 @@ import { TestBed } from '@angular/core/testing';
 import { SophiaSessionFacade } from '../../../services/sophia-session.facade';
 import { SophiaPresentationMediaPolicy } from '../../sophia-presentation-media-policy';
 import { SOPHIA_PRESENTATION_MEDIA_HOSTS } from '../../sophia-tool-presentation.types';
-import { RealEstateToolPresentationRenderer } from './real-estate-tool-presentation.renderer';
+import {
+  REAL_ESTATE_MEDIA_HOSTS,
+  RealEstateToolPresentationRenderer,
+} from './real-estate-tool-presentation.renderer';
 
 describe('RealEstateToolPresentationRenderer', () => {
   let renderer: RealEstateToolPresentationRenderer;
@@ -58,6 +61,10 @@ describe('RealEstateToolPresentationRenderer', () => {
     ]);
     const gallery = view?.blocks.find((block) => block.type === 'media-gallery');
     expect(gallery?.media.map((item) => item.mediaId)).toEqual(['safe']);
+  });
+
+  it('allows the host used by the seeded real-estate listing photos', () => {
+    expect(REAL_ESTATE_MEDIA_HOSTS).toContain('images.unsplash.com');
   });
 
   it('renders all authoritative future availability without a current-month filter', () => {
