@@ -9,6 +9,20 @@
 .college-form-card { margin-top: 4px; }
 .college-notice { display: flex; justify-content: space-between; padding: 10px 14px; border-radius: 8px; background: #defaf3; color: #006c60; }
 .college-notice button { border: 0; background: none; color: inherit; cursor: pointer; }
+.primary-site-summary { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; color: #435673; font-size: .85rem; }
+.primary-site-summary strong { color: #17243a; }
+.college-form-card input[readonly] { background: #f4f7fb; color: #435673; cursor: default; }
+.college-sites-table .college-row { grid-template-columns: .7fr .9fr 1.5fr 1.2fr 1fr .6fr 1fr; }
+.site-primary-hint { margin: 0; color: #526681; font-size: .85rem; }
+@media (max-width: 1100px) {
+  .college-sites-table .college-head { display: none; }
+  .college-sites-table .college-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .college-sites-table .college-row [data-label]::before { content: attr(data-label) ': '; display: block; font-size: .75rem; font-weight: 700; color: #526681; }
+}
 @media (max-width: 700px) { .college-head { display: none; } .college-row { grid-template-columns: 1fr; gap: 4px; } .college-actions { margin-top: 8px; } }
 :host-context(.dark) .college-table, :host-context(.dark) .college-row { background: #152234; color: #e7eef8; border-color: #344456; }
 :host-context(.dark) .college-head { background: #1f3045; }
+:host-context(.dark) .primary-site-summary, :host-context(.dark) .primary-site-summary strong { color: #d5e1ef; }
+:host-context(.dark) .college-form-card input[readonly] { background: #1f3045; color: #d5e1ef; }
+:host-context(.dark) .site-primary-hint, :host-context(.dark) .college-sites-table .college-row [data-label]::before { color: #afc2d9; }
+@media (max-width: 700px) { .college-sites-table .college-row { grid-template-columns: 1fr; } }

@@ -4,7 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
-import { BmCollege, BmCollegeContact, ManagerCollegesService } from '../../services/manager.colleges.service';
+import { BmCollege, BmCollegeContact, BmCollegeSite, ManagerCollegesService } from '../../services/manager.colleges.service';
 
 @Component({
   selector: 'app-manager-colleges-page',
@@ -21,8 +21,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   readonly search = this.fb.control('', { nonNullable: true });
   readonly collegeForm = this.fb.group({
     college_name: ['', [Validators.required, Validators.maxLength(200)]],
-    owner_name: [''], abn: [''], address: [''],
-    email: ['', Validators.email], cel: [''], tel: [''], notes: [''],
+    owner_name: [''], abn: [''], notes: [''],
     status: ['active'],
   });
   readonly contactForm = this.fb.group({
@@ -33,21 +32,39 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     { value: 'active', label: 'active' },
     { value: 'archived', label: 'archived' },
   ];
+  readonly primaryOptions = [
+    { value: 'yes', label: 'Yes' },
+    { value: 'no', label: 'No' },
+  ];
+  readonly siteForm = this.fb.group({
+    city: ['', [Validators.required, Validators.maxLength(120)]],
+    category: ['', Validators.maxLength(120)],
+    address: ['', Validators.maxLength(500)],
+    email: ['', Validators.email],
+    phone: ['', Validators.maxLength(80)],
+    mobile: ['', Validators.maxLength(80)],
+    is_primary: ['no'],
+  });
 
   colleges: BmCollege[] = [];
   contacts: BmCollegeContact[] = [];
+  sites: BmCollegeSite[] = [];
   selected: BmCollege | null = null;
   editingContact: BmCollegeContact | null = null;
+  editingSite: BmCollegeSite | null = null;
   mode: 'list' | 'details' = 'list';
-  tab: 'details' | 'contacts' = 'details';
+  tab: 'details' | 'contacts' | 'sites' = 'details';
   contactMode: 'list' | 'form' = 'list';
+  siteMode: 'list' | 'form' = 'list';
   page = 1;
   total = 0;
   loading = false;
   saving = false;
   contactsLoading = false;
+  sitesLoading = false;
   error = '';
   notice = '';
+  warningDismissed = false;
 
   ngOnInit(): void {
     this.load();
@@ -81,8 +98,10 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     this.selected = null;
     this.mode = 'details';
     this.tab = 'details';
+    this.warningDismissed = false;
     this.collegeForm.reset({ status: 'active' });
     this.contacts = [];
+    this.sites = [];
     this.error = '';
   }
 
@@ -93,17 +112,16 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     this.error = '';
     this.collegeForm.reset({
       college_name: college.collegeName, owner_name: college.ownerName,
-      abn: college.abn, address: college.address, email: college.email,
-      cel: college.cel, tel: college.tel, notes: college.notes, status: college.status,
+      abn: college.abn, notes: college.notes, status: college.status,
     });
   }
 
-  close(): void { this.mode = 'list'; this.contactMode = 'list'; this.load(); }
+  close(): void { this.mode = 'list'; this.contactMode = 'list'; this.siteMode = 'list'; this.load(); }
 
   save(close = false): void {
     if (this.collegeForm.invalid) {
       this.collegeForm.markAllAsTouched();
-      this.error = 'Enter a college name and a valid email address.';
+      this.error = 'Enter a college name.';
       return;
     }
     const value = this.collegeForm.getRawValue();
@@ -136,6 +154,80 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     this.tab = 'contacts';
     this.contactMode = 'list';
     this.refreshContacts();
+  }
+
+  showSites(): void {
+    if (!this.selected) return;
+    this.tab = 'sites';
+    this.siteMode = 'list';
+    this.refreshSites();
+  }
+
+  refreshSites(): void {
+    if (!this.selected) return;
+    this.sitesLoading = true;
+    this.api.sites(this.selected.collegeId).pipe(takeUntil(this.destroyed)).subscribe({
+      next: ({ sites }) => { this.sites = sites; this.sitesLoading = false; },
+      error: (err) => { this.error = err?.error?.error || 'Could not load sites.'; this.sitesLoading = false; },
+    });
+  }
+
+  addSite(): void {
+    this.editingSite = null;
+    this.siteForm.reset({ is_primary: this.sites.length ? 'no' : 'yes' });
+    this.siteMode = 'form';
+  }
+
+  editSite(site: BmCollegeSite): void {
+    this.editingSite = site;
+    this.siteForm.reset({
+      city: site.city, category: site.category, address: site.address,
+      email: site.email, phone: site.phone, mobile: site.mobile,
+      is_primary: site.isPrimary ? 'yes' : 'no',
+    });
+    this.siteMode = 'form';
+  }
+
+  saveSite(): void {
+    if (!this.selected) return;
+    if (this.siteForm.invalid) {
+      this.siteForm.markAllAsTouched();
+      this.error = 'Enter a city and valid site details.';
+      return;
+    }
+    const { is_primary, ...fields } = this.siteForm.getRawValue();
+    const value = { ...fields, is_primary: is_primary === 'yes' };
+    this.saving = true;
+    this.error = '';
+    const request = this.editingSite
+      ? this.api.updateSite(this.selected.collegeId, this.editingSite.siteId, value)
+      : this.api.createSite(this.selected.collegeId, value);
+    request.pipe(takeUntil(this.destroyed)).subscribe({
+      next: () => {
+        this.saving = false;
+        this.siteMode = 'list';
+        this.notice = 'Site saved.';
+        this.refreshSites();
+        this.refreshCollege();
+      },
+      error: (err) => { this.error = err?.error?.error || 'Could not save site.'; this.saving = false; },
+    });
+  }
+
+  deleteSite(site: BmCollegeSite): void {
+    if (!this.selected || !confirm(`Delete the ${site.city || 'selected'} site?`)) return;
+    this.api.deleteSite(this.selected.collegeId, site.siteId).pipe(takeUntil(this.destroyed)).subscribe({
+      next: () => { this.notice = 'Site deleted.'; this.refreshSites(); this.refreshCollege(); },
+      error: (err) => { this.error = err?.error?.error || 'Could not delete site.'; },
+    });
+  }
+
+  private refreshCollege(): void {
+    if (!this.selected) return;
+    this.api.get(this.selected.collegeId).pipe(takeUntil(this.destroyed)).subscribe({
+      next: ({ college }) => { this.selected = college; },
+      error: (err) => { this.error = err?.error?.error || 'Could not refresh college details.'; },
+    });
   }
 
   refreshContacts(): void {

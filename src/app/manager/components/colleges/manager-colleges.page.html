@@ -6,21 +6,22 @@
         <div class="title"><h3>Colleges</h3><p class="sub">Create, edit, archive, and manage college contacts from one place.</p></div>
         <div class="actions"><button class="btn primary" type="button" (click)="create()">+ Create</button></div>
       </div>
-      <div class="toolbar-row"><label class="search-field"><span class="search-icon" aria-hidden="true">⌕</span>
+      <div class="toolbar-row"><label class="search-field"><span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span>
         <input type="search" [formControl]="search" placeholder="Search by name, email or mobile" aria-label="Search colleges" />
         @if (search.value) { <button class="icon-btn" type="button" (click)="search.setValue('')" aria-label="Clear search">×</button> }
       </label></div>
     </div>
   } @else {
     <div class="form-header">
-      <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/manager/menu">Menu</a><span class="sep">/</span><a href="#" (click)="$event.preventDefault(); close()">Colleges</a><span class="sep">/</span><span>{{ tab === 'details' ? 'Details' : 'Contacts' }}</span></nav>
+      <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/manager/menu">Menu</a><span class="sep">/</span><a href="#" (click)="$event.preventDefault(); close()">Colleges</a><span class="sep">/</span><span>{{ tab === 'details' ? 'Details' : tab === 'contacts' ? 'Contacts' : 'Sites' }}</span></nav>
       <div class="form-header-mainrow">
-        <div class="header-main"><h3>College Details</h3><p class="sub">Review and update college details, including contacts and status.</p></div>
-        <div class="header-actions"><button class="btn" type="button" (click)="close()">Cancel</button>@if (contactMode === 'form' && tab === 'contacts') { <button class="btn primary" type="button" (click)="saveContact()" [disabled]="saving">Save contact</button> } @else { <button class="btn primary" type="button" (click)="save(true)" [disabled]="saving">Save &amp; Finish</button> }</div>
+        <div class="header-main"><h3>College Details</h3><p class="sub">Review the college, its sites, contacts and status.</p></div>
+        <div class="header-actions"><button class="btn" type="button" (click)="close()">Cancel</button>@if (tab === 'contacts' && contactMode === 'form') { <button class="btn primary" type="button" (click)="saveContact()" [disabled]="saving">Save contact</button> } @else if (tab === 'sites' && siteMode === 'form') { <button class="btn primary" type="button" (click)="saveSite()" [disabled]="saving">Save site</button> } @else if (tab === 'details') { <button class="btn primary" type="button" (click)="save(true)" [disabled]="saving">Save &amp; Finish</button> }</div>
       </div>
       <div class="form-tabs">
-        <button class="tab" type="button" [class.active]="tab === 'details'" (click)="tab = 'details'">Details</button>
-        <button class="tab" type="button" [class.active]="tab === 'contacts'" [disabled]="!selected" (click)="showContacts()">Contacts</button>
+        <button class="tab" type="button" [class.active]="tab === 'details'" (click)="tab = 'details'"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 10v6"></path><path d="M12 7h.01"></path></svg></span>Details</button>
+        <button class="tab" type="button" [class.active]="tab === 'contacts'" [class.disabled]="!selected" [disabled]="!selected" (click)="showContacts()"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.5"></circle><path d="M3.5 19c0-3 2.7-5.5 6-5.5S15.5 16 15.5 19"></path><path d="M14 19c0-2.1 1.8-3.8 4-3.8"></path></svg></span>Contacts</button>
+        <button class="tab" type="button" [class.active]="tab === 'sites'" [class.disabled]="!selected" [disabled]="!selected" (click)="showSites()">Sites</button>
       </div>
     </div>
   }
@@ -33,7 +34,7 @@
       @if (loading && !colleges.length) {
         <div class="list-loader" aria-live="polite" aria-busy="true"><div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-text">Loading colleges…</div></div></div>
       } @else if (!colleges.length) {
-        <div class="empty">No colleges found.<br />{{ search.value ? 'No records match the current search.' : 'Create a college to get started.' }}</div>
+        <div class="empty list-empty" role="status" data-testid="colleges-empty"><strong>No colleges found</strong><span>No records match the current filters.</span></div>
       } @else {
         <div class="college-table" role="table" aria-label="Colleges">
           <div class="college-row college-head" role="row"><span>Name</span><span>Email</span><span>Mobile</span><span>Status</span><span>Actions</span></div>
@@ -45,19 +46,21 @@
       }
     </section>
   } @else if (tab === 'details') {
-    @if (!selected) { <div class="warning-banner">Save the college first to enable the Contacts tab.</div> }
+    @if (!selected && !warningDismissed) { <div class="warning-banner" role="status"><span class="warning-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4 3 20h18L12 4Z"></path><path d="M12 9v5"></path><path d="M12 17h.01"></path></svg></span>Save the college first to enable the Contacts and Sites tabs.<button type="button" class="warning-dismiss" aria-label="Dismiss notice" (click)="warningDismissed = true">x</button></div> }
     <section class="card college-form-card"><div class="card-header"><strong>College details</strong></div>
       <form class="form" [formGroup]="collegeForm" (ngSubmit)="save()">
         <label><span>College Name *</span><input formControlName="college_name" placeholder="College name" maxlength="200" /></label>
         <div class="grid-2"><label><span>Owner Name</span><input formControlName="owner_name" placeholder="Owner name" /></label><label><span>ABN</span><input formControlName="abn" placeholder="ABN" /></label></div>
-        <label><span>Address</span><input formControlName="address" placeholder="Address" /></label>
-        <div class="grid-2"><label><span>Email</span><input type="email" formControlName="email" placeholder="email@example.com" /></label><label><span>Mobile</span><input formControlName="cel" placeholder="0412..." /></label></div>
-        <div class="grid-2"><label><span>Phone</span><input formControlName="tel" placeholder="07..." /></label><label><span>Status</span><app-manager-select formControlName="status" [options]="statusOptions" placeholder="Select status"></app-manager-select></label></div>
+        <div class="primary-site-summary"><strong>Primary site</strong><span>Manage addresses and contact details in the Sites tab.</span></div>
+        <label><span>Address</span><input [value]="selected?.address || ''" readonly placeholder="No primary site" /></label>
+        <div class="grid-2"><label><span>City</span><input [value]="selected?.city || ''" readonly placeholder="No primary site" /></label><label><span>Category</span><input [value]="selected?.category || ''" readonly placeholder="No primary site" /></label></div>
+        <div class="grid-2"><label><span>Email</span><input [value]="selected?.email || ''" readonly placeholder="No primary site" /></label><label><span>Mobile</span><input [value]="selected?.cel || ''" readonly placeholder="No primary site" /></label></div>
+        <div class="grid-2"><label><span>Phone</span><input [value]="selected?.tel || ''" readonly placeholder="No primary site" /></label><label><span>Status</span><app-manager-select formControlName="status" [options]="statusOptions" placeholder="Select status"></app-manager-select></label></div>
         <label><span>Notes</span><textarea formControlName="notes" rows="3" placeholder="Notes..."></textarea></label>
         <div class="card-actions right-actions"><button class="btn" type="button" (click)="close()">Cancel</button><button class="btn primary" type="submit" [disabled]="saving">{{ saving ? 'Saving…' : 'Save' }}</button></div>
       </form>
     </section>
-  } @else {
+  } @else if (tab === 'contacts') {
     <section class="card college-form-card"><div class="card-header college-contacts-header"><strong>Contacts</strong>@if (contactMode === 'list') { <button class="btn primary" type="button" (click)="addContact()">+ Add</button> }</div>
       @if (contactMode === 'form') {
         <form class="form" [formGroup]="contactForm" (ngSubmit)="saveContact()">
@@ -72,6 +75,28 @@
       } @else {
         <div class="college-table" role="table" aria-label="College contacts"><div class="college-row college-head" role="row"><span>Name</span><span>Role</span><span>Email</span><span>Mobile</span><span>Actions</span></div>
           @for (contact of contacts; track contact.contactId) { <div class="college-row" role="row"><strong>{{ contact.name }}</strong><span>{{ contact.roleTitle || '—' }}</span><span>{{ contact.email || '—' }}</span><span>{{ contact.cel || '—' }}</span><span class="college-actions"><button class="btn small secondary" type="button" (click)="editContact(contact)">Edit</button><button class="btn small danger" type="button" (click)="deleteContact(contact)">Delete</button></span></div> }
+        </div>
+      }
+    </section>
+  } @else {
+    <section class="card college-form-card"><div class="card-header college-contacts-header"><strong>Sites</strong>@if (siteMode === 'list') { <button class="btn primary" type="button" (click)="addSite()">+ Add site</button> }</div>
+      @if (siteMode === 'form') {
+        <form class="form" [formGroup]="siteForm" (ngSubmit)="saveSite()">
+          <div class="grid-2"><label><span>City *</span><input formControlName="city" placeholder="City" maxlength="120" /></label><label><span>Category</span><input formControlName="category" placeholder="Category" maxlength="120" /></label></div>
+          <label><span>Address</span><input formControlName="address" placeholder="Address" maxlength="500" /></label>
+          <div class="grid-2"><label><span>Email</span><input type="email" formControlName="email" placeholder="email@example.com" /></label><label><span>Mobile</span><input formControlName="mobile" placeholder="0412..." maxlength="80" /></label></div>
+          <div class="grid-2"><label><span>Phone</span><input formControlName="phone" placeholder="07..." maxlength="80" /></label><label><span>Primary</span><app-manager-select formControlName="is_primary" [options]="primaryOptions" placeholder="Select primary status"></app-manager-select></label></div>
+          @if (editingSite?.isPrimary) { <p class="site-primary-hint">To change the primary site, set another site to Yes first.</p> }
+          <div class="card-actions right-actions"><button class="btn" type="button" (click)="siteMode = 'list'">Cancel</button><button class="btn primary" type="submit" [disabled]="saving">{{ saving ? 'Saving…' : 'Save site' }}</button></div>
+        </form>
+      } @else if (sitesLoading) { <div class="empty" aria-live="polite">Loading sites…</div>
+      } @else if (!sites.length) { <div class="empty">No sites yet. Add a site to show its details on the college.</div>
+      } @else {
+        <div class="college-table college-sites-table" role="table" aria-label="College sites">
+          <div class="college-row college-head" role="row"><span>City</span><span>Category</span><span>Address</span><span>Email</span><span>Phone / Mobile</span><span>Primary</span><span>Actions</span></div>
+          @for (site of sites; track site.siteId) {
+            <div class="college-row" role="row"><strong data-label="City">{{ site.city }}</strong><span data-label="Category">{{ site.category || '—' }}</span><span data-label="Address">{{ site.address || '—' }}</span><span data-label="Email">{{ site.email || '—' }}</span><span data-label="Phone / Mobile">{{ site.phone || '—' }}<br />{{ site.mobile || '—' }}</span><span data-label="Primary">{{ site.isPrimary ? 'Yes' : 'No' }}</span><span class="college-actions"><button class="btn small secondary" type="button" (click)="editSite(site)">Edit</button><button class="btn small danger" type="button" (click)="deleteSite(site)">Delete</button></span></div>
+          }
         </div>
       }
     </section>
