@@ -5,6 +5,8 @@ import { provideState } from '@ngrx/store';
 import { ManagerPageComponent } from './components/manager.page';
 import { ManagerSectionPageComponent } from './components/manager-section.page';
 import { ManagerClientsPageComponent } from './components/clients/manager-clients.page';
+import { ManagerCollegesPageComponent } from './components/colleges/manager-colleges.page';
+import { ManagerCollegesService } from './services/manager.colleges.service';
 import { ManagerMaterialsPageComponent } from './components/materials/manager-materials.page';
 import { ManagerLaborPageComponent } from './components/labor/manager-labor.page';
 import { ManagerPricingPageComponent } from './components/pricing/manager-pricing.page';
@@ -155,6 +157,12 @@ export const MANAGER_ROUTES: Route[] = [
         path: 'clients',
         component: ManagerClientsPageComponent,
         data: { title: 'Clients', fullscreen: true },
+      },
+      {
+        path: 'colleges',
+        component: ManagerCollegesPageComponent,
+        providers: [ManagerCollegesService],
+        data: { title: 'Colleges', fullscreen: true },
       },
       {
         path: 'sites',

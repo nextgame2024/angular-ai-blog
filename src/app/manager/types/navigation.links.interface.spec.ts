@@ -17,8 +17,8 @@ describe('Sophia Admin navigation entitlement options', () => {
   });
 
   it('offers Payments and Control and Students as separate menu modules in the requested order', () => {
-    expect(MENU_NAVIGATION_LABEL_OPTIONS.slice(0, 5).map((option) => option.value)).toEqual([
-      'Clients', 'Users', 'Company', 'Payments and Control', 'Students',
+    expect(MENU_NAVIGATION_LABEL_OPTIONS.slice(0, 6).map((option) => option.value)).toEqual([
+      'Clients', 'Colleges', 'Users', 'Company', 'Payments and Control', 'Students',
     ]);
   });
 });

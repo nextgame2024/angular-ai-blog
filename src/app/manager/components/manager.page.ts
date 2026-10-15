@@ -159,6 +159,7 @@ export class ManagerPageComponent implements OnDestroy {
 
   readonly menu: MenuItem[] = [
     { label: 'Clients', route: '/manager/clients', icon: 'clients' },
+    { label: 'Colleges', route: '/manager/colleges', icon: 'colleges' },
     { label: 'Users', route: '/manager/users', icon: 'users' },
     { label: 'Company', route: '/manager/company', icon: 'company' },
     {

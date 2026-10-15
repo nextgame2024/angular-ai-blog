@@ -1,0 +1,14 @@
+.college-table { background: #fff; border: 1px solid #d8e3ef; border-radius: 12px; overflow: hidden; }
+.college-row { display: grid; grid-template-columns: 1.4fr 1.3fr 1fr .7fr 1fr; gap: 12px; align-items: center; padding: 14px 16px; border-bottom: 1px solid #e4ebf3; font-size: .85rem; }
+.college-row:last-child { border-bottom: 0; }
+.college-row > * { min-width: 0; overflow-wrap: anywhere; }
+.college-head { background: #f4f7fb; color: #435673; font-weight: 700; }
+.college-actions, .college-contacts-header { display: flex; gap: 8px; align-items: center; }
+.college-contacts-header { justify-content: space-between; }
+.college-more { display: flex; justify-content: center; padding: 16px; }
+.college-form-card { margin-top: 4px; }
+.college-notice { display: flex; justify-content: space-between; padding: 10px 14px; border-radius: 8px; background: #defaf3; color: #006c60; }
+.college-notice button { border: 0; background: none; color: inherit; cursor: pointer; }
+@media (max-width: 700px) { .college-head { display: none; } .college-row { grid-template-columns: 1fr; gap: 4px; } .college-actions { margin-top: 8px; } }
+:host-context(.dark) .college-table, :host-context(.dark) .college-row { background: #152234; color: #e7eef8; border-color: #344456; }
+:host-context(.dark) .college-head { background: #1f3045; }
