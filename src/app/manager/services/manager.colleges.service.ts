@@ -40,13 +40,15 @@ export interface BmCollegeSite {
   isPrimary: boolean;
 }
 
+export type BmCollegeSort = 'name' | 'email' | 'mobile' | 'status';
+
 @Injectable()
 export class ManagerCollegesService {
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/bm/colleges`;
 
-  list(q = '', page = 1): Observable<{ colleges: BmCollege[]; total: number; page: number; limit: number }> {
-    let params = new HttpParams().set('page', page).set('limit', 20);
+  list(q = '', page = 1, limit = 25, sort: BmCollegeSort = 'name', direction: 'asc' | 'desc' = 'asc'): Observable<{ colleges: BmCollege[]; total: number; page: number; limit: number }> {
+    let params = new HttpParams().set('page', page).set('limit', limit).set('sort', sort).set('direction', direction);
     if (q) params = params.set('q', q);
     return this.http.get<{ colleges: BmCollege[]; total: number; page: number; limit: number }>(this.base, { params });
   }

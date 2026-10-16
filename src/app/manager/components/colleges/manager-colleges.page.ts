@@ -4,13 +4,13 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
-import { BmCollege, BmCollegeContact, BmCollegeSite, ManagerCollegesService } from '../../services/manager.colleges.service';
+import { BmCollege, BmCollegeContact, BmCollegeSite, BmCollegeSort, ManagerCollegesService } from '../../services/manager.colleges.service';
 
 @Component({
   selector: 'app-manager-colleges-page',
   imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
   templateUrl: './manager-colleges.page.html',
-  styleUrls: ['../clients/manager-clients.page.css', './manager-colleges.page.css'],
+  styleUrls: ['../clients/manager-clients.page.css', '../users/manager-users.page.css', './manager-colleges.page.css'],
 })
 export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(ManagerCollegesService);
@@ -19,6 +19,10 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   private listRequest = 0;
 
   readonly search = this.fb.control('', { nonNullable: true });
+  readonly pageSizeCtrl = this.fb.control('25', { nonNullable: true });
+  readonly contactPageSizeCtrl = this.fb.control('25', { nonNullable: true });
+  readonly sitePageSizeCtrl = this.fb.control('25', { nonNullable: true });
+  readonly pageSizeOptions = [{ value: '25', label: '25 per page' }, { value: '50', label: '50 per page' }, { value: '100', label: '100 per page' }];
   readonly collegeForm = this.fb.group({
     college_name: ['', [Validators.required, Validators.maxLength(200)]],
     owner_name: [''], abn: [''], notes: [''],
@@ -57,7 +61,15 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   contactMode: 'list' | 'form' = 'list';
   siteMode: 'list' | 'form' = 'list';
   page = 1;
+  contactPage = 1;
+  sitePage = 1;
   total = 0;
+  sort: BmCollegeSort = 'name';
+  direction: 'asc' | 'desc' = 'asc';
+  contactSort: 'name' | 'role' | 'email' | 'mobile' = 'name';
+  contactDirection: 'asc' | 'desc' = 'asc';
+  siteSort: 'city' | 'category' | 'address' | 'email' | 'phone' | 'mobile' | 'primary' = 'city';
+  siteDirection: 'asc' | 'desc' = 'asc';
   loading = false;
   saving = false;
   contactsLoading = false;
@@ -70,6 +82,9 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     this.load();
     this.search.valueChanges.pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroyed))
       .subscribe(() => this.load());
+    this.pageSizeCtrl.valueChanges.pipe(takeUntil(this.destroyed)).subscribe(() => this.load());
+    this.contactPageSizeCtrl.valueChanges.pipe(takeUntil(this.destroyed)).subscribe(() => this.contactPage = 1);
+    this.sitePageSizeCtrl.valueChanges.pipe(takeUntil(this.destroyed)).subscribe(() => this.sitePage = 1);
   }
 
   ngOnDestroy(): void {
@@ -81,17 +96,73 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     const request = ++this.listRequest;
     this.loading = true;
     this.error = '';
-    if (page === 1) this.colleges = [];
-    this.api.list(this.search.value.trim(), page).pipe(takeUntil(this.destroyed)).subscribe({
+    this.api.list(this.search.value.trim(), page, this.pageLimit, this.sort, this.direction).pipe(takeUntil(this.destroyed)).subscribe({
       next: (result) => {
         if (request !== this.listRequest) return;
-        this.colleges = page === 1 ? result.colleges : [...this.colleges, ...result.colleges];
+        if (page > 1 && !result.colleges.length && result.total > 0) {
+          this.load(Math.max(1, Math.ceil(result.total / this.pageLimit)));
+          return;
+        }
+        this.colleges = result.colleges;
         this.page = result.page;
         this.total = result.total;
         this.loading = false;
       },
       error: (err) => { if (request !== this.listRequest) return; this.error = err?.error?.error || 'Could not load colleges.'; this.loading = false; },
     });
+  }
+
+  get pageLimit(): number { return Number(this.pageSizeCtrl.value) || 25; }
+  get totalPages(): number { return Math.max(1, Math.ceil(this.total / this.pageLimit)); }
+  get pageStart(): number { return this.total ? (this.page - 1) * this.pageLimit + 1 : 0; }
+  get pageEnd(): number { return Math.min(this.page * this.pageLimit, this.total); }
+  sortBy(column: BmCollegeSort): void {
+    this.direction = this.sort === column && this.direction === 'asc' ? 'desc' : 'asc';
+    this.sort = column;
+    this.load();
+  }
+  sortAria(column: BmCollegeSort): string { return this.sort === column ? (this.direction === 'asc' ? 'ascending' : 'descending') : 'none'; }
+  goToPage(page: number): void { if (page >= 1 && page <= this.totalPages && page !== this.page && !this.loading) this.load(page); }
+
+  get contactPageLimit(): number { return Number(this.contactPageSizeCtrl.value) || 25; }
+  get contactTotalPages(): number { return Math.max(1, Math.ceil(this.contacts.length / this.contactPageLimit)); }
+  get contactPageStart(): number { return this.contacts.length ? (this.contactPage - 1) * this.contactPageLimit + 1 : 0; }
+  get contactPageEnd(): number { return Math.min(this.contactPage * this.contactPageLimit, this.contacts.length); }
+  get displayedContacts(): BmCollegeContact[] {
+    const fields = { name: 'name', role: 'roleTitle', email: 'email', mobile: 'cel' } as const;
+    const key = fields[this.contactSort];
+    const sorted = [...this.contacts].sort((a, b) => this.compareText(a[key], b[key], this.contactDirection) || a.contactId.localeCompare(b.contactId));
+    return sorted.slice((this.contactPage - 1) * this.contactPageLimit, this.contactPage * this.contactPageLimit);
+  }
+  sortContactsBy(column: typeof this.contactSort): void {
+    this.contactDirection = this.contactSort === column && this.contactDirection === 'asc' ? 'desc' : 'asc';
+    this.contactSort = column;
+    this.contactPage = 1;
+  }
+  contactSortAria(column: typeof this.contactSort): string { return this.contactSort === column ? (this.contactDirection === 'asc' ? 'ascending' : 'descending') : 'none'; }
+  goToContactPage(page: number): void { if (page >= 1 && page <= this.contactTotalPages) this.contactPage = page; }
+
+  get sitePageLimit(): number { return Number(this.sitePageSizeCtrl.value) || 25; }
+  get siteTotalPages(): number { return Math.max(1, Math.ceil(this.sites.length / this.sitePageLimit)); }
+  get sitePageStart(): number { return this.sites.length ? (this.sitePage - 1) * this.sitePageLimit + 1 : 0; }
+  get sitePageEnd(): number { return Math.min(this.sitePage * this.sitePageLimit, this.sites.length); }
+  get displayedSites(): BmCollegeSite[] {
+    const fields = { city: 'city', category: 'category', address: 'address', email: 'email', phone: 'phone', mobile: 'mobile', primary: 'isPrimary' } as const;
+    const key = fields[this.siteSort];
+    const sorted = [...this.sites].sort((a, b) => this.compareText(String(a[key] ?? ''), String(b[key] ?? ''), this.siteDirection) || a.siteId.localeCompare(b.siteId));
+    return sorted.slice((this.sitePage - 1) * this.sitePageLimit, this.sitePage * this.sitePageLimit);
+  }
+  sortSitesBy(column: typeof this.siteSort): void {
+    this.siteDirection = this.siteSort === column && this.siteDirection === 'asc' ? 'desc' : 'asc';
+    this.siteSort = column;
+    this.sitePage = 1;
+  }
+  siteSortAria(column: typeof this.siteSort): string { return this.siteSort === column ? (this.siteDirection === 'asc' ? 'ascending' : 'descending') : 'none'; }
+  goToSitePage(page: number): void { if (page >= 1 && page <= this.siteTotalPages) this.sitePage = page; }
+  private compareText(a: string | null, b: string | null, direction: 'asc' | 'desc'): number {
+    if (!a) return b ? 1 : 0;
+    if (!b) return -1;
+    return a.localeCompare(b, 'en-AU', { numeric: true, sensitivity: 'base' }) * (direction === 'asc' ? 1 : -1);
   }
 
   create(): void {
@@ -116,7 +187,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  close(): void { this.mode = 'list'; this.contactMode = 'list'; this.siteMode = 'list'; this.load(); }
+  close(): void { this.mode = 'list'; this.contactMode = 'list'; this.siteMode = 'list'; this.load(this.page); }
 
   save(close = false): void {
     if (this.collegeForm.invalid) {
@@ -144,7 +215,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   archive(college: BmCollege): void {
     if (!confirm(`Archive ${college.collegeName}?`)) return;
     this.api.archive(college.collegeId).pipe(takeUntil(this.destroyed)).subscribe({
-      next: () => { this.notice = 'College archived.'; this.load(); },
+      next: () => { this.notice = 'College archived.'; this.load(this.page); },
       error: (err) => { this.error = err?.error?.error || 'Could not archive college.'; },
     });
   }
@@ -167,7 +238,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     if (!this.selected) return;
     this.sitesLoading = true;
     this.api.sites(this.selected.collegeId).pipe(takeUntil(this.destroyed)).subscribe({
-      next: ({ sites }) => { this.sites = sites; this.sitesLoading = false; },
+      next: ({ sites }) => { this.sites = sites; this.sitePage = Math.min(this.sitePage, Math.max(1, Math.ceil(sites.length / this.sitePageLimit))); this.sitesLoading = false; },
       error: (err) => { this.error = err?.error?.error || 'Could not load sites.'; this.sitesLoading = false; },
     });
   }
@@ -234,7 +305,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     if (!this.selected) return;
     this.contactsLoading = true;
     this.api.contacts(this.selected.collegeId).pipe(takeUntil(this.destroyed)).subscribe({
-      next: ({ contacts }) => { this.contacts = contacts; this.contactsLoading = false; },
+      next: ({ contacts }) => { this.contacts = contacts; this.contactPage = Math.min(this.contactPage, Math.max(1, Math.ceil(contacts.length / this.contactPageLimit))); this.contactsLoading = false; },
       error: (err) => { this.error = err?.error?.error || 'Could not load contacts.'; this.contactsLoading = false; },
     });
   }
