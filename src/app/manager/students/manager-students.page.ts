@@ -42,10 +42,10 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
   readonly today = new Date();
   readonly statusOptions: ManagerSelectOption[] = [
     { value: '', label: 'All status' },
-    { value: 'healthy', label: 'Healthy' },
-    { value: 'action_required', label: 'Action Required' },
-    { value: 'overdue', label: 'Overdue' },
-    { value: 'no_vigente', label: 'No Vigente' },
+    { value: 'in_progress', label: 'In progress' },
+    { value: 'on_hold', label: 'On hold' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'cancelled', label: 'Cancelled' },
     { value: 'not_started', label: 'Not started' },
   ];
   readonly periodOptions: ManagerSelectOption[] = [

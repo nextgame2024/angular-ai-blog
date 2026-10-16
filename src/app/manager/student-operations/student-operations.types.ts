@@ -60,7 +60,7 @@ export interface StudentOperationsDashboard {
   };
 }
 
-export type StudentRegisterStatus = 'healthy' | 'action_required' | 'overdue' | 'no_vigente' | 'not_started';
+export type StudentRegisterStatus = 'in_progress' | 'on_hold' | 'completed' | 'cancelled' | 'not_started';
 export type StudentRegisterSort = 'name' | 'studentId' | 'advisor' | 'college' | 'stage' | 'nextPayment' | 'status';
 
 export interface StudentRegisterQuery {

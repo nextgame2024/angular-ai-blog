@@ -84,7 +84,7 @@ describe('ManagerStudentsPageComponent', () => {
     expect(fixture.nativeElement.querySelector('app-manager-list-loader .loader-ring')).not.toBeNull();
     pending.next(emptyResult);
     pending.complete();
-    fixture.componentInstance.status.setValue('healthy');
+    fixture.componentInstance.status.setValue('in_progress');
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('app-manager-list-loader.overlay-host .loader-ring')).not.toBeNull();
     expect(fixture.nativeElement.textContent).toContain('Updating students…');
@@ -129,9 +129,9 @@ describe('ManagerStudentsPageComponent', () => {
     api.studentRegister.and.returnValues(first, of(emptyResult));
     fixture.detectChanges();
     expect(first.observed).toBeTrue();
-    fixture.componentInstance.status.setValue('healthy');
+    fixture.componentInstance.status.setValue('in_progress');
     expect(first.observed).toBeFalse();
-    expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({ status: 'healthy' }));
+    expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({ status: 'in_progress' }));
   });
 
   it('applies the insight filter and requests a different server page', () => {
@@ -185,4 +185,32 @@ describe('ManagerStudentsPageComponent', () => {
     tick(300);
     expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({ q: 'ATI', page: 1 }));
   }));
+
+  it('shows the latest case advisor, reference, payment and lifecycle status on desktop and mobile', () => {
+    api.studentRegister.and.returnValue(of({
+      ...emptyResult, total: 1, students: [{
+        userId: 'user-1', studentProfileId: 'profile-1', studentReference: 'STD-2',
+        legalName: 'Fabian Student', email: 'fabian@example.com', caseId: 'case-2',
+        caseReference: 'CASE-2', currentStage: 'imported_pending_review',
+        advisorUserId: null, advisorName: 'S15 Paulina Aguillon',
+        collegeId: null, collegeName: 'ATI', status: 'in_progress', attentionReason: null,
+        caseCount: 2, cases: [
+          { caseId: 'case-2', caseReference: 'CASE-2', lifecycleStatus: 'open', openedOn: '2026-10-16' },
+          { caseId: 'case-1', caseReference: 'CASE-1', lifecycleStatus: 'completed', openedOn: '2026-01-01' },
+        ],
+        nextPayment: { caseId: 'case-2', dueOn: '2026-11-01', amount: '200', currency: 'AUD' },
+      }],
+    }));
+    fixture.detectChanges();
+    const table = fixture.nativeElement.querySelector('.student-table tbody') as HTMLElement;
+    const mobile = fixture.nativeElement.querySelector('.student-cards') as HTMLElement;
+    for (const view of [table, mobile]) {
+      expect(view.textContent).toContain('S15 Paulina Aguillon');
+      expect(view.textContent).toContain('ATI');
+      expect(view.textContent).toContain('In progress');
+      expect(view.textContent).toContain('CASE-2');
+      expect(view.textContent).toContain('$200.00');
+    }
+    expect(table.textContent).not.toContain('Healthy');
+  });
 });
