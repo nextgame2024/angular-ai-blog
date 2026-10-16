@@ -8,7 +8,7 @@
       <button type="button" class="btn primary" (click)="connect()"
         [disabled]="connecting || loading || !status?.configured">
         <span class="btn-icon" aria-hidden="true">+</span>
-        {{ connecting ? 'Opening Xero…' : (needsStudentDiscoveryScopeUpgrade ? 'Reconnect Xero' : 'Connect Xero') }}
+        {{ connecting ? 'Opening Xero…' : (needsScopeUpgrade ? 'Reconnect Xero' : 'Connect Xero') }}
       </button>
     </div>
 
@@ -42,6 +42,9 @@
               }
               @if (connection.missingStudentDiscoveryScopes.length) {
                 <small class="scope-warning">Reconnect to enable read-only invoice, credit note, prepayment and overpayment access.</small>
+              }
+              @if (connection.missingAttachmentScopes?.length) {
+                <small class="scope-warning">Reconnect to enable read-only case document discovery and download.</small>
               }
               @if (connection.organisationRole === 'trust') {
                 <small class="role-label">Student source · TRUST</small>

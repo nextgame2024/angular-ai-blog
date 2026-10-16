@@ -142,6 +142,7 @@ export interface XeroConnectionSummary {
   lastErrorCode: string | null;
   organisationRole: 'trust' | 'operating' | 'unassigned' | null;
   missingStudentDiscoveryScopes: string[];
+  missingAttachmentScopes?: string[];
 }
 
 export interface XeroStudentCandidate {

@@ -28,9 +28,9 @@ export class XeroConnectionsComponent implements OnInit, OnDestroy {
   notice = '';
   lastTest: XeroConnectionTest | null = null;
 
-  get needsStudentDiscoveryScopeUpgrade(): boolean {
+  get needsScopeUpgrade(): boolean {
     return Boolean(this.status?.connections.some((connection) =>
-      connection.missingStudentDiscoveryScopes?.length));
+      connection.missingStudentDiscoveryScopes?.length || connection.missingAttachmentScopes?.length));
   }
 
   ngOnInit(): void {
