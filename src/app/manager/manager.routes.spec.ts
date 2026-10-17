@@ -13,6 +13,10 @@ describe('Business Manager payment and student routes', () => {
       component: ManagerStudentsPageComponent,
       data: jasmine.objectContaining({ title: 'Students' }),
     }));
+    expect(children.find((route) => route.path === 'students/cases/:caseId')).toEqual(jasmine.objectContaining({
+      loadComponent: jasmine.any(Function),
+      data: jasmine.objectContaining({ title: 'Case Details' }),
+    }));
     expect(children.find((route) => route.path === 'student-operations/students')).toEqual(
       jasmine.objectContaining({ redirectTo: '/manager/payments-and-control', pathMatch: 'full' }),
     );

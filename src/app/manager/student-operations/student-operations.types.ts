@@ -60,7 +60,7 @@ export interface StudentOperationsDashboard {
   };
 }
 
-export type StudentRegisterStatus = 'in_progress' | 'on_hold' | 'completed' | 'cancelled' | 'not_started';
+export type StudentRegisterStatus = StudentCaseStatus | 'not_started';
 export type StudentRegisterSort = 'name' | 'studentId' | 'advisor' | 'college' | 'stage' | 'nextPayment' | 'status';
 
 export interface StudentRegisterQuery {
@@ -128,6 +128,65 @@ export interface StudentRegisterResult {
     advisors: Array<{ userId: string | null; name: string }>;
     colleges: Array<{ collegeId: string | null; name: string }>;
   };
+}
+
+export type StudentCaseStatus = 'pre_sale' | 'on_hold' | 'in_progress' | 'payment_overdue' | 'collections' | 'payment_done' | 'closed' | 'cancelled';
+
+export interface StudentCaseDetail {
+  caseId: string;
+  caseNumber: string;
+  userId: string;
+  studentId: string;
+  studentReference: string;
+  studentName: string | null;
+  studentEmail: string | null;
+  studentPhone: string | null;
+  title: string | null;
+  courseName: string | null;
+  advisorName: string | null;
+  status: StudentCaseStatus;
+  currentStage: string;
+  openedOn: string | null;
+  createdAt: string;
+  updatedAt: string;
+  advisors: Array<{ userId: string; name: string | null; isPrimary: boolean }>;
+  colleges: Array<{ collegeId: string; name: string; isPrimary: boolean }>;
+}
+
+export interface StudentCaseList {
+  cases: Array<{ caseId: string; caseNumber: string; status: StudentCaseStatus; currentStage: string }>;
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface StudentCaseInvoices {
+  invoices: Array<{
+    invoiceId: string; invoiceNumber: string | null; type: string; status: string;
+    date: string | null; dueDate: string | null; currency?: string | null;
+    total?: string | null; amountPaid?: string | null; amountDue?: string | null;
+  }>;
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface StudentCaseDocuments {
+  documents: Array<{
+    documentId: string; fileName: string; mimeType: string; sizeBytes: number;
+    sourceKind: string; lastSeenAt: string;
+  }>;
+  discovery: Array<{ status: string; errorCode: string | null; count: number }>;
+  discoveryRequested: boolean;
+  page: number;
+  limit: number;
+  total: number;
+}
+
+export interface StudentCaseActivity {
+  activity: Array<{ activityId: string; eventType: string; summary: string; createdAt: string }>;
+  page: number;
+  limit: number;
 }
 
 export interface XeroConnectionSummary {

@@ -1,0 +1,289 @@
+import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { BehaviorSubject, of, throwError } from 'rxjs';
+import { StudentOperationsService } from '../student-operations/student-operations.service';
+import type { StudentCaseDetail } from '../student-operations/student-operations.types';
+import { ManagerCaseViewPageComponent } from './manager-case-view.page';
+
+describe('ManagerCaseViewPageComponent', () => {
+  const params = new BehaviorSubject(convertToParamMap({ caseId: 'case-1' }));
+  const detail: StudentCaseDetail = {
+    caseId: 'case-1', caseNumber: 'CASE-1', userId: 'user-1', studentId: 'student-1',
+    studentReference: 'STD-1', studentName: 'Example Student', studentEmail: 'student@example.com', studentPhone: null,
+    title: null, courseName: null, advisorName: 'Advisor Name', status: 'in_progress',
+    currentStage: 'imported_pending_review', openedOn: '2026-10-16',
+    createdAt: '2026-10-16T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
+    advisors: [], colleges: [],
+  };
+  const api = {
+    caseDetail: jasmine.createSpy().and.returnValue(of(detail)),
+    studentRegister: jasmine.createSpy().and.returnValue(of({ students: [], page: 1, limit: 25, total: 0 })),
+    casesForStudent: jasmine.createSpy().and.returnValue(of({ cases: [
+      { caseId: 'case-1', caseNumber: 'CASE-1', status: 'in_progress', currentStage: 'imported_pending_review' },
+      { caseId: 'case-2', caseNumber: 'CASE-2', status: 'closed', currentStage: 'payments_complete' },
+    ], total: 2, page: 1, limit: 100 })),
+    caseInvoices: jasmine.createSpy().and.returnValue(of({ invoices: [{
+      invoiceId: 'invoice-1', invoiceNumber: 'INV-1', type: 'ACCREC', status: 'PAID',
+      date: '2026-10-16', dueDate: '2026-10-20', amountDue: '0', currency: 'AUD',
+    }], total: 1, page: 1, limit: 25 })),
+    caseDocuments: jasmine.createSpy().and.returnValue(of({ documents: [{
+      documentId: 'document-1', fileName: 'offer.pdf', mimeType: 'application/pdf', sizeBytes: 1024,
+      sourceKind: 'invoice', lastSeenAt: '2026-10-16T00:00:00Z',
+    }], discovery: [], discoveryRequested: true, total: 1, page: 1, limit: 25 })),
+    caseActivity: jasmine.createSpy().and.returnValue(of({ activity: [{
+      activityId: 'activity-1', eventType: 'case.created', summary: 'Case created',
+      createdAt: '2026-10-16T00:00:00Z',
+    }], page: 1, limit: 25 })),
+    caseDocumentContent: jasmine.createSpy(),
+  };
+
+  beforeEach(async () => {
+    params.next(convertToParamMap({ caseId: 'case-1' }));
+    for (const spy of Object.values(api)) spy.calls.reset();
+    api.caseDetail.and.returnValue(of(detail));
+    api.studentRegister.and.returnValue(of({ students: [], page: 1, limit: 25, total: 0 }));
+    api.caseInvoices.and.returnValue(of({ invoices: [{ invoiceId: 'invoice-1', invoiceNumber: 'INV-1', type: 'ACCREC', status: 'PAID', date: '2026-10-16', dueDate: '2026-10-20', amountDue: '0', currency: 'AUD' }], total: 1, page: 1, limit: 25 }));
+    api.caseDocuments.and.returnValue(of({ documents: [{ documentId: 'document-1', fileName: 'offer.pdf', mimeType: 'application/pdf', sizeBytes: 1024, sourceKind: 'invoice', lastSeenAt: '2026-10-16T00:00:00Z' }], discovery: [], discoveryRequested: true, total: 1, page: 1, limit: 25 }));
+    api.caseActivity.and.returnValue(of({ activity: [{ activityId: 'activity-1', eventType: 'case.created', summary: 'Case created', createdAt: '2026-10-16T00:00:00Z' }], page: 1, limit: 25 }));
+    await TestBed.configureTestingModule({
+      imports: [ManagerCaseViewPageComponent],
+      providers: [provideRouter([]), { provide: ActivatedRoute, useValue: { paramMap: params.asObservable() } },
+        { provide: StudentOperationsService, useValue: api }],
+    }).compileComponents();
+  });
+
+  it('shows real case, related case, document, invoice and activity data without edit controls', () => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.textContent).toContain('Example Student');
+    expect(root.textContent).toContain('CASE-2');
+    expect(root.textContent).toContain('offer.pdf');
+    expect(root.textContent).toContain('INV-1');
+    expect(root.textContent).toContain('Case created');
+    expect(root.textContent).toContain('In progress');
+    expect(root.querySelector('a[href="/manager/students/cases/case-2"]')).not.toBeNull();
+    expect(root.textContent).not.toContain('Approve');
+    expect(root.textContent).not.toContain('Upload');
+    expect(api.caseInvoices).toHaveBeenCalledWith('case-1', 1);
+    expect(api.caseDocuments).toHaveBeenCalledWith('case-1', 1);
+    expect(root.querySelector('.related-cases')?.closest('aside')).not.toBeNull();
+    expect(root.querySelector('.progress-card')?.closest('.workspace-main')).not.toBeNull();
+  });
+
+  it('shows an access-safe error when the case cannot be read', () => {
+    api.caseDetail.and.returnValue(throwError(() => new Error('private backend error')));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Case unavailable');
+    expect(fixture.nativeElement.textContent).not.toContain('private backend error');
+    expect(api.caseInvoices).not.toHaveBeenCalled();
+  });
+
+  it('shows all overview icons and a recorded mobile number', () => {
+    api.caseDetail.and.returnValue(of({ ...detail, studentPhone: '0412 345 678' }));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelectorAll('.overview-facts .fact-icon svg').length).toBe(4);
+    expect(root.querySelector('.student-identifiers a[href="mailto:student@example.com"]')).not.toBeNull();
+    expect(root.querySelector('.student-identifiers a[href="tel:0412345678"]')?.textContent).toContain('0412 345 678');
+  });
+
+  it('shows imported as the green first step only while a migrated case awaits review', () => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const steps = [...root.querySelectorAll('.stage-list li')] as HTMLElement[];
+    expect(steps).toHaveSize(8);
+    expect(steps[0].textContent).toContain('Imported — Pending Review');
+    expect(steps[0].classList.contains('current')).toBeTrue();
+    expect(steps[0].getAttribute('aria-current')).toBe('step');
+    expect(steps.slice(1).every(step => !step.classList.contains('current'))).toBeTrue();
+    expect(steps[7].textContent).toContain('Payments Complete');
+    const stageList = root.querySelector('.stage-list') as HTMLElement;
+    expect(getComputedStyle(stageList).flexWrap).toBe('nowrap');
+    expect(getComputedStyle(stageList).overflowX).toBe('auto');
+    expect(root.querySelector('.stage-list')?.textContent).not.toContain('Current');
+    expect(root.textContent).not.toContain('Stages shown here do not imply');
+
+    api.caseDetail.and.returnValue(of({ ...detail, currentStage: 'awaiting_payment', status: 'pre_sale' }));
+    const normal = TestBed.createComponent(ManagerCaseViewPageComponent);
+    normal.detectChanges();
+    const normalSteps = [...normal.nativeElement.querySelectorAll('.stage-list li')] as HTMLElement[];
+    expect(normalSteps).toHaveSize(7);
+    expect(normalSteps.map(step => step.textContent).join(' ')).not.toContain('Imported — Pending Review');
+    expect(normalSteps[2].classList.contains('current')).toBeTrue();
+    expect(normal.nativeElement.textContent).toContain('Pre-sale');
+  });
+
+  it('omits the phone when the student has none recorded', () => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.student-identifiers a[href^="tel:"]')).toBeNull();
+    expect(root.querySelector('.student-identifiers')?.textContent).not.toContain('Not recorded');
+  });
+
+  it('fits all eight timeline steps on desktop and scrolls one row on mobile', () => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    root.style.width = '1440px';
+    const list = root.querySelector('.stage-list') as HTMLElement;
+    expect(list.scrollWidth).toBeLessThanOrEqual(list.clientWidth + 1);
+    root.style.width = '390px';
+    const steps = [...list.querySelectorAll('li')] as HTMLElement[];
+    expect(list.scrollWidth).toBeGreaterThan(list.clientWidth);
+    expect(steps[0].getBoundingClientRect().top).toBe(steps[7].getBoundingClientRect().top);
+  });
+
+  it('keeps long invoice lists inside a scrollable card with a visible table header', () => {
+    const invoices = Array.from({ length: 25 }, (_, index) => ({
+      invoiceId: `invoice-${index}`, invoiceNumber: `INV-${index}`, type: 'ACCREC', status: 'PAID',
+      date: '2026-10-16', dueDate: '2026-10-20', amountDue: '0', currency: 'AUD',
+    }));
+    api.caseInvoices.and.returnValue(of({ invoices, total: 25, page: 1, limit: 25 }));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const cards = [...root.querySelectorAll('.case-record-card')] as HTMLElement[];
+    const invoiceScroll = cards[1].querySelector('.record-table-scroll') as HTMLElement;
+    const documentScroll = cards[0].querySelector('.record-table-scroll') as HTMLElement;
+
+    expect(cards).toHaveSize(2);
+    expect(invoiceScroll.getAttribute('tabindex')).toBe('0');
+    expect(documentScroll.getAttribute('aria-label')).toBe('Case documents');
+    expect(invoiceScroll.scrollHeight).toBeGreaterThan(invoiceScroll.clientHeight);
+    expect(getComputedStyle(invoiceScroll).overflowY).toBe('auto');
+    expect(getComputedStyle(invoiceScroll.querySelector('th')!).position).toBe('sticky');
+    if (window.innerWidth > 760) {
+      expect(cards[0].getBoundingClientRect().height).toBe(cards[1].getBoundingClientRect().height);
+    }
+  });
+
+  it('keeps sparse case cards compact and aligned instead of reserving a tall empty row', () => {
+    api.caseDocuments.and.returnValue(of({ documents: [], discovery: [], discoveryRequested: true, total: 0, page: 1, limit: 25 }));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const documents = root.querySelector('.case-record-card') as HTMLElement;
+    const invoices = root.querySelectorAll('.case-record-card')[1] as HTMLElement;
+    const activity = root.querySelector('.activity-card') as HTMLElement;
+    const actions = root.querySelector('.case-actions-card') as HTMLElement;
+
+    expect(documents.textContent).toContain('No documents were found');
+    if (window.innerWidth > 760) {
+      expect(getComputedStyle(documents).minHeight).toBe('320px');
+      expect(getComputedStyle(documents).maxHeight).toBe('576px');
+      expect(getComputedStyle(activity).minHeight).toBe('256px');
+      expect(getComputedStyle(activity).maxHeight).toBe('448px');
+      expect(documents.getBoundingClientRect().height).toBe(invoices.getBoundingClientRect().height);
+      expect(documents.getBoundingClientRect().height).toBeLessThan(480);
+    } else {
+      expect(getComputedStyle(documents).maxHeight).toBe('none');
+      expect(getComputedStyle(activity).maxHeight).toBe('none');
+    }
+    if (window.innerWidth > 1250) {
+      expect(activity.getBoundingClientRect().height).toBe(actions.getBoundingClientRect().height);
+      expect(activity.getBoundingClientRect().height).toBeLessThan(420);
+    }
+  });
+
+  it('places activity beside case summary and scrolls a long activity history inside the card', () => {
+    const activity = Array.from({ length: 25 }, (_, index) => ({
+      activityId: `activity-${index}`, eventType: 'case.updated', summary: `Case event ${index}`,
+      createdAt: '2026-10-16T00:00:00Z',
+    }));
+    api.caseActivity.and.returnValue(of({ activity, page: 1, limit: 25 }));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const grid = root.querySelector('.content-grid') as HTMLElement;
+    const cards = [...grid.querySelectorAll(':scope > .card')] as HTMLElement[];
+    const activityScroll = cards[3].querySelector('.activity-scroll') as HTMLElement;
+
+    expect(cards.map(card => card.querySelector('h2')?.textContent?.trim())).toEqual([
+      'Documents', 'Linked invoices', 'Meet Sophia', 'Recent activity', 'Case at a glance', 'Next Actions',
+    ]);
+    expect(root.querySelector('.workspace-sidebar .case-summary')).toBeNull();
+    expect(activityScroll.getAttribute('aria-label')).toBe('Recent case activity');
+    expect(activityScroll.getAttribute('tabindex')).toBe('0');
+    expect(cards[4].querySelector('.summary-scroll')?.getAttribute('aria-label')).toBe('Case summary');
+    expect(activityScroll.scrollHeight).toBeGreaterThan(activityScroll.clientHeight);
+    expect(getComputedStyle(activityScroll).overflowY).toBe('auto');
+    if (window.innerWidth > 1250) {
+      expect(cards[3].getBoundingClientRect().height).toBe(cards[4].getBoundingClientRect().height);
+      expect(cards[3].getBoundingClientRect().top).toBe(cards[5].getBoundingClientRect().top);
+    }
+  });
+
+  it('reserves a noninteractive Sophia and next-actions column without inventing pending tasks', () => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    const grid = root.querySelector('.content-grid') as HTMLElement;
+    const actions = grid.querySelector('.case-actions-card') as HTMLElement;
+    const sophia = grid.querySelector('.sophia-card') as HTMLElement;
+    const image = sophia.querySelector('img') as HTMLImageElement;
+    const buttons = [...sophia.querySelectorAll('button')] as HTMLButtonElement[];
+
+    expect(actions.textContent).toContain('Case actions will appear here');
+    expect(actions.textContent).not.toContain('pending');
+    expect(sophia.textContent).toContain('Sophia AI Runtime is connected');
+    expect(sophia.textContent).not.toContain('Online');
+    expect(image.getAttribute('src')).toBe('/assets/avatars/SophiaAiRuntime.jpg');
+    expect(buttons.map(button => button.textContent?.trim())).toEqual(['Chat with Sophia', 'Open full Sophia']);
+    expect(buttons.every(button => button.disabled)).toBeTrue();
+    if (window.innerWidth > 1250) {
+      const cards = [...grid.querySelectorAll(':scope > .card')] as HTMLElement[];
+      expect(cards[0].getBoundingClientRect().height).toBe(cards[2].getBoundingClientRect().height);
+      expect(cards[3].getBoundingClientRect().height).toBe(cards[5].getBoundingClientRect().height);
+    }
+    expect(sophia.scrollHeight).toBeLessThanOrEqual(sophia.clientHeight + 2);
+  });
+
+  it('styles the new cards for dark mode without enabling their controls', () => {
+    const wasDark = document.documentElement.classList.contains('dark');
+    document.documentElement.classList.add('dark');
+    try {
+      const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+      fixture.detectChanges();
+      const root = fixture.nativeElement as HTMLElement;
+      const actionScroll = root.querySelector('.action-scroll') as HTMLElement;
+      const message = root.querySelector('.sophia-message') as HTMLElement;
+      const button = root.querySelector('.sophia-button.primary') as HTMLButtonElement;
+      expect(getComputedStyle(actionScroll).backgroundColor).toBe('rgb(32, 46, 65)');
+      expect(getComputedStyle(message).backgroundColor).toBe('rgb(43, 54, 80)');
+      expect(button.disabled).toBeTrue();
+    } finally {
+      if (!wasDark) document.documentElement.classList.remove('dark');
+    }
+  });
+
+  it('does not invent financial amounts when the API redacts them', () => {
+    api.caseInvoices.and.returnValue(of({ invoices: [{
+      invoiceId: 'invoice-2', invoiceNumber: 'INV-REDACTED', type: 'ACCREC', status: 'DRAFT',
+      date: null, dueDate: null,
+    }], total: 1, page: 1, limit: 25 }));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const row = fixture.nativeElement.querySelector('#invoices-heading')?.closest('section')?.querySelector('tbody tr') as HTMLElement;
+    expect(row.textContent).toContain('INV-REDACTED');
+    expect(row.querySelector('td:last-child')?.textContent?.trim()).toBe('—');
+  });
+
+  it('recovers student identity from the register when an older case API omits it', () => {
+    api.caseDetail.and.returnValue(of({ ...detail, studentName: null, studentEmail: null, openedOn: null }));
+    api.studentRegister.and.returnValue(of({ students: [{
+      userId: 'user-1', studentReference: 'STD-1', legalName: 'Recovered Student', email: 'recovered@example.com',
+    }], page: 1, limit: 25, total: 1 }));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.student-name')?.textContent).toContain('Recovered Student');
+    expect(root.querySelector('.student-name')?.textContent).not.toContain('Student name unavailable');
+    expect(root.textContent).toContain('16 Oct 2026');
+    expect(api.studentRegister).toHaveBeenCalledWith({ page: 1, limit: 25, q: 'STD-1' });
+  });
+});

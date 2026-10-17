@@ -1,0 +1,148 @@
+<section class="case-page" aria-labelledby="case-page-title">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a routerLink="/manager/menu">Menu</a><span aria-hidden="true">/</span>
+    <a routerLink="/manager/students">Students</a><span aria-hidden="true">/</span>
+    <span>Case Details</span>
+  </nav>
+
+  @if (loading) {
+    <div class="page-loading" aria-busy="true"><app-manager-list-loader label="Loading case…"></app-manager-list-loader></div>
+  } @else if (error) {
+    <div class="page-error" role="alert">
+      <h1 id="case-page-title">Case unavailable</h1><p>{{ error }}</p>
+      <a class="action-link" routerLink="/manager/students">Back to students</a>
+    </div>
+  } @else if (case; as item) {
+    <header class="page-header">
+      <div>
+        <h1 id="case-page-title">Student Operations Case</h1>
+        <p>Payments, documents and progress for this student.</p>
+      </div>
+      <div class="case-meta">
+        <div class="case-meta-top"><strong>Case ID: {{ item.caseNumber }}</strong><span class="status-pill" [class.progress]="item.status === 'in_progress' || item.status === 'payment_done'" [class.hold]="item.status === 'pre_sale' || item.status === 'on_hold'" [class.alert]="item.status === 'payment_overdue' || item.status === 'collections'" [class.complete]="item.status === 'closed'" [class.cancelled]="item.status === 'cancelled'">{{ statusLabel(item.status) }}</span></div>
+        <small>Created {{ dateLabel(item.createdAt) }} <span aria-hidden="true">|</span> Last updated {{ dateTimeLabel(item.updatedAt) }}</small>
+      </div>
+    </header>
+
+    <section class="card student-overview" aria-label="Student and case overview">
+      <div class="student-name"><span class="student-icon" aria-hidden="true">{{ studentName.slice(0, 1) }}</span><div><strong>{{ studentName }}</strong><span class="student-identifiers">Student ID: {{ item.studentReference }}@if (studentEmail) { <span aria-hidden="true">·</span> <a [href]="'mailto:' + studentEmail">{{ studentEmail }}</a> }@if (studentPhone) { <span aria-hidden="true">·</span> @if (studentPhoneHref) { <a [href]="studentPhoneHref">{{ studentPhone }}</a> } @else { {{ studentPhone }} } }</span></div></div>
+      <dl class="overview-facts">
+        <div><dt><span class="fact-icon college" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-6 9 6"/><path d="M4 10h16M5 20h14M7 11v7m5-7v7m5-7v7M3 20h18"/></svg></span>College</dt><dd>{{ primaryCollege || 'Not assigned' }}</dd></div>
+        <div><dt><span class="fact-icon course" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M8 12h8M8 16h6"/></svg></span>Course</dt><dd>{{ item.courseName || 'Not recorded' }}</dd></div>
+        <div><dt><span class="fact-icon advisor" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3"/><path d="M4 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4v2"/></svg></span>Advisor</dt><dd>{{ primaryAdvisor || 'Not assigned' }}</dd></div>
+        <div><dt><span class="fact-icon opened" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h3m-3 3h6"/></svg></span>Case opened</dt><dd>{{ dateLabel(item.openedOn || item.createdAt) }}</dd></div>
+      </dl>
+    </section>
+
+    <div class="case-workspace">
+      <div class="workspace-main">
+        <section class="card progress-card" aria-labelledby="progress-heading">
+          <div class="card-heading"><div><h2 id="progress-heading">Case Progress</h2><p>Current stage: <strong>{{ stageLabel(item.currentStage) }}</strong></p></div></div>
+          <ol class="stage-list" tabindex="0" aria-label="Case progress stages">
+            @for (stage of workflowStages; track stage.value; let index = $index) {
+              <li [class.current]="item.currentStage === stage.value" [attr.aria-current]="item.currentStage === stage.value ? 'step' : null"><span class="stage-number">{{ index + 1 }}</span><span>{{ stage.label }}</span></li>
+            }
+          </ol>
+        </section>
+      </div>
+
+      <aside class="workspace-sidebar" aria-label="Case sidebar">
+        <section class="card related-cases" aria-labelledby="related-cases-heading" [attr.aria-busy]="loadingRelated">
+          <div class="card-heading"><div><h2 id="related-cases-heading">This student's cases</h2><p>Choose a case to view its details.</p></div><span class="count">{{ relatedTotal || 1 }}</span></div>
+          @if (relatedError) { <p class="section-error" role="alert">{{ relatedError }} <button type="button" class="text-button" (click)="loadRelated(relatedPage + 1)">Retry</button></p> }
+          <div class="related-links">
+            @for (related of relatedCases; track related.caseId) {
+              <a [routerLink]="['/manager/students/cases', related.caseId]" [attr.aria-current]="related.caseId === item.caseId ? 'page' : null" class="related-link" [class.selected]="related.caseId === item.caseId">
+                <strong>{{ related.caseNumber }}</strong><span>{{ statusLabel(related.status) }} · {{ stageLabel(related.currentStage) }}</span>
+              </a>
+            } @empty {
+              @if (loadingRelated) { <span class="muted">Loading related cases…</span> }
+              @else if (!relatedError) { <span class="muted">No other cases are available to view.</span> }
+            }
+          </div>
+          @if (canLoadRelated) { <button type="button" class="secondary-button" (click)="loadRelated(relatedPage + 1)" [disabled]="loadingRelated">{{ loadingRelated ? 'Loading…' : 'Load more cases' }}</button> }
+        </section>
+      </aside>
+    </div>
+
+    <div class="content-grid">
+      <section class="card case-record-card" aria-labelledby="documents-heading" [attr.aria-busy]="loadingDocuments">
+        <div class="card-heading"><div><h2 id="documents-heading">Documents</h2><p>Files associated with this case</p></div><span class="count">{{ documents?.total ?? '—' }}</span></div>
+        @if (documentError) { <p class="section-error" role="alert">{{ documentError }} <button type="button" class="text-button" (click)="loadDocuments(documents?.page || 1)">Retry</button></p> }
+        @if (downloadError) { <p class="section-error" role="alert">{{ downloadError }}</p> }
+        @if (loadingDocuments && !documents) { <div class="section-loading"><app-manager-list-loader label="Loading documents…"></app-manager-list-loader></div> }
+        @if (documents; as data) {
+          @if (discoveryPending) { <p class="notice">Document discovery is still running for {{ discoveryPending }} source{{ discoveryPending === 1 ? '' : 's' }}. More files may appear later.</p> }
+          @if (discoveryFailed) { <p class="notice warning" role="status">Discovery failed for {{ discoveryFailed }} source{{ discoveryFailed === 1 ? '' : 's' }}. Some files may be missing.</p> }
+          @if (data.documents.length) {
+            <div class="table-scroll record-table-scroll" role="region" aria-label="Case documents" tabindex="0"><table><thead><tr><th scope="col">File</th><th scope="col">Source</th><th scope="col">Last seen</th><th scope="col">Action</th></tr></thead><tbody>
+              @for (doc of data.documents; track doc.documentId) {
+                <tr><td><strong>{{ doc.fileName }}</strong><small>{{ fileSize(doc.sizeBytes) }}</small></td><td>{{ doc.sourceKind.replaceAll('_', ' ') }}</td><td>{{ dateLabel(doc.lastSeenAt) }}</td><td><button type="button" class="secondary-button compact" (click)="download(doc)" [disabled]="!!downloadingId">{{ downloadingId === doc.documentId ? 'Downloading…' : 'Download' }}</button></td></tr>
+              }
+            </tbody></table></div>
+          } @else { <p class="empty-note">{{ discoveryPending ? 'No documents discovered yet.' : data.discoveryRequested ? 'No documents were found for this case.' : 'Document discovery has not been requested for this case.' }}</p> }
+          @if (data.total > data.limit) { <div class="pager"><span>Page {{ data.page }} of {{ Math.ceil(data.total / data.limit) }}</span><button type="button" class="secondary-button compact" (click)="loadDocuments(data.page - 1)" [disabled]="loadingDocuments || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadDocuments(data.page + 1)" [disabled]="loadingDocuments || data.page * data.limit >= data.total">Next</button></div> }
+        }
+      </section>
+
+      <section class="card case-record-card" aria-labelledby="invoices-heading" [attr.aria-busy]="loadingInvoices">
+        <div class="card-heading"><div><h2 id="invoices-heading">Linked invoices</h2><p>Invoices associated with this case</p></div><span class="count">{{ invoices?.total ?? '—' }}</span></div>
+        @if (invoiceError) { <p class="section-error" role="alert">{{ invoiceError }} <button type="button" class="text-button" (click)="loadInvoices(invoices?.page || 1)">Retry</button></p> }
+        @if (loadingInvoices && !invoices) { <div class="section-loading"><app-manager-list-loader label="Loading invoices…"></app-manager-list-loader></div> }
+        @if (invoices; as data) {
+          @if (data.invoices.length) {
+            <div class="table-scroll record-table-scroll" role="region" aria-label="Linked case invoices" tabindex="0"><table><thead><tr><th scope="col">Invoice</th><th scope="col">Date / Due</th><th scope="col">Status</th><th scope="col">Due amount</th></tr></thead><tbody>
+              @for (invoice of data.invoices; track invoice.invoiceId) {
+                <tr><td><strong>{{ invoice.invoiceNumber || 'Unnumbered invoice' }}</strong><small>{{ invoice.type }}</small></td><td>{{ dateLabel(invoice.date) }}<small>Due {{ dateLabel(invoice.dueDate) }}</small></td><td><span class="invoice-status">{{ invoice.status }}</span></td><td>{{ moneyLabel(invoice.amountDue, invoice.currency) }}</td></tr>
+              }
+            </tbody></table></div>
+          } @else { <p class="empty-note">No invoices are linked to this case.</p> }
+          @if (data.total > data.limit) { <div class="pager"><span>Page {{ data.page }} of {{ Math.ceil(data.total / data.limit) }}</span><button type="button" class="secondary-button compact" (click)="loadInvoices(data.page - 1)" [disabled]="loadingInvoices || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadInvoices(data.page + 1)" [disabled]="loadingInvoices || data.page * data.limit >= data.total">Next</button></div> }
+        }
+      </section>
+
+      <section class="card sophia-card" aria-labelledby="meet-sophia-heading">
+        <div class="card-heading"><div><h2 id="meet-sophia-heading">Meet Sophia</h2><p>Your case assistant</p></div><span class="availability-pill">Coming soon</span></div>
+        <img class="sophia-portrait" src="/assets/avatars/SophiaAiRuntime.jpg" alt="Portrait of Sophia AI" loading="lazy" />
+        <p class="sophia-message"><span aria-hidden="true">✦</span> Sophia will help review this case when Sophia AI Runtime is connected.</p>
+        <div class="sophia-actions">
+          <button type="button" class="sophia-button primary" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"/></svg>Chat with Sophia</button>
+          <button type="button" class="sophia-button secondary" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6m0-6-9 9"/><path d="M20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1 2-2V6a2 2 0 0 1 2-2h5"/></svg>Open full Sophia</button>
+        </div>
+      </section>
+
+      <section class="card activity-card case-secondary-card" aria-labelledby="activity-heading" [attr.aria-busy]="loadingActivity">
+        <div class="card-heading"><div><h2 id="activity-heading">Recent activity</h2><p>Recorded case events</p></div></div>
+        @if (activityError) { <p class="section-error" role="alert">{{ activityError }} <button type="button" class="text-button" (click)="loadActivity(activity?.page || 1)">Retry</button></p> }
+        @if (loadingActivity && !activity) { <div class="section-loading"><app-manager-list-loader label="Loading activity…"></app-manager-list-loader></div> }
+        @if (activity; as data) {
+          @if (data.activity.length) { <div class="activity-scroll" role="region" aria-label="Recent case activity" tabindex="0"><ol class="activity-list">@for (event of data.activity; track event.activityId) { <li><span class="activity-dot" aria-hidden="true"></span><div><strong>{{ event.summary }}</strong><small>{{ dateTimeLabel(event.createdAt) }}</small></div></li> }</ol></div> }
+          @else { <p class="empty-note">No activity has been recorded for this case.</p> }
+          @if (data.page > 1 || data.activity.length === data.limit) { <div class="pager"><span>Page {{ data.page }}</span><button type="button" class="secondary-button compact" (click)="loadActivity(data.page - 1)" [disabled]="loadingActivity || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadActivity(data.page + 1)" [disabled]="loadingActivity || data.activity.length < data.limit">Next</button></div> }
+        }
+      </section>
+      <section class="card case-summary case-secondary-card" aria-labelledby="case-summary-heading">
+        <div class="card-heading"><div><h2 id="case-summary-heading">Case at a glance</h2><p>Available records for this case</p></div></div>
+        <div class="summary-scroll" role="region" aria-label="Case summary" tabindex="0">
+          <dl>
+            <div><dt>Linked invoices</dt><dd>{{ invoices?.total ?? '—' }}</dd></div>
+            <div><dt>Documents found</dt><dd>{{ documents?.total ?? '—' }}</dd></div>
+            <div><dt>Document sources pending</dt><dd>{{ documents ? discoveryPending : '—' }}</dd></div>
+          </dl>
+          <p class="summary-note">This is a read-only view. Missing information remains unconfirmed until it is recorded on the case.</p>
+        </div>
+      </section>
+
+      <section class="card case-actions-card" aria-labelledby="next-actions-heading">
+        <div class="card-heading"><div><h2 id="next-actions-heading">Next Actions</h2><p>Tasks for this case</p></div><span class="availability-pill">Coming soon</span></div>
+        <div class="action-scroll" role="region" aria-label="Next case actions" tabindex="0">
+          <div class="action-placeholder">
+            <span class="action-placeholder-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 17h8"/></svg></span>
+            <strong>Case actions will appear here</strong>
+            <p>Document requests, payment follow-ups and approvals will be shown when the action workflow is connected.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  }
+</section>

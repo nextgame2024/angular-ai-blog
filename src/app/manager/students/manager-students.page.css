@@ -95,7 +95,7 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 .status-pill::before { content:''; width:.38rem; height:.38rem; border-radius:50%; background:currentColor }
 .status-pill.healthy { color:#089570; background:#e0f7ed } .status-pill.action { color:#a66a05; background:#fff0d4 } .status-pill.overdue { color:#d52c4b; background:#ffe5eb } .status-pill.vigente { color:#63748e; background:#edf2f7 }
 .case-list,.mobile-cases { display:flex; flex-wrap:wrap; gap:.25rem }
-.case-label { color:#3866d5; font-size:.71rem; white-space:nowrap } .muted { color:#8390a2 }
+.case-label { color:#3866d5; font-size:.71rem; white-space:nowrap; text-decoration:none } .case-label:hover { text-decoration:underline } .case-label:focus-visible { outline:2px solid #3866d5; outline-offset:2px; border-radius:2px } .muted { color:#8390a2 }
 .row-actions .btn { padding:.28rem .4rem; font-size:.72rem }
 .edit-button { color:#6555dc; background:#f1efff; border-color:#cec5ff } .delete-button { color:#d33747; background:#fff1f1; border-color:#ffcbd2 }
 .student-cards { display:none }

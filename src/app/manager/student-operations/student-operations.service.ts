@@ -12,6 +12,11 @@ import type {
   StudentOperationsWorkspace,
   StudentRegisterQuery,
   StudentRegisterResult,
+  StudentCaseDetail,
+  StudentCaseList,
+  StudentCaseInvoices,
+  StudentCaseDocuments,
+  StudentCaseActivity,
   XeroConnectionStatus,
   XeroConnectionTest,
   XeroStudentCandidateResult,
@@ -133,6 +138,40 @@ export class StudentOperationsService {
     if (input.sortDir) params = params.set('sortDir', input.sortDir);
     return this.http.get<StudentRegisterResult>(`${this.workspaceBase}/student-register`, {
       headers: this.headers(), params,
+    });
+  }
+
+  caseDetail(caseId: string): Observable<StudentCaseDetail> {
+    return this.http.get<StudentCaseDetail>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}`, { headers: this.headers() });
+  }
+
+  casesForStudent(userId: string, page = 1): Observable<StudentCaseList> {
+    return this.http.get<StudentCaseList>(`${this.workspaceBase}/cases`, {
+      headers: this.headers(), params: new HttpParams().set('userId', userId).set('page', page).set('limit', 100),
+    });
+  }
+
+  caseInvoices(caseId: string, page = 1): Observable<StudentCaseInvoices> {
+    return this.http.get<StudentCaseInvoices>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoices`, {
+      headers: this.headers(), params: new HttpParams().set('page', page).set('limit', 25),
+    });
+  }
+
+  caseDocuments(caseId: string, page = 1): Observable<StudentCaseDocuments> {
+    return this.http.get<StudentCaseDocuments>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents`, {
+      headers: this.headers(), params: new HttpParams().set('page', page).set('limit', 25),
+    });
+  }
+
+  caseActivity(caseId: string, page = 1): Observable<StudentCaseActivity> {
+    return this.http.get<StudentCaseActivity>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/activity`, {
+      headers: this.headers(), params: new HttpParams().set('page', page).set('limit', 25),
+    });
+  }
+
+  caseDocumentContent(caseId: string, documentId: string): Observable<Blob> {
+    return this.http.get(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(documentId)}/content`, {
+      headers: this.headers(), responseType: 'blob',
     });
   }
 

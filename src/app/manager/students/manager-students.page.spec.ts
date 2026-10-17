@@ -210,6 +210,9 @@ describe('ManagerStudentsPageComponent', () => {
       expect(view.textContent).toContain('In progress');
       expect(view.textContent).toContain('CASE-2');
       expect(view.textContent).toContain('$200.00');
+      const caseLink = view.querySelector('a.case-label') as HTMLAnchorElement;
+      expect(caseLink.getAttribute('href')).toBe('/manager/students/cases/case-2');
+      expect(caseLink.getAttribute('aria-label')).toContain('View case CASE-2');
     }
     expect(table.textContent).not.toContain('Healthy');
   });

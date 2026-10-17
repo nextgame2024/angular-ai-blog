@@ -12,6 +12,7 @@ import {
 } from '../components/shared/manager-select/manager-select.component';
 import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
+import { CASE_STATUS_LABELS, caseStageLabel } from '../student-operations/student-case-workflow';
 import type {
   StudentOperationsWorkspace, StudentRegisterQuery, StudentRegisterResult,
   StudentRegisterRow, StudentRegisterSort, StudentRegisterStatus,
@@ -42,9 +43,13 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
   readonly today = new Date();
   readonly statusOptions: ManagerSelectOption[] = [
     { value: '', label: 'All status' },
+    { value: 'pre_sale', label: 'Pre-sale' },
     { value: 'in_progress', label: 'In progress' },
     { value: 'on_hold', label: 'On hold' },
-    { value: 'completed', label: 'Completed' },
+    { value: 'payment_overdue', label: 'Payment overdue' },
+    { value: 'collections', label: 'In collections' },
+    { value: 'payment_done', label: 'Payment complete' },
+    { value: 'closed', label: 'Closed' },
     { value: 'cancelled', label: 'Cancelled' },
     { value: 'not_started', label: 'Not started' },
   ];
@@ -162,11 +167,11 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
     return [...name].reduce((sum, character) => sum + character.charCodeAt(0), 0) % 4;
   }
   statusLabel(status: StudentRegisterStatus): string {
-    return this.statusOptions.find((item) => item.value === status)?.label ?? status;
+    return status === 'not_started' ? 'Not started' : CASE_STATUS_LABELS[status];
   }
   stageLabel(stage: string | null): string {
     if (!stage) return '—';
-    return stage.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+    return caseStageLabel(stage);
   }
   dateLabel(isoDate: string | null): string {
     if (!isoDate) return '—';
