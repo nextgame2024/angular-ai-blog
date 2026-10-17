@@ -12,6 +12,7 @@ import {
 } from '../../components/shared/manager-select/manager-select.component';
 import { ManagerListLoaderComponent } from '../../components/shared/manager-list-loader/manager-list-loader.component';
 import { StudentOperationsService } from '../student-operations.service';
+import { XERO_INVOICE_STATUS_OPTIONS, xeroInvoiceStatusLabel } from '../xero-invoice-display';
 import type {
   StudentOperationsStudentDetail,
   StudentOperationsStudentList,
@@ -75,10 +76,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   readonly formStatusOptions: ManagerSelectOption[] = this.statusOptions.slice(1);
   readonly invoiceStatusOptions: ManagerSelectOption[] = [
     { value: '', label: 'All statuses' },
-    { value: 'DRAFT', label: 'Draft' },
-    { value: 'SUBMITTED', label: 'Awaiting approval' },
-    { value: 'AUTHORISED', label: 'Awaiting payment' },
-    { value: 'PAID', label: 'Paid' },
+    ...XERO_INVOICE_STATUS_OPTIONS,
   ];
   paymentTrackOptions: ManagerSelectOption[] = [{ value: '', label: 'All payment tracks' }];
   readonly invoicePageSizeOptions: ManagerSelectOption[] = [
@@ -225,8 +223,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
 
   invoiceStatusLabel(value: string): string {
-    return this.invoiceStatusOptions.find((option) => option.value.toLowerCase() === value.toLowerCase())?.label
-      ?? this.formatLabel(value);
+    return xeroInvoiceStatusLabel(value);
   }
 
   formatMoney(value: number | null, currencyCode: string | null): string {

@@ -5,6 +5,7 @@ import { Subject, catchError, distinctUntilChanged, map, of, switchMap, takeUnti
 import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import { CASE_STATUS_LABELS, CASE_WORKFLOW_STAGES, IMPORTED_CASE_STAGE, caseStageLabel } from '../student-operations/student-case-workflow';
+import { xeroInvoiceStatusLabel } from '../student-operations/xero-invoice-display';
 import type {
   StudentCaseActivity, StudentCaseDetail, StudentCaseDocuments, StudentCaseInvoices,
   StudentCaseList, StudentCaseStatus, StudentRegisterRow,
@@ -115,6 +116,17 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
   stageLabel(stage: string): string {
     return caseStageLabel(stage);
+  }
+  invoiceStatusLabel(status: string): string {
+    if (status.toUpperCase() === 'AUTHORISED') return 'Awaiting';
+    return xeroInvoiceStatusLabel(status);
+  }
+  invoiceDisplayNumber(invoice: StudentCaseInvoices['invoices'][number]): string {
+    if (invoice.invoiceNumber) return invoice.invoiceNumber;
+    if (invoice.type === 'RECEIVE-OVERPAYMENT') return 'Overpayment';
+    if (invoice.type === 'RECEIVE-PREPAYMENT') return 'Prepayment';
+    if (invoice.type === 'ACCRECCREDIT') return 'Credit note';
+    return 'Unnumbered invoice';
   }
   dateLabel(value: string | null): string {
     if (!value) return '—';

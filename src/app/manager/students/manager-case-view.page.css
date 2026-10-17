@@ -60,7 +60,7 @@ h2 { font-size:.97rem; font-weight:800 }
 .stage-number { display:grid; place-items:center; position:relative; z-index:1; width:1.8rem; height:1.8rem; border:1px solid #d8e2ee; border-radius:50%; background:#eff4fa; color:#5f7391; font-weight:800; font-size:.78rem }
 .stage-list li.current { color:#058b6f; font-weight:700 }
 .stage-list li.current .stage-number { border-color:#0ca88b; background:#0ca88b; color:white; box-shadow:0 0 0 3px #0ca88b20 }
-.content-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)) minmax(17rem,.67fr); align-items:stretch; gap:.7rem }
+.content-grid { display:grid; grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr) minmax(17rem,.67fr); align-items:stretch; gap:.7rem }
 .content-grid > .card { margin:0 }
 .case-record-card,.sophia-card { display:flex; flex-direction:column; min-height:20rem; max-height:36rem }
 .case-secondary-card,.case-actions-card { display:flex; flex-direction:column; min-height:16rem; max-height:28rem }
@@ -96,6 +96,8 @@ h2 { font-size:.97rem; font-weight:800 }
 .record-table-scroll th { position:sticky; top:0; z-index:1; box-shadow:0 1px 0 #e4ebf3 }
 .activity-scroll,.summary-scroll { overflow:auto; max-height:24rem; padding-right:.2rem }
 table { width:100%; border-collapse:collapse; text-align:left; font-size:.76rem }
+.invoice-table { min-width:42rem }
+.invoice-table th:nth-last-child(-n+2),.invoice-table td:nth-last-child(-n+2) { text-align:right; white-space:nowrap }
 th,td { padding:.55rem .65rem; border-bottom:1px solid #e6edf5; vertical-align:middle }
 th { white-space:nowrap; background:#f5f8fb; color:#485b75; font-weight:700 }
 tbody tr:last-child td { border-bottom:0 }
@@ -103,6 +105,9 @@ td strong,td small { display:block }
 td strong { overflow-wrap:anywhere }
 td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 .invoice-status { display:inline-block; border-radius:1rem; padding:.2rem .45rem; background:#edf2f7; color:#516681; font-weight:700; font-size:.68rem }
+.invoice-status-submitted { background:#fff1df; color:#9a5a05 }
+.invoice-status-authorised { background:#e8f1ff; color:#285da6 }
+.invoice-status-paid { background:#e4f8f0; color:#14785e }
 .secondary-button { display:inline-flex; align-items:center; justify-content:center; min-height:2rem; padding:.35rem .6rem; border:1px solid #c8d9ed; border-radius:.45rem; background:#fff; color:#3866d5; font:inherit; font-size:.76rem; font-weight:600; cursor:pointer }
 .secondary-button:hover:not(:disabled) { background:#f2f8ff }
 .secondary-button:disabled { opacity:.48; cursor:not-allowed }
@@ -129,7 +134,7 @@ td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 .action-link { color:#3866d5 }
 .muted { color:#8390a2; font-size:.77rem }
 @media (max-width:1150px) { .student-overview { grid-template-columns:1fr } .overview-facts > div:first-child { border-left:0; padding-left:2.6rem } .overview-facts > div:first-child .fact-icon { left:0 } }
-@media (max-width:1250px) { .content-grid { grid-template-columns:repeat(2,minmax(0,1fr)) } }
+@media (max-width:1250px) { .content-grid { grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr) } }
 @media (max-width:1180px) { .case-workspace { grid-template-columns:minmax(0,2.2fr) minmax(15rem,1fr) } }
 @media (max-width:850px) { .case-workspace { display:flex; flex-direction:column } .workspace-main,.workspace-sidebar { width:100% } }
 @media (max-width:760px) { .content-grid { grid-template-columns:1fr } .case-record-card,.sophia-card,.case-secondary-card,.case-actions-card { min-height:0; max-height:none } .record-table-scroll,.activity-scroll,.summary-scroll,.action-scroll { flex:none; max-height:28rem } .action-placeholder { min-height:13rem } }
@@ -163,6 +168,9 @@ td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 :host-context(html.dark) .stage-list li:not(:last-child)::after { border-color:#40536b }
 :host-context(html.dark) .secondary-button:hover:not(:disabled) { background:#31435d }
 :host-context(html.dark) .stage-number,:host-context(html.dark) .count,:host-context(html.dark) .invoice-status { background:#334155; border-color:#4a5b72; color:#c1d0e6 }
+:host-context(html.dark) .invoice-status-submitted { background:#4a3517; color:#ffd795 }
+:host-context(html.dark) .invoice-status-authorised { background:#18375f; color:#a9d2ff }
+:host-context(html.dark) .invoice-status-paid { background:#153d34; color:#8ce1c7 }
 :host-context(html.dark) .stage-list li.current { color:#62dcbf }
 :host-context(html.dark) .stage-list li.current .stage-number { background:#0ca88b; border-color:#0ca88b; color:white }
 :host-context(html.dark) .fact-icon.college { background:#39295f; color:#c3a4ff }

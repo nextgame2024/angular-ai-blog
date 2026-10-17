@@ -159,6 +159,7 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(getComputedStyle(invoiceScroll.querySelector('th')!).position).toBe('sticky');
     if (window.innerWidth > 760) {
       expect(cards[0].getBoundingClientRect().height).toBe(cards[1].getBoundingClientRect().height);
+      expect(cards[1].getBoundingClientRect().width).toBeGreaterThan(cards[0].getBoundingClientRect().width);
     }
   });
 
@@ -270,7 +271,49 @@ describe('ManagerCaseViewPageComponent', () => {
     fixture.detectChanges();
     const row = fixture.nativeElement.querySelector('#invoices-heading')?.closest('section')?.querySelector('tbody tr') as HTMLElement;
     expect(row.textContent).toContain('INV-REDACTED');
+    expect(row.textContent).toContain('Ref: —');
+    expect(row.querySelector('td:nth-child(4)')?.textContent?.trim()).toBe('—');
+    expect(row.querySelector('td:nth-last-child(2)')?.textContent?.trim()).toBe('—');
     expect(row.querySelector('td:last-child')?.textContent?.trim()).toBe('—');
+  });
+
+  it('shows the paid amount separately from the remaining due balance', () => {
+    api.caseInvoices.and.returnValue(of({ invoices: [{
+      invoiceId: 'invoice-8602', invoiceNumber: 'INV-8602', type: 'ACCREC', status: 'PAID',
+      reference: 'ECA COLLEGE', paymentTrack: 'Student → college',
+      date: '2026-08-16', dueDate: '2026-08-16', amountPaid: '2100.00', amountDue: '0.00', currency: 'AUD',
+    }], total: 1, page: 1, limit: 25 }));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const table = fixture.nativeElement.querySelector('#invoices-heading')?.closest('section')?.querySelector('table') as HTMLTableElement;
+    const headings = [...table.querySelectorAll('th')].map(th => th.textContent?.trim());
+    const cells = [...table.querySelectorAll('tbody td')].map(td => td.textContent?.trim());
+
+    expect(headings).toEqual(['Invoice', 'Date / Due', 'Status', 'Track', 'Paid', 'Due']);
+    expect(cells[0]).toContain('INV-8602');
+    expect(cells[0]).toContain('Ref: ECA COLLEGE');
+    expect(cells[0]).not.toContain('ACCREC');
+    expect(cells[3]).toBe('Student → college');
+    expect(cells[4]).toBe('$2,100.00');
+    expect(cells[5]).toBe('$0.00');
+    expect(getComputedStyle(table).minWidth).toBe('672px');
+  });
+
+  it('shortens the awaiting-payment status in case details and identifies unnumbered overpayments', () => {
+    api.caseInvoices.and.returnValue(of({ invoices: [
+      { invoiceId: 'invoice-3501', invoiceNumber: 'INV-3501', type: 'ACCREC', status: 'AUTHORISED',
+        reference: null, paymentTrack: 'Pending', date: '2022-08-17', dueDate: '2022-08-17' },
+      { invoiceId: 'overpayment-1', invoiceNumber: null, type: 'RECEIVE-OVERPAYMENT', status: 'PAID',
+        reference: null, paymentTrack: null, date: '2021-01-27', dueDate: null },
+    ], total: 2, page: 1, limit: 25 }));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const rows = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.invoice-table tbody tr')] as HTMLElement[];
+    expect(rows[0].querySelector('.invoice-status')?.textContent?.trim()).toBe('Awaiting');
+    expect(rows[0].textContent).toContain('Pending');
+    expect(rows[0].textContent).not.toContain('AUTHORISED');
+    expect(rows[1].querySelector('td')?.textContent).toContain('Overpayment');
+    expect(rows[1].textContent).not.toContain('RECEIVE-OVERPAYMENT');
   });
 
   it('recovers student identity from the register when an older case API omits it', () => {

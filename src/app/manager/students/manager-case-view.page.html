@@ -91,9 +91,9 @@
         @if (loadingInvoices && !invoices) { <div class="section-loading"><app-manager-list-loader label="Loading invoices…"></app-manager-list-loader></div> }
         @if (invoices; as data) {
           @if (data.invoices.length) {
-            <div class="table-scroll record-table-scroll" role="region" aria-label="Linked case invoices" tabindex="0"><table><thead><tr><th scope="col">Invoice</th><th scope="col">Date / Due</th><th scope="col">Status</th><th scope="col">Due amount</th></tr></thead><tbody>
+            <div class="table-scroll record-table-scroll" role="region" aria-label="Linked case invoices" tabindex="0"><table class="invoice-table"><thead><tr><th scope="col">Invoice</th><th scope="col">Date / Due</th><th scope="col">Status</th><th scope="col">Track</th><th scope="col">Paid</th><th scope="col">Due</th></tr></thead><tbody>
               @for (invoice of data.invoices; track invoice.invoiceId) {
-                <tr><td><strong>{{ invoice.invoiceNumber || 'Unnumbered invoice' }}</strong><small>{{ invoice.type }}</small></td><td>{{ dateLabel(invoice.date) }}<small>Due {{ dateLabel(invoice.dueDate) }}</small></td><td><span class="invoice-status">{{ invoice.status }}</span></td><td>{{ moneyLabel(invoice.amountDue, invoice.currency) }}</td></tr>
+                <tr><td><strong>{{ invoiceDisplayNumber(invoice) }}</strong><small>Ref: {{ invoice.reference || '—' }}</small></td><td>{{ dateLabel(invoice.date) }}<small>Due {{ dateLabel(invoice.dueDate) }}</small></td><td><span class="invoice-status" [class.invoice-status-authorised]="invoice.status === 'AUTHORISED'" [class.invoice-status-paid]="invoice.status === 'PAID'" [class.invoice-status-submitted]="invoice.status === 'SUBMITTED'">{{ invoiceStatusLabel(invoice.status) }}</span></td><td>{{ invoice.paymentTrack || '—' }}</td><td>{{ moneyLabel(invoice.amountPaid, invoice.currency) }}</td><td>{{ moneyLabel(invoice.amountDue, invoice.currency) }}</td></tr>
               }
             </tbody></table></div>
           } @else { <p class="empty-note">No invoices are linked to this case.</p> }

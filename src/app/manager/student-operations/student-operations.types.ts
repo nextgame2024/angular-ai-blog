@@ -163,7 +163,8 @@ export interface StudentCaseList {
 export interface StudentCaseInvoices {
   invoices: Array<{
     invoiceId: string; invoiceNumber: string | null; type: string; status: string;
-    date: string | null; dueDate: string | null; currency?: string | null;
+    date: string | null; dueDate: string | null; reference?: string | null;
+    paymentTrack?: string | null; currency?: string | null;
     total?: string | null; amountPaid?: string | null; amountDue?: string | null;
   }>;
   page: number;
