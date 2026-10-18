@@ -108,6 +108,12 @@ td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 .invoice-status-submitted { background:#fff1df; color:#9a5a05 }
 .invoice-status-authorised { background:#e8f1ff; color:#285da6 }
 .invoice-status-paid { background:#e4f8f0; color:#14785e }
+.document-actions { display:flex; align-items:center; gap:.35rem; white-space:nowrap }
+.document-action-button { display:inline-grid; place-items:center; flex:none; width:2.25rem; height:2.25rem; padding:0; border:1px solid #c8d9ed; border-radius:.45rem; background:#fff; color:#3866d5; cursor:pointer }
+.document-action-button svg { width:1.1rem; height:1.1rem }
+.document-action-button:hover:not(:disabled) { background:#f2f8ff; border-color:#8bb5ec }
+.document-action-button:focus-visible { outline:2px solid #0eac9e; outline-offset:2px }
+.document-action-button:disabled { opacity:.45; cursor:not-allowed }
 .secondary-button { display:inline-flex; align-items:center; justify-content:center; min-height:2rem; padding:.35rem .6rem; border:1px solid #c8d9ed; border-radius:.45rem; background:#fff; color:#3866d5; font:inherit; font-size:.76rem; font-weight:600; cursor:pointer }
 .secondary-button:hover:not(:disabled) { background:#f2f8ff }
 .secondary-button:disabled { opacity:.48; cursor:not-allowed }
@@ -171,6 +177,8 @@ td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 :host-context(html.dark) .invoice-status-submitted { background:#4a3517; color:#ffd795 }
 :host-context(html.dark) .invoice-status-authorised { background:#18375f; color:#a9d2ff }
 :host-context(html.dark) .invoice-status-paid { background:#153d34; color:#8ce1c7 }
+:host-context(html.dark) .document-action-button { background:#263449; border-color:#4a6180; color:#a7c4ff }
+:host-context(html.dark) .document-action-button:hover:not(:disabled) { background:#31435d; border-color:#6f96c7 }
 :host-context(html.dark) .stage-list li.current { color:#62dcbf }
 :host-context(html.dark) .stage-list li.current .stage-number { background:#0ca88b; border-color:#0ca88b; color:white }
 :host-context(html.dark) .fact-icon.college { background:#39295f; color:#c3a4ff }

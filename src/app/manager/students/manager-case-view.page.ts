@@ -39,11 +39,13 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   relatedError = '';
   downloadError = '';
   downloadingId: string | null = null;
+  viewingId: string | null = null;
   loadingRelated = false;
   loadingInvoices = false;
   loadingDocuments = false;
   loadingActivity = false;
   private currentId = '';
+  private pendingPreview: Window | null = null;
 
   get primaryAdvisor(): string | null {
     return this.case?.advisors.find(item => item.isPrimary)?.name || this.case?.advisorName || null;
@@ -107,6 +109,8 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.pendingPreview?.close();
+    this.pendingPreview = null;
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -149,6 +153,10 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
   fileSize(bytes: number): string {
     return bytes < 1024 ? `${bytes} B` : bytes < 1048576 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1048576).toFixed(1)} MB`;
+  }
+  previewMimeType(document: StudentCaseDocuments['documents'][number]): string | null {
+    const type = document.mimeType.toLowerCase().split(';', 1)[0].trim();
+    return ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(type) ? type : null;
   }
 
   private loadStudentIdentity(detail: StudentCaseDetail): void {
@@ -212,7 +220,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   download(document: StudentCaseDocuments['documents'][number]): void {
-    if (!this.case || this.downloadingId) return;
+    if (!this.case || this.downloadingId || this.viewingId) return;
     const id = this.currentId;
     this.downloadingId = document.documentId;
     this.downloadError = '';
@@ -233,7 +241,56 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  view(document: StudentCaseDocuments['documents'][number]): void {
+    const type = this.previewMimeType(document);
+    if (!this.case || !type || this.downloadingId || this.viewingId) return;
+    // Open synchronously with the click so browser popup blockers allow the preview.
+    const preview = window.open('about:blank', '_blank');
+    if (!preview) {
+      this.downloadError = 'The preview could not open. Allow pop-ups for this site or download the document.';
+      return;
+    }
+    preview.opener = null;
+    this.pendingPreview = preview;
+    const id = this.currentId;
+    this.viewingId = document.documentId;
+    this.downloadError = '';
+    this.api.caseDocumentContent(id, document.documentId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: blob => {
+        if (id !== this.currentId || preview.closed) {
+          preview.close();
+          if (this.pendingPreview === preview) this.pendingPreview = null;
+          if (id === this.currentId) this.viewingId = null;
+          return;
+        }
+        let url: string | null = null;
+        try {
+          const previewUrl = URL.createObjectURL(blob.slice(0, blob.size, type));
+          url = previewUrl;
+          preview.location.href = previewUrl;
+          setTimeout(() => URL.revokeObjectURL(previewUrl), 5 * 60 * 1000);
+        } catch {
+          if (url) URL.revokeObjectURL(url);
+          preview.close();
+          this.downloadError = 'The document could not be previewed. Try downloading it instead.';
+        }
+        if (this.pendingPreview === preview) this.pendingPreview = null;
+        this.viewingId = null;
+      },
+      error: () => {
+        preview.close();
+        if (this.pendingPreview === preview) this.pendingPreview = null;
+        if (id === this.currentId) {
+          this.downloadError = 'The document could not be previewed. Try downloading it instead.';
+          this.viewingId = null;
+        }
+      },
+    });
+  }
+
   private reset(): void {
+    this.pendingPreview?.close();
+    this.pendingPreview = null;
     this.case = null;
     this.studentIdentity = null;
     this.relatedCases = [];
@@ -246,5 +303,6 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.loadingRelated = this.loadingInvoices = this.loadingDocuments = this.loadingActivity = false;
     this.downloadingId = null;
+    this.viewingId = null;
   }
 }

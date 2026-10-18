@@ -71,6 +71,64 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelector('.progress-card')?.closest('.workspace-main')).not.toBeNull();
   });
 
+  it('shows accessible View and Download icon actions with tooltips', () => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const actions = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.document-actions button')] as HTMLButtonElement[];
+    expect(actions).toHaveSize(2);
+    expect(actions.map(button => button.title)).toEqual(['View', 'Download']);
+    expect(actions.map(button => button.getAttribute('aria-label'))).toEqual(['View offer.pdf', 'Download offer.pdf']);
+    expect(actions.every(button => button.querySelector('svg[aria-hidden="true"]') !== null)).toBeTrue();
+    expect(actions.every(button => button.disabled === false)).toBeTrue();
+  });
+
+  it('opens a fetched PDF in a new tab with its preview MIME type', () => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const preview = { opener: window, closed: false, location: { href: '' }, close: jasmine.createSpy('close') };
+    const open = spyOn(window, 'open').and.returnValue(preview as unknown as Window);
+    const createUrl = spyOn(URL, 'createObjectURL').and.returnValue('blob:case-preview');
+    api.caseDocumentContent.and.returnValue(of(new Blob(['%PDF-1.7'], { type: 'application/octet-stream' })));
+
+    const button = (fixture.nativeElement as HTMLElement).querySelector('.document-actions button') as HTMLButtonElement;
+    button.click();
+
+    expect(open).toHaveBeenCalledWith('about:blank', '_blank');
+    expect(preview.opener).toBeNull();
+    expect(api.caseDocumentContent).toHaveBeenCalledWith('case-1', 'document-1');
+    expect((createUrl.calls.mostRecent().args[0] as Blob).type).toBe('application/pdf');
+    expect(preview.location.href).toBe('blob:case-preview');
+    expect(fixture.componentInstance.viewingId).toBeNull();
+  });
+
+  it('keeps the download action on the authorized document-content endpoint', () => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    api.caseDocumentContent.and.returnValue(of(new Blob(['file'], { type: 'application/octet-stream' })));
+    spyOn(URL, 'createObjectURL').and.returnValue('blob:case-download');
+    const click = spyOn(HTMLAnchorElement.prototype, 'click');
+
+    const button = (fixture.nativeElement as HTMLElement).querySelectorAll('.document-actions button')[1] as HTMLButtonElement;
+    button.click();
+
+    expect(api.caseDocumentContent).toHaveBeenCalledWith('case-1', 'document-1');
+    expect(click).toHaveBeenCalled();
+    expect(fixture.componentInstance.downloadingId).toBeNull();
+  });
+
+  it('keeps download available when a file type is not safe to preview', () => {
+    api.caseDocuments.and.returnValue(of({ documents: [{
+      documentId: 'document-2', fileName: 'diagram.svg', mimeType: 'image/svg+xml', sizeBytes: 1024,
+      sourceKind: 'contacts', lastSeenAt: '2026-10-16T00:00:00Z',
+    }], discovery: [], discoveryRequested: true, total: 1, page: 1, limit: 25 }));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const actions = [...(fixture.nativeElement as HTMLElement).querySelectorAll('.document-actions button')] as HTMLButtonElement[];
+    expect(actions[0].disabled).toBeTrue();
+    expect(actions[0].title).toBe('Preview unavailable; download instead');
+    expect(actions[1].disabled).toBeFalse();
+  });
+
   it('shows an access-safe error when the case cannot be read', () => {
     api.caseDetail.and.returnValue(throwError(() => new Error('private backend error')));
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
