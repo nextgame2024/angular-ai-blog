@@ -1,6 +1,7 @@
 import { ComponentFixture, fakeAsync, TestBed, tick } from '@angular/core/testing';
+import { HttpErrorResponse } from '@angular/common/http';
 import { provideRouter } from '@angular/router';
-import { of, Subject } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import type { StudentRegisterResult } from '../student-operations/student-operations.types';
 import { ManagerStudentsPageComponent } from './manager-students.page';
@@ -231,5 +232,34 @@ describe('ManagerStudentsPageComponent', () => {
     expect(fixture.componentInstance.sortAria('date')).toBe('ascending');
     fixture.componentInstance.sort('date');
     expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({ page: 1, sortBy: 'date', sortDir: 'desc' }));
+  });
+
+  it('keeps the register usable and labels its actual sort when an older API rejects Date', () => {
+    const unsupportedDate = new HttpErrorResponse({
+      status: 400,
+      error: { message: 'Invalid Students register filters.' },
+    });
+    api.studentRegister.and.returnValues(throwError(() => unsupportedDate), of(emptyResult), of(emptyResult));
+    fixture.detectChanges();
+
+    expect(api.studentRegister.calls.count()).toBe(2);
+    expect(api.studentRegister.calls.argsFor(1)[0]).toEqual(jasmine.objectContaining({ sortBy: 'name', sortDir: 'asc' }));
+    expect(fixture.componentInstance.error).toBe('');
+    expect(fixture.componentInstance.sortAria('date')).toBe('none');
+    expect(fixture.componentInstance.sortAria('name')).toBe('ascending');
+    expect(fixture.nativeElement.textContent).toContain('Date sorting is unavailable');
+
+    fixture.componentInstance.status.setValue('in_progress');
+    expect(api.studentRegister.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+      sortBy: 'name', sortDir: 'asc', status: 'in_progress',
+    }));
+  });
+
+  it('does not retry unrelated request errors as an old-API compatibility issue', () => {
+    api.studentRegister.and.returnValue(throwError(() => new HttpErrorResponse({ status: 403 })));
+    fixture.detectChanges();
+    expect(api.studentRegister.calls.count()).toBe(1);
+    expect(fixture.componentInstance.error).toContain('could not be loaded');
+    expect(fixture.componentInstance.legacyDateSort).toBeFalse();
   });
 });

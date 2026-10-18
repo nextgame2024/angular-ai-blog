@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
 import { DatePickerModule } from 'primeng/datepicker';
 import {
   BehaviorSubject, Subject, catchError, debounceTime, distinctUntilChanged,
-  of, switchMap, takeUntil,
+  of, switchMap, takeUntil, tap, throwError,
 } from 'rxjs';
 import {
   ManagerSelectComponent, type ManagerSelectOption,
@@ -71,6 +72,7 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
   loading = true;
   sectionsCollapsed = false;
   error = '';
+  legacyDateSort = false;
   dateError = '';
   private appliedFrom = '';
   private appliedTo = '';
@@ -86,8 +88,14 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
     return this.workspace?.role === 'chief_executive' || this.workspace?.role === 'operations';
   }
   get attentionActive(): boolean { return Boolean(this.query$.value.attentionThisWeek); }
-  get sortBy(): StudentRegisterSort { return this.query$.value.sortBy ?? 'date'; }
-  get sortDir(): 'asc' | 'desc' { return this.query$.value.sortDir ?? 'desc'; }
+  get sortBy(): StudentRegisterSort {
+    return this.legacyDateSort && this.query$.value.sortBy === 'date'
+      ? 'name' : this.query$.value.sortBy ?? 'date';
+  }
+  get sortDir(): 'asc' | 'desc' {
+    return this.legacyDateSort && this.query$.value.sortBy === 'date'
+      ? 'asc' : this.query$.value.sortDir ?? 'desc';
+  }
 
   ngOnInit(): void {
     this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
@@ -99,7 +107,18 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
       switchMap((query) => {
         this.loading = true;
         this.error = '';
-        return this.api.studentRegister(query).pipe(
+        const request = this.legacyDateSort && query.sortBy === 'date'
+          ? { ...query, sortBy: 'name' as const, sortDir: 'asc' as const } : query;
+        return this.api.studentRegister(request).pipe(
+          catchError((failure: unknown) => {
+            if (query.sortBy !== 'date' || !(failure instanceof HttpErrorResponse)
+              || failure.status !== 400 || failure.error?.message !== 'Invalid Students register filters.') {
+              return throwError(() => failure);
+            }
+            return this.api.studentRegister({ ...query, sortBy: 'name', sortDir: 'asc' }).pipe(
+              tap(() => { this.legacyDateSort = true; }),
+            );
+          }),
           catchError(() => {
             this.error = 'Student records could not be loaded. Try again.';
             return of(null);
@@ -139,7 +158,10 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  retry(): void { this.patchQuery({ revision: this.query$.value.revision + 1 }); }
+  retry(): void {
+    this.legacyDateSort = false;
+    this.patchQuery({ revision: this.query$.value.revision + 1 });
+  }
   clearSearch(): void { this.search.setValue(''); }
   clearAttention(): void { this.patchQuery({ attentionThisWeek: undefined, page: 1 }); }
   viewAttention(): void {
@@ -151,10 +173,13 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
     this.patchQuery({ page });
   }
   sort(column: StudentRegisterSort): void {
+    if (column === 'date') this.legacyDateSort = false;
+    const activeColumn = this.query$.value.sortBy;
+    const activeDirection = this.query$.value.sortDir;
     this.patchQuery({
       sortBy: column,
-      sortDir: this.sortBy === column
-        ? (this.sortDir === 'asc' ? 'desc' : 'asc')
+      sortDir: activeColumn === column
+        ? (activeDirection === 'asc' ? 'desc' : 'asc')
         : (column === 'date' ? 'desc' : 'asc'),
       page: 1,
     });
@@ -181,6 +206,9 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
     return Number.isFinite(date.getTime())
       ? new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)
       : '—';
+  }
+  recordDate(student: StudentRegisterRow): string | null {
+    return student.recordDate || student.cases.find((item) => item.caseId === student.caseId)?.openedOn || null;
   }
   moneyLabel(payment: StudentRegisterRow['nextPayment']): string {
     if (!payment || payment.amount === undefined || !payment.currency) return 'Amount restricted';

@@ -67,6 +67,8 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 .active-filter { display:flex; justify-content:space-between; align-items:center; padding:.4rem .8rem; font-size:.78rem; color:#076f67; background:#e9f9f4 }
 .active-filter button { border:0; background:transparent; color:#086c6f; text-decoration:underline; cursor:pointer }
 .error-banner { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.5rem .8rem; background:#fff0f0; color:#af2838; font-size:.8rem }
+.compatibility-banner { display:flex; align-items:center; justify-content:space-between; gap:1rem; padding:.5rem .8rem; background:#fff7e5; color:#76520d; font-size:.8rem }
+.compatibility-banner button { border:0; background:transparent; color:inherit; font:inherit; font-weight:700; text-decoration:underline; cursor:pointer }
 .register-content { position:relative; display:flex; flex:1; min-height:9rem; overflow:hidden }
 .table-wrap { flex:1; min-width:0; min-height:0; overflow:auto }
 .student-table { width:100%; min-width:88rem; border-collapse:separate; border-spacing:0; text-align:left; font-size:.78rem }
@@ -127,4 +129,5 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 :host-context(html.dark) .student-table td { border-color:#334155 }
 :host-context(html.dark) .student-table tbody tr:hover { background:#263449 }
 :host-context(html.dark) .empty-state strong { color:#e6edf6 }
+:host-context(html.dark) .compatibility-banner { background:#453618; color:#ffe1a3 }
 :host-context(html.dark) ::ng-deep .student-date-range .p-datepicker-input,:host-context(html.dark) ::ng-deep .student-date-range .p-datepicker-dropdown { background:#1e293b; color:#e6edf6; border-color:#3b4c63 }

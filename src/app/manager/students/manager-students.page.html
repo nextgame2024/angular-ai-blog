@@ -88,6 +88,9 @@
     @if (error) {
       <div class="error-banner" role="alert">{{ error }} <button type="button" class="btn" (click)="retry()">Retry</button></div>
     }
+    @if (legacyDateSort) {
+      <div class="compatibility-banner" role="status">Date sorting is unavailable until the student API is updated. Other columns remain sortable. <button type="button" (click)="retry()">Try again</button></div>
+    }
     <div class="register-content" [attr.aria-busy]="loading">
       @if (loading && !result) {
         <app-manager-list-loader label="Loading students…"></app-manager-list-loader>
@@ -117,7 +120,7 @@
                   <td class="reference">{{ student.studentReference }}</td>
                   <td>{{ student.advisorName || '—' }}</td>
                   <td>{{ student.collegeName || '—' }}</td>
-                  <td>{{ dateLabel(student.recordDate) }}</td>
+                  <td>{{ dateLabel(recordDate(student)) }}</td>
                   <td><span>{{ stageLabel(student.currentStage) }}</span>@if (student.caseReference) { <small class="case-context">{{ student.caseReference }}</small> }</td>
                   <td>@if (student.nextPayment; as payment) { <span>{{ dateLabel(payment.dueOn) }}</span><small class="payment-amount">{{ moneyLabel(payment) }}</small> } @else { — }</td>
                   <td><span class="status-pill" [class.healthy]="student.status === 'in_progress' || student.status === 'payment_done'" [class.action]="student.status === 'pre_sale' || student.status === 'on_hold'" [class.vigente]="student.status === 'closed' || student.status === 'not_started'" [class.overdue]="student.status === 'payment_overdue' || student.status === 'collections' || student.status === 'cancelled'">{{ statusLabel(student.status) }}</span>@if (student.attentionReason) { <small class="attention-reason">{{ student.attentionReason }}</small> }</td>
@@ -132,7 +135,7 @@
           @for (student of rows; track student.userId) {
             <article class="student-card">
               <div class="card-top"><div class="student-identity"><span class="avatar" [class.tone-1]="avatarTone(student.legalName) === 1" [class.tone-2]="avatarTone(student.legalName) === 2" [class.tone-3]="avatarTone(student.legalName) === 3">{{ initials(student.legalName) }}</span><span><strong>{{ student.legalName }}</strong><small>{{ student.email }}</small></span></div><span class="status-pill" [class.healthy]="student.status === 'in_progress' || student.status === 'payment_done'" [class.action]="student.status === 'pre_sale' || student.status === 'on_hold'" [class.vigente]="student.status === 'closed' || student.status === 'not_started'" [class.overdue]="student.status === 'payment_overdue' || student.status === 'collections' || student.status === 'cancelled'">{{ statusLabel(student.status) }}</span></div>
-              <dl><div><dt>Student ID</dt><dd>{{ student.studentReference }}</dd></div><div><dt>Advisor</dt><dd>{{ student.advisorName || '—' }}</dd></div><div><dt>Ref / College</dt><dd>{{ student.collegeName || '—' }}</dd></div><div><dt>Date</dt><dd>{{ dateLabel(student.recordDate) }}</dd></div><div><dt>Current Stage</dt><dd>{{ stageLabel(student.currentStage) }}</dd></div><div><dt>Next Payment</dt><dd>@if (student.nextPayment; as payment) { {{ dateLabel(payment.dueOn) }} · {{ moneyLabel(payment) }} } @else { — }</dd></div><div><dt>Cases</dt><dd>{{ student.caseCount }}</dd></div></dl>
+              <dl><div><dt>Student ID</dt><dd>{{ student.studentReference }}</dd></div><div><dt>Advisor</dt><dd>{{ student.advisorName || '—' }}</dd></div><div><dt>Ref / College</dt><dd>{{ student.collegeName || '—' }}</dd></div><div><dt>Date</dt><dd>{{ dateLabel(recordDate(student)) }}</dd></div><div><dt>Current Stage</dt><dd>{{ stageLabel(student.currentStage) }}</dd></div><div><dt>Next Payment</dt><dd>@if (student.nextPayment; as payment) { {{ dateLabel(payment.dueOn) }} · {{ moneyLabel(payment) }} } @else { — }</dd></div><div><dt>Cases</dt><dd>{{ student.caseCount }}</dd></div></dl>
               @if (student.cases.length) { <div class="mobile-cases">@for (studentCase of student.cases; track studentCase.caseId) { <a class="case-label" [routerLink]="['/manager/students/cases', studentCase.caseId]" [attr.aria-label]="'View case ' + studentCase.caseReference + ' for ' + student.legalName">{{ studentCase.caseReference }}</a> }</div> }
               <div class="row-actions"><button type="button" class="btn edit-button" disabled title="Available in the next task">Edit</button><button type="button" class="btn delete-button" disabled title="Available in the next task">Delete</button></div>
             </article>
