@@ -1,6 +1,6 @@
-import { TestBed } from '@angular/core/testing';
+import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { BehaviorSubject, of, throwError } from 'rxjs';
+import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import type { StudentCaseDetail } from '../student-operations/student-operations.types';
 import { ManagerCaseViewPageComponent } from './manager-case-view.page';
@@ -46,6 +46,7 @@ describe('ManagerCaseViewPageComponent', () => {
     for (const spy of Object.values(api)) spy.calls.reset();
     api.workspace.and.returnValue(of({ role: 'chief_executive' }));
     api.caseDetail.and.returnValue(of(detail));
+    api.caseEditOptions.and.returnValue(of({ advisors: [{ userId: 'advisor-1', name: 'Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] }));
     api.updateCase.and.returnValue(of({ caseId: 'case-1', recordVersion: 2 }));
     api.studentRegister.and.returnValue(of({ students: [], page: 1, limit: 25, total: 0 }));
     api.caseInvoices.and.returnValue(of({ invoices: [{ invoiceId: 'invoice-1', invoiceNumber: 'INV-1', type: 'ACCREC', status: 'PAID', date: '2026-10-16', dueDate: '2026-10-20', amountDue: '0', currency: 'AUD' }], total: 1, page: 1, limit: 25 }));
@@ -117,6 +118,11 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelector('.student-overview input[formControlName="studentEmail"]')).not.toBeNull();
     expect(root.querySelectorAll('.inline-identity-fields input')).toHaveSize(4);
     expect(root.querySelector('.student-overview input[formControlName="courseName"]')).not.toBeNull();
+    expect(root.querySelectorAll('.student-overview.editing .overview-facts > div')).toHaveSize(4);
+    expect(root.querySelectorAll('.student-overview.editing .overview-facts dt .fact-icon')).toHaveSize(4);
+    expect(root.querySelector('.student-overview.editing .inline-readonly-value')?.textContent).toContain('16 Oct 2026');
+    expect(root.querySelector('.progress-heading-row.editing h2')?.textContent).toBe('Case Progress');
+    expect(root.querySelector('.progress-heading-row.editing app-manager-select[formControlName="currentStage"]')).not.toBeNull();
     expect(root.querySelector('.student-overview app-manager-select[formControlName="collegeId"]')).not.toBeNull();
     expect(root.querySelector('.page-header app-manager-select[formControlName="status"]')).not.toBeNull();
     expect(root.querySelector('.progress-card app-manager-select[formControlName="currentStage"]')).not.toBeNull();
@@ -135,7 +141,65 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelector('.related-item.selected .edit')).not.toBeNull();
     expect(root.querySelector('.related-item.selected .save')).toBeNull();
     expect(root.textContent).toContain('Business English');
+    expect(root.querySelector('app-manager-toast .toast[role="status"]')?.textContent).toContain('Case saved.');
   });
+
+  it('shows the shared translucent loading overlay while edit options load', () => {
+    const choices = new Subject<{ advisors: { userId: string; name: string }[]; colleges: { collegeId: string; name: string }[] }>();
+    api.caseEditOptions.and.returnValue(choices.asObservable());
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.beginEdit('case-1');
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.edit-loading-overlay app-manager-list-loader')).not.toBeNull();
+    expect(root.querySelector('.case-page')?.getAttribute('aria-busy')).toBe('true');
+    choices.next({ advisors: [], colleges: [] });
+    choices.complete();
+    fixture.detectChanges();
+    expect(root.querySelector('.edit-loading-overlay')).toBeNull();
+    expect(root.querySelector('.case-page')?.getAttribute('aria-busy')).toBe('false');
+  });
+
+  it('shows the same overlay until the case save finishes', () => {
+    const pending = new Subject<{ caseId: string; recordVersion: number }>();
+    api.updateCase.and.returnValue(pending.asObservable());
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.beginEdit('case-1');
+    fixture.componentInstance.saveEdit();
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('.edit-loading-overlay')?.textContent).toContain('Saving case…');
+    expect(root.querySelector('.case-page')?.getAttribute('aria-busy')).toBe('true');
+    pending.next({ caseId: 'case-1', recordVersion: 2 });
+    pending.complete();
+    fixture.detectChanges();
+    expect(root.querySelector('.edit-loading-overlay')).toBeNull();
+    expect(root.querySelector('.case-page')?.getAttribute('aria-busy')).toBe('false');
+    expect(root.querySelector('app-manager-toast .toast[role="status"]')?.textContent).toContain('Case saved.');
+  });
+
+  it('dismisses the save toast on close or after a few seconds', fakeAsync(() => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.beginEdit('case-1');
+    fixture.componentInstance.saveEdit();
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('app-manager-toast .toast[role="status"]')).not.toBeNull();
+    (root.querySelector('app-manager-toast button[aria-label="Close notification"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(root.querySelector('app-manager-toast')).toBeNull();
+
+    fixture.componentInstance.beginEdit('case-1');
+    fixture.componentInstance.saveEdit();
+    fixture.detectChanges();
+    expect(root.querySelector('app-manager-toast')).not.toBeNull();
+    tick(4000);
+    fixture.detectChanges();
+    expect(root.querySelector('app-manager-toast')).toBeNull();
+  }));
 
   it('filters stages by the selected status and does not save an invalid email', () => {
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
@@ -148,6 +212,8 @@ describe('ManagerCaseViewPageComponent', () => {
     fixture.componentInstance.saveEdit();
     expect(api.updateCase).not.toHaveBeenCalled();
     expect(fixture.componentInstance.editError).toContain('required fields');
+    fixture.detectChanges();
+    expect((fixture.nativeElement as HTMLElement).querySelector('app-manager-toast .toast[role="alert"]')).not.toBeNull();
   });
 
   it('opens a fetched PDF in a new tab with its preview MIME type', () => {

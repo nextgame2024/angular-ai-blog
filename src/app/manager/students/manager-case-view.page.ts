@@ -4,6 +4,7 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, catchError, distinctUntilChanged, forkJoin, map, of, switchMap, takeUntil } from 'rxjs';
 import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
+import { ManagerToastComponent } from '../components/shared/manager-toast/manager-toast.component';
 import { ManagerSelectComponent, type ManagerSelectOption } from '../components/shared/manager-select/manager-select.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import { CASE_STATUS_LABELS, CASE_WORKFLOW_STAGES, IMPORTED_CASE_STAGE, caseStageLabel } from '../student-operations/student-case-workflow';
@@ -17,7 +18,7 @@ import type {
 
 @Component({
   selector: 'app-manager-case-view',
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
   templateUrl: './manager-case-view.page.html',
   styleUrls: ['./manager-case-view.page.css'],
 })
@@ -70,7 +71,6 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   loadingActivity = false;
   private currentId = '';
   private pendingPreview: Window | null = null;
-  private editErrorTimer: ReturnType<typeof setTimeout> | null = null;
 
   get primaryAdvisor(): string | null {
     return this.case?.advisors.find(item => item.isPrimary)?.name || this.case?.advisorName || null;
@@ -246,7 +246,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
           ? { ...item, status: detail.status, currentStage: detail.currentStage } : item);
         this.saving = false;
         this.editing = false;
-        this.editSuccess = 'Case saved.';
+        this.showEditSuccess('Case saved.');
         void this.router.navigate([], { relativeTo: this.route, queryParams: { edit: null }, queryParamsHandling: 'merge', replaceUrl: true });
       },
       error: error => {
@@ -259,7 +259,6 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.editErrorTimer) clearTimeout(this.editErrorTimer);
     this.pendingPreview?.close();
     this.pendingPreview = null;
     this.destroy$.next();
@@ -267,9 +266,17 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   private showEditError(message: string): void {
-    if (this.editErrorTimer) clearTimeout(this.editErrorTimer);
+    this.editSuccess = '';
     this.editError = message;
-    this.editErrorTimer = setTimeout(() => { this.editError = ''; this.editErrorTimer = null; }, 3500);
+  }
+
+  private showEditSuccess(message: string): void {
+    this.editError = '';
+    this.editSuccess = message;
+  }
+
+  closeEditToast(): void {
+    this.editError = this.editSuccess = '';
   }
 
   statusLabel(status: StudentCaseStatus): string {
@@ -448,8 +455,6 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   private reset(): void {
     this.pendingPreview?.close();
     this.pendingPreview = null;
-    if (this.editErrorTimer) clearTimeout(this.editErrorTimer);
-    this.editErrorTimer = null;
     this.case = null;
     this.editing = this.editLoading = this.saving = false;
     this.editOptions = this.workflowOptions = null;

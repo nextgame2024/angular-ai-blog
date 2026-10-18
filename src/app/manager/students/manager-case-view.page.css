@@ -1,6 +1,7 @@
 :host { display:block; height:100%; min-height:0; color:#172033 }
 * { box-sizing:border-box }
-.case-page { height:100%; overflow:auto; padding:.3rem .7rem 1rem; background:#f7f9fc }
+.case-page { position:relative; height:100%; overflow:auto; padding:.3rem .7rem 1rem; background:#f7f9fc }
+.edit-loading-overlay { position:fixed; inset:0; z-index:110 }
 h1,h2,p,dl { margin:0 }
 .breadcrumb { display:flex; gap:.4rem; color:#66758a; font-size:.8rem; margin-bottom:.45rem }
 .breadcrumb a,.back-link { color:#475569; text-decoration:none }
@@ -73,21 +74,21 @@ h2 { font-size:.97rem; font-weight:800 }
 .inline-identity-fields input:focus-visible,.inline-course-input:focus-visible { outline:2px solid #0eac9e; outline-offset:1px }
 .inline-identity-fields input[aria-invalid="true"],.inline-course-input[aria-invalid="true"] { border-color:#dc3545 }
 .inline-status { min-width:11rem }
-.inline-stage { width:min(20rem,100%); margin-top:.3rem }
-.student-overview.editing .overview-facts > div { padding-left:0; padding-top:2.6rem; border-left:0 }
-.student-overview.editing .fact-icon { left:0; top:0; transform:none }
-.student-overview.editing .overview-facts dd { min-height:2.7rem }
-.edit-toast-wrap { position:fixed; top:1.1rem; right:1.1rem; z-index:120; pointer-events:none }
-.edit-feedback { max-width:min(26rem,calc(100vw - 2rem)); margin:0 0 .7rem; padding:.7rem .85rem; border-radius:.65rem; font-size:.85rem; font-weight:600; box-shadow:0 16px 36px #0f172a3d }
-.edit-feedback.error { color:#a52135; background:#fff0f2 }
-.edit-feedback.success { color:#08745e; background:#e0f7ed }
+.progress-heading-row.editing { display:flex; align-items:center; flex-wrap:wrap; column-gap:1rem; row-gap:.35rem }
+.inline-stage { flex-direction:row; align-items:center; width:auto; margin:0; white-space:nowrap }
+.inline-stage app-manager-select { display:block; width:min(18rem,45vw); min-width:12rem; white-space:normal }
+.student-overview.editing .overview-facts > div { padding:0; border-left:0 }
+.student-overview.editing .overview-facts dt { display:flex; align-items:center; gap:.45rem; min-height:2.2rem }
+.student-overview.editing .fact-icon { position:static; flex:none; transform:none }
+.student-overview.editing .overview-facts dd { margin-top:.35rem; min-height:2.7rem }
+.inline-readonly-value { display:flex; align-items:center; min-height:2.6rem; padding:.55rem .7rem; border:1px solid #dbe4ee; border-radius:.5rem; background:#f7f9fc; color:#526783 }
 @media (max-width:1100px) { .inline-identity-fields { grid-template-columns:repeat(2,minmax(0,1fr)) } }
 @media (max-width:600px) { .inline-identity-fields { grid-template-columns:minmax(0,1fr) } .related-item { flex-wrap:wrap } .related-actions { padding:.2rem .35rem .35rem; margin-left:auto } }
+@media (max-width:600px) { .inline-stage { width:100%; justify-content:space-between } .inline-stage app-manager-select { width:min(18rem,65vw); min-width:0 } }
 :host-context(html.dark) .case-action-text,:host-context(html.dark) .inline-identity-fields input,:host-context(html.dark) .inline-course-input { background:#263449; border-color:#4a6180; color:#e2e8f0 }
+:host-context(html.dark) .inline-readonly-value { background:#263449; border-color:#4a6180; color:#c1d0e6 }
 :host-context(html.dark) .case-action-text.save { background:#0ca88b; border-color:#0ca88b; color:#fff }
 :host-context(html.dark) .inline-identity-fields label,:host-context(html.dark) .inline-status,:host-context(html.dark) .inline-stage { color:#c1d0e6 }
-:host-context(html.dark) .edit-feedback.error { background:#52242e; color:#ffd5dc }
-:host-context(html.dark) .edit-feedback.success { background:#16453f; color:#a4f0dc }
 .related-cases > .secondary-button { margin-top:.65rem }
 .stage-list { display:flex; flex-wrap:nowrap; gap:.45rem; margin:.8rem 0 0; padding:0 0 .55rem; list-style:none; overflow-x:auto; scroll-snap-type:x proximity }
 .stage-list:focus-visible { outline:2px solid #0eac9e; outline-offset:2px }
