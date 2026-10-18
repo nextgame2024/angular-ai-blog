@@ -31,7 +31,7 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(StudentOperationsService);
   private readonly destroy$ = new Subject<void>();
   private readonly query$ = new BehaviorSubject<QueryState>({
-    page: 1, limit: 25, sortBy: 'name', sortDir: 'asc', revision: 0,
+    page: 1, limit: 25, sortBy: 'date', sortDir: 'desc', revision: 0,
   });
 
   readonly search = new FormControl('', { nonNullable: true });
@@ -86,8 +86,8 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
     return this.workspace?.role === 'chief_executive' || this.workspace?.role === 'operations';
   }
   get attentionActive(): boolean { return Boolean(this.query$.value.attentionThisWeek); }
-  get sortBy(): StudentRegisterSort { return this.query$.value.sortBy ?? 'name'; }
-  get sortDir(): 'asc' | 'desc' { return this.query$.value.sortDir ?? 'asc'; }
+  get sortBy(): StudentRegisterSort { return this.query$.value.sortBy ?? 'date'; }
+  get sortDir(): 'asc' | 'desc' { return this.query$.value.sortDir ?? 'desc'; }
 
   ngOnInit(): void {
     this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
@@ -153,7 +153,9 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
   sort(column: StudentRegisterSort): void {
     this.patchQuery({
       sortBy: column,
-      sortDir: this.sortBy === column && this.sortDir === 'asc' ? 'desc' : 'asc',
+      sortDir: this.sortBy === column
+        ? (this.sortDir === 'asc' ? 'desc' : 'asc')
+        : (column === 'date' ? 'desc' : 'asc'),
       page: 1,
     });
   }

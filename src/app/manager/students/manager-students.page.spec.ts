@@ -165,7 +165,7 @@ describe('ManagerStudentsPageComponent', () => {
     api.studentRegister.and.returnValue(of({
       ...emptyResult, total: 1, students: [{
         userId: 'user-1', studentProfileId: 'profile-1', studentReference: 'STD-2',
-        legalName: 'Fabian Student', email: 'fabian@example.com', caseId: null,
+        legalName: 'Fabian Student', email: 'fabian@example.com', recordDate: '2026-10-16', caseId: null,
         caseReference: null, currentStage: null, advisorUserId: null, advisorName: null,
         collegeId: null, collegeName: 'ATI', status: 'not_started', attentionReason: null,
         caseCount: 0, cases: [], nextPayment: null,
@@ -173,9 +173,10 @@ describe('ManagerStudentsPageComponent', () => {
     }));
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.student-table thead').textContent).toContain('Ref / College');
-    const sortedHeader = fixture.nativeElement.querySelector('.student-table th') as HTMLElement;
+    const sortedHeader = fixture.nativeElement.querySelector('.student-table th[aria-sort="descending"]') as HTMLElement;
     const sortIndicator = sortedHeader.querySelector('.sort-indicator') as HTMLElement;
-    expect(sortedHeader.getAttribute('aria-sort')).toBe('ascending');
+    expect(sortedHeader.textContent).toContain('Date');
+    expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({ sortBy: 'date', sortDir: 'desc' }));
     expect(getComputedStyle(sortIndicator, '::before').borderBottomStyle).toBe('solid');
     expect(getComputedStyle(sortIndicator, '::after').borderTopStyle).toBe('solid');
     expect(fixture.nativeElement.querySelector('.student-cards').textContent).toContain('Ref / College');
@@ -190,7 +191,7 @@ describe('ManagerStudentsPageComponent', () => {
     api.studentRegister.and.returnValue(of({
       ...emptyResult, total: 1, students: [{
         userId: 'user-1', studentProfileId: 'profile-1', studentReference: 'STD-2',
-        legalName: 'Fabian Student', email: 'fabian@example.com', caseId: 'case-2',
+        legalName: 'Fabian Student', email: 'fabian@example.com', recordDate: '2026-10-16', caseId: 'case-2',
         caseReference: 'CASE-2', currentStage: 'imported_pending_review',
         advisorUserId: null, advisorName: 'S15 Paulina Aguillon',
         collegeId: null, collegeName: 'ATI', status: 'in_progress', attentionReason: null,
@@ -209,11 +210,26 @@ describe('ManagerStudentsPageComponent', () => {
       expect(view.textContent).toContain('ATI');
       expect(view.textContent).toContain('In progress');
       expect(view.textContent).toContain('CASE-2');
+      expect(view.textContent).toContain('16 Oct 2026');
       expect(view.textContent).toContain('$200.00');
       const caseLink = view.querySelector('a.case-label') as HTMLAnchorElement;
       expect(caseLink.getAttribute('href')).toBe('/manager/students/cases/case-2');
       expect(caseLink.getAttribute('aria-label')).toContain('View case CASE-2');
     }
     expect(table.textContent).not.toContain('Healthy');
+  });
+
+  it('sorts the whole register by Date descending by default and toggles Date on the server', () => {
+    api.studentRegister.and.returnValue(of({ ...emptyResult, total: 60 }));
+    fixture.detectChanges();
+    expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({ page: 1, sortBy: 'date', sortDir: 'desc' }));
+    expect(fixture.componentInstance.sortAria('date')).toBe('descending');
+
+    fixture.componentInstance.goToPage(2);
+    fixture.componentInstance.sort('date');
+    expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({ page: 1, sortBy: 'date', sortDir: 'asc' }));
+    expect(fixture.componentInstance.sortAria('date')).toBe('ascending');
+    fixture.componentInstance.sort('date');
+    expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({ page: 1, sortBy: 'date', sortDir: 'desc' }));
   });
 });

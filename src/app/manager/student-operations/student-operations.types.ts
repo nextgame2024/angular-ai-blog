@@ -61,7 +61,7 @@ export interface StudentOperationsDashboard {
 }
 
 export type StudentRegisterStatus = StudentCaseStatus | 'not_started';
-export type StudentRegisterSort = 'name' | 'studentId' | 'advisor' | 'college' | 'stage' | 'nextPayment' | 'status';
+export type StudentRegisterSort = 'name' | 'studentId' | 'advisor' | 'college' | 'date' | 'stage' | 'nextPayment' | 'status';
 
 export interface StudentRegisterQuery {
   page: number;
@@ -85,6 +85,7 @@ export interface StudentRegisterRow {
   studentReference: string;
   legalName: string;
   email: string;
+  recordDate: string;
   caseId: string | null;
   caseReference: string | null;
   currentStage: string | null;
