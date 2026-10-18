@@ -32,7 +32,7 @@ describe('StudentOperationsService', () => {
     service.caseWorkflowOptions().subscribe();
     http.expectOne(candidate => candidate.url.endsWith('/workspace/cases/options')).flush({ statuses: [], stages: [], allowedStatuses: {} });
 
-    const value = { recordVersion: 3, studentName: 'Student', studentEmail: 'student@example.test', mobile: null, phone: null, courseName: null, collegeId: null, advisorUserId: null, status: 'in_progress', currentStage: 'imported_pending_review' };
+    const value = { recordVersion: 3, studentName: 'Student', studentEmail: 'student@example.test', mobile: null, phone: null, courseName: null, collegeId: null, advisorId: null, status: 'in_progress', currentStage: 'imported_pending_review' };
     service.updateCase('case-1', value, 'case-update-key').subscribe();
     const update = http.expectOne(candidate => candidate.url.endsWith('/workspace/cases/case-1'));
     expect(update.request.method).toBe('PATCH');

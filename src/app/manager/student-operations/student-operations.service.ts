@@ -158,7 +158,7 @@ export class StudentOperationsService {
   updateCase(caseId: string, value: {
     recordVersion: number; studentName: string; studentEmail: string; mobile: string | null; phone: string | null;
     courseName: string | null;
-    collegeId: string | null; advisorUserId: string | null;
+    collegeId: string | null; advisorId: string | null;
     status: string; currentStage: string;
   }, idempotencyKey: string): Observable<{ caseId: string; recordVersion: number }> {
     return this.http.patch<{ caseId: string; recordVersion: number }>(

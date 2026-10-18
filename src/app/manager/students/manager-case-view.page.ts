@@ -61,7 +61,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     phone: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(80)] }),
     courseName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(200)] }),
     collegeId: new FormControl<string | null>(null),
-    advisorUserId: new FormControl<string | null>(null),
+    advisorId: new FormControl<string | null>(null),
     status: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
     currentStage: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
@@ -73,7 +73,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   private pendingPreview: Window | null = null;
 
   get primaryAdvisor(): string | null {
-    return this.case?.advisors.find(item => item.isPrimary)?.name || this.case?.advisorName || null;
+    return this.case?.advisorName || null;
   }
   get primaryCollege(): string | null {
     return this.case?.colleges.find(item => item.isPrimary)?.name || null;
@@ -105,7 +105,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     return [{ value: '', label: 'No college' }, ...(this.editOptions?.colleges.map(item => ({ value: item.collegeId, label: item.name })) ?? [])];
   }
   get advisorOptions(): ManagerSelectOption[] {
-    return [{ value: '', label: 'No advisor' }, ...(this.editOptions?.advisors.map(item => ({ value: item.userId, label: item.name })) ?? [])];
+    return [{ value: '', label: 'No advisor' }, ...(this.editOptions?.advisors.map(item => ({ value: item.advisorId, label: `${item.code} ${item.name}` })) ?? [])];
   }
   get statusOptions(): ManagerSelectOption[] {
     return (this.workflowOptions?.statuses ?? []).map(value => ({ value, label: this.statusLabel(value as StudentCaseStatus) }));
@@ -185,7 +185,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
             mobile: this.case.studentMobile ?? '', phone: this.case.studentPhone ?? '',
             courseName: this.case.courseName ?? '',
             collegeId: this.case.colleges.find(item => item.isPrimary)?.collegeId ?? '',
-            advisorUserId: this.case.advisors.find(item => item.isPrimary)?.userId ?? '',
+            advisorId: this.case.advisorId ?? '',
             status: this.case.status, currentStage: this.case.currentStage,
           });
           this.editing = true;
@@ -224,20 +224,20 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       recordVersion: this.case.recordVersion,
       studentName: value.studentName.trim(), studentEmail: value.studentEmail.trim(), mobile: value.mobile.trim() || null, phone: value.phone.trim() || null,
       courseName: value.courseName.trim() || null,
-      collegeId: value.collegeId || null, advisorUserId: value.advisorUserId || null,
+      collegeId: value.collegeId || null, advisorId: value.advisorId || null,
       status: value.status, currentStage: value.currentStage,
     }, crypto.randomUUID()).pipe(takeUntil(this.destroy$)).subscribe({
       next: result => {
         if (id !== this.currentId) return;
         const college = this.editOptions?.colleges.find(item => item.collegeId === value.collegeId);
-        const advisor = this.editOptions?.advisors.find(item => item.userId === value.advisorUserId);
+        const advisor = this.editOptions?.advisors.find(item => item.advisorId === value.advisorId);
         const detail: StudentCaseDetail = {
           ...this.case!, studentName: value.studentName.trim(), studentEmail: value.studentEmail.trim(),
           studentMobile: value.mobile.trim() || null, studentPhone: value.phone.trim() || null,
           courseName: value.courseName.trim() || null,
           status: value.status as StudentCaseStatus, currentStage: value.currentStage,
           advisorName: advisor?.name ?? null,
-          advisors: advisor ? [{ userId: advisor.userId, name: advisor.name, isPrimary: true }] : [],
+          advisorId: advisor?.advisorId ?? null,
           colleges: college ? [{ collegeId: college.collegeId, name: college.name, isPrimary: true }] : [],
           recordVersion: result.recordVersion, updatedAt: new Date().toISOString(),
         };

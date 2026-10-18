@@ -103,6 +103,7 @@
               <th scope="col" [attr.aria-sort]="sortAria('name')"><button type="button" class="sort-button" (click)="sort('name')">Student <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" [attr.aria-sort]="sortAria('studentId')"><button type="button" class="sort-button" (click)="sort('studentId')">Student ID <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" [attr.aria-sort]="sortAria('advisor')"><button type="button" class="sort-button" (click)="sort('advisor')">Advisor <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th scope="col" [attr.aria-sort]="sortAria('advisorXero')"><button type="button" class="sort-button" (click)="sort('advisorXero')">Advisor Xero <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" [attr.aria-sort]="sortAria('college')"><button type="button" class="sort-button" (click)="sort('college')">Ref / College <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" [attr.aria-sort]="sortAria('date')"><button type="button" class="sort-button" (click)="sort('date')">Date <span class="sort-indicator" aria-hidden="true"></span></button></th>
               <th scope="col" [attr.aria-sort]="sortAria('stage')"><button type="button" class="sort-button" (click)="sort('stage')">Current Stage <span class="sort-indicator" aria-hidden="true"></span></button></th>
@@ -119,6 +120,7 @@
                   </div></td>
                   <td class="reference">{{ student.studentReference }}</td>
                   <td>{{ student.advisorName || '—' }}</td>
+                  <td>{{ student.advisorXeroName || '—' }}</td>
                   <td>{{ student.collegeName || '—' }}</td>
                   <td>{{ dateLabel(recordDate(student)) }}</td>
                   <td><span>{{ stageLabel(student.currentStage) }}</span>@if (student.caseReference) { <small class="case-context">{{ student.caseReference }}</small> }</td>
@@ -134,7 +136,7 @@
           @for (student of rows; track student.userId) {
             <article class="student-card">
               <div class="card-top"><div class="student-identity"><span class="avatar" [class.tone-1]="avatarTone(student.legalName) === 1" [class.tone-2]="avatarTone(student.legalName) === 2" [class.tone-3]="avatarTone(student.legalName) === 3">{{ initials(student.legalName) }}</span><span><strong>{{ student.legalName }}</strong><small>{{ student.email }}</small></span></div><span class="status-pill" [class.healthy]="student.status === 'in_progress' || student.status === 'payment_done'" [class.action]="student.status === 'pre_sale' || student.status === 'on_hold'" [class.vigente]="student.status === 'closed' || student.status === 'not_started'" [class.overdue]="student.status === 'payment_overdue' || student.status === 'collections' || student.status === 'cancelled'">{{ statusLabel(student.status) }}</span></div>
-              <dl><div><dt>Student ID</dt><dd>{{ student.studentReference }}</dd></div><div><dt>Advisor</dt><dd>{{ student.advisorName || '—' }}</dd></div><div><dt>Ref / College</dt><dd>{{ student.collegeName || '—' }}</dd></div><div><dt>Date</dt><dd>{{ dateLabel(recordDate(student)) }}</dd></div><div><dt>Current Stage</dt><dd>{{ stageLabel(student.currentStage) }}</dd></div><div><dt>Next Payment</dt><dd>@if (student.nextPayment; as payment) { {{ dateLabel(payment.dueOn) }} · {{ moneyLabel(payment) }} } @else { — }</dd></div><div><dt>Cases</dt><dd>{{ student.caseCount }}</dd></div></dl>
+              <dl><div><dt>Student ID</dt><dd>{{ student.studentReference }}</dd></div><div><dt>Advisor</dt><dd>{{ student.advisorName || '—' }}</dd></div><div><dt>Advisor Xero</dt><dd>{{ student.advisorXeroName || '—' }}</dd></div><div><dt>Ref / College</dt><dd>{{ student.collegeName || '—' }}</dd></div><div><dt>Date</dt><dd>{{ dateLabel(recordDate(student)) }}</dd></div><div><dt>Current Stage</dt><dd>{{ stageLabel(student.currentStage) }}</dd></div><div><dt>Next Payment</dt><dd>@if (student.nextPayment; as payment) { {{ dateLabel(payment.dueOn) }} · {{ moneyLabel(payment) }} } @else { — }</dd></div><div><dt>Cases</dt><dd>{{ student.caseCount }}</dd></div></dl>
               @if (student.cases.length) { <div class="mobile-cases">@for (studentCase of student.cases; track studentCase.caseId) { <a class="case-label" [routerLink]="['/manager/students/cases', studentCase.caseId]" [attr.aria-label]="'View case ' + studentCase.caseReference + ' for ' + student.legalName">{{ studentCase.caseReference }}</a> }</div> }
             </article>
           }

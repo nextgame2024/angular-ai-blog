@@ -167,7 +167,8 @@ describe('ManagerStudentsPageComponent', () => {
       ...emptyResult, total: 1, students: [{
         userId: 'user-1', studentProfileId: 'profile-1', studentReference: 'STD-2',
         legalName: 'Fabian Student', email: 'fabian@example.com', recordDate: '2026-10-16', caseId: null,
-        caseReference: null, currentStage: null, advisorUserId: null, advisorName: null,
+        caseReference: null, currentStage: null, advisorUserId: null, advisorId: null,
+        advisorName: null, advisorXeroName: null,
         collegeId: null, collegeName: 'ATI', status: 'not_started', attentionReason: null,
         caseCount: 0, cases: [], nextPayment: null,
       }],
@@ -194,7 +195,8 @@ describe('ManagerStudentsPageComponent', () => {
         userId: 'user-1', studentProfileId: 'profile-1', studentReference: 'STD-2',
         legalName: 'Fabian Student', email: 'fabian@example.com', recordDate: '2026-10-16', caseId: 'case-2',
         caseReference: 'CASE-2', currentStage: 'imported_pending_review',
-        advisorUserId: null, advisorName: 'S15 Paulina Aguillon',
+        advisorUserId: null, advisorId: 'advisor-1', advisorName: 'Paulina Aguillon',
+        advisorXeroName: 'S15 Paulina Aguillon',
         collegeId: null, collegeName: 'ATI', status: 'in_progress', attentionReason: null,
         caseCount: 2, cases: [
           { caseId: 'case-2', caseReference: 'CASE-2', lifecycleStatus: 'open', openedOn: '2026-10-16' },
@@ -211,6 +213,7 @@ describe('ManagerStudentsPageComponent', () => {
     expect(fixture.nativeElement.querySelector('.student-cards .row-actions')).toBeNull();
     for (const view of [table, mobile]) {
       expect(view.textContent).toContain('S15 Paulina Aguillon');
+      expect(view.textContent).toContain('Paulina Aguillon');
       expect(view.textContent).toContain('ATI');
       expect(view.textContent).toContain('In progress');
       expect(view.textContent).toContain('CASE-2');

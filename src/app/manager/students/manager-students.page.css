@@ -71,7 +71,7 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 .compatibility-banner button { border:0; background:transparent; color:inherit; font:inherit; font-weight:700; text-decoration:underline; cursor:pointer }
 .register-content { position:relative; display:flex; flex:1; min-height:9rem; overflow:hidden }
 .table-wrap { flex:1; min-width:0; min-height:0; overflow:auto }
-.student-table { width:100%; min-width:82rem; border-collapse:separate; border-spacing:0; text-align:left; font-size:.78rem }
+.student-table { width:100%; min-width:90rem; border-collapse:separate; border-spacing:0; text-align:left; font-size:.78rem }
 .student-table th { position:sticky; top:0; z-index:2; height:2.35rem; background:#f5f8fb; color:#485b75; border-block:1px solid #e3ebf3; font-weight:700; white-space:nowrap }
 .student-table th:first-child,.student-table td:first-child { padding-left:.8rem }
 .student-table th:last-child,.student-table td:last-child { padding-right:.8rem }

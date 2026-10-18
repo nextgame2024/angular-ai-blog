@@ -10,7 +10,7 @@ describe('ManagerCaseViewPageComponent', () => {
   const detail: StudentCaseDetail = {
     caseId: 'case-1', caseNumber: 'CASE-1', userId: 'user-1', studentId: 'student-1',
     studentReference: 'STD-1', studentName: 'Example Student', studentEmail: 'student@example.com', studentPhone: null, studentMobile: null,
-    title: null, courseName: null, advisorName: 'Advisor Name', status: 'in_progress',
+    title: null, courseName: null, advisorId: 'advisor-1', advisorName: 'Advisor Name', status: 'in_progress',
     currentStage: 'imported_pending_review', openedOn: '2026-10-16',
     createdAt: '2026-10-16T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z', recordVersion: 1,
     advisors: [], colleges: [],
@@ -18,7 +18,7 @@ describe('ManagerCaseViewPageComponent', () => {
   const api = {
     workspace: jasmine.createSpy().and.returnValue(of({ role: 'chief_executive' })),
     caseDetail: jasmine.createSpy().and.returnValue(of(detail)),
-    caseEditOptions: jasmine.createSpy().and.returnValue(of({ advisors: [{ userId: 'advisor-1', name: 'Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] })),
+    caseEditOptions: jasmine.createSpy().and.returnValue(of({ advisors: [{ advisorId: 'advisor-1', code: 'S15', name: 'Advisor Name', xeroLabel: 'S15 Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] })),
     caseWorkflowOptions: jasmine.createSpy().and.returnValue(of({ statuses: ['in_progress', 'pre_sale', 'on_hold'], stages: ['documents_requested', 'awaiting_payment', 'payment_received'], allowedStatuses: { imported_pending_review: ['in_progress'], documents_requested: ['pre_sale'], awaiting_payment: ['pre_sale', 'on_hold'], payment_received: ['in_progress'] } })),
     updateCase: jasmine.createSpy().and.returnValue(of({ caseId: 'case-1', recordVersion: 2 })),
     studentRegister: jasmine.createSpy().and.returnValue(of({ students: [], page: 1, limit: 25, total: 0 })),
@@ -46,7 +46,7 @@ describe('ManagerCaseViewPageComponent', () => {
     for (const spy of Object.values(api)) spy.calls.reset();
     api.workspace.and.returnValue(of({ role: 'chief_executive' }));
     api.caseDetail.and.returnValue(of(detail));
-    api.caseEditOptions.and.returnValue(of({ advisors: [{ userId: 'advisor-1', name: 'Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] }));
+    api.caseEditOptions.and.returnValue(of({ advisors: [{ advisorId: 'advisor-1', code: 'S15', name: 'Advisor Name', xeroLabel: 'S15 Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] }));
     api.updateCase.and.returnValue(of({ caseId: 'case-1', recordVersion: 2 }));
     api.studentRegister.and.returnValue(of({ students: [], page: 1, limit: 25, total: 0 }));
     api.caseInvoices.and.returnValue(of({ invoices: [{ invoiceId: 'invoice-1', invoiceNumber: 'INV-1', type: 'ACCREC', status: 'PAID', date: '2026-10-16', dueDate: '2026-10-20', amountDue: '0', currency: 'AUD' }], total: 1, page: 1, limit: 25 }));
@@ -130,11 +130,11 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelector('.related-item.selected .archive')).toBeNull();
     expect(root.querySelector('.related-item.selected .save')).not.toBeNull();
 
-    fixture.componentInstance.editForm.patchValue({ studentName: 'Updated Student', studentEmail: 'new@example.com', mobile: '0412 345 678', phone: '07 1234 5678', courseName: 'Business English', collegeId: 'college-1', advisorUserId: 'advisor-1' });
+    fixture.componentInstance.editForm.patchValue({ studentName: 'Updated Student', studentEmail: 'new@example.com', mobile: '0412 345 678', phone: '07 1234 5678', courseName: 'Business English', collegeId: 'college-1', advisorId: 'advisor-1' });
     fixture.componentInstance.saveEdit();
     expect(api.updateCase).toHaveBeenCalledWith('case-1', jasmine.objectContaining({
       recordVersion: 1, studentName: 'Updated Student', studentEmail: 'new@example.com',
-      mobile: '0412 345 678', phone: '07 1234 5678', courseName: 'Business English', collegeId: 'college-1', advisorUserId: 'advisor-1',
+      mobile: '0412 345 678', phone: '07 1234 5678', courseName: 'Business English', collegeId: 'college-1', advisorId: 'advisor-1',
       status: 'in_progress', currentStage: 'imported_pending_review',
     }), jasmine.any(String));
     fixture.detectChanges();
@@ -145,7 +145,7 @@ describe('ManagerCaseViewPageComponent', () => {
   });
 
   it('shows the shared translucent loading overlay while edit options load', () => {
-    const choices = new Subject<{ advisors: { userId: string; name: string }[]; colleges: { collegeId: string; name: string }[] }>();
+    const choices = new Subject<{ advisors: { advisorId: string; code: string; name: string; xeroLabel: string }[]; colleges: { collegeId: string; name: string }[] }>();
     api.caseEditOptions.and.returnValue(choices.asObservable());
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
     fixture.detectChanges();

@@ -61,7 +61,7 @@ export interface StudentOperationsDashboard {
 }
 
 export type StudentRegisterStatus = StudentCaseStatus | 'not_started';
-export type StudentRegisterSort = 'name' | 'studentId' | 'advisor' | 'college' | 'date' | 'stage' | 'nextPayment' | 'status';
+export type StudentRegisterSort = 'name' | 'studentId' | 'advisor' | 'advisorXero' | 'college' | 'date' | 'stage' | 'nextPayment' | 'status';
 
 export interface StudentRegisterQuery {
   page: number;
@@ -90,7 +90,9 @@ export interface StudentRegisterRow {
   caseReference: string | null;
   currentStage: string | null;
   advisorUserId: string | null;
+  advisorId: string | null;
   advisorName: string | null;
+  advisorXeroName: string | null;
   collegeId: string | null;
   collegeName: string | null;
   status: StudentRegisterStatus;
@@ -146,6 +148,7 @@ export interface StudentCaseDetail {
   title: string | null;
   courseName: string | null;
   advisorName: string | null;
+  advisorId: string | null;
   status: StudentCaseStatus;
   currentStage: string;
   openedOn: string | null;
@@ -157,7 +160,7 @@ export interface StudentCaseDetail {
 }
 
 export interface StudentCaseEditOptions {
-  advisors: Array<{ userId: string; name: string }>;
+  advisors: Array<{ advisorId: string; code: string; name: string; xeroLabel: string }>;
   colleges: Array<{ collegeId: string; name: string }>;
 }
 
