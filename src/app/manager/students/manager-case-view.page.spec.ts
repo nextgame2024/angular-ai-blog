@@ -115,6 +115,8 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelector('.case-edit-form')).toBeNull();
     expect(root.querySelector('.student-overview input[formControlName="studentName"]')).not.toBeNull();
     expect(root.querySelector('.student-overview input[formControlName="studentEmail"]')).not.toBeNull();
+    expect(root.querySelectorAll('.inline-identity-fields input')).toHaveSize(4);
+    expect(root.querySelector('.student-overview input[formControlName="courseName"]')).not.toBeNull();
     expect(root.querySelector('.student-overview app-manager-select[formControlName="collegeId"]')).not.toBeNull();
     expect(root.querySelector('.page-header app-manager-select[formControlName="status"]')).not.toBeNull();
     expect(root.querySelector('.progress-card app-manager-select[formControlName="currentStage"]')).not.toBeNull();
@@ -122,16 +124,17 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelector('.related-item.selected .archive')).toBeNull();
     expect(root.querySelector('.related-item.selected .save')).not.toBeNull();
 
-    fixture.componentInstance.editForm.patchValue({ studentName: 'Updated Student', studentEmail: 'new@example.com', mobile: '0412 345 678', phone: '07 1234 5678', collegeId: 'college-1', advisorUserId: 'advisor-1' });
+    fixture.componentInstance.editForm.patchValue({ studentName: 'Updated Student', studentEmail: 'new@example.com', mobile: '0412 345 678', phone: '07 1234 5678', courseName: 'Business English', collegeId: 'college-1', advisorUserId: 'advisor-1' });
     fixture.componentInstance.saveEdit();
     expect(api.updateCase).toHaveBeenCalledWith('case-1', jasmine.objectContaining({
       recordVersion: 1, studentName: 'Updated Student', studentEmail: 'new@example.com',
-      mobile: '0412 345 678', phone: '07 1234 5678', collegeId: 'college-1', advisorUserId: 'advisor-1',
+      mobile: '0412 345 678', phone: '07 1234 5678', courseName: 'Business English', collegeId: 'college-1', advisorUserId: 'advisor-1',
       status: 'in_progress', currentStage: 'imported_pending_review',
     }), jasmine.any(String));
     fixture.detectChanges();
     expect(root.querySelector('.related-item.selected .edit')).not.toBeNull();
     expect(root.querySelector('.related-item.selected .save')).toBeNull();
+    expect(root.textContent).toContain('Business English');
   });
 
   it('filters stages by the selected status and does not save an invalid email', () => {

@@ -67,12 +67,11 @@ h2 { font-size:.97rem; font-weight:800 }
 .case-action-text:focus-visible { outline:2px solid #0eac9e; outline-offset:2px }
 .student-overview.editing { grid-template-columns:minmax(0,1fr); align-items:stretch }
 .student-overview.editing .student-name > div { width:100% }
-.inline-name,.inline-contacts label,.inline-status,.inline-stage { display:flex; flex-direction:column; min-width:0; gap:.25rem; color:#425675; font-size:.76rem; font-weight:700 }
-.inline-name { max-width:34rem }
-.inline-contacts { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.65rem; width:100%; margin-top:.45rem }
-.inline-contacts input,.inline-name input { width:100%; min-height:2.6rem; border:1px solid #cbd8e6; border-radius:.5rem; padding:.55rem .7rem; background:#fff; color:#172033; font:inherit; font-weight:400 }
-.inline-contacts input:focus-visible,.inline-name input:focus-visible { outline:2px solid #0eac9e; outline-offset:1px }
-.inline-contacts input[aria-invalid="true"],.inline-name input[aria-invalid="true"] { border-color:#dc3545 }
+.inline-identity-fields label,.inline-status,.inline-stage { display:flex; flex-direction:column; min-width:0; gap:.25rem; color:#425675; font-size:.76rem; font-weight:700 }
+.inline-identity-fields { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1.5fr) repeat(2,minmax(0,1fr)); gap:.65rem; width:100% }
+.inline-identity-fields input,.inline-course-input { width:100%; min-height:2.6rem; border:1px solid #cbd8e6; border-radius:.5rem; padding:.55rem .7rem; background:#fff; color:#172033; font:inherit; font-weight:400 }
+.inline-identity-fields input:focus-visible,.inline-course-input:focus-visible { outline:2px solid #0eac9e; outline-offset:1px }
+.inline-identity-fields input[aria-invalid="true"],.inline-course-input[aria-invalid="true"] { border-color:#dc3545 }
 .inline-status { min-width:11rem }
 .inline-stage { width:min(20rem,100%); margin-top:.3rem }
 .student-overview.editing .overview-facts > div { padding-left:0; padding-top:2.6rem; border-left:0 }
@@ -82,10 +81,11 @@ h2 { font-size:.97rem; font-weight:800 }
 .edit-feedback { max-width:min(26rem,calc(100vw - 2rem)); margin:0 0 .7rem; padding:.7rem .85rem; border-radius:.65rem; font-size:.85rem; font-weight:600; box-shadow:0 16px 36px #0f172a3d }
 .edit-feedback.error { color:#a52135; background:#fff0f2 }
 .edit-feedback.success { color:#08745e; background:#e0f7ed }
-@media (max-width:600px) { .inline-contacts { grid-template-columns:minmax(0,1fr) } .related-item { flex-wrap:wrap } .related-actions { padding:.2rem .35rem .35rem; margin-left:auto } }
-:host-context(html.dark) .case-action-text,:host-context(html.dark) .inline-contacts input,:host-context(html.dark) .inline-name input { background:#263449; border-color:#4a6180; color:#e2e8f0 }
+@media (max-width:1100px) { .inline-identity-fields { grid-template-columns:repeat(2,minmax(0,1fr)) } }
+@media (max-width:600px) { .inline-identity-fields { grid-template-columns:minmax(0,1fr) } .related-item { flex-wrap:wrap } .related-actions { padding:.2rem .35rem .35rem; margin-left:auto } }
+:host-context(html.dark) .case-action-text,:host-context(html.dark) .inline-identity-fields input,:host-context(html.dark) .inline-course-input { background:#263449; border-color:#4a6180; color:#e2e8f0 }
 :host-context(html.dark) .case-action-text.save { background:#0ca88b; border-color:#0ca88b; color:#fff }
-:host-context(html.dark) .inline-name,:host-context(html.dark) .inline-contacts label,:host-context(html.dark) .inline-status,:host-context(html.dark) .inline-stage { color:#c1d0e6 }
+:host-context(html.dark) .inline-identity-fields label,:host-context(html.dark) .inline-status,:host-context(html.dark) .inline-stage { color:#c1d0e6 }
 :host-context(html.dark) .edit-feedback.error { background:#52242e; color:#ffd5dc }
 :host-context(html.dark) .edit-feedback.success { background:#16453f; color:#a4f0dc }
 .related-cases > .secondary-button { margin-top:.65rem }

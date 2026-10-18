@@ -58,6 +58,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     studentEmail: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(320)] }),
     mobile: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(80)] }),
     phone: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(80)] }),
+    courseName: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(200)] }),
     collegeId: new FormControl<string | null>(null),
     advisorUserId: new FormControl<string | null>(null),
     status: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -182,6 +183,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
             studentName: this.studentName,
             studentEmail: this.studentEmail ?? '',
             mobile: this.case.studentMobile ?? '', phone: this.case.studentPhone ?? '',
+            courseName: this.case.courseName ?? '',
             collegeId: this.case.colleges.find(item => item.isPrimary)?.collegeId ?? '',
             advisorUserId: this.case.advisors.find(item => item.isPrimary)?.userId ?? '',
             status: this.case.status, currentStage: this.case.currentStage,
@@ -221,6 +223,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.api.updateCase(id, {
       recordVersion: this.case.recordVersion,
       studentName: value.studentName.trim(), studentEmail: value.studentEmail.trim(), mobile: value.mobile.trim() || null, phone: value.phone.trim() || null,
+      courseName: value.courseName.trim() || null,
       collegeId: value.collegeId || null, advisorUserId: value.advisorUserId || null,
       status: value.status, currentStage: value.currentStage,
     }, crypto.randomUUID()).pipe(takeUntil(this.destroy$)).subscribe({
@@ -231,6 +234,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         const detail: StudentCaseDetail = {
           ...this.case!, studentName: value.studentName.trim(), studentEmail: value.studentEmail.trim(),
           studentMobile: value.mobile.trim() || null, studentPhone: value.phone.trim() || null,
+          courseName: value.courseName.trim() || null,
           status: value.status as StudentCaseStatus, currentStage: value.currentStage,
           advisorName: advisor?.name ?? null,
           advisors: advisor ? [{ userId: advisor.userId, name: advisor.name, isPrimary: true }] : [],
