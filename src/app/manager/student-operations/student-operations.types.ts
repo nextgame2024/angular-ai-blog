@@ -142,6 +142,7 @@ export interface StudentCaseDetail {
   studentName: string | null;
   studentEmail: string | null;
   studentPhone: string | null;
+  studentMobile: string | null;
   title: string | null;
   courseName: string | null;
   advisorName: string | null;
@@ -150,8 +151,20 @@ export interface StudentCaseDetail {
   openedOn: string | null;
   createdAt: string;
   updatedAt: string;
+  recordVersion: number;
   advisors: Array<{ userId: string; name: string | null; isPrimary: boolean }>;
   colleges: Array<{ collegeId: string; name: string; isPrimary: boolean }>;
+}
+
+export interface StudentCaseEditOptions {
+  advisors: Array<{ userId: string; name: string }>;
+  colleges: Array<{ collegeId: string; name: string }>;
+}
+
+export interface StudentCaseWorkflowOptions {
+  statuses: string[];
+  stages: string[];
+  allowedStatuses: Record<string, string[]>;
 }
 
 export interface StudentCaseList {

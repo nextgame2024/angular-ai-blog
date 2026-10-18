@@ -2,6 +2,7 @@
   <button
     type="button"
     class="select-trigger"
+    [attr.aria-label]="ariaLabel || null"
     [attr.aria-expanded]="open"
     [disabled]="disabled"
     (click)="toggle($event)"
@@ -18,7 +19,10 @@
 
   @if (open) {
     <div class="select-menu">
-      @for (opt of options; track opt) {
+      @if (searchable) {
+        <input class="select-search" type="search" [value]="searchTerm" (input)="searchTerm = $any($event.target).value" (click)="$event.stopPropagation()" placeholder="Search…" aria-label="Search options" />
+      }
+      @for (opt of filteredOptions; track opt) {
         <button
           type="button"
           class="select-option"
@@ -35,6 +39,7 @@
           }
         </button>
       }
+      @if (searchable && filteredOptions.length === 0) { <span class="select-empty">No matches</span> }
     </div>
   }
 </div>

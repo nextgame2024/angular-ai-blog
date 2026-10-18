@@ -206,6 +206,9 @@ describe('ManagerStudentsPageComponent', () => {
     fixture.detectChanges();
     const table = fixture.nativeElement.querySelector('.student-table tbody') as HTMLElement;
     const mobile = fixture.nativeElement.querySelector('.student-cards') as HTMLElement;
+    expect(fixture.nativeElement.querySelector('.student-table th:last-child')?.textContent).toContain('Cases');
+    expect(fixture.nativeElement.querySelector('.student-table thead')?.textContent).not.toContain('Actions');
+    expect(fixture.nativeElement.querySelector('.student-cards .row-actions')).toBeNull();
     for (const view of [table, mobile]) {
       expect(view.textContent).toContain('S15 Paulina Aguillon');
       expect(view.textContent).toContain('ATI');

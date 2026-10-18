@@ -1,29 +1,35 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, RouterModule } from '@angular/router';
-import { Subject, catchError, distinctUntilChanged, map, of, switchMap, takeUntil } from 'rxjs';
+import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Subject, catchError, distinctUntilChanged, forkJoin, map, of, switchMap, takeUntil } from 'rxjs';
 import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
+import { ManagerSelectComponent, type ManagerSelectOption } from '../components/shared/manager-select/manager-select.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import { CASE_STATUS_LABELS, CASE_WORKFLOW_STAGES, IMPORTED_CASE_STAGE, caseStageLabel } from '../student-operations/student-case-workflow';
 import { xeroInvoiceStatusLabel } from '../student-operations/xero-invoice-display';
 import type {
   StudentCaseActivity, StudentCaseDetail, StudentCaseDocuments, StudentCaseInvoices,
   StudentCaseList, StudentCaseStatus, StudentRegisterRow,
+  StudentOperationsWorkspace,
+  StudentCaseEditOptions, StudentCaseWorkflowOptions,
 } from '../student-operations/student-operations.types';
 
 @Component({
   selector: 'app-manager-case-view',
-  imports: [CommonModule, RouterModule, ManagerListLoaderComponent],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent],
   templateUrl: './manager-case-view.page.html',
   styleUrls: ['./manager-case-view.page.css'],
 })
 export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(StudentOperationsService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly destroy$ = new Subject<void>();
 
   readonly Math = Math;
   case: StudentCaseDetail | null = null;
+  workspace: StudentOperationsWorkspace | null = null;
   studentIdentity: Pick<StudentRegisterRow, 'legalName' | 'email'> | null = null;
   relatedCases: StudentCaseList['cases'] = [];
   relatedTotal = 0;
@@ -40,12 +46,30 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   downloadError = '';
   downloadingId: string | null = null;
   viewingId: string | null = null;
+  editing = false;
+  editLoading = false;
+  saving = false;
+  editError = '';
+  editSuccess = '';
+  editOptions: StudentCaseEditOptions | null = null;
+  workflowOptions: StudentCaseWorkflowOptions | null = null;
+  readonly editForm = new FormGroup({
+    studentName: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.maxLength(200)] }),
+    studentEmail: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.email, Validators.maxLength(320)] }),
+    mobile: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(80)] }),
+    phone: new FormControl('', { nonNullable: true, validators: [Validators.maxLength(80)] }),
+    collegeId: new FormControl<string | null>(null),
+    advisorUserId: new FormControl<string | null>(null),
+    status: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    currentStage: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+  });
   loadingRelated = false;
   loadingInvoices = false;
   loadingDocuments = false;
   loadingActivity = false;
   private currentId = '';
   private pendingPreview: Window | null = null;
+  private editErrorTimer: ReturnType<typeof setTimeout> | null = null;
 
   get primaryAdvisor(): string | null {
     return this.case?.advisors.find(item => item.isPrimary)?.name || this.case?.advisorName || null;
@@ -62,6 +86,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   get studentPhone(): string | null {
     return this.case?.studentPhone?.trim() || null;
   }
+  get studentMobile(): string | null { return this.case?.studentMobile?.trim() || null; }
   get studentPhoneHref(): string | null {
     const phone = this.studentPhone?.replace(/[^\d+]/g, '') ?? '';
     return /\d/.test(phone) ? `tel:${phone}` : null;
@@ -71,6 +96,28 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       ? [IMPORTED_CASE_STAGE, ...CASE_WORKFLOW_STAGES] : CASE_WORKFLOW_STAGES;
   }
   get canLoadRelated(): boolean { return this.relatedCases.length < this.relatedTotal; }
+  get canShowCaseActions(): boolean {
+    return this.workspace?.role === 'chief_executive' || this.workspace?.role === 'operations' || this.workspace?.role === 'advisor';
+  }
+  get canEditCases(): boolean { return this.workspace?.role === 'chief_executive' || this.workspace?.role === 'operations'; }
+  get collegeOptions(): ManagerSelectOption[] {
+    return [{ value: '', label: 'No college' }, ...(this.editOptions?.colleges.map(item => ({ value: item.collegeId, label: item.name })) ?? [])];
+  }
+  get advisorOptions(): ManagerSelectOption[] {
+    return [{ value: '', label: 'No advisor' }, ...(this.editOptions?.advisors.map(item => ({ value: item.userId, label: item.name })) ?? [])];
+  }
+  get statusOptions(): ManagerSelectOption[] {
+    return (this.workflowOptions?.statuses ?? []).map(value => ({ value, label: this.statusLabel(value as StudentCaseStatus) }));
+  }
+  get stageOptions(): ManagerSelectOption[] {
+    const status = this.editForm.controls.status.value;
+    const options = this.workflowOptions;
+    if (!options) return [];
+    const stages = this.case?.currentStage === IMPORTED_CASE_STAGE.value
+      ? [IMPORTED_CASE_STAGE.value, ...options.stages] : options.stages;
+    return stages.filter(value => options.allowedStatuses[value]?.includes(status))
+      .map(value => ({ value, label: this.stageLabel(value) }));
+  }
   get discoveryPending(): number {
     return (this.documents?.discovery ?? [])
       .filter(item => item.status === 'queued' || item.status === 'processing')
@@ -83,6 +130,14 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.editForm.controls.status.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => this.onStatusChange());
+    this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
+      next: workspace => {
+        this.workspace = workspace;
+        if (this.case && this.route.snapshot?.queryParamMap?.get('edit') === '1' && this.canEditCases && !this.editing) this.beginEdit(this.case.caseId);
+      },
+      error: () => { this.workspace = null; },
+    });
     this.route.paramMap.pipe(
       map(params => params.get('caseId') ?? ''),
       distinctUntilChanged(),
@@ -100,6 +155,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         return;
       }
       this.case = detail;
+      if (this.route.snapshot?.queryParamMap?.get('edit') === '1' && this.canEditCases) this.beginEdit(detail.caseId);
       if (!detail.studentName) this.loadStudentIdentity(detail);
       this.loadRelated(1);
       this.loadInvoices(1);
@@ -108,11 +164,108 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  beginEdit(caseId: string): void {
+    if (!this.canEditCases || this.editLoading || this.saving) return;
+    if (caseId !== this.case?.caseId) {
+      void this.router.navigate(['/manager/students/cases', caseId], { queryParams: { edit: '1' } });
+      return;
+    }
+    this.editError = this.editSuccess = '';
+    this.editLoading = true;
+    forkJoin({ edit: this.api.caseEditOptions(), workflow: this.api.caseWorkflowOptions() })
+      .pipe(takeUntil(this.destroy$)).subscribe({
+        next: ({ edit, workflow }) => {
+          if (caseId !== this.currentId || !this.case) return;
+          this.editOptions = edit;
+          this.workflowOptions = workflow;
+          this.editForm.reset({
+            studentName: this.studentName,
+            studentEmail: this.studentEmail ?? '',
+            mobile: this.case.studentMobile ?? '', phone: this.case.studentPhone ?? '',
+            collegeId: this.case.colleges.find(item => item.isPrimary)?.collegeId ?? '',
+            advisorUserId: this.case.advisors.find(item => item.isPrimary)?.userId ?? '',
+            status: this.case.status, currentStage: this.case.currentStage,
+          });
+          this.editing = true;
+          this.editLoading = false;
+        },
+        error: () => { this.editLoading = false; this.showEditError('Edit options could not be loaded. Try again.'); },
+      });
+  }
+
+  onStatusChange(): void {
+    const current = this.editForm.controls.currentStage.value;
+    if (!this.stageOptions.some(item => item.value === current)) {
+      this.editForm.controls.currentStage.setValue(this.stageOptions[0]?.value ?? '');
+    }
+  }
+
+  cancelEdit(): void {
+    if (this.saving) return;
+    this.editing = false;
+    this.editError = '';
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { edit: null }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+
+  saveEdit(): void {
+    if (!this.canEditCases || !this.case || !this.editing || this.saving) return;
+    if (this.editForm.invalid || !this.stageOptions.some(item => item.value === this.editForm.controls.currentStage.value)) {
+      this.editForm.markAllAsTouched();
+      this.showEditError('Complete the required fields and choose a valid stage for the status.');
+      return;
+    }
+    const id = this.case.caseId;
+    const value = this.editForm.getRawValue();
+    this.saving = true;
+    this.editError = '';
+    this.api.updateCase(id, {
+      recordVersion: this.case.recordVersion,
+      studentName: value.studentName.trim(), studentEmail: value.studentEmail.trim(), mobile: value.mobile.trim() || null, phone: value.phone.trim() || null,
+      collegeId: value.collegeId || null, advisorUserId: value.advisorUserId || null,
+      status: value.status, currentStage: value.currentStage,
+    }, crypto.randomUUID()).pipe(takeUntil(this.destroy$)).subscribe({
+      next: result => {
+        if (id !== this.currentId) return;
+        const college = this.editOptions?.colleges.find(item => item.collegeId === value.collegeId);
+        const advisor = this.editOptions?.advisors.find(item => item.userId === value.advisorUserId);
+        const detail: StudentCaseDetail = {
+          ...this.case!, studentName: value.studentName.trim(), studentEmail: value.studentEmail.trim(),
+          studentMobile: value.mobile.trim() || null, studentPhone: value.phone.trim() || null,
+          status: value.status as StudentCaseStatus, currentStage: value.currentStage,
+          advisorName: advisor?.name ?? null,
+          advisors: advisor ? [{ userId: advisor.userId, name: advisor.name, isPrimary: true }] : [],
+          colleges: college ? [{ collegeId: college.collegeId, name: college.name, isPrimary: true }] : [],
+          recordVersion: result.recordVersion, updatedAt: new Date().toISOString(),
+        };
+        this.case = detail;
+        this.relatedCases = this.relatedCases.map(item => item.caseId === id
+          ? { ...item, status: detail.status, currentStage: detail.currentStage } : item);
+        this.saving = false;
+        this.editing = false;
+        this.editSuccess = 'Case saved.';
+        void this.router.navigate([], { relativeTo: this.route, queryParams: { edit: null }, queryParamsHandling: 'merge', replaceUrl: true });
+      },
+      error: error => {
+        this.saving = false;
+        this.showEditError(error?.status === 409
+          ? (error?.error?.message === 'Student email is already in use.' ? 'That email address is already in use.' : 'This case changed. Reload the page before saving again.')
+          : 'The case could not be saved. Please try again.');
+      },
+    });
+  }
+
   ngOnDestroy(): void {
+    if (this.editErrorTimer) clearTimeout(this.editErrorTimer);
     this.pendingPreview?.close();
     this.pendingPreview = null;
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private showEditError(message: string): void {
+    if (this.editErrorTimer) clearTimeout(this.editErrorTimer);
+    this.editError = message;
+    this.editErrorTimer = setTimeout(() => { this.editError = ''; this.editErrorTimer = null; }, 3500);
   }
 
   statusLabel(status: StudentCaseStatus): string {
@@ -291,7 +444,12 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   private reset(): void {
     this.pendingPreview?.close();
     this.pendingPreview = null;
+    if (this.editErrorTimer) clearTimeout(this.editErrorTimer);
+    this.editErrorTimer = null;
     this.case = null;
+    this.editing = this.editLoading = this.saving = false;
+    this.editOptions = this.workflowOptions = null;
+    this.editError = this.editSuccess = '';
     this.studentIdentity = null;
     this.relatedCases = [];
     this.relatedTotal = 0;

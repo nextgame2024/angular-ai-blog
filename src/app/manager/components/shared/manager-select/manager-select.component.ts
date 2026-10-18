@@ -31,6 +31,8 @@ export class ManagerSelectComponent implements ControlValueAccessor {
   @Input() options: ManagerSelectOption[] = [];
   @Input() placeholder = 'Select';
   @Input() disabled = false;
+  @Input() searchable = false;
+  @Input() ariaLabel = '';
 
   @HostBinding('class.is-disabled') get isDisabled(): boolean {
     return this.disabled;
@@ -38,6 +40,12 @@ export class ManagerSelectComponent implements ControlValueAccessor {
 
   open = false;
   value: string | null = null;
+  searchTerm = '';
+
+  get filteredOptions(): ManagerSelectOption[] {
+    const query = this.searchTerm.trim().toLocaleLowerCase();
+    return query ? this.options.filter(option => option.label.toLocaleLowerCase().includes(query)) : this.options;
+  }
 
   private onChange: (value: string | null) => void = () => {};
   private onTouched: () => void = () => {};
@@ -54,6 +62,7 @@ export class ManagerSelectComponent implements ControlValueAccessor {
     event?.stopPropagation();
     if (this.disabled) return;
     this.open = !this.open;
+    if (this.open) this.searchTerm = '';
     if (!this.open) this.onTouched();
   }
 
@@ -64,6 +73,7 @@ export class ManagerSelectComponent implements ControlValueAccessor {
     this.value = option.value;
     this.onChange(option.value);
     this.open = false;
+    this.searchTerm = '';
     this.onTouched();
   }
 

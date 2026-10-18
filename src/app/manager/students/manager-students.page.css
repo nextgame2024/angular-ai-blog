@@ -60,7 +60,7 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 :host ::ng-deep .student-date-range .p-datepicker-input:focus { border-color:#72d5c4; box-shadow:0 0 0 3px #18b89d1a }
 .register { display:flex; flex:1; flex-direction:column; min-height:0; border:1px solid #dae6f2; border-radius:.85rem; background:#fff; overflow:hidden }
 .register-heading { display:flex; justify-content:space-between; align-items:center; min-height:3.2rem; padding:.55rem .8rem; gap:.75rem }
-.register-actions,.row-actions { display:flex; align-items:center; gap:.4rem; white-space:nowrap }
+.register-actions { display:flex; align-items:center; gap:.4rem; white-space:nowrap }
 .register-actions .btn { font-size:.8rem; font-weight:600 }
 .case-button { border-color:#9e6bf3; background:#f6efff; color:#7a36d6 }
 .add-button { border-color:#74dccc; background:#e6faf6; color:#078b7c }
@@ -71,7 +71,7 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 .compatibility-banner button { border:0; background:transparent; color:inherit; font:inherit; font-weight:700; text-decoration:underline; cursor:pointer }
 .register-content { position:relative; display:flex; flex:1; min-height:9rem; overflow:hidden }
 .table-wrap { flex:1; min-width:0; min-height:0; overflow:auto }
-.student-table { width:100%; min-width:88rem; border-collapse:separate; border-spacing:0; text-align:left; font-size:.78rem }
+.student-table { width:100%; min-width:82rem; border-collapse:separate; border-spacing:0; text-align:left; font-size:.78rem }
 .student-table th { position:sticky; top:0; z-index:2; height:2.35rem; background:#f5f8fb; color:#485b75; border-block:1px solid #e3ebf3; font-weight:700; white-space:nowrap }
 .student-table th:first-child,.student-table td:first-child { padding-left:.8rem }
 .student-table th:last-child,.student-table td:last-child { padding-right:.8rem }
@@ -98,8 +98,6 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 .status-pill.healthy { color:#089570; background:#e0f7ed } .status-pill.action { color:#a66a05; background:#fff0d4 } .status-pill.overdue { color:#d52c4b; background:#ffe5eb } .status-pill.vigente { color:#63748e; background:#edf2f7 }
 .case-list,.mobile-cases { display:flex; flex-wrap:wrap; gap:.25rem }
 .case-label { color:#3866d5; font-size:.71rem; white-space:nowrap; text-decoration:none } .case-label:hover { text-decoration:underline } .case-label:focus-visible { outline:2px solid #3866d5; outline-offset:2px; border-radius:2px } .muted { color:#8390a2 }
-.row-actions .btn { padding:.28rem .4rem; font-size:.72rem }
-.edit-button { color:#6555dc; background:#f1efff; border-color:#cec5ff } .delete-button { color:#d33747; background:#fff1f1; border-color:#ffcbd2 }
 .student-cards { display:none }
 .empty-state { display:grid; place-content:center; justify-items:center; flex:1; min-height:12rem; gap:.4rem; color:#66758a; text-align:center }
 .empty-state strong { color:#172033 }
@@ -109,7 +107,7 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 .page-buttons button { display:grid; place-items:center; width:1.8rem; height:1.8rem; border:1px solid #d6e1eb; border-radius:.38rem; background:#fff; color:#536988; cursor:pointer }
 .page-buttons button:disabled { opacity:.45; cursor:not-allowed } .page-buttons span { margin:0 .4rem }
 @media (max-width:1250px) { .summary-grid { grid-template-columns:repeat(4,minmax(0,1fr)) } .insight-card { grid-column:1/-1; min-height:auto; flex-direction:row; align-items:center } .insight-button { width:auto; white-space:nowrap } }
-@media (max-width:900px) { .students-page { height:auto; min-height:100% } .page-chrome { position:relative } .summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)) } .filters { grid-template-columns:repeat(2,minmax(0,1fr)) } .search-field,.date-error { grid-column:1/-1 } .register { min-height:26rem } .table-wrap { display:none } .student-cards { display:grid; align-content:start; gap:.55rem; flex:1; padding:.6rem; overflow:auto } .student-card { display:grid; gap:.55rem; border:1px solid #e3ebf4; border-radius:.65rem; padding:.65rem } .card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem } .student-card dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; margin:0 } .student-card dt { color:#7889a0; font-size:.67rem } .student-card dd { margin:.1rem 0 0; font-size:.77rem } .student-card .row-actions { justify-content:flex-end } }
+@media (max-width:900px) { .students-page { height:auto; min-height:100% } .page-chrome { position:relative } .summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)) } .filters { grid-template-columns:repeat(2,minmax(0,1fr)) } .search-field,.date-error { grid-column:1/-1 } .register { min-height:26rem } .table-wrap { display:none } .student-cards { display:grid; align-content:start; gap:.55rem; flex:1; padding:.6rem; overflow:auto } .student-card { display:grid; gap:.55rem; border:1px solid #e3ebf4; border-radius:.65rem; padding:.65rem } .card-top { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem } .student-card dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.45rem; margin:0 } .student-card dt { color:#7889a0; font-size:.67rem } .student-card dd { margin:.1rem 0 0; font-size:.77rem } }
 @media (max-width:640px) { .page-header { align-items:flex-start; flex-direction:column } .header-period { width:100% } .header-dates { flex:1 } .period-select { min-width:9rem } .summary-card { min-height:6rem; padding:.6rem } .metric-icon { width:2rem; height:2rem } .summary-card strong { font-size:1.15rem } .insight-card { flex-direction:column; align-items:stretch } .insight-button { width:100% } .pagination { flex-wrap:wrap; justify-content:center } .register-heading { align-items:flex-start; flex-direction:column } }
 @media (max-width:400px) { .summary-grid,.filters { grid-template-columns:1fr } .search-field,.insight-card { grid-column:auto } .card-top { flex-direction:column } }
 @media (max-width:400px) { .filters { grid-template-columns:minmax(0,1fr) 2rem } .filters > .search-field,.filters > app-manager-select,.filters > .date-error { grid-column:1/-1 } }

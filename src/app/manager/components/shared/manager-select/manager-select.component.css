@@ -68,6 +68,14 @@
   overflow: auto;
   padding: 0.25rem;
 }
+.select-search { display:block; width:100%; padding:.55rem .65rem; margin-bottom:.25rem; border:1px solid #cbd5e1; border-radius:8px; font:inherit; background:#fff; color:#0f172a }
+.select-search:focus-visible { outline:2px solid #0eac9e; outline-offset:1px }
+.select-empty { display:block; padding:.55rem .7rem; color:#64748b; font-size:.85rem }
+:host-context(html.dark) .select-search { background:#263449; color:#e2e8f0; border-color:#4a6180 }
+:host-context(html.dark) .select-trigger,:host-context(html.dark) .select-menu { background:#263449; border-color:#4a6180; color:#e2e8f0 }
+:host-context(html.dark) .select-option { color:#e2e8f0 }
+:host-context(html.dark) .select-option:hover,:host-context(html.dark) .select-option.is-active { background:#16453f; color:#a4f0dc }
+:host-context(html.dark) .value.placeholder,:host-context(html.dark) .select-empty { color:#a8b8ce }
 
 .select-option {
   display: flex;

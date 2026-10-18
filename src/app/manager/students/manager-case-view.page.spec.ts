@@ -9,14 +9,18 @@ describe('ManagerCaseViewPageComponent', () => {
   const params = new BehaviorSubject(convertToParamMap({ caseId: 'case-1' }));
   const detail: StudentCaseDetail = {
     caseId: 'case-1', caseNumber: 'CASE-1', userId: 'user-1', studentId: 'student-1',
-    studentReference: 'STD-1', studentName: 'Example Student', studentEmail: 'student@example.com', studentPhone: null,
+    studentReference: 'STD-1', studentName: 'Example Student', studentEmail: 'student@example.com', studentPhone: null, studentMobile: null,
     title: null, courseName: null, advisorName: 'Advisor Name', status: 'in_progress',
     currentStage: 'imported_pending_review', openedOn: '2026-10-16',
-    createdAt: '2026-10-16T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z',
+    createdAt: '2026-10-16T00:00:00Z', updatedAt: '2026-10-17T00:00:00Z', recordVersion: 1,
     advisors: [], colleges: [],
   };
   const api = {
+    workspace: jasmine.createSpy().and.returnValue(of({ role: 'chief_executive' })),
     caseDetail: jasmine.createSpy().and.returnValue(of(detail)),
+    caseEditOptions: jasmine.createSpy().and.returnValue(of({ advisors: [{ userId: 'advisor-1', name: 'Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] })),
+    caseWorkflowOptions: jasmine.createSpy().and.returnValue(of({ statuses: ['in_progress', 'pre_sale', 'on_hold'], stages: ['documents_requested', 'awaiting_payment', 'payment_received'], allowedStatuses: { imported_pending_review: ['in_progress'], documents_requested: ['pre_sale'], awaiting_payment: ['pre_sale', 'on_hold'], payment_received: ['in_progress'] } })),
+    updateCase: jasmine.createSpy().and.returnValue(of({ caseId: 'case-1', recordVersion: 2 })),
     studentRegister: jasmine.createSpy().and.returnValue(of({ students: [], page: 1, limit: 25, total: 0 })),
     casesForStudent: jasmine.createSpy().and.returnValue(of({ cases: [
       { caseId: 'case-1', caseNumber: 'CASE-1', status: 'in_progress', currentStage: 'imported_pending_review' },
@@ -40,7 +44,9 @@ describe('ManagerCaseViewPageComponent', () => {
   beforeEach(async () => {
     params.next(convertToParamMap({ caseId: 'case-1' }));
     for (const spy of Object.values(api)) spy.calls.reset();
+    api.workspace.and.returnValue(of({ role: 'chief_executive' }));
     api.caseDetail.and.returnValue(of(detail));
+    api.updateCase.and.returnValue(of({ caseId: 'case-1', recordVersion: 2 }));
     api.studentRegister.and.returnValue(of({ students: [], page: 1, limit: 25, total: 0 }));
     api.caseInvoices.and.returnValue(of({ invoices: [{ invoiceId: 'invoice-1', invoiceNumber: 'INV-1', type: 'ACCREC', status: 'PAID', date: '2026-10-16', dueDate: '2026-10-20', amountDue: '0', currency: 'AUD' }], total: 1, page: 1, limit: 25 }));
     api.caseDocuments.and.returnValue(of({ documents: [{ documentId: 'document-1', fileName: 'offer.pdf', mimeType: 'application/pdf', sizeBytes: 1024, sourceKind: 'invoice', lastSeenAt: '2026-10-16T00:00:00Z' }], discovery: [], discoveryRequested: true, total: 1, page: 1, limit: 25 }));
@@ -52,7 +58,7 @@ describe('ManagerCaseViewPageComponent', () => {
     }).compileComponents();
   });
 
-  it('shows real case, related case, document, invoice and activity data without edit controls', () => {
+  it('shows real case, related case, document, invoice and activity data with actions per case', () => {
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
@@ -63,6 +69,11 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.textContent).toContain('Case created');
     expect(root.textContent).toContain('In progress');
     expect(root.querySelector('a[href="/manager/students/cases/case-2"]')).not.toBeNull();
+    expect(root.querySelectorAll('.related-item')).toHaveSize(2);
+    expect(root.querySelectorAll('.related-actions .edit')).toHaveSize(2);
+    expect(root.querySelectorAll('.related-actions .archive')).toHaveSize(2);
+    expect([...(root.querySelectorAll('.related-actions .edit') as NodeListOf<HTMLButtonElement>)].every(button => !button.disabled)).toBeTrue();
+    expect([...(root.querySelectorAll('.related-actions .archive') as NodeListOf<HTMLButtonElement>)].every(button => button.disabled)).toBeTrue();
     expect(root.textContent).not.toContain('Approve');
     expect(root.textContent).not.toContain('Upload');
     expect(api.caseInvoices).toHaveBeenCalledWith('case-1', 1);
@@ -80,6 +91,60 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(actions.map(button => button.getAttribute('aria-label'))).toEqual(['View offer.pdf', 'Download offer.pdf']);
     expect(actions.every(button => button.querySelector('svg[aria-hidden="true"]') !== null)).toBeTrue();
     expect(actions.every(button => button.disabled === false)).toBeTrue();
+  });
+
+  it('shows case actions to assigned advisors but not to a student without a workspace role', () => {
+    api.workspace.and.returnValue(of({ role: 'advisor' }));
+    const advisor = TestBed.createComponent(ManagerCaseViewPageComponent);
+    advisor.detectChanges();
+    expect((advisor.nativeElement as HTMLElement).querySelectorAll('.related-actions .edit')).toHaveSize(2);
+
+    api.workspace.and.returnValue(throwError(() => new Error('No staff entitlement')));
+    const student = TestBed.createComponent(ManagerCaseViewPageComponent);
+    student.detectChanges();
+    expect((student.nativeElement as HTMLElement).querySelector('.related-actions')).toBeNull();
+    expect(student.componentInstance.canShowCaseActions).toBeFalse();
+  });
+
+  it('edits fields in their display positions and saves them with one case request', () => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    (root.querySelector('.related-item.selected .edit') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(root.querySelector('.case-edit-form')).toBeNull();
+    expect(root.querySelector('.student-overview input[formControlName="studentName"]')).not.toBeNull();
+    expect(root.querySelector('.student-overview input[formControlName="studentEmail"]')).not.toBeNull();
+    expect(root.querySelector('.student-overview app-manager-select[formControlName="collegeId"]')).not.toBeNull();
+    expect(root.querySelector('.page-header app-manager-select[formControlName="status"]')).not.toBeNull();
+    expect(root.querySelector('.progress-card app-manager-select[formControlName="currentStage"]')).not.toBeNull();
+    expect(root.querySelector('.related-item.selected .edit')).toBeNull();
+    expect(root.querySelector('.related-item.selected .archive')).toBeNull();
+    expect(root.querySelector('.related-item.selected .save')).not.toBeNull();
+
+    fixture.componentInstance.editForm.patchValue({ studentName: 'Updated Student', studentEmail: 'new@example.com', mobile: '0412 345 678', phone: '07 1234 5678', collegeId: 'college-1', advisorUserId: 'advisor-1' });
+    fixture.componentInstance.saveEdit();
+    expect(api.updateCase).toHaveBeenCalledWith('case-1', jasmine.objectContaining({
+      recordVersion: 1, studentName: 'Updated Student', studentEmail: 'new@example.com',
+      mobile: '0412 345 678', phone: '07 1234 5678', collegeId: 'college-1', advisorUserId: 'advisor-1',
+      status: 'in_progress', currentStage: 'imported_pending_review',
+    }), jasmine.any(String));
+    fixture.detectChanges();
+    expect(root.querySelector('.related-item.selected .edit')).not.toBeNull();
+    expect(root.querySelector('.related-item.selected .save')).toBeNull();
+  });
+
+  it('filters stages by the selected status and does not save an invalid email', () => {
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.beginEdit('case-1');
+    fixture.detectChanges();
+    fixture.componentInstance.editForm.controls.status.setValue('pre_sale');
+    expect(fixture.componentInstance.stageOptions.map(item => item.value)).toEqual(['documents_requested', 'awaiting_payment']);
+    fixture.componentInstance.editForm.controls.studentEmail.setValue('not-an-email');
+    fixture.componentInstance.saveEdit();
+    expect(api.updateCase).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.editError).toContain('required fields');
   });
 
   it('opens a fetched PDF in a new tab with its preview MIME type', () => {

@@ -23,6 +23,24 @@ describe('StudentOperationsService', () => {
 
   afterEach(() => http.verify());
 
+  it('loads case edit choices and submits one versioned, idempotent case update', () => {
+    service.caseEditOptions().subscribe();
+    const choices = http.expectOne(candidate => candidate.url.endsWith('/workspace/cases/edit-options'));
+    expect(choices.request.method).toBe('GET');
+    choices.flush({ advisors: [], colleges: [] });
+
+    service.caseWorkflowOptions().subscribe();
+    http.expectOne(candidate => candidate.url.endsWith('/workspace/cases/options')).flush({ statuses: [], stages: [], allowedStatuses: {} });
+
+    const value = { recordVersion: 3, studentName: 'Student', studentEmail: 'student@example.test', mobile: null, phone: null, collegeId: null, advisorUserId: null, status: 'in_progress', currentStage: 'imported_pending_review' };
+    service.updateCase('case-1', value, 'case-update-key').subscribe();
+    const update = http.expectOne(candidate => candidate.url.endsWith('/workspace/cases/case-1'));
+    expect(update.request.method).toBe('PATCH');
+    expect(update.request.body).toEqual(value);
+    expect(update.request.headers.get('Idempotency-Key')).toBe('case-update-key');
+    update.flush({ caseId: 'case-1', recordVersion: 4 });
+  });
+
   it('discovers the identity-bound workspace with an explicit credential', () => {
     service.workspace().subscribe();
     const request = http.expectOne((candidate) => candidate.url.endsWith(

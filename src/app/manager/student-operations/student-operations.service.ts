@@ -13,6 +13,8 @@ import type {
   StudentRegisterQuery,
   StudentRegisterResult,
   StudentCaseDetail,
+  StudentCaseEditOptions,
+  StudentCaseWorkflowOptions,
   StudentCaseList,
   StudentCaseInvoices,
   StudentCaseDocuments,
@@ -143,6 +145,25 @@ export class StudentOperationsService {
 
   caseDetail(caseId: string): Observable<StudentCaseDetail> {
     return this.http.get<StudentCaseDetail>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}`, { headers: this.headers() });
+  }
+
+  caseEditOptions(): Observable<StudentCaseEditOptions> {
+    return this.http.get<StudentCaseEditOptions>(`${this.workspaceBase}/cases/edit-options`, { headers: this.headers() });
+  }
+
+  caseWorkflowOptions(): Observable<StudentCaseWorkflowOptions> {
+    return this.http.get<StudentCaseWorkflowOptions>(`${this.workspaceBase}/cases/options`, { headers: this.headers() });
+  }
+
+  updateCase(caseId: string, value: {
+    recordVersion: number; studentName: string; studentEmail: string; mobile: string | null; phone: string | null;
+    collegeId: string | null; advisorUserId: string | null;
+    status: string; currentStage: string;
+  }, idempotencyKey: string): Observable<{ caseId: string; recordVersion: number }> {
+    return this.http.patch<{ caseId: string; recordVersion: number }>(
+      `${this.workspaceBase}/cases/${encodeURIComponent(caseId)}`, value,
+      { headers: this.writeHeaders(idempotencyKey) },
+    ).pipe(tap(() => this.invalidateDashboard()));
   }
 
   casesForStudent(userId: string, page = 1): Observable<StudentCaseList> {

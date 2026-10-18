@@ -1,4 +1,4 @@
-<section class="case-page" aria-labelledby="case-page-title">
+<section class="case-page" aria-labelledby="case-page-title" [formGroup]="editForm">
   <nav class="breadcrumb" aria-label="Breadcrumb">
     <a routerLink="/manager/menu">Menu</a><span aria-hidden="true">/</span>
     <a routerLink="/manager/students">Students</a><span aria-hidden="true">/</span>
@@ -19,25 +19,40 @@
         <p>Payments, documents and progress for this student.</p>
       </div>
       <div class="case-meta">
-        <div class="case-meta-top"><strong>Case ID: {{ item.caseNumber }}</strong><span class="status-pill" [class.progress]="item.status === 'in_progress' || item.status === 'payment_done'" [class.hold]="item.status === 'pre_sale' || item.status === 'on_hold'" [class.alert]="item.status === 'payment_overdue' || item.status === 'collections'" [class.complete]="item.status === 'closed'" [class.cancelled]="item.status === 'cancelled'">{{ statusLabel(item.status) }}</span></div>
+        <div class="case-meta-top"><strong>Case ID: {{ item.caseNumber }}</strong>@if (editing) { <label class="inline-status"><span>Case status</span><app-manager-select formControlName="status" [options]="statusOptions" placeholder="Select a status"></app-manager-select></label> } @else { <span class="status-pill" [class.progress]="item.status === 'in_progress' || item.status === 'payment_done'" [class.hold]="item.status === 'pre_sale' || item.status === 'on_hold'" [class.alert]="item.status === 'payment_overdue' || item.status === 'collections'" [class.complete]="item.status === 'closed'" [class.cancelled]="item.status === 'cancelled'">{{ statusLabel(item.status) }}</span> }</div>
         <small>Created {{ dateLabel(item.createdAt) }} <span aria-hidden="true">|</span> Last updated {{ dateTimeLabel(item.updatedAt) }}</small>
       </div>
     </header>
 
-    <section class="card student-overview" aria-label="Student and case overview">
-      <div class="student-name"><span class="student-icon" aria-hidden="true">{{ studentName.slice(0, 1) }}</span><div><strong>{{ studentName }}</strong><span class="student-identifiers">Student ID: {{ item.studentReference }}@if (studentEmail) { <span aria-hidden="true">·</span> <a [href]="'mailto:' + studentEmail">{{ studentEmail }}</a> }@if (studentPhone) { <span aria-hidden="true">·</span> @if (studentPhoneHref) { <a [href]="studentPhoneHref">{{ studentPhone }}</a> } @else { {{ studentPhone }} } }</span></div></div>
+    <section class="card student-overview" [class.editing]="editing" aria-label="Student and case overview">
+      <div class="student-name"><span class="student-icon" aria-hidden="true">{{ studentName.slice(0, 1) }}</span><div>
+        @if (editing) {
+          <label class="inline-name">Student name <input type="text" formControlName="studentName" maxlength="200" [attr.aria-invalid]="editForm.controls.studentName.invalid && editForm.controls.studentName.touched" /></label>
+          <span class="student-identifiers">Student ID: {{ item.studentReference }}</span>
+          <div class="inline-contacts">
+            <label>Email <input type="email" formControlName="studentEmail" maxlength="320" [attr.aria-invalid]="editForm.controls.studentEmail.invalid && editForm.controls.studentEmail.touched" /></label>
+            <label>Mobile <input type="tel" formControlName="mobile" maxlength="80" /></label>
+            <label>Phone <input type="tel" formControlName="phone" maxlength="80" /></label>
+          </div>
+        } @else {
+          <strong>{{ studentName }}</strong><span class="student-identifiers">Student ID: {{ item.studentReference }}@if (studentEmail) { <span aria-hidden="true">·</span> <a [href]="'mailto:' + studentEmail">{{ studentEmail }}</a> }@if (studentMobile) { <span aria-hidden="true">·</span> Mobile: <a [href]="'tel:' + studentMobile.replaceAll(' ', '')">{{ studentMobile }}</a> }@if (studentPhone) { <span aria-hidden="true">·</span> Phone: @if (studentPhoneHref) { <a [href]="studentPhoneHref">{{ studentPhone }}</a> } @else { {{ studentPhone }} } }</span>
+        }
+      </div></div>
       <dl class="overview-facts">
-        <div><dt><span class="fact-icon college" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-6 9 6"/><path d="M4 10h16M5 20h14M7 11v7m5-7v7m5-7v7M3 20h18"/></svg></span>College</dt><dd>{{ primaryCollege || 'Not assigned' }}</dd></div>
+        <div><dt><span class="fact-icon college" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 10 9-6 9 6"/><path d="M4 10h16M5 20h14M7 11v7m5-7v7m5-7v7M3 20h18"/></svg></span>College</dt><dd>@if (editing) { <app-manager-select formControlName="collegeId" [options]="collegeOptions" [searchable]="true" ariaLabel="College" placeholder="Select a college"></app-manager-select> } @else { {{ primaryCollege || 'Not assigned' }} }</dd></div>
         <div><dt><span class="fact-icon course" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/><path d="M14 3v5h5M8 12h8M8 16h6"/></svg></span>Course</dt><dd>{{ item.courseName || 'Not recorded' }}</dd></div>
-        <div><dt><span class="fact-icon advisor" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3"/><path d="M4 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 2 4v2"/></svg></span>Advisor</dt><dd>{{ primaryAdvisor || 'Not assigned' }}</dd></div>
+        <div><dt><span class="fact-icon advisor" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3"/><path d="M4 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6m2 3a5 0 0 1 2 4v2"/></svg></span>Advisor</dt><dd>@if (editing) { <app-manager-select formControlName="advisorUserId" [options]="advisorOptions" [searchable]="true" ariaLabel="Advisor" placeholder="Select an advisor"></app-manager-select> } @else { {{ primaryAdvisor || 'Not assigned' }} }</dd></div>
         <div><dt><span class="fact-icon opened" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-13 5h3m-3 3h6"/></svg></span>Case opened</dt><dd>{{ dateLabel(item.openedOn || item.createdAt) }}</dd></div>
       </dl>
     </section>
 
+    @if (editError) { <div class="edit-toast-wrap" role="alert"><p class="edit-feedback error">{{ editError }}</p></div> }
+    @if (editSuccess) { <p class="edit-feedback success" role="status">{{ editSuccess }}</p> }
+
     <div class="case-workspace">
       <div class="workspace-main">
         <section class="card progress-card" aria-labelledby="progress-heading">
-          <div class="card-heading"><div><h2 id="progress-heading">Case Progress</h2><p>Current stage: <strong>{{ stageLabel(item.currentStage) }}</strong></p></div></div>
+          <div class="card-heading"><div><h2 id="progress-heading">Case Progress</h2>@if (editing) { <label class="inline-stage">Current stage <app-manager-select formControlName="currentStage" [options]="stageOptions" placeholder="Select a stage"></app-manager-select></label> } @else { <p>Current stage: <strong>{{ stageLabel(item.currentStage) }}</strong></p> }</div></div>
           <ol class="stage-list" tabindex="0" aria-label="Case progress stages">
             @for (stage of workflowStages; track stage.value; let index = $index) {
               <li [class.current]="item.currentStage === stage.value" [attr.aria-current]="item.currentStage === stage.value ? 'step' : null"><span class="stage-number">{{ index + 1 }}</span><span>{{ stage.label }}</span></li>
@@ -52,9 +67,27 @@
           @if (relatedError) { <p class="section-error" role="alert">{{ relatedError }} <button type="button" class="text-button" (click)="loadRelated(relatedPage + 1)">Retry</button></p> }
           <div class="related-links">
             @for (related of relatedCases; track related.caseId) {
-              <a [routerLink]="['/manager/students/cases', related.caseId]" [attr.aria-current]="related.caseId === item.caseId ? 'page' : null" class="related-link" [class.selected]="related.caseId === item.caseId">
-                <strong>{{ related.caseNumber }}</strong><span>{{ statusLabel(related.status) }} · {{ stageLabel(related.currentStage) }}</span>
-              </a>
+              <div class="related-item" [class.selected]="related.caseId === item.caseId">
+                <a [routerLink]="['/manager/students/cases', related.caseId]" [attr.aria-current]="related.caseId === item.caseId ? 'page' : null" class="related-link">
+                  <strong>{{ related.caseNumber }}</strong><span>{{ statusLabel(related.status) }} · {{ stageLabel(related.currentStage) }}</span>
+                </a>
+                @if (canShowCaseActions && !editing) {
+                  <div class="related-actions">
+                    <button type="button" class="case-icon-button edit" (click)="beginEdit(related.caseId)" [disabled]="!canEditCases || editLoading" [attr.aria-label]="'Edit ' + related.caseNumber" [attr.title]="canEditCases ? 'Edit case' : 'Editing is not available for this role'">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4Z"/><path d="m13 6 4 4"/></svg>
+                    </button>
+                    <button type="button" class="case-icon-button archive" disabled [attr.aria-label]="'Archive ' + related.caseNumber + ' (coming soon)'" title="Case archiving is coming soon; no record will be deleted">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v11h14V9M9 13h6"/></svg>
+                    </button>
+                  </div>
+                }
+                @if (editing && related.caseId === item.caseId) {
+                  <div class="related-actions save-actions">
+                    <button type="button" class="case-action-text cancel" (click)="cancelEdit()" [disabled]="saving">Cancel</button>
+                    <button type="button" class="case-action-text save" (click)="saveEdit()" [disabled]="saving">{{ saving ? 'Saving…' : 'Save' }}</button>
+                  </div>
+                }
+              </div>
             } @empty {
               @if (loadingRelated) { <span class="muted">Loading related cases…</span> }
               @else if (!relatedError) { <span class="muted">No other cases are available to view.</span> }
