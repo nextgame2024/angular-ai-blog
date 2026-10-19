@@ -55,6 +55,7 @@
 }
 
 .select-menu {
+  box-sizing: border-box;
   position: absolute;
   left: 0;
   right: 0;
@@ -81,6 +82,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
   width: 100%;
   text-align: left;
   border: 0;
@@ -91,6 +93,13 @@
   color: #1f2937;
   cursor: pointer;
 }
+
+/* Page-size controls share compact, single-line geometry in every register. */
+:host(.page-size) { flex: 0 0 auto; min-width: 8.5rem; width: 8.5rem; }
+:host(.page-size) .value,
+:host(.page-size) .select-option > span { white-space: nowrap; }
+:host(.page-size) .chevron,
+:host(.page-size) .check { flex: 0 0 14px; }
 
 .select-option:hover,
 .select-option.is-active {

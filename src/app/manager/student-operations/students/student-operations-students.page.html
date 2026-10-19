@@ -171,8 +171,8 @@
         </div>
         <footer class="invoice-pagination" aria-label="Xero invoice pagination">
           <span>Showing {{ invoicePageStart }}–{{ invoicePageEnd }} of {{ xeroInvoices.total }}</span>
-          <app-manager-select panelDirection="up" ariaLabel="Records per page" class="page-size" [formControl]="invoicePageSize" [options]="invoicePageSizeOptions"></app-manager-select>
           <div class="page-buttons">
+          <app-manager-select panelDirection="up" ariaLabel="Records per page" class="page-size" [formControl]="invoicePageSize" [options]="invoicePageSizeOptions"></app-manager-select>
             <button type="button" (click)="goToInvoicePage(1)" [disabled]="xeroInvoices.page <= 1 || loadingInvoices" aria-label="First page">«</button>
             <button type="button" (click)="goToInvoicePage(xeroInvoices.page - 1)" [disabled]="xeroInvoices.page <= 1 || loadingInvoices" aria-label="Previous page">‹</button>
             <app-page-jump [page]="xeroInvoices.page" [totalPages]="xeroInvoices.totalPages" [disabled]="loadingInvoices" label="Page number" (pageChange)="goToInvoicePage($event)"></app-page-jump>

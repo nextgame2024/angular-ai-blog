@@ -209,7 +209,7 @@ describe('ManagerStudentsPageComponent', () => {
     expect(fixture.nativeElement.querySelector('.student-table thead').textContent).toContain('Ref / College');
     const sortedHeader = fixture.nativeElement.querySelector('.student-table th[aria-sort="descending"]') as HTMLElement;
     const sortIndicator = sortedHeader.querySelector('.sort-indicator') as HTMLElement;
-    expect(sortedHeader.textContent).toContain('Date');
+    expect(sortedHeader.textContent).toContain('Case opened');
     expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({ sortBy: 'date', sortDir: 'desc' }));
     expect(getComputedStyle(sortIndicator, '::before').borderBottomStyle).toBe('solid');
     expect(getComputedStyle(sortIndicator, '::after').borderTopStyle).toBe('solid');

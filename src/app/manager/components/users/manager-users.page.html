@@ -664,8 +664,8 @@
     @if (totalUsers) {
     <footer class="users-pagination" aria-label="Users pagination">
       <span>Showing {{ pageStart }}–{{ pageEnd }} of {{ totalUsers }}</span>
-      <app-manager-select panelDirection="up" ariaLabel="Records per page" class="page-size" [formControl]="pageSizeCtrl" [options]="pageSizeOptions"></app-manager-select>
       <div class="page-buttons">
+      <app-manager-select panelDirection="up" ariaLabel="Records per page" class="page-size" [formControl]="pageSizeCtrl" [options]="pageSizeOptions"></app-manager-select>
         <button type="button" (click)="goToPage(1)" [disabled]="currentPage <= 1 || isLoading" aria-label="First page">«</button>
         <button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1 || isLoading" aria-label="Previous page">‹</button>
         <app-page-jump [page]="currentPage" [totalPages]="totalPages" [disabled]="isLoading" label="Page number" (pageChange)="goToPage($event)"></app-page-jump>
