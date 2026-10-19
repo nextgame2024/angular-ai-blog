@@ -128,7 +128,7 @@ export interface StudentRegisterResult {
     trend: { available: boolean; reason?: string };
   };
   options: {
-    advisors: Array<{ userId: string | null; name: string }>;
+    advisors: Array<{ advisorId: string; code: string; name: string }>;
     colleges: Array<{ collegeId: string | null; name: string }>;
   };
 }

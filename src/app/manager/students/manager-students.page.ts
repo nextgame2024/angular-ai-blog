@@ -132,7 +132,7 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
       this.result = result;
       this.advisorOptions = [
         { value: '', label: 'All advisors' },
-        ...result.options.advisors.map((item) => ({ value: item.name, label: item.name })),
+        ...result.options.advisors.map((item) => ({ value: item.advisorId, label: item.name })),
       ];
     });
     this.search.valueChanges.pipe(
@@ -144,7 +144,7 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
         attentionThisWeek: undefined, page: 1,
       }));
     this.advisor.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
-      .subscribe((value) => this.patchQuery({ advisorName: value || undefined, page: 1 }));
+      .subscribe((value) => this.patchQuery({ advisorId: value || undefined, advisorName: undefined, page: 1 }));
     this.pageSize.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((value) => this.patchQuery({ limit: Number(value), page: 1 }));
     this.period.valueChanges.pipe(distinctUntilChanged(), takeUntil(this.destroy$))

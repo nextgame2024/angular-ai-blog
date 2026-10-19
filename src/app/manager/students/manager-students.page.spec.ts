@@ -145,18 +145,25 @@ describe('ManagerStudentsPageComponent', () => {
     expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({ page: 2, limit: 25 }));
   });
 
-  it('offers imported advisor names without a misleading college filter', () => {
+  it('filters by directory advisor ID and clears the filter without using the Xero label', () => {
     api.studentRegister.and.returnValue(of({
       ...emptyResult,
       options: {
-        advisors: [{ userId: null, name: 'S15 Paulina' }],
+        advisors: [{ advisorId: 'advisor-paulina', code: 'S15', name: 'Paulina Aguillon' }],
         colleges: [{ collegeId: null, name: 'ATI' }],
       },
     }));
     fixture.detectChanges();
-    fixture.componentInstance.advisor.setValue('S15 Paulina');
+    expect(fixture.componentInstance.advisorOptions).toContain(jasmine.objectContaining({
+      value: 'advisor-paulina', label: 'Paulina Aguillon',
+    }));
+    fixture.componentInstance.advisor.setValue('advisor-paulina');
     expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({
-      advisorName: 'S15 Paulina',
+      advisorId: 'advisor-paulina', advisorName: undefined, page: 1,
+    }));
+    fixture.componentInstance.advisor.setValue('');
+    expect(api.studentRegister).toHaveBeenCalledWith(jasmine.objectContaining({
+      advisorId: undefined, advisorName: undefined, page: 1,
     }));
     expect(fixture.nativeElement.querySelector('[aria-label="Filter by college"]')).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('All colleges');
