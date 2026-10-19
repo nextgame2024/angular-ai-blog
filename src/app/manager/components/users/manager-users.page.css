@@ -749,7 +749,7 @@
 
 .users-pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 0.75rem; color: #66758a; font-size: 0.82rem; }
 .page-size { width: 145px; }
-.page-buttons { display: flex; align-items: center; gap: 0.35rem; }
+.page-buttons { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.35rem; }
 .page-buttons button { width: 34px; height: 34px; border: 1px solid #d9e2ea; border-radius: 9px; background: #fff; color: #334155; cursor: pointer; }
 .page-buttons button:disabled { opacity: 0.45; cursor: not-allowed; }
 .page-buttons span { min-width: 110px; text-align: center; }

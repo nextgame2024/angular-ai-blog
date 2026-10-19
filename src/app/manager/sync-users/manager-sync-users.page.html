@@ -132,7 +132,7 @@
       }
     </div>
     <nav class="pagination" aria-label="Record pages">
-      <span>{{ data.total }} records · Page {{ page }} of {{ pages }}</span>
+      <span>{{ data.total }} records</span><app-page-jump [page]="page" [totalPages]="pages" [disabled]="loading" label="Page number" (pageChange)="goToPage($event)"></app-page-jump>
       <div class="actions">
         <button
           class="btn secondary"

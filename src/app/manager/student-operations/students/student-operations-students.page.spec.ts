@@ -496,6 +496,13 @@ describe('StudentOperationsStudentsPageComponent', () => {
       sort: 'invoiceNumber',
       direction: 'asc',
     }));
+    fixture.destroy();
+    api.xeroStudentInvoices.calls.reset();
+    fixture = TestBed.createComponent(StudentOperationsStudentsPageComponent);
+    fixture.detectChanges();
+    expect(api.xeroStudentInvoices).toHaveBeenCalledOnceWith('connection-1', jasmine.objectContaining({
+      page: 2, sort: 'invoiceNumber', direction: 'asc',
+    }));
   });
 
   it('queues a background Xero refresh and keeps cached records visible', () => {

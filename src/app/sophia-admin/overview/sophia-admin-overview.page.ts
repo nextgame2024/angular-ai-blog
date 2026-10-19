@@ -1,6 +1,7 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
+import { ListNavigationStateService } from '../../shared/services/list-navigation-state.service';
 
 import { AdminPaginationComponent } from '../shared/admin-pagination.component';
 import { AdminStatePanelComponent } from '../shared/admin-state-panel.component';
@@ -19,6 +20,7 @@ import type { AdminOnboardingReadiness, SophiaAdminPrincipal } from '../sophia-a
 export class SophiaAdminOverviewPage implements OnInit {
   private readonly admin = inject(SophiaAdminService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly navigationState = inject(ListNavigationStateService);
   private readonly pageSize = 8;
   readonly modules = SOPHIA_ADMIN_MODULES;
   readonly principal = signal<SophiaAdminPrincipal | null>(null);
@@ -26,7 +28,7 @@ export class SophiaAdminOverviewPage implements OnInit {
   readonly loading = signal(true);
   readonly error = signal('');
   readonly readinessError = signal('');
-  readonly page = signal(1);
+  readonly page = signal(Math.max(1, Math.min(Math.ceil(this.modules.length / this.pageSize), this.navigationState.read<number>('admin-modules') ?? 1)));
   readonly availableCount = computed(
     () => this.modules.filter((item) => item.available && this.hasPermission(item.permission)).length,
   );
@@ -102,5 +104,6 @@ export class SophiaAdminOverviewPage implements OnInit {
 
   setPage(page: number): void {
     this.page.set(page);
+    this.navigationState.save('admin-modules', page);
   }
 }

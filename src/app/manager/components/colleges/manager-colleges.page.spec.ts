@@ -88,11 +88,19 @@ describe('ManagerCollegesPageComponent', () => {
     (element.querySelector('[aria-label="Next page"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     expect(api.list).toHaveBeenCalledWith('', 2, 25, 'name', 'desc');
-    expect(element.querySelector('.users-pagination')?.textContent).toContain('Page 2 of 3');
+    expect((element.querySelector('app-page-jump input') as HTMLInputElement).value).toBe('2');
+    expect(element.querySelector('app-page-jump')?.textContent).toContain('of 3');
     fixture.componentInstance.pageSizeCtrl.setValue('50');
     fixture.detectChanges();
     expect(api.list).toHaveBeenCalledWith('', 1, 50, 'name', 'desc');
-    expect(element.querySelector('.users-pagination')?.textContent).toContain('Page 1 of 2');
+    expect((element.querySelector('app-page-jump input') as HTMLInputElement).value).toBe('1');
+    expect(element.querySelector('app-page-jump')?.textContent).toContain('of 2');
+    fixture.componentInstance.goToPage(2);
+    fixture.destroy();
+    api.list.calls.reset();
+    const returned = TestBed.createComponent(ManagerCollegesPageComponent);
+    returned.detectChanges();
+    expect(api.list).toHaveBeenCalledOnceWith('', 2, 50, 'name', 'desc');
   });
 
   it('sorts and paginates the complete Contacts and Sites tab data', () => {

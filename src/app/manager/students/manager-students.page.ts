@@ -1,3 +1,5 @@
+import { PageJumpComponent } from '../../shared/components/page-jump/page-jump.component';
+import { ListNavigationStateService } from '../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
@@ -24,15 +26,17 @@ type QueryState = StudentRegisterQuery & { revision: number };
 
 @Component({
   selector: 'app-manager-students-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
+  imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
   templateUrl: './manager-students.page.html',
   styleUrls: ['./manager-students.page.css'],
 })
 export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(StudentOperationsService);
   private readonly destroy$ = new Subject<void>();
+  private readonly navigationState = inject(ListNavigationStateService);
+  private readonly restored = this.navigationState.read<StudentRegisterQuery>('students');
   private readonly query$ = new BehaviorSubject<QueryState>({
-    page: 1, limit: 25, sortBy: 'date', sortDir: 'desc', revision: 0,
+    page: 1, limit: 25, sortBy: 'date', sortDir: 'desc', ...this.restored, revision: 0,
   });
 
   readonly search = new FormControl('', { nonNullable: true });
@@ -98,6 +102,16 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    const query = this.query$.value;
+    this.search.setValue(query.q ?? '', { emitEvent: false });
+    this.status.setValue(query.status ?? '', { emitEvent: false });
+    this.advisor.setValue(query.advisorId ?? '', { emitEvent: false });
+    this.pageSize.setValue(String(query.limit), { emitEvent: false });
+    if (query.from && query.to) {
+      this.appliedFrom = query.from; this.appliedTo = query.to;
+      this.period.setValue('custom', { emitEvent: false });
+      this.dateRange.setValue([new Date(`${query.from}T00:00:00`), new Date(`${query.to}T00:00:00`)], { emitEvent: false });
+    }
     this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
       next: (workspace) => { this.workspace = workspace; },
       error: () => { this.workspace = null; },
@@ -129,6 +143,8 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
     ).subscribe((result) => {
       this.loading = false;
       if (!result) return;
+      const lastPage = Math.max(1, Math.ceil(result.total / result.limit));
+      if (result.page > lastPage) { this.patchQuery({ page: lastPage }); return; }
       this.result = result;
       this.advisorOptions = [
         { value: '', label: 'All advisors' },
@@ -154,6 +170,7 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.navigationState.save('students', this.query$.value);
     this.destroy$.next();
     this.destroy$.complete();
   }

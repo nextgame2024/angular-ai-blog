@@ -43,6 +43,31 @@ describe('ManagerStudentsPageComponent', () => {
     expect(actions[1].disabled).toBeTrue();
   });
 
+  it('jumps to page 20 and restores its filters, size and sorting after leaving the list', fakeAsync(() => {
+    api.studentRegister.and.callFake(query => of({ ...emptyResult, page: query.page, limit: query.limit, total: 1068 }));
+    fixture.detectChanges();
+    fixture.componentInstance.search.setValue('Example'); tick(300);
+    fixture.componentInstance.advisor.setValue('advisor-1');
+    fixture.componentInstance.sort('name');
+    fixture.componentInstance.pageSize.setValue('50');
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('app-page-jump input') as HTMLInputElement;
+    input.value = '20'; input.dispatchEvent(new Event('input'));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(api.studentRegister.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ page: 20, limit: 50 }));
+    fixture.destroy();
+    api.studentRegister.calls.reset();
+    fixture = TestBed.createComponent(ManagerStudentsPageComponent);
+    fixture.detectChanges();
+    expect(api.studentRegister).toHaveBeenCalledTimes(1);
+    expect(api.studentRegister.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+      page: 20, limit: 50, q: 'Example', advisorId: 'advisor-1', sortBy: 'name', sortDir: 'asc',
+    }));
+    expect((fixture.nativeElement.querySelector('app-page-jump input') as HTMLInputElement).value).toBe('20');
+    fixture.componentInstance.advisor.setValue('');
+    expect(api.studentRegister.calls.mostRecent().args[0].page).toBe(1);
+  }));
+
   it('collapses only the summary while keeping filters usable without resetting the register', () => {
     fixture.detectChanges();
     const button = fixture.nativeElement.querySelector('.section-toggle') as HTMLButtonElement;

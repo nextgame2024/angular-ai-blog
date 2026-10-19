@@ -103,7 +103,7 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 .empty-state strong { color:#172033 }
 .pagination { display:flex; align-items:center; justify-content:flex-end; gap:.7rem; flex:none; min-height:3.3rem; padding:.45rem .75rem; color:#526783; font-size:.75rem }
 .page-size { display:block; min-width:7rem }
-.page-buttons { display:flex; align-items:center; gap:.3rem; white-space:nowrap }
+.page-buttons { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:.3rem; white-space:nowrap }
 .page-buttons button { display:grid; place-items:center; width:1.8rem; height:1.8rem; border:1px solid #d6e1eb; border-radius:.38rem; background:#fff; color:#536988; cursor:pointer }
 .page-buttons button:disabled { opacity:.45; cursor:not-allowed } .page-buttons span { margin:0 .4rem }
 @media (max-width:1250px) { .summary-grid { grid-template-columns:repeat(4,minmax(0,1fr)) } .insight-card { grid-column:1/-1; min-height:auto; flex-direction:row; align-items:center } .insight-button { width:auto; white-space:nowrap } }

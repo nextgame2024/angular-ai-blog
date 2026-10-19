@@ -1,3 +1,5 @@
+import { PageJumpComponent } from '../../../shared/components/page-jump/page-jump.component';
+import { ListNavigationStateService } from '../../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -8,7 +10,7 @@ import { BmCollege, BmCollegeContact, BmCollegeSite, BmCollegeSort, ManagerColle
 
 @Component({
   selector: 'app-manager-colleges-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+  imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
   templateUrl: './manager-colleges.page.html',
   styleUrls: ['../clients/manager-clients.page.css', '../users/manager-users.page.css', './manager-colleges.page.css'],
 })
@@ -16,6 +18,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   private readonly api = inject(ManagerCollegesService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyed = new Subject<void>();
+  private readonly navigationState = inject(ListNavigationStateService);
   private listRequest = 0;
 
   readonly search = this.fb.control('', { nonNullable: true });
@@ -79,7 +82,13 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   warningDismissed = false;
 
   ngOnInit(): void {
-    this.load();
+    const saved = this.navigationState.read<{ page: number; limit: string; search: string; sort: BmCollegeSort; direction: 'asc' | 'desc' }>('colleges');
+    if (saved) {
+      this.page = saved.page; this.sort = saved.sort; this.direction = saved.direction;
+      this.pageSizeCtrl.setValue(saved.limit, { emitEvent: false });
+      this.search.setValue(saved.search, { emitEvent: false });
+    }
+    this.load(this.page);
     this.search.valueChanges.pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroyed))
       .subscribe(() => this.load());
     this.pageSizeCtrl.valueChanges.pipe(takeUntil(this.destroyed)).subscribe(() => this.load());
@@ -88,6 +97,8 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.navigationState.save('colleges', { page: this.page, limit: this.pageSizeCtrl.value, search: this.search.value, sort: this.sort, direction: this.direction });
+    this.rememberDetailPages();
     this.destroyed.next();
     this.destroyed.complete();
   }
@@ -99,8 +110,9 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     this.api.list(this.search.value.trim(), page, this.pageLimit, this.sort, this.direction).pipe(takeUntil(this.destroyed)).subscribe({
       next: (result) => {
         if (request !== this.listRequest) return;
-        if (page > 1 && !result.colleges.length && result.total > 0) {
-          this.load(Math.max(1, Math.ceil(result.total / this.pageLimit)));
+        const lastPage = Math.max(1, Math.ceil(result.total / this.pageLimit));
+        if (page > lastPage) {
+          this.load(lastPage);
           return;
         }
         this.colleges = result.colleges;
@@ -166,6 +178,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   }
 
   create(): void {
+    this.rememberDetailPages();
     this.selected = null;
     this.mode = 'details';
     this.tab = 'details';
@@ -177,7 +190,18 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   }
 
   edit(college: BmCollege): void {
+    this.rememberDetailPages();
     this.selected = college;
+    const saved = this.navigationState.read<{
+      contactPage: number; sitePage: number; contactLimit: string; siteLimit: string;
+      contactSort: 'name' | 'role' | 'email' | 'mobile'; contactDirection: 'asc' | 'desc';
+      siteSort: 'city' | 'category' | 'address' | 'email' | 'phone' | 'mobile' | 'primary'; siteDirection: 'asc' | 'desc';
+    }>(`college:${college.collegeId}`);
+    this.contactPage = saved?.contactPage ?? 1; this.sitePage = saved?.sitePage ?? 1;
+    this.contactPageSizeCtrl.setValue(saved?.contactLimit ?? '25', { emitEvent: false });
+    this.sitePageSizeCtrl.setValue(saved?.siteLimit ?? '25', { emitEvent: false });
+    this.contactSort = saved?.contactSort ?? 'name'; this.contactDirection = saved?.contactDirection ?? 'asc';
+    this.siteSort = saved?.siteSort ?? 'city'; this.siteDirection = saved?.siteDirection ?? 'asc';
     this.mode = 'details';
     this.tab = 'details';
     this.error = '';
@@ -187,7 +211,17 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  close(): void { this.mode = 'list'; this.contactMode = 'list'; this.siteMode = 'list'; this.load(this.page); }
+  close(): void { this.rememberDetailPages(); this.mode = 'list'; this.contactMode = 'list'; this.siteMode = 'list'; this.load(this.page); }
+
+  private rememberDetailPages(): void {
+    if (!this.selected) return;
+    this.navigationState.save(`college:${this.selected.collegeId}`, {
+      contactPage: this.contactPage, sitePage: this.sitePage,
+      contactLimit: this.contactPageSizeCtrl.value, siteLimit: this.sitePageSizeCtrl.value,
+      contactSort: this.contactSort, contactDirection: this.contactDirection,
+      siteSort: this.siteSort, siteDirection: this.siteDirection,
+    });
+  }
 
   save(close = false): void {
     if (this.collegeForm.invalid) {

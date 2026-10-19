@@ -1,3 +1,5 @@
+import { PageJumpComponent } from '../../../shared/components/page-jump/page-jump.component';
+import { ListNavigationStateService } from '../../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
 import {
   AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, inject,
@@ -29,7 +31,7 @@ import type {
 
 @Component({
   selector: 'app-student-operations-students-page',
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
+  imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
   templateUrl: './student-operations-students.page.html',
   styleUrls: ['./student-operations-students.page.css'],
 })
@@ -38,6 +40,8 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private readonly managerApi = inject(ManagerService);
   private readonly fb = inject(FormBuilder);
   private readonly destroy$ = new Subject<void>();
+  private readonly navigationState = inject(ListNavigationStateService);
+  private restoredInvoicePage = 1;
   private observer?: IntersectionObserver;
   private syncPollTimer: ReturnType<typeof setTimeout> | null = null;
   private syncPollAttempt = 0;
@@ -172,6 +176,20 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
 
   ngOnInit(): void {
+    const saved = this.navigationState.read<{
+      page: number; limit: string; search: string; status: string; track: string;
+      from: string; to: string; sort: XeroStudentInvoiceSort; direction: 'asc' | 'desc';
+    }>('payments-and-control');
+    if (saved) {
+      this.restoredInvoicePage = saved.page;
+      this.invoicePageSize.setValue(saved.limit, { emitEvent: false });
+      this.search.setValue(saved.search, { emitEvent: false });
+      this.invoiceStatus.setValue(saved.status, { emitEvent: false });
+      this.paymentTrack.setValue(saved.track, { emitEvent: false });
+      this.invoiceSort = saved.sort; this.invoiceSortDirection = saved.direction;
+      this.appliedInvoiceDateFrom = saved.from; this.appliedInvoiceDateTo = saved.to;
+      if (saved.from && saved.to) this.invoiceDateRange.setValue([new Date(`${saved.from}T00:00:00`), new Date(`${saved.to}T00:00:00`)], { emitEvent: false });
+    }
     this.privacyToastTimer = setTimeout(() => {
       this.privacyNoteClosing = true;
       this.privacyToastCloseTimer = setTimeout(() => { this.privacyNoteVisible = false; }, 220);
@@ -196,6 +214,12 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   ngAfterViewInit(): void { queueMicrotask(() => this.setupInfiniteScroll()); }
 
   ngOnDestroy(): void {
+    this.navigationState.save('payments-and-control', {
+      page: this.xeroInvoices?.page ?? this.restoredInvoicePage, limit: this.invoicePageSize.value,
+      search: this.search.value, status: this.invoiceStatus.value, track: this.paymentTrack.value,
+      from: this.appliedInvoiceDateFrom, to: this.appliedInvoiceDateTo,
+      sort: this.invoiceSort, direction: this.invoiceSortDirection,
+    });
     this.observer?.disconnect();
     this.invoiceRequestSubscription?.unsubscribe();
     if (this.syncPollTimer) clearTimeout(this.syncPollTimer);
@@ -529,7 +553,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
         if (this.xeroConnection && !this.xeroNeedsReconnect) {
           this.loadXeroSyncStatus();
           this.loadPaymentTracks();
-          this.loadXeroInvoices(1);
+          this.loadXeroInvoices(this.xeroInvoices?.page ?? this.restoredInvoicePage);
         } else {
           this.loadingXeroContext = false;
           if (!this.xeroConnection) this.loadPage(1, true);
@@ -640,6 +664,8 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (result) => {
         if (version !== this.invoiceRequestVersion) return;
+        const lastPage = Math.max(1, result.totalPages);
+        if (result.page > lastPage) { this.loadXeroInvoices(lastPage); return; }
         this.xeroInvoices = result;
         this.loadingInvoices = false;
         this.loadingXeroContext = false;

@@ -146,8 +146,8 @@
     </div>
     <footer class="pagination" aria-label="Students pagination">
       <span>Showing {{ pageStart }}–{{ pageEnd }} of {{ total }} students</span>
-      <app-manager-select class="page-size" [formControl]="pageSize" [options]="pageSizeOptions"></app-manager-select>
-      <div class="page-buttons"><button type="button" (click)="goToPage(1)" [disabled]="currentPage <= 1 || loading" aria-label="First page">«</button><button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1 || loading" aria-label="Previous page">‹</button><span>Page {{ currentPage }} of {{ totalPages }}</span><button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages || loading" aria-label="Next page">›</button><button type="button" (click)="goToPage(totalPages)" [disabled]="currentPage >= totalPages || loading" aria-label="Last page">»</button></div>
+      <app-manager-select panelDirection="up" ariaLabel="Records per page" class="page-size" [formControl]="pageSize" [options]="pageSizeOptions"></app-manager-select>
+      <div class="page-buttons"><button type="button" (click)="goToPage(1)" [disabled]="currentPage <= 1 || loading" aria-label="First page">«</button><button type="button" (click)="goToPage(currentPage - 1)" [disabled]="currentPage <= 1 || loading" aria-label="Previous page">‹</button><app-page-jump [page]="currentPage" [totalPages]="totalPages" [disabled]="loading" label="Page number" (pageChange)="goToPage($event)"></app-page-jump><button type="button" (click)="goToPage(currentPage + 1)" [disabled]="currentPage >= totalPages || loading" aria-label="Next page">›</button><button type="button" (click)="goToPage(totalPages)" [disabled]="currentPage >= totalPages || loading" aria-label="Last page">»</button></div>
     </footer>
   </section>
 </section>

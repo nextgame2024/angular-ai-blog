@@ -18,7 +18,7 @@
   </button>
 
   @if (open) {
-    <div class="select-menu">
+    <div class="select-menu" [style]="menuStyles" [class.opens-up]="panelDirection === 'up'">
       @if (searchable) {
         <input class="select-search" type="search" [value]="searchTerm" (input)="searchTerm = $any($event.target).value" (click)="$event.stopPropagation()" placeholder="Search…" aria-label="Search options" />
       }

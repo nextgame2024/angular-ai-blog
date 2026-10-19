@@ -506,7 +506,7 @@
   font-size: 0.82rem;
 }
 .page-size { width: 145px; }
-.page-buttons { display: flex; align-items: center; gap: 0.35rem; }
+.page-buttons { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 0.35rem; }
 .page-buttons button {
   width: 34px;
   height: 34px;

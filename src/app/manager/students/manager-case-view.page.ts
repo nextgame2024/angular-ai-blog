@@ -1,3 +1,5 @@
+import { PageJumpComponent } from '../../shared/components/page-jump/page-jump.component';
+import { ListNavigationStateService } from '../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -18,7 +20,7 @@ import type {
 
 @Component({
   selector: 'app-manager-case-view',
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
+  imports: [PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
   templateUrl: './manager-case-view.page.html',
   styleUrls: ['./manager-case-view.page.css'],
 })
@@ -27,6 +29,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly destroy$ = new Subject<void>();
+  private readonly navigationState = inject(ListNavigationStateService);
 
   readonly Math = Math;
   case: StudentCaseDetail | null = null;
@@ -159,9 +162,10 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       if (this.route.snapshot?.queryParamMap?.get('edit') === '1' && this.canEditCases) this.beginEdit(detail.caseId);
       if (!detail.studentName) this.loadStudentIdentity(detail);
       this.loadRelated(1);
-      this.loadInvoices(1);
-      this.loadDocuments(1);
-      this.loadActivity(1);
+      const pages = this.navigationState.read<{ invoices: number; documents: number; activity: number }>(`case-pages:${detail.caseId}`);
+      this.loadInvoices(pages?.invoices ?? 1);
+      this.loadDocuments(pages?.documents ?? 1);
+      this.loadActivity(pages?.activity ?? 1);
     });
   }
 
@@ -358,7 +362,12 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.loadingInvoices = true;
     this.invoiceError = '';
     this.api.caseInvoices(id, page).pipe(takeUntil(this.destroy$)).subscribe({
-      next: result => { if (id === this.currentId) { this.invoices = result; this.loadingInvoices = false; } },
+      next: result => { if (id === this.currentId) {
+        this.loadingInvoices = false;
+        const last = Math.max(1, Math.ceil(result.total / result.limit));
+        if (result.page > last) { this.loadInvoices(last); return; }
+        this.invoices = result; this.rememberCasePage('invoices', result.page);
+      } },
       error: () => { if (id === this.currentId) { this.invoiceError = 'Invoices could not be loaded.'; this.loadingInvoices = false; } },
     });
   }
@@ -368,7 +377,12 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.loadingDocuments = true;
     this.documentError = '';
     this.api.caseDocuments(id, page).pipe(takeUntil(this.destroy$)).subscribe({
-      next: result => { if (id === this.currentId) { this.documents = result; this.loadingDocuments = false; } },
+      next: result => { if (id === this.currentId) {
+        this.loadingDocuments = false;
+        const last = Math.max(1, Math.ceil(result.total / result.limit));
+        if (result.page > last) { this.loadDocuments(last); return; }
+        this.documents = result; this.rememberCasePage('documents', result.page);
+      } },
       error: () => { if (id === this.currentId) { this.documentError = 'Documents could not be loaded.'; this.loadingDocuments = false; } },
     });
   }
@@ -378,7 +392,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.loadingActivity = true;
     this.activityError = '';
     this.api.caseActivity(id, page).pipe(takeUntil(this.destroy$)).subscribe({
-      next: result => { if (id === this.currentId) { this.activity = result; this.loadingActivity = false; } },
+      next: result => { if (id === this.currentId) { this.activity = result; this.loadingActivity = false; this.rememberCasePage('activity', result.page); } },
       error: () => { if (id === this.currentId) { this.activityError = 'Activity could not be loaded.'; this.loadingActivity = false; } },
     });
   }
@@ -450,6 +464,11 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         }
       },
     });
+  }
+
+  private rememberCasePage(kind: 'invoices' | 'documents' | 'activity', page: number): void {
+    const key = `case-pages:${this.currentId}`;
+    this.navigationState.save(key, { ...this.navigationState.read<Partial<Record<'invoices' | 'documents' | 'activity', number>>>(key), [kind]: page });
   }
 
   private reset(): void {

@@ -1,3 +1,5 @@
+import { PageJumpComponent } from '../../shared/components/page-jump/page-jump.component';
+import { ListNavigationStateService } from '../../shared/services/list-navigation-state.service';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -19,6 +21,7 @@ import {
 @Component({
   selector: 'app-manager-sync-users',
   imports: [
+    PageJumpComponent,
     CommonModule,
     RouterModule,
     ReactiveFormsModule,
@@ -30,6 +33,7 @@ import {
 })
 export class ManagerSyncUsersPageComponent implements OnInit, OnDestroy {
   private api = inject(ManagerSyncUsersService);
+  private readonly navigationState = inject(ListNavigationStateService);
   data: SyncOverview | null = null;
   loading = true;
   saving = false;
@@ -72,9 +76,16 @@ export class ManagerSyncUsersPageComponent implements OnInit, OnDestroy {
     return Math.max(1, Math.ceil((this.data?.total ?? 0) / 25));
   }
   ngOnInit() {
+    const saved = this.navigationState.read<{ page: number; status: string; search: string }>('sync-users');
+    if (saved) {
+      this.page = saved.page;
+      this.status.setValue(saved.status, { emitEvent: false });
+      this.search.setValue(saved.search, { emitEvent: false });
+    }
     void this.load();
   }
   ngOnDestroy() {
+    this.navigationState.save('sync-users', { page: this.page, status: this.status.value, search: this.search.value });
     this.destroyed = true;
     this.request++;
     clearTimeout(this.poll);
@@ -114,7 +125,11 @@ export class ManagerSyncUsersPageComponent implements OnInit, OnDestroy {
     void this.load();
   }
   move(delta: number) {
-    this.page += delta;
+    this.goToPage(this.page + delta);
+  }
+  goToPage(page: number) {
+    if (this.loading || !Number.isInteger(page) || page < 1 || page > this.pages || page === this.page) return;
+    this.page = page;
     void this.load();
   }
   async run(mode: 'preview' | 'apply') {

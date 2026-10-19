@@ -171,11 +171,11 @@
         </div>
         <footer class="invoice-pagination" aria-label="Xero invoice pagination">
           <span>Showing {{ invoicePageStart }}–{{ invoicePageEnd }} of {{ xeroInvoices.total }}</span>
-          <app-manager-select class="page-size" [formControl]="invoicePageSize" [options]="invoicePageSizeOptions"></app-manager-select>
+          <app-manager-select panelDirection="up" ariaLabel="Records per page" class="page-size" [formControl]="invoicePageSize" [options]="invoicePageSizeOptions"></app-manager-select>
           <div class="page-buttons">
             <button type="button" (click)="goToInvoicePage(1)" [disabled]="xeroInvoices.page <= 1 || loadingInvoices" aria-label="First page">«</button>
             <button type="button" (click)="goToInvoicePage(xeroInvoices.page - 1)" [disabled]="xeroInvoices.page <= 1 || loadingInvoices" aria-label="Previous page">‹</button>
-            <span>Page {{ xeroInvoices.page }} of {{ xeroInvoices.totalPages }}</span>
+            <app-page-jump [page]="xeroInvoices.page" [totalPages]="xeroInvoices.totalPages" [disabled]="loadingInvoices" label="Page number" (pageChange)="goToInvoicePage($event)"></app-page-jump>
             <button type="button" (click)="goToInvoicePage(xeroInvoices.page + 1)" [disabled]="xeroInvoices.page >= xeroInvoices.totalPages || loadingInvoices" aria-label="Next page">›</button>
             <button type="button" (click)="goToInvoicePage(xeroInvoices.totalPages)" [disabled]="xeroInvoices.page >= xeroInvoices.totalPages || loadingInvoices" aria-label="Last page">»</button>
           </div>

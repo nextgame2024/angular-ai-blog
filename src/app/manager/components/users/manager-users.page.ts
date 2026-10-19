@@ -1,5 +1,7 @@
+import { PageJumpComponent } from '../../../shared/components/page-jump/page-jump.component';
+import { ListNavigationStateService } from '../../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject } from '@angular/core';
 import {
   FormBuilder,
   FormControl,
@@ -50,12 +52,13 @@ import { StudentOperationsService } from '../../student-operations/student-opera
 
 @Component({
     selector: 'app-manager-users-page',
-    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+    imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
     templateUrl: './manager-users.page.html',
     styleUrls: ['./manager-users.page.css']
 })
 export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  private readonly navigationState = inject(ListNavigationStateService);
   private readonly superAdminId = 'c2dad143-077c-4082-92f0-47805601db3b';
 
   loading$ = this.store.select(selectManagerUsersLoading);
@@ -205,6 +208,9 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    const saved = this.navigationState.read<{ page: number; limit: number; sort: BmUserSort; direction: BmUserSortDirection }>('users');
+    if (saved) { this.userSort = saved.sort; this.userSortDirection = saved.direction; }
+    let initialSearch = true;
     this.store
       .select(selectCurrentUser)
       .pipe(takeUntil(this.destroy$))
@@ -230,7 +236,8 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
       if (this.searchCtrl.value !== (query || '')) {
         this.searchCtrl.setValue(query || '', { emitEvent: false });
       }
-      this.store.dispatch(ManagerActions.loadUsers({ page: 1, sort: this.userSort, direction: this.userSortDirection }));
+      this.store.dispatch(ManagerActions.loadUsers({ page: initialSearch ? (saved?.page ?? this.currentPage) : 1, limit: initialSearch ? (saved?.limit ?? this.pageLimit) : this.pageLimit, sort: this.userSort, direction: this.userSortDirection }));
+      initialSearch = false;
     });
 
     this.searchCtrl.valueChanges
@@ -309,6 +316,7 @@ export class ManagerUsersPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.navigationState.save('users', { page: this.currentPage, limit: this.pageLimit, sort: this.userSort, direction: this.userSortDirection });
     this.destroy$.next();
     this.destroy$.complete();
     this.revokePreview();

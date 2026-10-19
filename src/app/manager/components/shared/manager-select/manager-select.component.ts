@@ -33,6 +33,8 @@ export class ManagerSelectComponent implements ControlValueAccessor {
   @Input() disabled = false;
   @Input() searchable = false;
   @Input() ariaLabel = '';
+  @Input() panelDirection: 'down' | 'up' = 'down';
+  menuStyles: Record<string, string> = {};
 
   @HostBinding('class.is-disabled') get isDisabled(): boolean {
     return this.disabled;
@@ -62,7 +64,15 @@ export class ManagerSelectComponent implements ControlValueAccessor {
     event?.stopPropagation();
     if (this.disabled) return;
     this.open = !this.open;
-    if (this.open) this.searchTerm = '';
+    if (this.open) {
+      this.searchTerm = '';
+      const rect = this.hostRef.nativeElement.getBoundingClientRect();
+      this.menuStyles = this.panelDirection === 'up' ? {
+        position: 'fixed', top: 'auto', bottom: `${window.innerHeight - rect.top + 6}px`,
+        left: `${rect.left}px`, right: 'auto', width: `${rect.width}px`,
+        maxHeight: `${Math.max(0, Math.min(220, rect.top - 12))}px`, zIndex: '1100',
+      } : {};
+    }
     if (!this.open) this.onTouched();
   }
 
@@ -103,4 +113,9 @@ export class ManagerSelectComponent implements ControlValueAccessor {
       this.onTouched();
     }
   }
+
+  @HostListener('window:resize')
+  @HostListener('window:scroll')
+  @HostListener('keydown.escape')
+  closeMenu(): void { if (this.open) { this.open = false; this.onTouched(); } }
 }

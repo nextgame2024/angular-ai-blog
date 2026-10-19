@@ -115,7 +115,7 @@
               }
             </tbody></table></div>
           } @else { <p class="empty-note">{{ discoveryPending ? 'No documents discovered yet.' : data.discoveryRequested ? 'No documents were found for this case.' : 'Document discovery has not been requested for this case.' }}</p> }
-          @if (data.total > data.limit) { <div class="pager"><span>Page {{ data.page }} of {{ Math.ceil(data.total / data.limit) }}</span><button type="button" class="secondary-button compact" (click)="loadDocuments(data.page - 1)" [disabled]="loadingDocuments || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadDocuments(data.page + 1)" [disabled]="loadingDocuments || data.page * data.limit >= data.total">Next</button></div> }
+          @if (data.total > data.limit) { <div class="pager"><app-page-jump [page]="data.page" [totalPages]="Math.ceil(data.total / data.limit)" [disabled]="loadingDocuments" label="Documents page number" (pageChange)="loadDocuments($event)"></app-page-jump><button type="button" class="secondary-button compact" (click)="loadDocuments(data.page - 1)" [disabled]="loadingDocuments || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadDocuments(data.page + 1)" [disabled]="loadingDocuments || data.page * data.limit >= data.total">Next</button></div> }
         }
       </section>
 
@@ -131,7 +131,7 @@
               }
             </tbody></table></div>
           } @else { <p class="empty-note">No invoices are linked to this case.</p> }
-          @if (data.total > data.limit) { <div class="pager"><span>Page {{ data.page }} of {{ Math.ceil(data.total / data.limit) }}</span><button type="button" class="secondary-button compact" (click)="loadInvoices(data.page - 1)" [disabled]="loadingInvoices || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadInvoices(data.page + 1)" [disabled]="loadingInvoices || data.page * data.limit >= data.total">Next</button></div> }
+          @if (data.total > data.limit) { <div class="pager"><app-page-jump [page]="data.page" [totalPages]="Math.ceil(data.total / data.limit)" [disabled]="loadingInvoices" label="Invoices page number" (pageChange)="loadInvoices($event)"></app-page-jump><button type="button" class="secondary-button compact" (click)="loadInvoices(data.page - 1)" [disabled]="loadingInvoices || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadInvoices(data.page + 1)" [disabled]="loadingInvoices || data.page * data.limit >= data.total">Next</button></div> }
         }
       </section>
 
@@ -152,7 +152,7 @@
         @if (activity; as data) {
           @if (data.activity.length) { <div class="activity-scroll" role="region" aria-label="Recent case activity" tabindex="0"><ol class="activity-list">@for (event of data.activity; track event.activityId) { <li><span class="activity-dot" aria-hidden="true"></span><div><strong>{{ event.summary }}</strong><small>{{ dateTimeLabel(event.createdAt) }}</small></div></li> }</ol></div> }
           @else { <p class="empty-note">No activity has been recorded for this case.</p> }
-          @if (data.page > 1 || data.activity.length === data.limit) { <div class="pager"><span>Page {{ data.page }}</span><button type="button" class="secondary-button compact" (click)="loadActivity(data.page - 1)" [disabled]="loadingActivity || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadActivity(data.page + 1)" [disabled]="loadingActivity || data.activity.length < data.limit">Next</button></div> }
+          @if (data.page > 1 || data.activity.length === data.limit) { <div class="pager"><app-page-jump [page]="data.page" [totalPages]="null" [disabled]="loadingActivity" label="Activity page number" (pageChange)="loadActivity($event)"></app-page-jump><button type="button" class="secondary-button compact" (click)="loadActivity(data.page - 1)" [disabled]="loadingActivity || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadActivity(data.page + 1)" [disabled]="loadingActivity || data.activity.length < data.limit">Next</button></div> }
         }
       </section>
       <section class="card case-summary case-secondary-card" aria-labelledby="case-summary-heading">
