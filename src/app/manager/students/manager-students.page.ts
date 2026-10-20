@@ -80,6 +80,7 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
   dateError = '';
   private appliedFrom = '';
   private appliedTo = '';
+  private workspaceRequestStarted = false;
 
   get rows(): StudentRegisterRow[] { return this.result?.students ?? []; }
   get currentPage(): number { return this.query$.value.page; }
@@ -112,10 +113,6 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
       this.period.setValue('custom', { emitEvent: false });
       this.dateRange.setValue([new Date(`${query.from}T00:00:00`), new Date(`${query.to}T00:00:00`)], { emitEvent: false });
     }
-    this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (workspace) => { this.workspace = workspace; },
-      error: () => { this.workspace = null; },
-    });
     this.query$.pipe(
       distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
       switchMap((query) => {
@@ -143,6 +140,15 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
     ).subscribe((result) => {
       this.loading = false;
       if (!result) return;
+      if (result.workspace) this.workspace = result.workspace;
+      else if (!this.workspaceRequestStarted && !this.workspace) {
+        // Compatibility for an older Runtime during independent deployments.
+        this.workspaceRequestStarted = true;
+        this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
+          next: workspace => { this.workspace = workspace; },
+          error: () => { this.workspace = null; },
+        });
+      }
       const lastPage = Math.max(1, Math.ceil(result.total / result.limit));
       if (result.page > lastPage) { this.patchQuery({ page: lastPage }); return; }
       this.result = result;

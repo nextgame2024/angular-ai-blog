@@ -24,9 +24,10 @@ import type {
   XeroStudentCandidateResult,
   XeroStudentInvoiceDetail,
   XeroStudentInvoiceResult,
-  XeroStudentInvoiceSort,
   XeroStudentSyncRun,
   XeroStudentSyncStatus,
+  PaymentsRegisterBootstrap,
+  XeroStudentInvoiceQuery,
 } from './student-operations.types';
 
 @Injectable({ providedIn: 'root' })
@@ -45,6 +46,12 @@ export class StudentOperationsService {
   workspace(): Observable<StudentOperationsWorkspace> {
     return this.http.get<StudentOperationsWorkspace>(this.workspaceBase, {
       headers: this.headers(),
+    });
+  }
+
+  paymentsRegister(input: XeroStudentInvoiceQuery): Observable<PaymentsRegisterBootstrap> {
+    return this.http.get<PaymentsRegisterBootstrap>(`${this.workspaceBase}/payments-register`, {
+      headers: this.headers(), params: this.invoiceParams(input),
     });
   }
 
@@ -278,18 +285,15 @@ export class StudentOperationsService {
 
   xeroStudentInvoices(
     connectionId: string,
-    input: {
-      page: number;
-      limit: number;
-      q?: string;
-      status?: string;
-      dateFrom?: string;
-      dateTo?: string;
-      paymentTrack?: string;
-      sort?: XeroStudentInvoiceSort;
-      direction?: 'asc' | 'desc';
-    },
+    input: XeroStudentInvoiceQuery,
   ): Observable<XeroStudentInvoiceResult> {
+    return this.http.get<XeroStudentInvoiceResult>(
+      `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-invoices`,
+      { headers: this.headers(), params: this.invoiceParams(input) },
+    );
+  }
+
+  private invoiceParams(input: XeroStudentInvoiceQuery): HttpParams {
     let params = new HttpParams().set('page', String(input.page)).set('limit', String(input.limit));
     if (input.q) params = params.set('q', input.q);
     if (input.status) params = params.set('status', input.status);
@@ -298,10 +302,7 @@ export class StudentOperationsService {
     if (input.paymentTrack) params = params.set('paymentTrack', input.paymentTrack);
     if (input.sort) params = params.set('sort', input.sort);
     if (input.direction) params = params.set('direction', input.direction);
-    return this.http.get<XeroStudentInvoiceResult>(
-      `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-invoices`,
-      { headers: this.headers(), params },
-    );
+    return params;
   }
 
   xeroStudentInvoicePaymentTracks(connectionId: string): Observable<{ paymentTracks: string[] }> {

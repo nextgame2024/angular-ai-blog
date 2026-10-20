@@ -43,6 +43,18 @@ describe('ManagerStudentsPageComponent', () => {
     expect(actions[1].disabled).toBeTrue();
   });
 
+  it('uses the authorized register context without requesting workspace again', () => {
+    api.studentRegister.and.returnValue(of({ ...emptyResult, workspace: {
+      packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
+      role: 'operations', authorizationRevision: 1, workspaceRoutes: ['students'],
+    } }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.canManage).toBeTrue();
+    expect(api.workspace).not.toHaveBeenCalled();
+    fixture.componentInstance.status.setValue('in_progress');
+    expect(api.workspace).not.toHaveBeenCalled();
+  });
+
   it('jumps to page 20 and restores its filters, size and sorting after leaving the list', fakeAsync(() => {
     api.studentRegister.and.callFake(query => of({ ...emptyResult, page: query.page, limit: query.limit, total: 1068 }));
     fixture.detectChanges();

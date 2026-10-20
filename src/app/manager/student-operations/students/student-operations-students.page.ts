@@ -7,7 +7,7 @@ import {
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { DatePickerModule } from 'primeng/datepicker';
-import { Subject, Subscription, debounceTime, distinctUntilChanged, forkJoin, map, merge, takeUntil } from 'rxjs';
+import { Subject, Subscription, catchError, debounceTime, distinctUntilChanged, forkJoin, map, merge, takeUntil, throwError } from 'rxjs';
 import { ManagerService } from '../../services/manager.service';
 import {
   ManagerSelectComponent, type ManagerSelectOption,
@@ -26,6 +26,7 @@ import type {
   XeroStudentInvoiceDetail,
   XeroStudentInvoiceResult,
   XeroStudentInvoiceSort,
+  XeroStudentInvoiceQuery,
   XeroStudentSyncStatus,
 } from '../student-operations.types';
 
@@ -198,6 +199,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.search.valueChanges.pipe(
       debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$),
     ).subscribe(() => {
+      if (!this.workspace || this.loadingXeroContext) return;
       if (!this.xeroConnection) this.resetAndLoad();
       if (this.xeroConnection) this.loadXeroInvoices(1);
     });
@@ -470,15 +472,36 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     const version = ++this.requestVersion;
     this.loadingInitial = true;
     this.error = '';
-    this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (workspace) => {
+    const initialQuery = this.invoiceQuery(this.restoredInvoicePage);
+    this.api.paymentsRegister(initialQuery).pipe(
+      // Allow frontend and Runtime releases to roll out independently. Never
+      // retry access failures through the legacy path.
+      catchError(error => error?.status === 404
+        ? this.api.workspace().pipe(map(workspace => ({ workspace, legacy: true as const })))
+        : throwError(() => error)),
+      takeUntil(this.destroy$),
+    ).subscribe({
+      next: (context) => {
         if (version !== this.requestVersion) return;
+        const workspace = context.workspace;
         this.workspace = workspace;
         if (workspace.role === 'chief_executive') {
-          // TRUST invoices are the register for this role. Do not wait on the
-          // unrelated runtime Students/dashboard endpoints before starting it.
           this.loadingInitial = false;
-          this.loadXeroContext();
+          if ('legacy' in context) { this.loadXeroContext(); return; }
+          this.xeroConnection = context.connection;
+          this.loadingXeroContext = false;
+          if (!this.xeroConnection) {
+            if (context.connectionIssue === 'ambiguous') this.xeroError = 'Choose the Trust organisation in Company before refreshing student data.';
+            this.loadPage(1, true);
+            return;
+          }
+          if (this.xeroNeedsReconnect) return;
+          if (context.invoices && JSON.stringify(initialQuery) === JSON.stringify(this.invoiceQuery(this.restoredInvoicePage))) {
+            this.applyXeroInvoices(context.invoices);
+          } else this.loadXeroInvoices(1);
+          // Secondary freshness and filter metadata must not hold up the rows.
+          this.loadXeroSyncStatus();
+          this.loadPaymentTracks();
           return;
         }
         this.loadingXeroContext = false;
@@ -651,7 +674,22 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.invoiceRequestSubscription?.unsubscribe();
     const version = ++this.invoiceRequestVersion;
     this.loadingInvoices = true;
-    this.invoiceRequestSubscription = this.api.xeroStudentInvoices(this.xeroConnection.connectionId, {
+    this.invoiceRequestSubscription = this.api.xeroStudentInvoices(this.xeroConnection.connectionId, this.invoiceQuery(page)).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (result) => {
+        if (version !== this.invoiceRequestVersion) return;
+        this.applyXeroInvoices(result);
+      },
+      error: () => {
+        if (version !== this.invoiceRequestVersion) return;
+        this.loadingInvoices = false;
+        this.loadingXeroContext = false;
+        this.xeroError = 'Stored Xero invoices could not be loaded.';
+      },
+    });
+  }
+
+  private invoiceQuery(page: number): XeroStudentInvoiceQuery {
+    return {
       page,
       limit: Number(this.invoicePageSize.value),
       q: this.search.value.trim() || undefined,
@@ -661,22 +699,15 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
       paymentTrack: this.paymentTrack.value || undefined,
       sort: this.invoiceSort,
       direction: this.invoiceSortDirection,
-    }).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (result) => {
-        if (version !== this.invoiceRequestVersion) return;
-        const lastPage = Math.max(1, result.totalPages);
-        if (result.page > lastPage) { this.loadXeroInvoices(lastPage); return; }
-        this.xeroInvoices = result;
-        this.loadingInvoices = false;
-        this.loadingXeroContext = false;
-      },
-      error: () => {
-        if (version !== this.invoiceRequestVersion) return;
-        this.loadingInvoices = false;
-        this.loadingXeroContext = false;
-        this.xeroError = 'Stored Xero invoices could not be loaded.';
-      },
-    });
+    };
+  }
+
+  private applyXeroInvoices(result: XeroStudentInvoiceResult): void {
+    const lastPage = Math.max(1, result.totalPages);
+    if (result.page > lastPage) { this.loadXeroInvoices(lastPage); return; }
+    this.xeroInvoices = result;
+    this.loadingInvoices = false;
+    this.loadingXeroContext = false;
   }
 
   private applyInvoiceDateRange(range: Date[] | null): void {

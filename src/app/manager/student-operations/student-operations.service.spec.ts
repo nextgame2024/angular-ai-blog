@@ -50,6 +50,20 @@ describe('StudentOperationsService', () => {
     request.flush({ packId: 'student-operations' });
   });
 
+  it('loads the initial Payments register without a browser-selected tenant or connection', () => {
+    service.paymentsRegister({ page: 4, limit: 100, q: 'ATI', status: 'DRAFT', dateFrom: '2026-01-01', dateTo: '2026-12-31', paymentTrack: 'Pending', sort: 'date', direction: 'desc' }).subscribe();
+    const request = http.expectOne(candidate => candidate.url.endsWith('/workspace/payments-register'));
+    expect(request.request.method).toBe('GET');
+    expect(request.request.headers.get('Authorization')).toBe('Token business-manager-token');
+    expect(request.request.params.get('page')).toBe('4');
+    expect(request.request.params.get('limit')).toBe('100');
+    expect(request.request.params.get('paymentTrack')).toBe('Pending');
+    expect(request.request.params.get('dateFrom')).toBe('2026-01-01');
+    expect(request.request.params.has('tenantId')).toBeFalse();
+    expect(request.request.params.has('connectionId')).toBeFalse();
+    request.flush({ workspace: {}, connection: null, invoices: null, connectionIssue: 'unavailable' });
+  });
+
   it('loads dashboard context and metrics with one request', () => {
     service.dashboard().subscribe();
     const request = http.expectOne((candidate) => candidate.url.endsWith(

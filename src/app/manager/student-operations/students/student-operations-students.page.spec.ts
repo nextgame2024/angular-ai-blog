@@ -9,6 +9,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
   const nativeIntersectionObserver = globalThis.IntersectionObserver;
   let fixture: ComponentFixture<StudentOperationsStudentsPageComponent>;
   const api = {
+    paymentsRegister: jasmine.createSpy().and.returnValue(throwError(() => ({ status: 404 }))),
     workspace: jasmine.createSpy().and.returnValue(of({
       packId: 'student-operations', version: '0.1.0', tenantId: 'tenant-1',
       role: 'operations', authorizationRevision: 1, workspaceRoutes: ['students'],
@@ -44,6 +45,8 @@ describe('StudentOperationsStudentsPageComponent', () => {
   };
 
   beforeEach(async () => {
+    api.paymentsRegister.calls.reset();
+    api.paymentsRegister.and.returnValue(throwError(() => ({ status: 404 })));
     api.workspace.calls.reset();
     api.students.calls.reset();
     api.advisors.calls.reset();
@@ -93,6 +96,47 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(text).toContain('Create');
     expect(text).not.toContain('synthetic');
   });
+
+  it('renders the initial Trust register from one request without waiting for secondary metadata', () => {
+    api.paymentsRegister.and.returnValue(of({
+      workspace: { role: 'chief_executive' },
+      connection: { connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active', organisationRole: 'trust', missingStudentDiscoveryScopes: [] },
+      invoices: { invoices: [{ xeroInvoiceId: 'invoice-1', invoiceNumber: 'INV-1', studentName: 'Student', status: 'draft', amountDue: 100, amountPaid: 0, currencyCode: 'AUD' }], page: 1, limit: 25, total: 1, totalPages: 1 },
+      connectionIssue: null,
+    }));
+    api.xeroStudentSyncStatus.and.returnValue(new Subject());
+    api.xeroStudentInvoicePaymentTracks.and.returnValue(new Subject());
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('INV-1');
+    expect(api.paymentsRegister).toHaveBeenCalledWith(jasmine.objectContaining({ page: 1, limit: 25 }));
+    expect(api.workspace).not.toHaveBeenCalled();
+    expect(api.xeroStatus).not.toHaveBeenCalled();
+    expect(api.xeroStudentInvoices).not.toHaveBeenCalled();
+    expect(api.students).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.loadingInvoices).toBeFalse();
+  });
+
+  it('does not fall back to older routes after an access failure', () => {
+    api.paymentsRegister.and.returnValue(throwError(() => ({ status: 403 })));
+    fixture.detectChanges();
+    expect(api.workspace).not.toHaveBeenCalled();
+    expect(api.xeroStatus).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('does not have Student Operations workspace access');
+  });
+
+  it('uses current filters when they change before the initial register arrives', fakeAsync(() => {
+    const initial = new Subject<any>();
+    api.paymentsRegister.and.returnValue(initial);
+    fixture.detectChanges();
+    fixture.componentInstance.search.setValue('Updated search'); tick(300);
+    expect(api.students).not.toHaveBeenCalled();
+    initial.next({ workspace: { role: 'chief_executive' },
+      connection: { connectionId: 'connection-1', status: 'active', missingStudentDiscoveryScopes: [] },
+      invoices: { invoices: [], page: 1, limit: 25, total: 0, totalPages: 0 }, connectionIssue: null });
+    expect(api.xeroStudentInvoices).toHaveBeenCalledWith('connection-1', jasmine.objectContaining({ page: 1, q: 'Updated search' }));
+    expect(api.paymentsRegister).toHaveBeenCalledTimes(1);
+    initial.complete(); fixture.destroy();
+  }));
 
   it('keeps advisors read-only by hiding student write actions', () => {
     api.workspace.and.returnValue(of({

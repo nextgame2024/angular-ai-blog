@@ -113,6 +113,7 @@ export interface StudentRegisterRow {
 }
 
 export interface StudentRegisterResult {
+  workspace?: StudentOperationsWorkspace;
   students: StudentRegisterRow[];
   page: number;
   limit: number;
@@ -312,6 +313,25 @@ export interface XeroStudentInvoiceResult {
     awaitingPayment: number;
     paid: number;
   };
+}
+
+export interface PaymentsRegisterBootstrap {
+  workspace: StudentOperationsWorkspace;
+  connection: XeroConnectionSummary | null;
+  invoices: XeroStudentInvoiceResult | null;
+  connectionIssue: 'ambiguous' | 'unavailable' | 'scope_missing' | null;
+}
+
+export interface XeroStudentInvoiceQuery {
+  page: number;
+  limit: number;
+  q?: string;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  paymentTrack?: string;
+  sort?: XeroStudentInvoiceSort;
+  direction?: 'asc' | 'desc';
 }
 
 export interface XeroStudentSyncRun {
