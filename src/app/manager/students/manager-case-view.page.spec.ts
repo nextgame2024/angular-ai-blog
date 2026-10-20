@@ -83,6 +83,59 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelector('.progress-card')?.closest('.workspace-main')).not.toBeNull();
   });
 
+  it('distinguishes queued discovery, refreshes metadata, and stops after completion', fakeAsync(() => {
+    const pending = { documents: [], discovery: [{ status: 'queued', count: 2 }], discoveryRequested: true, total: 0, page: 1, limit: 25 };
+    api.caseDocuments.and.returnValue(of(pending));
+    spyOnProperty(document, 'hidden', 'get').and.returnValue(false);
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('2 document sources waiting');
+    expect(fixture.nativeElement.textContent).not.toContain('still running');
+    api.caseDocuments.and.returnValue(of({ ...pending, discovery: [{ status: 'succeeded', count: 2 }] }));
+    tick(120000); fixture.detectChanges();
+    expect(api.caseDocuments).toHaveBeenCalledTimes(2);
+    expect(fixture.nativeElement.textContent).toContain('No documents were found');
+    tick(120000); expect(api.caseDocuments).toHaveBeenCalledTimes(2);
+    fixture.destroy();
+  }));
+
+  it('does not poll hidden pages or after leaving the case', fakeAsync(() => {
+    api.caseDocuments.and.returnValue(of({ documents: [], discovery: [{ status: 'processing', count: 1 }], discoveryRequested: true, total: 0, page: 1, limit: 25 }));
+    spyOnProperty(document, 'hidden', 'get').and.returnValue(true);
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+    fixture.detectChanges(); tick(30000);
+    expect(api.caseDocuments).toHaveBeenCalledTimes(1);
+    fixture.destroy(); tick(120000);
+    expect(api.caseDocuments).toHaveBeenCalledTimes(1);
+  }));
+
+  it('does not report an empty completed discovery when sources failed', () => {
+    api.caseDocuments.and.returnValue(of({ documents: [], discovery: [{ status: 'failed', count: 2 }], discoveryRequested: true, total: 0, page: 1, limit: 25 }));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Document discovery is incomplete');
+    expect(fixture.nativeElement.textContent).not.toContain('No documents were found');
+  });
+
+  for (const width of [360, 1280]) for (const dark of [false, true]) {
+    it(`keeps discovery notices inside the card at ${width}px in ${dark ? 'dark' : 'light'} mode`, () => {
+      const wasDark = document.documentElement.classList.contains('dark');
+      document.documentElement.classList.toggle('dark', dark);
+      api.caseDocuments.and.returnValue(of({ documents: [], discovery: [{ status: 'queued', count: 2 }], discoveryRequested: true, total: 0, page: 1, limit: 25 }));
+      const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+      try {
+        fixture.nativeElement.style.width = `${width}px`;
+        fixture.detectChanges();
+        const notice = fixture.nativeElement.querySelector('.notice') as HTMLElement;
+        const card = notice.closest('.card') as HTMLElement;
+        expect(notice.scrollWidth).toBeLessThanOrEqual(card.clientWidth);
+        expect(getComputedStyle(notice).backgroundColor).toBe(dark ? 'rgb(23, 61, 77)' : 'rgb(238, 248, 252)');
+      } finally {
+        fixture.destroy();
+        document.documentElement.classList.toggle('dark', wasDark);
+      }
+    });
+  }
+
   it('shows accessible View and Download icon actions with tooltips', () => {
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
     fixture.detectChanges();

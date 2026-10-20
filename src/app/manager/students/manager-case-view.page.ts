@@ -74,6 +74,8 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   loadingActivity = false;
   private currentId = '';
   private pendingPreview: Window | null = null;
+  private documentPollTimer: ReturnType<typeof setTimeout> | null = null;
+  private documentPollCount = 0;
 
   get primaryAdvisor(): string | null {
     return this.case?.advisorName || null;
@@ -131,6 +133,29 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     return (this.documents?.discovery ?? [])
       .filter(item => item.status === 'failed')
       .reduce((sum, item) => sum + item.count, 0);
+  }
+  get discoveryQueued(): number {
+    return (this.documents?.discovery ?? []).filter(item => item.status === 'queued').reduce((sum, item) => sum + item.count, 0);
+  }
+  get discoveryProcessing(): number {
+    return (this.documents?.discovery ?? []).filter(item => item.status === 'processing').reduce((sum, item) => sum + item.count, 0);
+  }
+
+  private stopDocumentPolling(): void {
+    if (this.documentPollTimer) clearTimeout(this.documentPollTimer);
+    this.documentPollTimer = null;
+  }
+
+  private scheduleDocumentPoll(): void {
+    this.stopDocumentPolling();
+    // Poll stored metadata only, never initiate provider work. Bound requests per visit.
+    if (!this.discoveryPending || this.documentPollCount >= 30) return;
+    this.documentPollTimer = setTimeout(() => {
+      this.documentPollTimer = null;
+      if (document.hidden) { this.scheduleDocumentPoll(); return; }
+      this.documentPollCount++;
+      this.loadDocuments(this.documents?.page ?? 1);
+    }, this.discoveryProcessing ? 30_000 : 120_000);
   }
 
   ngOnInit(): void {
@@ -263,6 +288,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopDocumentPolling();
     this.pendingPreview?.close();
     this.pendingPreview = null;
     this.destroy$.next();
@@ -373,6 +399,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
   loadDocuments(page: number): void {
     if (!this.case || this.loadingDocuments || page < 1) return;
+    this.stopDocumentPolling();
     const id = this.currentId;
     this.loadingDocuments = true;
     this.documentError = '';
@@ -382,6 +409,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         const last = Math.max(1, Math.ceil(result.total / result.limit));
         if (result.page > last) { this.loadDocuments(last); return; }
         this.documents = result; this.rememberCasePage('documents', result.page);
+        this.scheduleDocumentPoll();
       } },
       error: () => { if (id === this.currentId) { this.documentError = 'Documents could not be loaded.'; this.loadingDocuments = false; } },
     });
@@ -472,6 +500,8 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   private reset(): void {
+    this.stopDocumentPolling();
+    this.documentPollCount = 0;
     this.pendingPreview?.close();
     this.pendingPreview = null;
     this.case = null;

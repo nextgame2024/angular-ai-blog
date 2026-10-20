@@ -162,6 +162,8 @@ td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 .empty-note { background:#f7f9fc; color:#63738d }
 .notice { margin-bottom:.55rem; background:#eef8fc; color:#3a6685 }
 .notice.warning { background:#fff7e7; color:#8e650d }
+:host-context(html.dark) .notice { background:#173d4d; color:#b9e2ef }
+:host-context(html.dark) .notice.warning { background:#4a3517; color:#ffd795 }
 .section-error { margin-bottom:.55rem; background:#fff0f0; color:#af2838 }
 .text-button { border:0; background:transparent; color:inherit; text-decoration:underline; cursor:pointer; font:inherit; font-weight:700 }
 .section-loading { min-height:5rem; position:relative }
