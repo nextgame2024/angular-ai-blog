@@ -61,6 +61,7 @@
   background: transparent;
 }
 .candidate-header .xero-sync .btn { flex: 0 0 auto; }
+.xero-sync .btn { min-height: 44px; }
 .metrics {
   display: grid;
   grid-template-columns: repeat(8, minmax(0, 1fr));

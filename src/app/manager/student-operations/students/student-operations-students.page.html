@@ -90,9 +90,9 @@
         @if (xeroError) { <span class="xero-error" role="alert">{{ xeroError }}</span> }
       </div>
       <button type="button" class="btn primary" (click)="refreshStudentsFromXero()"
-        [disabled]="loadingXero || xeroNeedsReconnect || !xeroConnection">
+        [disabled]="loadingXero || checkingXeroStatus || xeroNeedsReconnect || !xeroConnection">
         <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 0 1 14-5"></path><path d="M18 3v4h-4"></path><path d="M20 12a8 8 0 0 1-14 5"></path><path d="M6 21v-4h4"></path></svg></span>
-        {{ loadingXero ? 'Refreshing…' : (xeroRunActive ? 'Check progress' : 'Refresh') }}
+        {{ loadingXero ? 'Queueing…' : (checkingXeroStatus ? 'Checking…' : (xeroRunActive && !xeroAutomaticQueued ? 'Check progress' : 'Refresh')) }}
       </button>
     </div>
   </ng-template>

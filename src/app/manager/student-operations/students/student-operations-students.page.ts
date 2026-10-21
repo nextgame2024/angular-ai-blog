@@ -142,6 +142,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   loadingInvoices = false;
   loadingXeroContext = true;
   loadingXero = false;
+  checkingXeroStatus = false;
   xeroError = '';
   xeroNotice = '';
   invoiceFilterError = '';
@@ -165,8 +166,17 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   get xeroRunActive(): boolean {
     return this.xeroSync?.latestRun?.status === 'queued' || this.xeroSync?.latestRun?.status === 'processing';
   }
+  get xeroAutomaticQueued(): boolean {
+    const run = this.xeroSync?.latestRun;
+    return run?.status === 'queued'
+      && ['webhook', 'schedule', 'connection'].includes(run.triggerType);
+  }
+  private get shouldPollXeroSync(): boolean {
+    return this.xeroRunActive && !this.xeroAutomaticQueued;
+  }
   get xeroSyncProgress(): string {
     const run = this.xeroSync?.latestRun;
+    if (this.xeroAutomaticQueued) return 'Queued for overnight sync (01:00–06:00 Brisbane).';
     if (!run || run.status === 'queued') return 'Waiting for the background worker.';
     const progress: string[] = [];
     if (run.contactCount > 0) progress.push(`${run.contactCount} contacts`);
@@ -311,13 +321,20 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
 
   refreshStudentsFromXero(): void {
-    if (!this.isChiefExecutive || this.loadingXero || this.xeroNeedsReconnect || !this.xeroConnection) return;
+    if (!this.isChiefExecutive || this.loadingXero || this.checkingXeroStatus || this.xeroNeedsReconnect || !this.xeroConnection) return;
+    // An active manual import needs a status read, not another provider command.
+    // Automatic queued work can be explicitly promoted by the existing POST.
+    if (this.xeroRunActive && !this.xeroAutomaticQueued) {
+      this.loadXeroSyncStatus();
+      return;
+    }
     this.loadingXero = true;
     this.xeroError = '';
     this.xeroNotice = '';
     this.api.refreshXeroStudents(this.xeroConnection.connectionId)
       .pipe(takeUntil(this.destroy$)).subscribe({
         next: (run) => {
+          this.loadingXero = false;
           this.xeroSync = {
             configured: true,
             organisationRole: 'trust',
@@ -327,7 +344,8 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             nextScheduledSyncAt: this.xeroSync?.nextScheduledSyncAt ?? null,
             latestRun: run,
           };
-          this.pollXeroSync(true);
+          if (this.shouldPollXeroSync) this.pollXeroSync(true);
+          else this.stopXeroPolling();
         },
         error: (error) => {
           this.loadingXero = false;
@@ -590,27 +608,41 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
 
   private loadXeroSyncStatus(): void {
-    if (!this.xeroConnection) return;
+    if (!this.xeroConnection || this.checkingXeroStatus) return;
+    this.stopXeroPolling();
+    this.checkingXeroStatus = true;
     this.api.xeroStudentSyncStatus(this.xeroConnection.connectionId)
       .pipe(takeUntil(this.destroy$)).subscribe({
         next: (status) => {
+          this.checkingXeroStatus = false;
+          const wasActive = this.xeroRunActive;
           this.xeroSync = status;
           const state = status.latestRun?.status;
-          if (state === 'queued' || state === 'processing') {
-            this.loadingXero = true;
+          this.xeroError = state === 'failed' ? this.xeroSyncFailureMessage(status) : '';
+          if (this.xeroAutomaticQueued) this.xeroNotice = '';
+          if (this.shouldPollXeroSync) {
             this.pollXeroSync(true);
-          } else {
-            this.loadingXero = false;
-            this.xeroError = state === 'failed' ? this.xeroSyncFailureMessage(status) : '';
+          } else if (wasActive && state === 'succeeded') {
+            this.xeroNotice = '';
+            this.loadPaymentTracks();
+            this.loadXeroInvoices(this.xeroInvoices?.page ?? 1);
           }
         },
-        error: () => { this.xeroError = 'Xero synchronization status could not be loaded.'; },
+        error: () => {
+          this.checkingXeroStatus = false;
+          this.xeroError = 'Xero synchronization status could not be loaded.';
+        },
       });
   }
 
-  private pollXeroSync(reset = false): void {
-    if (!this.xeroConnection) return;
+  private stopXeroPolling(): void {
     if (this.syncPollTimer) clearTimeout(this.syncPollTimer);
+    this.syncPollTimer = null;
+  }
+
+  private pollXeroSync(reset = false): void {
+    this.stopXeroPolling();
+    if (!this.xeroConnection || !this.shouldPollXeroSync) return;
     if (reset) {
       this.syncPollAttempt = 0;
       this.syncPollStartedAt = Date.now();
@@ -618,8 +650,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     }
     if (Date.now() - this.syncPollStartedAt >= this.syncPollMaxDurationMs) {
       this.syncPollTimer = null;
-      this.loadingXero = false;
-      this.xeroNotice = 'The refresh is still running. You can leave this page and check its progress later.';
+      this.xeroNotice = 'Automatic progress checks paused. Use Check progress for the latest status.';
       return;
     }
     const delay = Math.min(2000 * (2 ** Math.floor(this.syncPollAttempt / 2)), 15_000);
@@ -627,16 +658,20 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.syncPollTimer = setTimeout(() => {
       this.syncPollTimer = null;
       if (!this.xeroConnection) return;
+      if (document.hidden) { this.pollXeroSync(); return; }
+      this.checkingXeroStatus = true;
       this.api.xeroStudentSyncStatus(this.xeroConnection.connectionId)
         .pipe(takeUntil(this.destroy$)).subscribe({
           next: (status) => {
+            this.checkingXeroStatus = false;
             this.xeroSync = status;
             const state = status.latestRun?.status;
-            if (state === 'queued' || state === 'processing') {
+            if (this.shouldPollXeroSync) {
               this.pollXeroSync();
               return;
             }
-            this.loadingXero = false;
+            this.stopXeroPolling();
+            if (this.xeroAutomaticQueued) { this.xeroNotice = ''; return; }
             if (state === 'failed') {
               this.xeroError = this.xeroSyncFailureMessage(status);
               return;
@@ -647,7 +682,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             this.loadXeroInvoices(this.xeroInvoices?.page ?? 1);
           },
           error: () => {
-            this.loadingXero = false;
+            this.checkingXeroStatus = false;
             this.xeroError = 'Xero synchronization status could not be refreshed.';
           },
         });

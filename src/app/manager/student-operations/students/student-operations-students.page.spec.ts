@@ -4,6 +4,7 @@ import { of, Subject, throwError } from 'rxjs';
 import { StudentOperationsService } from '../student-operations.service';
 import { ManagerService } from '../../services/manager.service';
 import { StudentOperationsStudentsPageComponent } from './student-operations-students.page';
+import type { XeroStudentSyncRun, XeroStudentSyncStatus } from '../student-operations.types';
 
 describe('StudentOperationsStudentsPageComponent', () => {
   const nativeIntersectionObserver = globalThis.IntersectionObserver;
@@ -581,6 +582,174 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('No invoices match the current search');
     expect(fixture.nativeElement.textContent).not.toContain('No students found');
   });
+
+  function configureSync(run: XeroStudentSyncRun): XeroStudentSyncStatus {
+    api.paymentsRegister.and.returnValue(of({workspace:{role:'chief_executive'},
+      connection:{connectionId:'connection-1',tenantName:'Example TRUST',status:'active',organisationRole:'trust',missingStudentDiscoveryScopes:[]},
+      invoices:{invoices:[{xeroInvoiceId:'invoice-1',invoiceNumber:'INV-1',studentName:'Student',status:'draft',amountDue:100,amountPaid:0,currencyCode:'AUD'}],
+        page:1,limit:25,total:1,totalPages:1},connectionIssue:null}));
+    const status: XeroStudentSyncStatus = {configured:true,organisationRole:'trust',lastSuccessfulSyncAt:'2026-10-20T00:00:00Z',
+      lastErrorCode:null,nextScheduledSyncAt:null,latestRun:run};
+    api.xeroStudentSyncStatus.and.returnValue(of(status));
+    return status;
+  }
+
+  function queuedRun(triggerType: XeroStudentSyncRun['triggerType'] = 'webhook'): XeroStudentSyncRun {
+    return {syncRunId:'parked-run',connectionId:'connection-1',mode:'incremental',triggerType,status:'queued',
+      contactCount:0,invoiceCount:0,candidateCount:0,errorCode:null,createdAt:'2026-10-20T19:23:47Z',startedAt:null,completedAt:null};
+  }
+
+  for (const trigger of ['webhook','schedule','connection'] as const) {
+    it(`shows ${trigger} queued for overnight sync without disabling Refresh or continuously polling`, fakeAsync(() => {
+      configureSync(queuedRun(trigger)); fixture.detectChanges();
+      const button:HTMLButtonElement=fixture.nativeElement.querySelector('.xero-sync .btn');
+      expect(fixture.nativeElement.textContent).toContain('Queued for overnight sync (01:00–06:00 Brisbane)');
+      expect(fixture.nativeElement.textContent).not.toContain('Waiting for the background worker');
+      expect(button.disabled).toBeFalse();expect(button.textContent?.trim()).toBe('Refresh');
+      expect(fixture.componentInstance.loadingXero).toBeFalse();
+      tick(16*60*1000);
+      expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(1);
+      expect(api.refreshXeroStudents).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.textContent).toContain('INV-1');
+      fixture.destroy();
+    }));
+  }
+
+  it('promotes an automatic queue only on explicit Refresh and guards double clicks', fakeAsync(() => {
+    const status=configureSync(queuedRun());fixture.detectChanges();
+    const pending=new Subject<XeroStudentSyncRun>();api.refreshXeroStudents.and.returnValue(pending);
+    fixture.nativeElement.querySelector('.xero-sync .btn').click();fixture.detectChanges();
+    fixture.componentInstance.refreshStudentsFromXero();
+    expect(api.refreshXeroStudents).toHaveBeenCalledOnceWith('connection-1');
+    expect(fixture.nativeElement.querySelector('.xero-sync .btn').disabled).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain('Queueing…');
+    pending.next({...status.latestRun!,triggerType:'manual'});pending.complete();fixture.detectChanges();
+    expect(fixture.componentInstance.xeroSync?.latestRun?.syncRunId).toBe('parked-run');
+    expect(fixture.nativeElement.textContent).toContain('Waiting for the background worker');
+    expect(fixture.nativeElement.querySelector('.xero-sync .btn').textContent.trim()).toBe('Check progress');
+    api.xeroStudentSyncStatus.and.returnValue(of({...status,latestRun:{...status.latestRun!,triggerType:'manual',status:'processing',contactCount:10}}));
+    tick(2000);fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('10 contacts processed');
+    expect(fixture.nativeElement.textContent).toContain('INV-1');
+    expect(api.refreshXeroStudents).toHaveBeenCalledTimes(1);
+    fixture.destroy();
+  }));
+
+  it('Check progress reads status without submitting another manual refresh', fakeAsync(() => {
+    configureSync({...queuedRun('manual'),status:'processing'});fixture.detectChanges();
+    const pending=new Subject<XeroStudentSyncStatus>();api.xeroStudentSyncStatus.and.returnValue(pending);
+    fixture.nativeElement.querySelector('.xero-sync .btn').click();fixture.detectChanges();
+    expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(2);
+    expect(api.refreshXeroStudents).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.querySelector('.xero-sync .btn').textContent.trim()).toBe('Checking…');
+    fixture.componentInstance.refreshStudentsFromXero();
+    expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(2);
+    fixture.destroy();
+  }));
+
+  it('releases the manual action and preserves overnight queue/rows after enqueue failure', fakeAsync(() => {
+    configureSync(queuedRun());fixture.detectChanges();
+    api.refreshXeroStudents.and.returnValue(throwError(()=>({status:503})));
+    fixture.nativeElement.querySelector('.xero-sync .btn').click();fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.xero-sync .btn').disabled).toBeFalse();
+    expect(fixture.nativeElement.textContent).toContain('could not be queued');
+    expect(fixture.nativeElement.textContent).toContain('Queued for overnight sync');
+    expect(fixture.nativeElement.textContent).toContain('INV-1');
+    tick(60000);expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(1);
+    fixture.destroy();
+  }));
+
+  it('keeps status checking retryable after a read error without creating a refresh', fakeAsync(() => {
+    configureSync(queuedRun('manual'));fixture.detectChanges();
+    api.xeroStudentSyncStatus.and.returnValue(throwError(()=>({status:503})));
+    fixture.nativeElement.querySelector('.xero-sync .btn').click();fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.xero-sync .btn').disabled).toBeFalse();
+    expect(fixture.nativeElement.textContent).toContain('status could not be loaded');
+    expect(fixture.nativeElement.textContent).toContain('INV-1');
+    tick(60000);expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(2);
+    expect(api.refreshXeroStudents).not.toHaveBeenCalled();fixture.destroy();
+  }));
+
+  it('refreshes local records when Check progress observes completion', fakeAsync(() => {
+    const status=configureSync(queuedRun('manual'));fixture.detectChanges();
+    api.xeroStudentSyncStatus.and.returnValue(of({...status,latestRun:{...status.latestRun!,status:'succeeded'}}));
+    fixture.nativeElement.querySelector('.xero-sync .btn').click();fixture.detectChanges();
+    expect(api.xeroStudentInvoices).toHaveBeenCalledOnceWith('connection-1',jasmine.objectContaining({page:1,limit:25}));
+    expect(fixture.nativeElement.textContent).toContain('Last checked:');
+    expect(fixture.nativeElement.querySelector('.xero-sync .btn').textContent.trim()).toBe('Refresh');
+    tick(60000);expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(2);
+    expect(api.refreshXeroStudents).not.toHaveBeenCalled();fixture.destroy();
+  }));
+
+  it('does not allow non-Chief Executives to promote an automatic queue', fakeAsync(() => {
+    configureSync(queuedRun());fixture.detectChanges();
+    fixture.componentInstance.workspace!.role='operations';
+    fixture.componentInstance.refreshStudentsFromXero();
+    expect(api.refreshXeroStudents).not.toHaveBeenCalled();fixture.destroy();
+  }));
+
+  it('stops polling if the returned job becomes automatic queued work', fakeAsync(() => {
+    const status=configureSync({...queuedRun('manual'),status:'processing'});fixture.detectChanges();
+    api.xeroStudentSyncStatus.and.returnValue(of({...status,latestRun:queuedRun()}));
+    tick(2000);fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Queued for overnight sync');
+    expect(fixture.nativeElement.querySelector('.xero-sync .btn').disabled).toBeFalse();
+    tick(60000);expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(2);
+    fixture.destroy();
+  }));
+
+  it('bounds manual progress polling and cancels it on navigation', fakeAsync(() => {
+    configureSync(queuedRun('manual'));fixture.detectChanges();
+    tick(16*60*1000);fixture.detectChanges();
+    const count=api.xeroStudentSyncStatus.calls.count();
+    expect(fixture.nativeElement.textContent).toContain('Automatic progress checks paused');
+    expect(fixture.nativeElement.querySelector('.xero-sync .btn').disabled).toBeFalse();
+    tick(60000);expect(api.xeroStudentSyncStatus.calls.count()).toBe(count);
+    fixture.nativeElement.querySelector('.xero-sync .btn').click();
+    expect(api.xeroStudentSyncStatus.calls.count()).toBe(count+1);
+    fixture.destroy();tick(60000);
+    expect(api.xeroStudentSyncStatus.calls.count()).toBe(count+1);
+    expect(api.refreshXeroStudents).not.toHaveBeenCalled();
+  }));
+
+  it('skips active-job status requests while the tab is hidden', fakeAsync(() => {
+    configureSync(queuedRun('manual'));fixture.detectChanges();
+    const hidden=spyOnProperty(document,'hidden','get').and.returnValue(true);
+    tick(60000);expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(1);
+    hidden.and.returnValue(false);tick(16000);
+    expect(api.xeroStudentSyncStatus.calls.count()).toBeGreaterThan(1);
+    fixture.destroy();
+  }));
+
+  for (const width of [390,1280]) for (const dark of [false,true]) {
+    it(`keeps overnight status and Refresh usable at ${width}px in ${dark?'dark':'light'} mode`, () => {
+      configureSync(queuedRun());fixture.detectChanges();
+      // A same-origin iframe exercises real viewport media queries and the
+      // component's existing scoped styles without changing the runner window.
+      const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';
+      document.body.appendChild(frame);
+      try {
+        const doc=frame.contentDocument!,win=frame.contentWindow!;
+        document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));
+        doc.documentElement.classList.toggle('dark',dark);
+        const host=fixture.nativeElement.cloneNode(true) as HTMLElement;
+        host.style.display='block';host.style.width='100%';doc.body.appendChild(host);
+        const panel=doc.querySelector('.xero-sync') as HTMLElement;
+        const details=panel.querySelector('.xero-sync-details') as HTMLElement;
+        const button=panel.querySelector('button') as HTMLButtonElement;
+        const box=panel.getBoundingClientRect(),action=button.getBoundingClientRect(),text=details.getBoundingClientRect();
+        expect(panel.textContent).toContain('Queued for overnight sync');
+        expect(panel.getAttribute('aria-live')).toBe('polite');
+        expect(button.disabled).toBeFalse();expect(button.textContent?.trim()).toBe('Refresh');
+        expect(action.height).toBeGreaterThanOrEqual(44);
+        expect(action.right).toBeLessThanOrEqual(box.right+1);
+        expect(text.right<=action.left+1 || text.bottom<=action.top+1).toBeTrue();
+        expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth+1);
+        expect(win.getComputedStyle(details.querySelector('span')!).color)
+          .toBe(dark?'rgb(156, 173, 195)':'rgb(102, 117, 138)');
+      } finally {frame.remove();}
+    });
+  }
 
   it('shows page-level Xero progress while preserving the student register', () => {
     api.workspace.and.returnValue(of({
