@@ -47,14 +47,18 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .xero-sync span { color: #66758a; font-size: 0.8rem; }
 .xero-sync .xero-notice { color: #80520a; }
+.xero-sync .xero-pause { color: #80520a; }
 .xero-sync .xero-error { color: #9b2536; }
 .xero-sync-error { border-color: #f2b8c0; background: #fff8f9; }
 .candidate-header .xero-sync {
   flex: 0 1 auto;
   min-width: 0;
+  max-width: min(100%, 36rem);
   margin: 0;
   padding: 0;
   border: 0;
@@ -922,6 +926,7 @@
   color: #e5edf7;
 }
 :host-context(html.dark) .filter-error { color: #fda4af; }
+:host-context(html.dark) .xero-sync .xero-pause { color: #ffd795; }
 :host-context(html.dark) .privacy-note { background: #102d2b; border-color: #286b60; color: #b9ded7; }
 :host-context(html.dark) .privacy-dismiss { background: #1b3b38; color: #c8ebe5; }
 :host-context(html.dark) .source-badge,

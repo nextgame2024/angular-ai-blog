@@ -87,6 +87,7 @@
           }
         }
         @if (xeroNotice) { <span class="xero-notice">{{ xeroNotice }}</span> }
+        @if (xeroPause) { <span class="xero-pause">{{ xeroPause }}</span> }
         @if (xeroError) { <span class="xero-error" role="alert">{{ xeroError }}</span> }
       </div>
       <button type="button" class="btn primary" (click)="refreshStudentsFromXero()"

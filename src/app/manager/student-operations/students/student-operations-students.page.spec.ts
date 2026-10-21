@@ -599,6 +599,84 @@ describe('StudentOperationsStudentsPageComponent', () => {
       contactCount:0,invoiceCount:0,candidateCount:0,errorCode:null,createdAt:'2026-10-20T19:23:47Z',startedAt:null,completedAt:null};
   }
 
+  for (const [code, message] of [
+    ['xero_rate_limited', 'an API limit was reached'],
+    ['xero_quota_exhausted', 'daily API allowance is unavailable'],
+    ['xero_quota_reserved', 'preserve API allowance for updates and downloads'],
+    ['xero_quota_unknown', 'allowance to be confirmed'],
+  ]) {
+    it(`shows ${code} as a pause, preserving records without extra polling or provider commands`, fakeAsync(() => {
+      const status=configureSync({...queuedRun('manual'),status:'failed',errorCode:code});
+      status.lastErrorCode='xero_unavailable';fixture.detectChanges();
+      const panel:HTMLElement=fixture.nativeElement.querySelector('.xero-sync');
+      expect(panel.querySelector('.xero-pause')?.textContent).toContain(message);
+      expect(panel.querySelector('[role="alert"]')).toBeNull();
+      expect(panel.classList.contains('xero-sync-error')).toBeFalse();
+      expect(panel.textContent).toContain('Existing student information remains available');
+      expect(panel.textContent).not.toContain('temporarily unavailable');
+      expect(fixture.nativeElement.textContent).toContain('INV-1');
+      tick(60000);expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(1);
+      expect(api.refreshXeroStudents).not.toHaveBeenCalled();expect(api.beginXeroAuthorization).not.toHaveBeenCalled();
+      fixture.destroy();
+    }));
+  }
+
+  it('shows retry eligibility in Brisbane time without promising an automatic start or a midnight reset',()=>{
+    spyOn(Date,'now').and.returnValue(new Date('2026-10-21T01:00:00Z').getTime());
+    const status=configureSync({...queuedRun('manual'),status:'failed',errorCode:'xero_quota_exhausted'});
+    status.nextScheduledSyncAt='2026-10-21T08:44:00Z';fixture.detectChanges();
+    const text=fixture.nativeElement.querySelector('.xero-pause').textContent;
+    expect(text).toContain('eligible no earlier than');expect(text).toMatch(/6:44\s*pm/);
+    expect(text).toContain('Brisbane time');expect(text).toContain('01:00–06:00 Brisbane');
+    expect(text).not.toContain('scheduled for');expect(text).not.toContain('midnight');
+  });
+
+  for (const retry of [null,'invalid-date','2020-01-01T00:00:00Z']) {
+    it(`does not invent a retry deadline from ${retry}`,()=>{
+      const status=configureSync({...queuedRun('manual'),status:'failed',errorCode:'xero_quota_unknown'});
+      status.nextScheduledSyncAt=retry;fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('.xero-pause').textContent).toContain('worker will recheck retry eligibility');
+      expect(fixture.nativeElement.textContent).not.toContain('Invalid Date');
+    });
+  }
+
+  it('recognizes a sanitized provider 429 even without a known error code',()=>{
+    configureSync({...queuedRun('manual'),status:'failed',errorCode:null,providerStatus:429});fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.xero-pause')?.textContent).toContain('API limit was reached');
+    expect(fixture.nativeElement.textContent).not.toContain('daily API allowance');
+  });
+
+  it('keeps unknown failures actionable without exposing internal codes or inventing quota state',()=>{
+    configureSync({...queuedRun('manual'),status:'failed',errorCode:'private-database-secret'});fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.xero-error')?.textContent).toContain('refresh failed');
+    expect(fixture.nativeElement.querySelector('.xero-pause')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('private-database-secret');
+  });
+
+  it('clears an old pause only on an explicit enqueue and keeps the new processing status separate',fakeAsync(()=>{
+    configureSync({...queuedRun('manual'),status:'failed',errorCode:'xero_quota_unknown'});fixture.detectChanges();
+    api.refreshXeroStudents.and.returnValue(of(queuedRun('manual')));
+    fixture.nativeElement.querySelector('.xero-sync .btn').click();fixture.detectChanges();
+    expect(api.refreshXeroStudents).toHaveBeenCalledOnceWith('connection-1');
+    expect(fixture.nativeElement.querySelector('.xero-pause')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('Waiting for the background worker');fixture.destroy();
+  }));
+
+  it('clears stale quota configuration errors after a successful run',()=>{
+    const status=configureSync({...queuedRun('manual'),status:'succeeded'});status.lastErrorCode='xero_quota_exhausted';
+    fixture.detectChanges();expect(fixture.nativeElement.querySelector('.xero-pause')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.xero-error')).toBeNull();
+  });
+
+  it('handles a quota pause returned by bounded progress polling without re-enqueueing',fakeAsync(()=>{
+    const status=configureSync({...queuedRun('manual'),status:'processing'});fixture.detectChanges();
+    api.xeroStudentSyncStatus.and.returnValue(of({...status,latestRun:{...status.latestRun!,status:'failed',errorCode:'xero_quota_exhausted'}}));
+    tick(2000);fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.xero-pause')?.textContent).toContain('daily API allowance');
+    tick(60000);expect(api.xeroStudentSyncStatus).toHaveBeenCalledTimes(2);
+    expect(api.refreshXeroStudents).not.toHaveBeenCalled();expect(fixture.nativeElement.textContent).toContain('INV-1');fixture.destroy();
+  }));
+
   for (const trigger of ['webhook','schedule','connection'] as const) {
     it(`shows ${trigger} queued for overnight sync without disabling Refresh or continuously polling`, fakeAsync(() => {
       configureSync(queuedRun(trigger)); fixture.detectChanges();
@@ -722,6 +800,29 @@ describe('StudentOperationsStudentsPageComponent', () => {
   }));
 
   for (const width of [390,1280]) for (const dark of [false,true]) {
+    it(`keeps long quota pause feedback readable at ${width}px in ${dark?'dark':'light'} mode`,()=>{
+      const status=configureSync({...queuedRun('manual'),status:'failed',errorCode:'xero_quota_unknown'});
+      status.nextScheduledSyncAt='2099-10-21T08:44:00Z';fixture.detectChanges();
+      const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';
+      document.body.appendChild(frame);
+      try {
+        const doc=frame.contentDocument!,win=frame.contentWindow!;
+        document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));
+        doc.documentElement.classList.toggle('dark',dark);
+        const host=fixture.nativeElement.cloneNode(true) as HTMLElement;
+        host.style.display='block';host.style.width='100%';doc.body.appendChild(host);
+        const panel=doc.querySelector('.xero-sync') as HTMLElement;
+        const pause=panel.querySelector('.xero-pause') as HTMLElement;
+        const button=panel.querySelector('button') as HTMLButtonElement;
+        expect(panel.getAttribute('aria-live')).toBe('polite');expect(panel.querySelector('[role="alert"]')).toBeNull();
+        expect(pause.textContent).toContain('allowance to be confirmed');
+        expect(pause.textContent).toContain('Brisbane time');expect(button.disabled).toBeFalse();
+        expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth+1);
+        expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+        expect(button.getBoundingClientRect().right).toBeLessThanOrEqual(panel.getBoundingClientRect().right+1);
+        expect(win.getComputedStyle(pause).color).toBe(dark?'rgb(255, 215, 149)':'rgb(128, 82, 10)');
+      } finally {frame.remove();}
+    });
     it(`keeps overnight status and Refresh usable at ${width}px in ${dark?'dark':'light'} mode`, () => {
       configureSync(queuedRun());fixture.detectChanges();
       // A same-origin iframe exercises real viewport media queries and the
@@ -807,7 +908,8 @@ describe('StudentOperationsStudentsPageComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Xero is temporarily unavailable');
-    expect(fixture.nativeElement.textContent).toContain('automatic retry is scheduled');
+    expect(fixture.nativeElement.textContent).toContain('recheck retry eligibility');
+    expect(fixture.nativeElement.textContent).not.toContain('automatic retry is scheduled');
     expect(fixture.nativeElement.textContent).toContain('Existing student information remains available');
   });
 

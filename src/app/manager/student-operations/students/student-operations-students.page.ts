@@ -144,6 +144,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   loadingXero = false;
   checkingXeroStatus = false;
   xeroError = '';
+  xeroPause = '';
   xeroNotice = '';
   invoiceFilterError = '';
 
@@ -330,6 +331,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     }
     this.loadingXero = true;
     this.xeroError = '';
+    this.xeroPause = '';
     this.xeroNotice = '';
     this.api.refreshXeroStudents(this.xeroConnection.connectionId)
       .pipe(takeUntil(this.destroy$)).subscribe({
@@ -344,6 +346,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             nextScheduledSyncAt: this.xeroSync?.nextScheduledSyncAt ?? null,
             latestRun: run,
           };
+          this.applyXeroSyncFeedback(this.xeroSync);
           if (this.shouldPollXeroSync) this.pollXeroSync(true);
           else this.stopXeroPolling();
         },
@@ -618,7 +621,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
           const wasActive = this.xeroRunActive;
           this.xeroSync = status;
           const state = status.latestRun?.status;
-          this.xeroError = state === 'failed' ? this.xeroSyncFailureMessage(status) : '';
+          this.applyXeroSyncFeedback(status);
           if (this.xeroAutomaticQueued) this.xeroNotice = '';
           if (this.shouldPollXeroSync) {
             this.pollXeroSync(true);
@@ -630,6 +633,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
         },
         error: () => {
           this.checkingXeroStatus = false;
+          this.xeroPause = '';
           this.xeroError = 'Xero synchronization status could not be loaded.';
         },
       });
@@ -665,6 +669,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
           next: (status) => {
             this.checkingXeroStatus = false;
             this.xeroSync = status;
+            this.applyXeroSyncFeedback(status);
             const state = status.latestRun?.status;
             if (this.shouldPollXeroSync) {
               this.pollXeroSync();
@@ -673,7 +678,6 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
             this.stopXeroPolling();
             if (this.xeroAutomaticQueued) { this.xeroNotice = ''; return; }
             if (state === 'failed') {
-              this.xeroError = this.xeroSyncFailureMessage(status);
               return;
             }
             this.xeroError = '';
@@ -683,22 +687,50 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
           },
           error: () => {
             this.checkingXeroStatus = false;
+            this.xeroPause = '';
             this.xeroError = 'Xero synchronization status could not be refreshed.';
           },
         });
     }, delay);
   }
 
-  private xeroSyncFailureMessage(status: XeroStudentSyncStatus): string {
-    if (status.lastErrorCode === 'xero_unavailable' || status.lastErrorCode === 'xero_rate_limited') {
-      const retry = status.nextScheduledSyncAt
-        ? ` An automatic retry is scheduled for ${new Intl.DateTimeFormat('en-AU', {
-          day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
-        }).format(new Date(status.nextScheduledSyncAt))}.`
-        : ' An automatic retry has been scheduled.';
-      return `Xero is temporarily unavailable.${retry} Existing student information remains available.`;
+  private applyXeroSyncFeedback(status: XeroStudentSyncStatus): void {
+    this.xeroError = '';
+    this.xeroPause = '';
+    if (status.latestRun?.status !== 'failed') return;
+    const code = status.latestRun.errorCode ?? status.lastErrorCode ?? '';
+    const pauses: Record<string, string> = {
+      xero_rate_limited: 'Xero has paused requests because an API limit was reached.',
+      xero_quota_exhausted: 'Sync is paused because the daily API allowance is unavailable.',
+      xero_quota_reserved: 'Document discovery is paused to preserve API allowance for updates and downloads.',
+      xero_quota_unknown: 'Sync is waiting for the available Xero allowance to be confirmed. No extra Xero request is made just to check the allowance.',
+    };
+    const pause = Object.hasOwn(pauses, code) ? pauses[code]
+      : status.latestRun.providerStatus === 429 ? pauses['xero_rate_limited'] : null;
+    if (pause) {
+      const window = code === 'xero_quota_reserved' ? 'Document discovery runs 03:00–06:00 Brisbane.'
+        : 'Automatic imports run 01:00–06:00 Brisbane.';
+      this.xeroPause = `${pause} ${this.xeroRetryEligibility(status)} ${window} Existing student information remains available.`;
+    } else this.xeroError = this.xeroSyncFailureMessage(status);
+  }
+
+  private xeroRetryEligibility(status: XeroStudentSyncStatus): string {
+    const retry = status.nextScheduledSyncAt ? new Date(status.nextScheduledSyncAt) : null;
+    if (!retry || !Number.isFinite(retry.getTime()) || retry.getTime() <= Date.now()) {
+      return 'The worker will recheck retry eligibility automatically.';
     }
-    if (status.lastErrorCode === 'xero_authorization_rejected') {
+    const time = new Intl.DateTimeFormat('en-AU', {
+      timeZone: 'Australia/Brisbane', day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit',
+    }).format(retry);
+    return `Next retry is eligible no earlier than ${time} (Brisbane time).`;
+  }
+
+  private xeroSyncFailureMessage(status: XeroStudentSyncStatus): string {
+    const code = status.latestRun?.errorCode ?? status.lastErrorCode;
+    if (code === 'xero_unavailable') {
+      return `Xero is temporarily unavailable. ${this.xeroRetryEligibility(status)} Automatic imports run 01:00–06:00 Brisbane. Existing student information remains available.`;
+    }
+    if (code === 'xero_authorization_rejected') {
       return 'The Xero authorization requires attention. Reconnect the TRUST organisation from Company.';
     }
     return 'The Xero refresh failed. Existing student information remains available.';
