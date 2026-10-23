@@ -72,6 +72,14 @@ describe('CaseDocumentActionsComponent',()=>{
     c.upload();expect(c.message).toBe('Document storage is full. Contact your administrator before uploading more files.');
     expect(c.file?.name).toBe('test.pdf');expect(c.busy).toBeFalse();
   });
+  it('preserves the file and request identity while overflow storage is prepared automatically',()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
+    c.uploadForm.controls.documentTypeId.setValue('type-1');c.file=new File(['pdf'],'test.pdf');
+    api.uploadCaseDocument.and.returnValue(throwError(()=>({status:409,error:{errorCode:'student_document_storage_pending'}})));
+    c.upload();const key=api.uploadCaseDocument.calls.mostRecent().args[3];
+    expect(c.message).toContain('storage is being prepared');expect(c.message).not.toContain('Contact');
+    expect(c.file?.name).toBe('test.pdf');c.upload();expect(api.uploadCaseDocument.calls.mostRecent().args[3]).toBe(key);
+  });
   it('keeps the server error safe and allows a failed options request to be retried',()=>{
     const f=setup(),c=f.componentInstance;api.documentTypes.and.returnValue(throwError(()=>({error:'private database details'})));c.open('types');f.detectChanges();
     expect(c.failed).toBeTrue();expect(c.message).not.toContain('private');c.saveType();expect(api.createDocumentType).not.toHaveBeenCalled();

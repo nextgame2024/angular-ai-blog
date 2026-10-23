@@ -84,7 +84,17 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
     const file=this.file,typeId=this.uploadForm.controls.documentTypeId.value;this.fileTouched=true;this.uploadForm.markAllAsTouched();
     if(!file || !file.size || file.size>10*1024*1024 || !/\.(pdf|jpe?g|png)$/i.test(file.name) || !this.types.some(t=>t.documentTypeId===typeId)) {this.notify('Choose a document type and a PDF, JPEG or PNG file up to 10 MB.');return;}
     this.busy=true;
-    this.api.uploadCaseDocument(this.caseId,file,typeId,this.key({action:'upload',caseId:this.caseId,typeId,name:file.name,size:file.size,lastModified:file.lastModified})).pipe(takeUntil(this.scope$)).subscribe({next:()=>{this.busy=false;this.request=null;this.file=null;if(this.fileInput)this.fileInput.nativeElement.value='';this.uploadForm.controls.documentTypeId.reset('');this.fileTouched=false;this.notify('Document uploaded.','success');this.changed.emit();},error:e=>{this.busy=false;this.notify(e?.error?.errorCode==='student_document_storage_full'?'Document storage is full. Contact your administrator before uploading more files.':e?.status===413?'The file is too large. Maximum size is 10 MB.':['xero_attachment_write_scope_missing','xero_contact_write_scope_missing','student_document_setup_required'].includes(e?.error?.errorCode)?'An administrator must enable document storage in company integrations.':e?.error?.errorCode==='xero_rate_limited'?'Document storage is temporarily busy. Wait, then retry this same file.':e?.status===409?'The upload is processing or its details changed. Wait two minutes, then retry the same file; reload types if needed.':'The upload could not be confirmed. Wait two minutes and retry this same file.');}});
+    this.api.uploadCaseDocument(this.caseId,file,typeId,this.key({action:'upload',caseId:this.caseId,typeId,name:file.name,size:file.size,lastModified:file.lastModified})).pipe(takeUntil(this.scope$)).subscribe({next:()=>{this.busy=false;this.request=null;this.file=null;if(this.fileInput)this.fileInput.nativeElement.value='';this.uploadForm.controls.documentTypeId.reset('');this.fileTouched=false;this.notify('Document uploaded.','success');this.changed.emit();},error:e=>{this.busy=false;this.notify(this.uploadError(e));}});
+  }
+  private uploadError(e:any):string {
+    const code=e?.error?.errorCode;
+    if(code==='student_document_storage_pending')return 'Additional document storage is being prepared. Wait two minutes, then retry this same file.';
+    if(code==='student_document_storage_review_required')return 'This document needs administrator review before it can be uploaded again.';
+    if(code==='student_document_storage_full')return 'Document storage is full. Contact your administrator before uploading more files.';
+    if(e?.status===413)return 'The file is too large. Maximum size is 10 MB.';
+    if(['xero_attachment_write_scope_missing','xero_contact_write_scope_missing','student_document_setup_required'].includes(code))return 'An administrator must enable document storage in company integrations.';
+    if(code==='xero_rate_limited')return 'Document storage is temporarily busy. Wait, then retry this same file.';
+    return e?.status===409?'The upload is processing or its details changed. Wait two minutes, then retry the same file; reload types if needed.':'The upload could not be confirmed. Wait two minutes and retry this same file.';
   }
   notify(message:string,tone:'error'|'success'='error'){this.message=message;this.tone=tone;}
   changePage(value:number){if(this.busy || this.loading || this.failed || !Number.isSafeInteger(value))return;this.page=Math.max(1,Math.min(this.pages,value));}
