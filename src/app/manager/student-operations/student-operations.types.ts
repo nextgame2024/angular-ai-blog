@@ -194,12 +194,18 @@ export interface StudentCaseDocuments {
   documents: Array<{
     documentId: string; fileName: string; mimeType: string; sizeBytes: number;
     sourceKind: string; lastSeenAt: string;
+    documentTypeId?: string | null; documentTypeName?: string | null; documentTypeRequired?: boolean | null;
   }>;
   discovery: Array<{ status: string; errorCode: string | null; count: number }>;
   discoveryRequested: boolean;
   page: number;
   limit: number;
   total: number;
+}
+
+export interface StudentDocumentType {
+  documentTypeId: string; name: string; required: boolean;
+  status: 'active' | 'archived'; recordVersion: number;
 }
 
 export interface StudentCaseActivity {

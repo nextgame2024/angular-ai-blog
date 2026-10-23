@@ -1,4 +1,5 @@
 import { PageJumpComponent } from '../../shared/components/page-jump/page-jump.component';
+import { CaseDocumentActionsComponent } from './case-document-actions.component';
 import { ListNavigationStateService } from '../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
@@ -20,7 +21,7 @@ import type {
 
 @Component({
   selector: 'app-manager-case-view',
-  imports: [PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
+  imports: [CaseDocumentActionsComponent,PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
   templateUrl: './manager-case-view.page.html',
   styleUrls: ['./manager-case-view.page.css'],
 })

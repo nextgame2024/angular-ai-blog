@@ -23,6 +23,20 @@ describe('StudentOperationsService', () => {
 
   afterEach(() => http.verify());
 
+  it('uses authenticated metadata requests and never sends a client company for document types',()=>{
+    service.documentTypes().subscribe();const list=http.expectOne(r=>r.url.endsWith('/cases/document-types'));expect(list.request.headers.get('Authorization')).toBe('Token business-manager-token');list.flush({types:[]});
+    service.createDocumentType({name:'Passport',required:true},'create-type-key').subscribe();const add=http.expectOne(r=>r.url.endsWith('/cases/document-types'));expect(add.request.body).toEqual({name:'Passport',required:true});expect(add.request.headers.get('Idempotency-Key')).toBe('create-type-key');add.flush({});
+    service.updateDocumentType('type-1',{status:'archived',recordVersion:1},'archive-type-key').subscribe();const archive=http.expectOne(r=>r.url.endsWith('/cases/document-types/type-1'));expect(archive.request.method).toBe('PATCH');expect(archive.request.body.status).toBe('archived');archive.flush({});
+  });
+  it('uploads multipart bytes with a Contact identity and never a company, invoice target or forced content type',()=>{
+    const file=new File(['pdf'],'passport.pdf',{type:'application/pdf'});
+    service.uploadCaseDocument('case-1',file,'type-1','upload-key').subscribe();
+    const request=http.expectOne(r=>r.url.endsWith('/cases/case-1/documents/upload'));
+    expect(request.request.headers.get('Authorization')).toBe('Token business-manager-token');expect(request.request.headers.get('Idempotency-Key')).toBe('upload-key');
+    expect(request.request.headers.has('Content-Type')).toBeFalse();
+    const form=request.request.body as FormData;expect(form.get('file')).toEqual(file);expect(form.has('contactId')).toBeFalse();expect(form.has('connectionId')).toBeFalse();expect(form.get('documentTypeId')).toBe('type-1');expect(form.has('companyId')).toBeFalse();expect(form.has('sourceKind')).toBeFalse();request.flush({documentId:'document-1'});
+  });
+
   it('creates a student and first case with one authenticated idempotent request', () => {
     const value={studentName:'Student',studentEmail:'student@example.test',mobile:null,phone:null,courseName:null,collegeId:null,advisorId:null,status:'pre_sale',currentStage:'documents_requested'};
     service.createStudentWithCase(value,'create-student-case-key').subscribe();

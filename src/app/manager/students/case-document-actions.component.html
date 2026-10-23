@@ -1,0 +1,53 @@
+@if(canManage){
+  <div class="toolbar">
+    <button type="button" class="btn" [disabled]="!caseId" (click)="open('types')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 5h12M9 12h12M9 19h12M3 5h2M3 12h2M3 19h2"/></svg>Manage types</button>
+    <button type="button" class="btn primary" [disabled]="!caseId" (click)="open('upload')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 9 5-5 5 5M12 4v12M4 15v5h16v-5"/></svg>Upload</button>
+  </div>
+}
+<dialog #modal aria-labelledby="document-modal-title" (cancel)="close($event)" [attr.aria-busy]="busy || loading">
+  @if(isOpen){
+  <header><div><h2 id="document-modal-title">{{mode==='types'?'Manage document types':'Upload document'}}</h2><p>{{mode==='types'?'Manage the document types available to your company.':'Choose a document type and file to add to this case. Document storage is prepared automatically.'}}</p></div><button type="button" class="btn icon" (click)="close()" [disabled]="busy" aria-label="Close dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+  @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''"></app-manager-toast>}
+  @if(loading || busy){<div class="loading"><app-manager-list-loader [label]="busy?'Saving…':'Loading types…'" [overlay]="true"></app-manager-list-loader></div>}
+  @if(failed){<p class="empty" role="alert">Document types are unavailable. <button type="button" class="btn" (click)="loadTypes()">Retry</button></p>}
+  @if(mode==='types'){
+    <form [formGroup]="typeForm" (ngSubmit)="saveType()">
+      <fieldset [disabled]="busy || loading || failed" class="type-fields">
+        <label>Name<input formControlName="name" maxlength="120" [attr.aria-invalid]="typeForm.controls.name.invalid && typeForm.controls.name.touched" autocomplete="off" /></label>
+        <label>Required<app-manager-select formControlName="required" [options]="yesNo" ariaLabel="Required"></app-manager-select></label>
+        <button type="submit" class="btn primary">{{editingType?'Save changes':'+ Add'}}</button>
+        @if(editingType){<button type="button" class="btn" (click)="cancelTypeEdit()">Cancel edit</button>}
+      </fieldset>
+    </form>
+    <p class="hint">Delete archives a type. Its existing documents and labels are retained.</p>
+    <div class="table-scroll" role="region" aria-label="Active document types" tabindex="0"><table><thead><tr><th scope="col" [attr.aria-sort]="descending?'descending':'ascending'"><button type="button" class="sort" (click)="descending=!descending">Name<span class="sort-arrows" [class.desc]="descending" aria-hidden="true"></span></button></th><th scope="col">Required</th><th scope="col">Actions</th></tr></thead><tbody>
+      @for(type of visibleTypes;track type.documentTypeId){<tr><td data-label="Name">{{type.name}}</td><td data-label="Required">{{type.required?'Yes':'No'}}</td><td data-label="Actions"><div class="row-actions"><button type="button" class="btn icon" (click)="edit(type)" [disabled]="busy" [attr.aria-label]="'Edit '+type.name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4ZM13 6l4 4"/></svg></button><button type="button" class="btn danger" (click)="archive(type)" [disabled]="busy" [attr.aria-label]="'Delete '+type.name+' (archive)'">Delete</button></div></td></tr>}
+      @empty{<tr><td colspan="3" class="empty">No active document types. Add one above.</td></tr>}
+    </tbody></table></div>
+    @if(types.length){
+      <footer class="types-pagination" aria-label="Document types pagination">
+        <span>Showing {{pageStart}}–{{pageEnd}} of {{types.length}}</span>
+        <div class="page-buttons">
+          <app-manager-select class="page-size" [options]="sizes" [ngModel]="''+pageSize" [ngModelOptions]="{standalone:true}" (ngModelChange)="setSize($event)" [disabled]="busy || loading || failed" ariaLabel="Records per page" panelDirection="up"></app-manager-select>
+          <button type="button" (click)="changePage(1)" [disabled]="page<=1 || busy || loading || failed" aria-label="First page">«</button>
+          <button type="button" (click)="changePage(page-1)" [disabled]="page<=1 || busy || loading || failed" aria-label="Previous page">‹</button>
+          <app-page-jump [page]="page" [totalPages]="pages" [disabled]="busy || loading || failed" label="Document types page number" (pageChange)="changePage($event)"></app-page-jump>
+          <button type="button" (click)="changePage(page+1)" [disabled]="page>=pages || busy || loading || failed" aria-label="Next page">›</button>
+          <button type="button" (click)="changePage(pages)" [disabled]="page>=pages || busy || loading || failed" aria-label="Last page">»</button>
+        </div>
+      </footer>
+    }
+  } @else {
+    <form [formGroup]="uploadForm" (ngSubmit)="upload()">
+      <fieldset [disabled]="busy || loading || failed" class="upload-fields">
+        <label>Type<app-manager-select formControlName="documentTypeId" [options]="typeOptions" [searchable]="true" ariaLabel="Document type" placeholder="Select a type" [attr.aria-invalid]="uploadForm.controls.documentTypeId.invalid && uploadForm.controls.documentTypeId.touched"></app-manager-select></label>
+        <label>File<input #fileInput type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="selectFile($event)" [attr.aria-invalid]="fileTouched && !file" /></label>
+        <p class="hint">PDF, JPEG or PNG · Maximum 10 MB per file. One file per upload.</p>
+        @if(!loading && !failed && !types.length){<p class="empty">Add an active type using Manage types before uploading.</p>}
+        @if(!loading && !failed && (!storageAvailable || !uploadEnabled)){<p class="empty">An administrator must enable document storage in company integrations before you can upload files.</p>}
+        <button type="submit" class="btn primary" [disabled]="!types.length || !storageAvailable || !uploadEnabled">{{busy?'Preparing storage and uploading…':'Upload document'}}</button>
+      </fieldset>
+    </form>
+  }
+  }
+</dialog>

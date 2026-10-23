@@ -18,6 +18,7 @@ import type {
   StudentCaseList,
   StudentCaseInvoices,
   StudentCaseDocuments,
+  StudentDocumentType,
   StudentCaseActivity,
   XeroConnectionStatus,
   XeroConnectionTest,
@@ -32,6 +33,22 @@ import type {
 
 @Injectable({ providedIn: 'root' })
 export class StudentOperationsService {
+  documentTypes(): Observable<{types: StudentDocumentType[]}> {
+    return this.http.get<{types: StudentDocumentType[]}>(`${this.workspaceBase}/cases/document-types`,{headers:this.headers()});
+  }
+  createDocumentType(value:{name:string;required:boolean},key:string): Observable<StudentDocumentType> {
+    return this.http.post<StudentDocumentType>(`${this.workspaceBase}/cases/document-types`,value,{headers:this.writeHeaders(key)});
+  }
+  updateDocumentType(id:string,value:{name?:string;required?:boolean;status?:'archived';recordVersion:number},key:string): Observable<StudentDocumentType> {
+    return this.http.patch<StudentDocumentType>(`${this.workspaceBase}/cases/document-types/${encodeURIComponent(id)}`,value,{headers:this.writeHeaders(key)});
+  }
+  caseDocumentUploadOptions(caseId:string): Observable<{enabled:boolean;available:boolean}> {
+    return this.http.get<{enabled:boolean;available:boolean}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents/upload-options`,{headers:this.headers()});
+  }
+  uploadCaseDocument(caseId:string,file:File,typeId:string,key:string): Observable<{documentId:string}> {
+    const body=new FormData(); body.append('documentTypeId',typeId); body.append('file',file);
+    return this.http.post<{documentId:string}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents/upload`,body,{headers:this.writeHeaders(key)});
+  }
   private readonly http = inject(HttpClient);
   private readonly persistence = inject(PersistanceService);
   private readonly workspaceBase = environment.sophiaRuntimeApiUrl

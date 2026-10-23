@@ -251,7 +251,7 @@ describe('ManagerCaseViewPageComponent', () => {
     expect([...(root.querySelectorAll('.related-actions .edit') as NodeListOf<HTMLButtonElement>)].every(button => !button.disabled)).toBeTrue();
     expect([...(root.querySelectorAll('.related-actions .archive') as NodeListOf<HTMLButtonElement>)].every(button => button.disabled)).toBeTrue();
     expect(root.textContent).not.toContain('Approve');
-    expect(root.textContent).not.toContain('Upload');
+    expect(root.querySelector('app-case-document-actions .toolbar')?.textContent).toContain('Upload');
     expect(api.caseInvoices).toHaveBeenCalledWith('case-1', 1);
     expect(api.caseDocuments).toHaveBeenCalledWith('case-1', 1);
     expect(root.querySelector('.related-cases')?.closest('aside')).not.toBeNull();
@@ -689,7 +689,7 @@ describe('ManagerCaseViewPageComponent', () => {
     const activityScroll = cards[3].querySelector('.activity-scroll') as HTMLElement;
 
     expect(cards.map(card => card.querySelector('h2')?.textContent?.trim())).toEqual([
-      'Documents', 'Linked invoices', 'Meet Sophia', 'Recent activity', 'Case at a glance', 'Next Actions',
+      'Documents 1', 'Linked invoices', 'Meet Sophia', 'Recent activity', 'Case at a glance', 'Next Actions',
     ]);
     expect(root.querySelector('.workspace-sidebar .case-summary')).toBeNull();
     expect(activityScroll.getAttribute('aria-label')).toBe('Recent case activity');
