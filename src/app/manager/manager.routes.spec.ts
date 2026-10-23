@@ -17,6 +17,9 @@ describe('Business Manager payment and student routes', () => {
       loadComponent: jasmine.any(Function),
       data: jasmine.objectContaining({ title: 'Case Details' }),
     }));
+    expect(children.find(route=>route.path==='students/new')?.data?.['creation']).toBe('student');
+    expect(children.find(route=>route.path==='students/cases/:caseId/new')?.data?.['creation']).toBe('case');
+    expect(children.findIndex(route=>route.path==='students/cases/:caseId/new')).toBeLessThan(children.findIndex(route=>route.path==='students/cases/:caseId'));
     expect(children.find((route) => route.path === 'student-operations/students')).toEqual(
       jasmine.objectContaining({ redirectTo: '/manager/payments-and-control', pathMatch: 'full' }),
     );

@@ -30,6 +30,10 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly destroy$ = new Subject<void>();
   private readonly navigationState = inject(ListNavigationStateService);
+  readonly creationMode: 'student' | 'case' | null = this.route.snapshot?.data?.['creation'] ?? null;
+  private creationSourceCaseId = '';
+  private creationRequest: { fingerprint: string; key: string } | null = null;
+  private workspaceFailed = false;
 
   readonly Math = Math;
   case: StudentCaseDetail | null = null;
@@ -84,6 +88,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     return this.case?.colleges.find(item => item.isPrimary)?.name || null;
   }
   get studentName(): string {
+    if (this.creationMode === 'student') return this.case?.studentName ?? '';
     return this.case?.studentName || this.studentIdentity?.legalName || `Student ${this.case?.studentReference || ''}`.trim();
   }
   get studentEmail(): string | null {
@@ -159,14 +164,22 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    const createdMode=this.router.getCurrentNavigation()?.extras.state?.['createdCaseMode'];
     this.editForm.controls.status.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => this.onStatusChange());
     this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
       next: workspace => {
         this.workspace = workspace;
+        if (this.creationMode) {
+          if (!this.canEditCases) { this.error = 'You do not have permission to create students or cases.'; this.loading = false; return; }
+          if (this.creationMode === 'student') this.prepareCreation();
+          else if (this.case) this.prepareCreation(this.case);
+          return;
+        }
         if (this.case && this.route.snapshot?.queryParamMap?.get('edit') === '1' && this.canEditCases && !this.editing) this.beginEdit(this.case.caseId);
       },
-      error: () => { this.workspace = null; },
+      error: () => { this.workspace = null; this.workspaceFailed = true; if (this.creationMode) { this.loading = false; this.error = 'Student creation is unavailable. Check your workspace access and try again.'; } },
     });
+    if (this.creationMode === 'student') return;
     this.route.paramMap.pipe(
       map(params => params.get('caseId') ?? ''),
       distinctUntilChanged(),
@@ -184,6 +197,14 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         return;
       }
       this.case = detail;
+      if (this.creationMode === 'case') {
+        if (this.workspaceFailed) this.error = 'Case creation is unavailable. Check your workspace access and try again.';
+        else if (!this.workspace) this.loading = true;
+        else if (this.canEditCases) this.prepareCreation(detail);
+        else if (this.workspace) this.error = 'You do not have permission to create cases.';
+        return;
+      }
+      if (createdMode === 'student' || createdMode === 'case') this.showEditSuccess(createdMode === 'student' ? 'Student and case created.' : 'Case created.');
       if (this.route.snapshot?.queryParamMap?.get('edit') === '1' && this.canEditCases) this.beginEdit(detail.caseId);
       if (!detail.studentName) this.loadStudentIdentity(detail);
       this.loadRelated(1);
@@ -192,6 +213,27 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       this.loadDocuments(pages?.documents ?? 1);
       this.loadActivity(pages?.activity ?? 1);
     });
+  }
+
+  private prepareCreation(source?: StudentCaseDetail): void {
+    if (!this.canEditCases || this.editLoading || this.editing) return;
+    this.creationSourceCaseId = source?.caseId ?? '';
+    this.currentId = '';
+    this.case = {
+      caseId: '', caseNumber: '', userId: source?.userId ?? '', studentId: source?.studentId ?? '',
+      studentReference: source?.studentReference ?? '', studentName: source?.studentName ?? '',
+      studentEmail: source?.studentEmail ?? '', studentMobile: source?.studentMobile ?? null,
+      studentPhone: source?.studentPhone ?? null, title: null, courseName: null,
+      advisorId: source?.advisorId ?? null, advisorName: source?.advisorName ?? null,
+      status: 'pre_sale', currentStage: 'documents_requested', openedOn: null,
+      createdAt: '', updatedAt: '', recordVersion: 0, advisors: [], colleges: [],
+    };
+    this.loading = false;
+    this.documents = { documents: [], discovery: [], discoveryRequested: false, total: 0, page: 1, limit: 25 };
+    this.invoices = { invoices: [], total: 0, page: 1, limit: 25 };
+    this.activity = { activity: [], page: 1, limit: 25 };
+    if (source) this.loadRelated(1);
+    this.beginEdit('');
   }
 
   beginEdit(caseId: string): void {
@@ -233,6 +275,10 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
 
   cancelEdit(): void {
     if (this.saving) return;
+    if (this.creationMode) {
+      void this.router.navigate(this.creationSourceCaseId ? ['/manager/students/cases', this.creationSourceCaseId] : ['/manager/students']);
+      return;
+    }
     this.editing = false;
     this.editError = '';
     void this.router.navigate([], { relativeTo: this.route, queryParams: { edit: null }, queryParamsHandling: 'merge', replaceUrl: true });
@@ -245,6 +291,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       this.showEditError('Complete the required fields and choose a valid stage for the status.');
       return;
     }
+    if (this.creationMode) { this.saveCreation(); return; }
     const id = this.case.caseId;
     const value = this.editForm.getRawValue();
     this.saving = true;
@@ -283,6 +330,36 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         this.showEditError(error?.status === 409
           ? (error?.error?.message === 'Student email is already in use.' ? 'That email address is already in use.' : 'This case changed. Reload the page before saving again.')
           : 'The case could not be saved. Please try again.');
+      },
+    });
+  }
+
+  private saveCreation(): void {
+    const value = this.editForm.getRawValue();
+    const shared = { courseName: value.courseName.trim() || null, collegeId: value.collegeId || null,
+      advisorId: value.advisorId || null, status: value.status, currentStage: value.currentStage };
+    const payload = this.creationMode === 'student'
+      ? { ...shared, studentName: value.studentName.trim(), studentEmail: value.studentEmail.trim(),
+          mobile: value.mobile.trim() || null, phone: value.phone.trim() || null }
+      : { ...shared, userId: this.case!.userId };
+    const fingerprint = JSON.stringify(payload);
+    if (this.creationRequest?.fingerprint !== fingerprint) this.creationRequest = { fingerprint, key: crypto.randomUUID() };
+    const key = this.creationRequest!.key;
+    const request = this.creationMode === 'student'
+      ? this.api.createStudentWithCase(payload as Parameters<StudentOperationsService['createStudentWithCase']>[0], key)
+      : this.api.createCase(payload as Parameters<StudentOperationsService['createCase']>[0], key);
+    this.saving = true; this.editError = '';
+    request.pipe(takeUntil(this.destroy$)).subscribe({
+      next: result => {
+        // Keep the draft disabled until navigation; a failed navigation can
+        // safely replay the exact idempotent save rather than create twice.
+        void this.router.navigate(['/manager/students/cases', result.caseId], {state:{createdCaseMode:this.creationMode}}).then(navigated => {
+          if (!navigated) { this.saving = false; this.showEditError('Saved successfully. Try Save again to open the case.'); }
+        }).catch(() => { this.saving = false; this.showEditError('Saved successfully. Try Save again to open the case.'); });
+      },
+      error: error => {
+        this.saving = false;
+        this.showEditError(error?.status === 409 ? 'That email or student identifier is already in use, or the save request changed. Review the details and try again.' : 'The student or case could not be saved. Please try again.');
       },
     });
   }

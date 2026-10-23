@@ -162,6 +162,23 @@ export class StudentOperationsService {
     return this.http.get<StudentCaseWorkflowOptions>(`${this.workspaceBase}/cases/options`, { headers: this.headers() });
   }
 
+  createCase(value: {
+    userId: string; courseName: string | null; collegeId: string | null; advisorId: string | null;
+    status: string; currentStage: string;
+  }, idempotencyKey: string): Observable<{ caseId: string; recordVersion: number }> {
+    return this.http.post<{ caseId: string; recordVersion: number }>(`${this.workspaceBase}/cases`,value,
+      {headers:this.writeHeaders(idempotencyKey)}).pipe(tap(()=>this.invalidateDashboard()));
+  }
+
+  createStudentWithCase(value: {
+    studentName: string; studentEmail: string; mobile: string | null; phone: string | null;
+    courseName: string | null; collegeId: string | null; advisorId: string | null;
+    status: string; currentStage: string;
+  }, idempotencyKey: string): Observable<{ caseId: string; recordVersion: number }> {
+    return this.http.post<{ caseId: string; recordVersion: number }>(`${this.workspaceBase}/cases/student`,value,
+      {headers:this.writeHeaders(idempotencyKey)}).pipe(tap(()=>this.invalidateDashboard()));
+  }
+
   updateCase(caseId: string, value: {
     recordVersion: number; studentName: string; studentEmail: string; mobile: string | null; phone: string | null;
     courseName: string | null;

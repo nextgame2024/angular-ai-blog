@@ -34,13 +34,12 @@ describe('ManagerStudentsPageComponent', () => {
     fixture = TestBed.createComponent(ManagerStudentsPageComponent);
   });
 
-  it('shows an empty state and keeps future write actions disabled', () => {
+  it('shows an empty state while keeping Add student available to authorized managers', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('No students found');
-    const actions = fixture.nativeElement.querySelectorAll('.register-actions button');
-    expect(actions.length).toBe(2);
-    expect(actions[0].disabled).toBeTrue();
-    expect(actions[1].disabled).toBeTrue();
+    const actions = fixture.nativeElement.querySelectorAll('.register-actions a');
+    expect(actions.length).toBe(1);
+    expect(actions[0].getAttribute('href')).toBe('/manager/students/new');
   });
 
   it('uses the authorized register context without requesting workspace again', () => {
@@ -79,6 +78,15 @@ describe('ManagerStudentsPageComponent', () => {
     fixture.componentInstance.advisor.setValue('');
     expect(api.studentRegister.calls.mostRecent().args[0].page).toBe(1);
   }));
+
+  it('offers Add student to managers and removes the register-level New Case action', () => {
+    fixture.detectChanges();
+    const link=fixture.nativeElement.querySelector('.register-actions a.add-button') as HTMLAnchorElement;
+    expect(link.getAttribute('href')).toBe('/manager/students/new');
+    expect(fixture.nativeElement.querySelector('.register-actions')?.textContent).not.toContain('New Case');
+    fixture.componentInstance.workspace={role:'advisor'} as never;fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.register-actions a.add-button')).toBeNull();
+  });
 
   it('collapses only the summary while keeping filters usable without resetting the register', () => {
     fixture.detectChanges();

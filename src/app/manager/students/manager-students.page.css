@@ -61,6 +61,8 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 .register { display:flex; flex:1; flex-direction:column; min-height:0; border:1px solid #dae6f2; border-radius:.85rem; background:#fff; overflow:hidden }
 .register-heading { display:flex; justify-content:space-between; align-items:center; min-height:3.2rem; padding:.55rem .8rem; gap:.75rem }
 .register-actions { display:flex; align-items:center; gap:.4rem; white-space:nowrap }
+.register-actions .add-button { display:inline-flex; align-items:center; gap:.35rem; min-height:44px; text-decoration:none }
+.register-actions .add-button svg { width:1rem; height:1rem }
 .register-actions .btn { font-size:.8rem; font-weight:600 }
 .case-button { border-color:#9e6bf3; background:#f6efff; color:#7a36d6 }
 .add-button { border-color:#74dccc; background:#e6faf6; color:#078b7c }
@@ -112,6 +114,7 @@ h1 { font-size:1.05rem; font-weight:800 } h2 { font-size:1rem }
 @media (max-width:400px) { .summary-grid,.filters { grid-template-columns:1fr } .search-field,.insight-card { grid-column:auto } .card-top { flex-direction:column } }
 @media (max-width:400px) { .filters { grid-template-columns:minmax(0,1fr) 2rem } .filters > .search-field,.filters > app-manager-select,.filters > .date-error { grid-column:1/-1 } }
 :host-context(html.dark) { color:#e6edf6 }
+:host-context(html.dark) .register-actions .add-button { background:#173d4d; color:#8de4d4; border-color:#3894a5 }
 :host-context(html.dark) .page-chrome { background:#111827 }
 :host-context(html.dark) .breadcrumb,:host-context(html.dark) .header-dates span,:host-context(html.dark) .metric-label,:host-context(html.dark) .summary-card small { color:#9cadc3 }
 :host-context(html.dark) .breadcrumb a { color:#c1d0e6 }

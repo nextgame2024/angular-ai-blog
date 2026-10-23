@@ -76,8 +76,7 @@
     <div class="register-heading">
       <h2>Students ({{ total }})</h2>
       <div class="register-actions">
-        <button type="button" class="btn case-button" disabled title="New Case will be available in the next Student module task">＋ New Case</button>
-        <button type="button" class="btn add-button" disabled title="Add student will be available in the next Student module task">＋ Add student</button>
+        @if (canManage) { <a class="btn add-button" routerLink="/manager/students/new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Add student</a> }
       </div>
     </div>
     @if (attentionActive) {

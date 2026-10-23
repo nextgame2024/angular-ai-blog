@@ -1,5 +1,5 @@
 import { fakeAsync, TestBed, tick } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import type { StudentCaseDetail } from '../student-operations/student-operations.types';
@@ -7,6 +7,7 @@ import { ManagerCaseViewPageComponent } from './manager-case-view.page';
 
 describe('ManagerCaseViewPageComponent', () => {
   const params = new BehaviorSubject(convertToParamMap({ caseId: 'case-1' }));
+  const routeData: { creation?: 'student' | 'case' } = {};
   const detail: StudentCaseDetail = {
     caseId: 'case-1', caseNumber: 'CASE-1', userId: 'user-1', studentId: 'student-1',
     studentReference: 'STD-1', studentName: 'Example Student', studentEmail: 'student@example.com', studentPhone: null, studentMobile: null,
@@ -21,6 +22,8 @@ describe('ManagerCaseViewPageComponent', () => {
     caseEditOptions: jasmine.createSpy().and.returnValue(of({ advisors: [{ advisorId: 'advisor-1', code: 'S15', name: 'Advisor Name', xeroLabel: 'S15 Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] })),
     caseWorkflowOptions: jasmine.createSpy().and.returnValue(of({ statuses: ['in_progress', 'pre_sale', 'on_hold'], stages: ['documents_requested', 'awaiting_payment', 'payment_received'], allowedStatuses: { imported_pending_review: ['in_progress'], documents_requested: ['pre_sale'], awaiting_payment: ['pre_sale', 'on_hold'], payment_received: ['in_progress'] } })),
     updateCase: jasmine.createSpy().and.returnValue(of({ caseId: 'case-1', recordVersion: 2 })),
+    createCase: jasmine.createSpy(),
+    createStudentWithCase: jasmine.createSpy(),
     studentRegister: jasmine.createSpy().and.returnValue(of({ students: [], page: 1, limit: 25, total: 0 })),
     casesForStudent: jasmine.createSpy().and.returnValue(of({ cases: [
       { caseId: 'case-1', caseNumber: 'CASE-1', status: 'in_progress', currentStage: 'imported_pending_review' },
@@ -42,6 +45,7 @@ describe('ManagerCaseViewPageComponent', () => {
   };
 
   beforeEach(async () => {
+    delete routeData.creation;
     params.next(convertToParamMap({ caseId: 'case-1' }));
     for (const spy of Object.values(api)) spy.calls.reset();
     api.workspace.and.returnValue(of({ role: 'chief_executive' }));
@@ -54,10 +58,181 @@ describe('ManagerCaseViewPageComponent', () => {
     api.caseActivity.and.returnValue(of({ activity: [{ activityId: 'activity-1', eventType: 'case.created', summary: 'Case created', createdAt: '2026-10-16T00:00:00Z' }], page: 1, limit: 25 }));
     await TestBed.configureTestingModule({
       imports: [ManagerCaseViewPageComponent],
-      providers: [provideRouter([]), { provide: ActivatedRoute, useValue: { paramMap: params.asObservable() } },
+      providers: [provideRouter([]), { provide: ActivatedRoute, useValue: { paramMap: params.asObservable(), snapshot: { data: routeData } } },
         { provide: StudentOperationsService, useValue: api }],
     }).compileComponents();
   });
+
+  it('opens Add student as a completely unsaved form without loading case records or allocating IDs', () => {
+    routeData.creation = 'student';
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent); fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(fixture.componentInstance.editing).toBeTrue();
+    for (const field of ['studentName','studentEmail','mobile','phone','courseName']) {
+      expect((root.querySelector(`[formControlName="${field}"]`) as HTMLInputElement).value).toBe('');
+    }
+    expect(root.textContent).toContain('Assigned on save');
+    expect(root.querySelector('.draft-case strong')?.textContent).toBe('New case');
+    expect(root.textContent).not.toContain('CASE-1');expect(root.textContent).not.toContain('STD-1');
+    expect(root.textContent).not.toContain('Imported — Pending Review');
+    expect(api.caseDetail).not.toHaveBeenCalled();expect(api.casesForStudent).not.toHaveBeenCalled();
+    expect(api.caseDocuments).not.toHaveBeenCalled();expect(api.caseInvoices).not.toHaveBeenCalled();
+    expect(api.caseActivity).not.toHaveBeenCalled();expect(api.createStudentWithCase).not.toHaveBeenCalled();
+    const navigate = spyOn(TestBed.inject(Router),'navigate').and.resolveTo(true);
+    (root.querySelector('.draft-case .cancel') as HTMLButtonElement).click();
+    expect(navigate).toHaveBeenCalledWith(['/manager/students']);
+    expect(api.createStudentWithCase).not.toHaveBeenCalled();
+  });
+
+  it('validates Add student and retries the exact save with the same idempotency key', () => {
+    routeData.creation = 'student';
+    api.createStudentWithCase.and.returnValue(throwError(()=>({status:0})));
+    const fixture = TestBed.createComponent(ManagerCaseViewPageComponent); fixture.detectChanges();
+    fixture.componentInstance.saveEdit();fixture.detectChanges();
+    expect(api.createStudentWithCase).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.editForm.controls.studentName.touched).toBeTrue();
+    expect(fixture.nativeElement.querySelector('app-manager-toast [role="alert"]')).not.toBeNull();
+    fixture.componentInstance.editForm.patchValue({studentName:' New Student ',studentEmail:'new@example.test',mobile:'0400 111 222'});
+    fixture.componentInstance.saveEdit();
+    const first=api.createStudentWithCase.calls.mostRecent().args;
+    expect(first[0]).toEqual(jasmine.objectContaining({studentName:'New Student',studentEmail:'new@example.test',mobile:'0400 111 222',courseName:null,status:'pre_sale',currentStage:'documents_requested'}));
+    expect(first[0].recordVersion).toBeUndefined();expect(first[0].userId).toBeUndefined();
+    expect(fixture.componentInstance.editForm.controls.studentName.value).toBe(' New Student ');
+    fixture.componentInstance.saveEdit();
+    expect(api.createStudentWithCase.calls.mostRecent().args[1]).toBe(first[1]);
+    fixture.componentInstance.editForm.controls.studentEmail.setValue('changed@example.test');
+    fixture.componentInstance.saveEdit();
+    expect(api.createStudentWithCase.calls.mostRecent().args[1]).not.toBe(first[1]);
+    const navigate=spyOn(TestBed.inject(Router),'navigate').and.resolveTo(true);
+    api.createStudentWithCase.and.returnValue(of({caseId:'created-case',recordVersion:1}));
+    fixture.componentInstance.saveEdit();
+    expect(navigate).toHaveBeenCalledWith(['/manager/students/cases','created-case'],{state:{createdCaseMode:'student'}});
+    expect(api.updateCase).not.toHaveBeenCalled();expect(api.createCase).not.toHaveBeenCalled();
+  });
+
+  it('creates an additional case for the already authorized student without changing identity or copying records', () => {
+    routeData.creation='case';api.createCase.and.returnValue(of({caseId:'new-case',recordVersion:1}));
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+    const root=fixture.nativeElement as HTMLElement;
+    expect((root.querySelector('[formControlName="studentName"]') as HTMLInputElement).readOnly).toBeTrue();
+    expect(fixture.componentInstance.editForm.controls.studentName.value).toBe('Example Student');
+    expect(fixture.componentInstance.editForm.controls.courseName.value).toBe('');
+    expect(api.caseDocuments).not.toHaveBeenCalled();expect(api.caseInvoices).not.toHaveBeenCalled();
+    expect(root.querySelector('.draft-case')?.textContent).toContain('Case number assigned on save');
+    const navigate=spyOn(TestBed.inject(Router),'navigate').and.resolveTo(true);
+    fixture.componentInstance.saveEdit();
+    expect(api.createCase).toHaveBeenCalledWith(jasmine.objectContaining({userId:'user-1',currentStage:'documents_requested',courseName:null}),jasmine.any(String));
+    expect(navigate).toHaveBeenCalledWith(['/manager/students/cases','new-case'],{state:{createdCaseMode:'case'}});
+    expect(api.updateCase).not.toHaveBeenCalled();expect(api.createStudentWithCase).not.toHaveBeenCalled();
+  });
+
+  it('hides creation actions and refuses a direct Add student route for an advisor', () => {
+    routeData.creation='student';api.workspace.and.returnValue(of({role:'advisor'}));
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('permission');
+    expect(fixture.nativeElement.querySelector('.draft-case')).toBeNull();
+    fixture.componentInstance.saveEdit();expect(api.createStudentWithCase).not.toHaveBeenCalled();
+    expect(api.caseEditOptions).not.toHaveBeenCalled();
+  });
+
+  it('waits for workspace authority before displaying a new-case draft and fails safely if access cannot load',()=>{
+    routeData.creation='case';const workspace=new Subject<{role:string}>();api.workspace.and.returnValue(workspace);
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.student-overview')).toBeNull();
+    expect(api.caseEditOptions).not.toHaveBeenCalled();
+    workspace.error(new Error('private error'));fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.draft-case')).toBeNull();
+    expect(fixture.nativeElement.textContent).toContain('workspace access');
+    expect(fixture.nativeElement.textContent).not.toContain('private error');
+    api.workspace.and.returnValue(throwError(()=>new Error('private error')));
+    const failed=TestBed.createComponent(ManagerCaseViewPageComponent);failed.detectChanges();
+    expect(failed.nativeElement.querySelector('.draft-case')).toBeNull();
+    expect(failed.nativeElement.textContent).toContain('workspace access');
+  });
+
+  it('places New Case inside the saved student case page, never in an unsaved draft or advisor view',()=>{
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.related-cases .new-case-button')?.getAttribute('href')).toBe('/manager/students/cases/case-1/new');
+    expect(fixture.nativeElement.querySelector('.new-case-button').getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    fixture.componentInstance.workspace={role:'advisor'} as never;fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.new-case-button')).toBeNull();
+  });
+
+  for (const width of [390, 900, 1440]) for (const dark of [false, true]) {
+    it(`keeps progress and related cards equal with a scrolling case list at ${width}px in ${dark ? 'dark' : 'light'} mode`, () => {
+      for (const mode of ['saved', 'edit', 'case'] as const) {
+        if (mode === 'case') routeData.creation = 'case';
+        const fixture = TestBed.createComponent(ManagerCaseViewPageComponent); fixture.detectChanges();
+        const component = fixture.componentInstance;
+        if (mode === 'edit') component.beginEdit('case-1');
+        component.relatedCases = Array.from({ length: 30 }, (_, index) => ({
+          ...component.relatedCases[0], caseId: `case-${index + 1}`, caseNumber: `CASE-${index + 1}`,
+        }));
+        component.relatedTotal = 100; fixture.detectChanges();
+        const frame = document.createElement('iframe');
+        frame.style.width = `${width}px`; frame.style.height = '900px'; document.body.appendChild(frame);
+        try {
+          const doc = frame.contentDocument!, win = frame.contentWindow!;
+          document.querySelectorAll('style').forEach(style => doc.head.appendChild(style.cloneNode(true)));
+          doc.documentElement.classList.toggle('dark', dark); doc.body.style.margin = '0';
+          const host = fixture.nativeElement.cloneNode(true) as HTMLElement;
+          host.style.display = 'block'; host.style.width = '100%'; doc.body.appendChild(host);
+          const progress = doc.querySelector('.progress-card') as HTMLElement;
+          const stages = progress.querySelector('.stage-list') as HTMLElement;
+          expect(parseFloat(win.getComputedStyle(stages).marginTop)).toBeGreaterThanOrEqual(24);
+          expect(stages.getBoundingClientRect().bottom).toBeLessThanOrEqual(progress.getBoundingClientRect().bottom);
+          const related = doc.querySelector('.related-cases') as HTMLElement;
+          const scroll = doc.querySelector('.related-scroll') as HTMLElement;
+          expect(Math.abs(progress.getBoundingClientRect().height - related.getBoundingClientRect().height)).toBeLessThan(1);
+          expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight);
+          expect(scroll.clientHeight).toBeGreaterThan(44);
+          expect(scroll.getBoundingClientRect().bottom).toBeLessThan(related.getBoundingClientRect().bottom);
+          expect(related.scrollHeight).toBeLessThanOrEqual(related.clientHeight + 1);
+          expect(scroll.getAttribute('tabindex')).toBe('0');
+          expect(scroll.getAttribute('aria-label')).toBe('Student cases');
+          expect(win.getComputedStyle(scroll).overflowY).toBe('auto');
+          expect(win.getComputedStyle(scroll).scrollbarWidth).toBe('thin');
+          expect(related.scrollWidth).toBeLessThanOrEqual(related.clientWidth + 1);
+          scroll.scrollTop = scroll.scrollHeight;
+          const more = scroll.querySelector('.secondary-button') as HTMLElement;
+          expect(more.getBoundingClientRect().bottom).toBeLessThanOrEqual(scroll.getBoundingClientRect().bottom + 1);
+          if (mode === 'saved') {
+            const button = related.querySelector('.new-case-button') as HTMLElement;
+            const title = related.querySelector('h2') as HTMLElement;
+            expect(button.parentElement).toBe(title.parentElement);
+            expect(button.getBoundingClientRect().left).toBeGreaterThanOrEqual(title.getBoundingClientRect().right);
+            expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+          }
+          if (width > 850) {
+            expect(Math.abs(progress.getBoundingClientRect().bottom - related.getBoundingClientRect().bottom)).toBeLessThan(1);
+            const content = doc.querySelector('.content-grid') as HTMLElement;
+            expect(content.getBoundingClientRect().top - progress.getBoundingClientRect().bottom).toBeLessThan(14);
+          }
+        } finally { frame.remove(); fixture.destroy(); }
+      }
+    });
+  }
+
+  for(const width of [390,1440]) for(const dark of [false,true]) {
+    it(`keeps Add student draft and save controls usable at ${width}px in ${dark?'dark':'light'} mode`,()=>{
+      routeData.creation='student';
+      const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+      const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
+      try {
+        const doc=frame.contentDocument!,win=frame.contentWindow!;
+        document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));
+        doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';
+        const host=fixture.nativeElement.cloneNode(true) as HTMLElement;host.style.display='block';host.style.width='100%';doc.body.appendChild(host);
+        const card=doc.querySelector('.student-overview') as HTMLElement,draft=doc.querySelector('.draft-case') as HTMLElement;
+        expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth+1);
+        expect(draft.scrollWidth).toBeLessThanOrEqual(draft.clientWidth+1);
+        expect(draft.textContent).toContain('Case number assigned on save');
+        for(const button of draft.querySelectorAll('button')) expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+        expect(win.getComputedStyle(card).backgroundColor).toBe(dark?'rgb(30, 41, 59)':'rgb(255, 255, 255)');
+        expect(doc.querySelector('.new-case-button')).toBeNull();
+      } finally {frame.remove();fixture.destroy();}
+    });
+  }
 
   it('shows real case, related case, document, invoice and activity data with actions per case', () => {
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
@@ -213,6 +388,70 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelector('.edit-loading-overlay')).toBeNull();
     expect(root.querySelector('.case-page')?.getAttribute('aria-busy')).toBe('false');
   });
+
+  for (const width of [390, 900, 1440]) for (const dark of [false, true]) {
+    it(`lays out the compact case editor without overflow at ${width}px in ${dark ? 'dark' : 'light'} mode`, () => {
+      const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
+      fixture.detectChanges();
+      fixture.componentInstance.beginEdit('case-1');
+      fixture.detectChanges();
+      const frame = document.createElement('iframe');
+      frame.style.width = `${width}px`;
+      frame.style.height = '900px';
+      document.body.appendChild(frame);
+      try {
+        const doc = frame.contentDocument!, win = frame.contentWindow!;
+        document.querySelectorAll('style').forEach(style => doc.head.appendChild(style.cloneNode(true)));
+        doc.documentElement.classList.toggle('dark', dark);
+        doc.body.style.margin = '0';
+        const host = fixture.nativeElement.cloneNode(true) as HTMLElement;
+        host.style.display = 'block'; host.style.width = '100%';
+        doc.body.appendChild(host);
+        const card = doc.querySelector('.student-overview.editing') as HTMLElement;
+        const identity = card.querySelector('.student-name') as HTMLElement;
+        const facts = card.querySelector('.overview-facts') as HTMLElement;
+        const field = (name: string) => card.querySelector(`[formControlName="${name}"]`) as HTMLElement;
+        const name = field('studentName').getBoundingClientRect();
+        const email = field('studentEmail').getBoundingClientRect();
+        const mobile = field('mobile').getBoundingClientRect();
+        const phone = field('phone').getBoundingClientRect();
+        const factBoxes = [...facts.children].map(element => element.getBoundingClientRect());
+        expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth + 1);
+        expect(card.querySelectorAll('.inline-identity-fields input')).toHaveSize(4);
+        expect(doc.querySelector('.inline-status app-manager-select[formControlName="status"]')).not.toBeNull();
+        expect(card.querySelector('#case-edit-student-reference')?.textContent).toContain('STD-1');
+        expect(field('studentName').getAttribute('aria-describedby')).toBe('case-edit-student-reference');
+        for (const input of card.querySelectorAll('input')) {
+          expect(input.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+          expect(input.getBoundingClientRect().right).toBeLessThanOrEqual(card.getBoundingClientRect().right);
+        }
+        expect(win.getComputedStyle(field('studentName')).backgroundColor).toBe(dark ? 'rgb(38, 52, 73)' : 'rgb(255, 255, 255)');
+        expect(win.getComputedStyle(card).backgroundColor).toBe(dark ? 'rgb(30, 41, 59)' : 'rgb(255, 255, 255)');
+        if (width > 1100) {
+          expect(identity.getBoundingClientRect().right).toBeLessThanOrEqual(facts.getBoundingClientRect().left);
+          expect(Math.abs(identity.getBoundingClientRect().top - facts.getBoundingClientRect().top)).toBeLessThan(2);
+        } else {
+          expect(facts.getBoundingClientRect().top).toBeGreaterThanOrEqual(identity.getBoundingClientRect().bottom);
+        }
+        if (width > 600) {
+          expect(name.top).toBe(email.top);
+          expect(mobile.top).toBe(phone.top);
+          expect(mobile.top).toBeGreaterThan(name.bottom);
+          expect(factBoxes[0].top).toBe(factBoxes[1].top);
+          expect(factBoxes[2].top).toBe(factBoxes[3].top);
+          expect(factBoxes[2].top).toBeGreaterThan(factBoxes[0].bottom);
+        } else {
+          expect(email.top).toBeGreaterThan(name.bottom);
+          expect(mobile.top).toBeGreaterThan(email.bottom);
+          expect(phone.top).toBeGreaterThan(mobile.bottom);
+          expect(factBoxes[1].top).toBeGreaterThan(factBoxes[0].bottom);
+        }
+        expect(api.updateCase).not.toHaveBeenCalled();
+      } finally {
+        frame.remove(); fixture.destroy();
+      }
+    });
+  }
 
   it('shows the same overlay until the case save finishes', () => {
     const pending = new Subject<{ caseId: string; recordVersion: number }>();

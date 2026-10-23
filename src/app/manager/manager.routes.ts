@@ -134,6 +134,16 @@ export const MANAGER_ROUTES: Route[] = [
         data: { title: 'Students', fullscreen: true },
       },
       {
+        path: 'students/new',
+        loadComponent: () => import('./students/manager-case-view.page').then(m => m.ManagerCaseViewPageComponent),
+        data: { title: 'Add student', fullscreen: true, creation: 'student' },
+      },
+      {
+        path: 'students/cases/:caseId/new',
+        loadComponent: () => import('./students/manager-case-view.page').then(m => m.ManagerCaseViewPageComponent),
+        data: { title: 'New Case', fullscreen: true, creation: 'case' },
+      },
+      {
         path: 'students/cases/:caseId',
         loadComponent: () => import('./students/manager-case-view.page').then(m => m.ManagerCaseViewPageComponent),
         data: { title: 'Case Details', fullscreen: true },

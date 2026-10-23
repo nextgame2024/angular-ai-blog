@@ -23,6 +23,21 @@ describe('StudentOperationsService', () => {
 
   afterEach(() => http.verify());
 
+  it('creates a student and first case with one authenticated idempotent request', () => {
+    const value={studentName:'Student',studentEmail:'student@example.test',mobile:null,phone:null,courseName:null,collegeId:null,advisorId:null,status:'pre_sale',currentStage:'documents_requested'};
+    service.createStudentWithCase(value,'create-student-case-key').subscribe();
+    const request=http.expectOne(candidate=>candidate.url.endsWith('/workspace/cases/student'));
+    expect(request.request.method).toBe('POST');expect(request.request.body).toEqual(value);
+    expect(request.request.headers.get('Idempotency-Key')).toBe('create-student-case-key');
+    expect(request.request.headers.get('Authorization')).toContain('business-manager-token');
+    request.flush({caseId:'case-1',recordVersion:1});
+    service.createCase({userId:'user-1',courseName:null,collegeId:null,advisorId:null,status:'pre_sale',currentStage:'documents_requested'},'existing-student-case-key').subscribe();
+    const next=http.expectOne(candidate=>candidate.url.endsWith('/workspace/cases'));
+    expect(next.request.body.userId).toBe('user-1');
+    expect(next.request.headers.get('Idempotency-Key')).toBe('existing-student-case-key');
+    next.flush({caseId:'case-2',recordVersion:1});
+  });
+
   it('loads case edit choices and submits one versioned, idempotent case update', () => {
     service.caseEditOptions().subscribe();
     const choices = http.expectOne(candidate => candidate.url.endsWith('/workspace/cases/edit-options'));
