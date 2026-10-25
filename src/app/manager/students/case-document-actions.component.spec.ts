@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed,fakeAsync,tick } from '@angular/core/testing';
 import { of,Subject,throwError } from 'rxjs';
 import { CaseDocumentActionsComponent } from './case-document-actions.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
@@ -68,7 +68,8 @@ describe('CaseDocumentActionsComponent',()=>{
     expect(c.message).toContain('retry this same file');
     api.uploadCaseDocument.and.returnValue(of({documentId:'document-1'}));c.upload();
     expect(api.uploadCaseDocument.calls.mostRecent().args).toEqual(['case-1',jasmine.any(File),'type-1',key]);
-    expect(c.message).toBe('Document uploaded.');expect(c.file).toBeNull();
+    expect(c.message).toBe('Document uploaded.');expect(c.file).toBeNull();expect(c.modal.nativeElement.open).toBeFalse();expect(c.isOpen).toBeFalse();
+    f.detectChanges();expect(f.nativeElement.querySelector('app-manager-toast')).not.toBeNull();
   });
   it('locks a row-selected type across retries and success, but unlocks general Upload',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload','type-1');f.detectChanges();
@@ -96,8 +97,16 @@ describe('CaseDocumentActionsComponent',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();c.uploadForm.controls.documentTypeId.setValue('type-1');c.file=new File(['pdf'],'test.pdf');
     const pending=new Subject<{documentId:string}>();api.uploadCaseDocument.and.returnValue(pending);c.upload();c.upload();const event=new Event('cancel',{cancelable:true});c.close(event);
     expect(api.uploadCaseDocument).toHaveBeenCalledTimes(1);expect(event.defaultPrevented).toBeTrue();expect(c.modal.nativeElement.open).toBeTrue();
-    pending.next({documentId:'d'});expect(c.busy).toBeFalse();
+    pending.next({documentId:'d'});expect(c.busy).toBeFalse();expect(c.modal.nativeElement.open).toBeFalse();
   });
+  it('explains a slow storage save without pretending extraction is part of the upload request',fakeAsync(()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload','type-1');c.file=new File(['pdf'],'passport.pdf');
+    const pending=new Subject<any>();api.uploadCaseDocument.and.returnValue(pending);c.upload();f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Preparing secure storage');expect(f.nativeElement.textContent).toContain('background after upload');
+    tick(11000);f.detectChanges();expect(f.nativeElement.textContent).toContain('Still saving');expect(c.modal.nativeElement.open).toBeTrue();
+    pending.error({status:502});f.detectChanges();expect(c.file?.name).toBe('passport.pdf');expect(c.modal.nativeElement.open).toBeTrue();
+    const elapsed=c.uploadElapsed;tick(5000);expect(c.uploadElapsed).toBe(elapsed);f.destroy();
+  }));
   it('keeps the selected file and shows an actionable capacity message without technical Contact controls',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
     c.uploadForm.controls.documentTypeId.setValue('type-1');c.file=new File(['pdf'],'test.pdf');

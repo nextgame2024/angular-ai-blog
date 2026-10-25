@@ -6,6 +6,13 @@
 .checklist-item { display:flex; justify-content:space-between; align-items:center; gap:.7rem; min-height:44px; padding:.6rem .2rem; border-bottom:1px solid #e7edf4; font-size:.8rem; color:#425675; cursor:pointer }
 .checklist-item span { min-width:0; overflow-wrap:anywhere }
 .checklist-item small { display:block; font-size:.7rem; line-height:1.5; font-weight:400; margin-top:.15rem }
+.checklist-controls { display:flex; align-items:center; justify-content:flex-end; gap:.35rem; flex:none }
+.validation-icon { width:1.3rem; height:1.3rem; flex:none }
+.validation-icon.passed { color:#087f73 }
+.validation-icon.warning { color:#a55a0b }
+.validation-pending { font-size:.7rem }
+:host-context(html.dark) .validation-icon.passed { color:#62dcbf }
+:host-context(html.dark) .validation-icon.warning { color:#f6c086 }
 .checklist-item.completed { color:#087f73 }
 .checklist-item input { flex:none; width:1.15rem; height:1.15rem; margin:0 .25rem; accent-color:#0ca88b; cursor:pointer }
 .checklist-item input:disabled { cursor:not-allowed }

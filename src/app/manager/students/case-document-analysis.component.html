@@ -2,8 +2,9 @@
   @if(canManage){<button type="button" class="check-button" [class.invalid]="status==='invalid'||status==='check_failed'" (click)="open()" [attr.aria-label]="'Review document check: '+label">{{label}}</button>}
   @else{<span class="check-label">{{label}}</span>}
 }
-<dialog #modal [attr.aria-labelledby]="'analysis-title-'+documentId" (cancel)="close($event)">
+<dialog #modal [class.offer-dialog]="data?.extraction?.kind==='letter_of_offer'" [attr.aria-labelledby]="'analysis-title-'+documentId" (cancel)="close($event)">
   <header><div><h2 [id]="'analysis-title-'+documentId">Document check</h2><p>Review the extracted details against the uploaded document.</p></div><button type="button" class="btn" aria-label="Close document check" (click)="close()" [disabled]="busy">×</button></header>
+  <div class="analysis-body">
   @if(loading){<app-manager-list-loader label="Loading document check"></app-manager-list-loader>}
   @if(failed){<button type="button" class="btn" (click)="load()">Retry loading</button>}
   @if(data;as item){
@@ -38,5 +39,6 @@
       }
     }
   }
+  </div>
+  @if(message){<app-manager-toast [message]="message" tone="error" (closed)="message=''" />}
 </dialog>
-@if(message){<app-manager-toast [message]="message" tone="error" (closed)="message=''" />}

@@ -49,10 +49,31 @@ describe('CaseOfferReviewComponent',()=>{
   it('rejects with a note even when extracted financial fields are incomplete',()=>{
     const f=setup(),c=f.componentInstance;c.form.controls.total.setValue('');c.form.controls.reason.setValue('Wrong offer');c.save('rejected');expect(api.reviewDocumentAnalysis.calls.mostRecent().args[2].corrections).toBeNull();
   });
+  it('switches accessible tabs without losing edits and keeps both actions outside the panels',()=>{
+    const f=setup(),c=f.componentInstance;c.form.controls.name.setValue('Edited student');
+    const tabs=Array.from(f.nativeElement.querySelectorAll('[role="tab"]')) as HTMLButtonElement[];
+    expect(tabs.map(t=>t.textContent?.trim())).toEqual(['Details','Fee details','Instalment schedule','Evidence & review note']);
+    for(const tab of tabs){tab.click();f.detectChanges();expect(tab.getAttribute('aria-selected')).toBe('true');expect(f.nativeElement.querySelectorAll('[role="tabpanel"]:not([hidden])').length).toBe(1);expect(f.nativeElement.querySelector('.offer-footer').closest('[role="tabpanel"]')).toBeNull();}
+    tabs[0].click();f.detectChanges();expect(c.form.controls.name.value).toBe('Edited student');
+    tabs[0].dispatchEvent(new KeyboardEvent('keydown',{key:'End',bubbles:true}));f.detectChanges();expect(c.activeTab).toBe('review');
+    tabs[3].dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));f.detectChanges();expect(c.activeTab).toBe('details');
+  });
+  it('opens the relevant tab for missing notes, colleges, fees and payment errors',()=>{
+    const f=setup(),c=f.componentInstance;c.save('confirmed');expect(c.activeTab).toBe('review');
+    c.form.controls.reason.setValue('Checked');c.form.controls.collegeId.setValue('');c.save('confirmed');expect(c.activeTab).toBe('details');
+    c.form.controls.collegeId.setValue('college');c.form.controls.total.setValue('bad');c.save('confirmed');expect(c.activeTab).toBe('fees');
+    c.form.controls.total.setValue('9040.00');c.form.controls.instalments.at(0).controls.total.setValue('bad');c.save('confirmed');expect(c.activeTab).toBe('instalments');f.destroy();
+  });
   for(const width of [390,1440])for(const dark of [false,true])it(`fits offer fields at ${width}px in ${dark?'dark':'light'} mode`,()=>{
     const f=setup();const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
-    try{const doc=frame.contentDocument!,win=frame.contentWindow!;document.querySelectorAll('style').forEach(s=>doc.head.appendChild(s.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';const host=f.nativeElement.cloneNode(true) as HTMLElement;host.style.display='block';host.style.width=`${Math.min(width-32,620)}px`;doc.body.appendChild(host);
-      expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth+1);for(const b of host.querySelectorAll<HTMLButtonElement>('button'))expect(b.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);expect(win.getComputedStyle(host.querySelector('input')!).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(255, 255, 255)');
+    try{const doc=frame.contentDocument!,win=frame.contentWindow!;document.querySelectorAll('style').forEach(s=>doc.head.appendChild(s.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';
+      for(const tab of f.componentInstance.tabs){f.componentInstance.activeTab=tab.key;f.detectChanges();
+        const host=f.nativeElement.cloneNode(true) as HTMLElement;host.style.display='flex';host.style.flexDirection='column';host.style.height='650px';host.style.width=`${Math.min(width-32,1180)}px`;doc.body.appendChild(host);
+        expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth+1);for(const b of host.querySelectorAll<HTMLButtonElement>('button'))if(b.getBoundingClientRect().height)expect(b.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+        const scroll=host.querySelector('.offer-scroll')!;scroll.scrollTop=scroll.scrollHeight;
+        const footer=host.querySelector('.offer-footer')!;expect(footer.getBoundingClientRect().bottom).toBeLessThanOrEqual(host.getBoundingClientRect().bottom+1);expect(footer.getBoundingClientRect().top).toBeGreaterThanOrEqual(host.getBoundingClientRect().top);
+        expect(win.getComputedStyle(host.querySelector('input')!).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(255, 255, 255)');host.remove();
+      }
     }finally{frame.remove();f.destroy();}
   });
 });

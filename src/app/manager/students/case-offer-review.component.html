@@ -1,34 +1,79 @@
-<p>Review the offer before using it to create invoices. Conditional fees are selected later for each invoice.</p>
-@if(analysis.offer?.resolution==='identifier_conflict'){<p class="notice">The college name matches, but its ABN differs. Check the original document and select the correct college.</p>}
-@if(analysis.offer?.resolution==='multiple_exact'){<p class="notice">Several colleges have this name. Select the correct college.</p>}
-@if(analysis.offer?.resolution==='partial'){<p>Possible matches: @for(c of analysis.offer?.candidates;track c.collegeId){<span>{{c.name}}; </span>}</p>}
-@if(analysis.offer?.resolution==='none'){<p>No matching college was found. Select an existing college or create one below.</p>}
-<form [formGroup]="form" (ngSubmit)="save('confirmed')">
-  <fieldset [disabled]="busy">
-    <div class="fields"><label>Student name<input formControlName="name" [attr.aria-invalid]="form.controls.name.touched&&form.controls.name.invalid" /></label><label>College on the offer<input formControlName="collegeName" [attr.aria-invalid]="form.controls.collegeName.touched&&form.controls.collegeName.invalid" /></label><label>ABN<input formControlName="abn" /></label><label>CRICOS provider code<input formControlName="cricos" /></label></div>
-    <p>Current case college: <strong>{{currentCollegeName}}</strong></p>
-    <label>College for this case<app-manager-select formControlName="collegeId" [options]="collegeOptions" [searchable]="true" ariaLabel="College for this offer" placeholder="Select a college" [attr.aria-invalid]="form.controls.collegeId.touched&&form.controls.collegeId.invalid" /></label>
-    @if(replacingCollege){<label class="checkbox"><input type="checkbox" formControlName="replaceCollege" />Replace the current case college with my selection.</label>}
-    <button type="button" class="btn" (click)="beginCollege()" [disabled]="busy">+ Create college</button>
-    <div class="fields"><label>Currency<input formControlName="currency" maxlength="3" /></label><label>Stated offer total<input formControlName="total" inputmode="decimal" [attr.aria-invalid]="form.controls.total.touched&&offerMoneyInput(form.controls.total.value)===null" /></label></div>
-    <h3>Courses</h3>
-    <div formArrayName="courses" class="collection">@for(course of form.controls.courses.controls;track course;let i=$index){<fieldset [formGroupName]="i" class="entry"><legend>Course {{i+1}}</legend><div class="fields"><label>Name<input formControlName="name" [attr.aria-invalid]="course.get('name')?.touched&&course.get('name')?.invalid" /></label><label>Course code<input formControlName="code" /></label><label>Start date<input type="date" formControlName="startsOn" /></label><label>End date<input type="date" formControlName="endsOn" /></label><label>Duration<input formControlName="duration" /></label></div><button type="button" class="btn danger" (click)="remove(form.controls.courses,i)" [disabled]="busy" [attr.aria-label]="'Remove course '+(i+1)">Remove</button></fieldset>}</div>
-    <button type="button" class="btn" (click)="addCourse()" [disabled]="busy||form.controls.courses.length>=30">+ Add course</button>
-    <h3>Fee details</h3>
-    <div formArrayName="fees" class="collection">@for(fee of form.controls.fees.controls;track fee;let i=$index){<fieldset [formGroupName]="i" class="entry"><legend>Fee {{i+1}}</legend><div class="fields"><label>Name<input formControlName="label" /></label><label>Amount<input formControlName="amount" inputmode="decimal" /></label><label class="checkbox"><input type="checkbox" formControlName="conditional" />Conditional fee</label><label>When it applies<input formControlName="condition" /></label></div><button type="button" class="btn danger" (click)="remove(form.controls.fees,i)" [disabled]="busy" [attr.aria-label]="'Remove fee '+(i+1)">Remove</button></fieldset>}</div>
-    <button type="button" class="btn" (click)="addFee()" [disabled]="busy||form.controls.fees.length>=100">+ Add fee</button>
-    <h3>Instalment schedule</h3>
-    <div formArrayName="instalments" class="collection">@for(payment of form.controls.instalments.controls;track payment;let i=$index){<fieldset [formGroupName]="i" class="entry"><legend>Payment {{i+1}}</legend><div class="fields"><label>Instalment number<input formControlName="sequence" inputmode="numeric" /></label><label>Due date<input type="date" formControlName="dueOn" /></label><label>Payment term<input formControlName="dueTerm" placeholder="e.g. Immediately" /></label><label>Printed payment total<input formControlName="total" inputmode="decimal" /></label><label>Conditional fee already included<input formControlName="includedFee" inputmode="decimal" /></label></div>
-      <div formArrayName="components">@for(component of payment.controls.components.controls;track component;let j=$index){<div [formGroupName]="j" class="fields"><label>Payment component<input formControlName="label" /></label><label>Component amount<input formControlName="amount" inputmode="decimal" /></label><button type="button" class="btn danger" (click)="remove(payment.controls.components,j)" [disabled]="busy" [attr.aria-label]="'Remove component '+(j+1)+' from payment '+(i+1)">Remove component</button></div>}</div>
-      <button type="button" class="btn" (click)="addComponent(payment)" [disabled]="busy||payment.controls.components.length>=20">+ Add payment component</button>
-      <button type="button" class="btn danger" (click)="remove(form.controls.instalments,i)" [disabled]="busy" [attr.aria-label]="'Remove payment '+(i+1)">Remove payment</button></fieldset>}</div>
-    <button type="button" class="btn" (click)="addInstalment()" [disabled]="busy||form.controls.instalments.length>=200">+ Add instalment</button>
-    <p>Instalments total: <strong>{{form.controls.currency.value}} {{money(paymentTotals.total)}}</strong> · Conditional fees already included: <strong>{{money(paymentTotals.included)}}</strong></p>
-    @if(totalsDiffer){<label class="checkbox notice"><input type="checkbox" formControlName="acknowledgeTotals" />I reviewed the difference between the offer total and instalments. My review note explains it.</label>}
-    <h3>Source evidence</h3><div class="evidence" tabindex="0" aria-label="Offer source evidence">@for(e of source.evidence;track $index){<p><strong>Page {{e.page}}</strong> — {{e.quote}}</p>}</div>
-    @for(issue of source.issues;track $index){<p class="notice">{{issue}}</p>}
-    <label>Review note<textarea rows="3" formControlName="reason" maxlength="500" [attr.aria-invalid]="form.controls.reason.touched&&form.controls.reason.invalid"></textarea></label>
-    <footer><button type="button" class="btn danger" (click)="save('rejected')" [disabled]="busy">Reject offer</button><button type="submit" class="btn primary" [disabled]="busy||analysis.currentForType===false">{{busy?'Saving…':'Confirm offer'}}</button></footer>
-  </fieldset>
+<form [formGroup]="form" (ngSubmit)="save('confirmed')" class="offer-form">
+  <div class="form-tabs" role="tablist" aria-label="Letter of Offer review sections">
+    @for(tab of tabs;track tab.key;let i=$index){
+      <button type="button" class="tab" role="tab" [class.active]="activeTab===tab.key" [id]="'offer-tab-'+documentId+'-'+tab.key"
+        [attr.data-offer-tab]="tab.key" [attr.aria-controls]="'offer-panel-'+documentId+'-'+tab.key" [attr.aria-selected]="activeTab===tab.key"
+        [tabIndex]="activeTab===tab.key?0:-1" (click)="selectTab(tab.key)" (keydown)="tabKey($event,i)" [disabled]="busy">{{tab.label}}</button>
+    }
+  </div>
+  <div class="offer-scroll">
+    <fieldset [disabled]="busy">
+      <section role="tabpanel" [id]="'offer-panel-'+documentId+'-details'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-details'" [hidden]="activeTab!=='details'">
+        <h3>Student & college</h3>
+        @if(analysis.offer?.resolution==='identifier_conflict'){<p class="notice">The college name matches, but its ABN differs. Check the original document and select the correct college.</p>}
+        @if(analysis.offer?.resolution==='multiple_exact'){<p class="notice">Several colleges have this name. Select the correct college.</p>}
+        @if(analysis.offer?.resolution==='partial'){<p>Possible matches: @for(c of analysis.offer?.candidates;track c.collegeId){<span>{{c.name}}; </span>}</p>}
+        @if(analysis.offer?.resolution==='none'){<p>No matching college was found. Select an existing college or create one below.</p>}
+        <div class="fields">
+          <label>Student name<input formControlName="name" [attr.aria-invalid]="form.controls.name.touched&&form.controls.name.invalid" /></label>
+          <label>College on the offer<input formControlName="collegeName" [attr.aria-invalid]="form.controls.collegeName.touched&&form.controls.collegeName.invalid" /></label>
+          <label>ABN<input formControlName="abn" /></label><label>CRICOS provider code<input formControlName="cricos" /></label>
+        </div>
+        <p>Current case college: <strong>{{currentCollegeName}}</strong></p>
+        <label>College for this case<app-manager-select formControlName="collegeId" [options]="collegeOptions" [searchable]="true" ariaLabel="College for this offer" placeholder="Select a college" [attr.aria-invalid]="form.controls.collegeId.touched&&form.controls.collegeId.invalid" /></label>
+        @if(replacingCollege){<label class="checkbox"><input type="checkbox" formControlName="replaceCollege" />Replace the current case college with my selection.</label>}
+        <button type="button" class="btn" (click)="beginCollege()" [disabled]="busy">+ Create college</button>
+        @if(creating){
+          <div [formGroup]="collegeForm" class="college-form"><h3>New college</h3><p>Add the College Details fields here. Sites and contacts can be added later in Colleges.</p>
+            <div class="fields"><label>College name *<input formControlName="college_name" maxlength="200" [attr.aria-invalid]="collegeForm.controls.college_name.touched&&collegeForm.controls.college_name.invalid" /></label><label>Owner name<input formControlName="owner_name" maxlength="200" /></label><label>ABN<input formControlName="abn" maxlength="80" /></label><label>Notes<textarea formControlName="notes" maxlength="5000"></textarea></label></div>
+            <div class="row-actions"><button type="button" class="btn" (click)="creating=false" [disabled]="busy">Cancel</button><button type="button" class="btn primary" (click)="createCollege()" [disabled]="busy">Save college</button></div>
+          </div>
+        }
+        <h3>Courses</h3>
+        <div formArrayName="courses" class="collection">@for(course of form.controls.courses.controls;track course;let i=$index){
+          <fieldset [formGroupName]="i" class="entry"><legend>Course {{i+1}}</legend><div class="fields">
+            <label>Name<input formControlName="name" [attr.aria-invalid]="course.get('name')?.touched&&course.get('name')?.invalid" /></label><label>Course code<input formControlName="code" /></label>
+            <label>Start date<input type="date" formControlName="startsOn" /></label><label>End date<input type="date" formControlName="endsOn" /></label><label>Duration<input formControlName="duration" /></label>
+          </div><button type="button" class="btn danger" (click)="remove(form.controls.courses,i)" [disabled]="busy" [attr.aria-label]="'Remove course '+(i+1)">Remove</button></fieldset>
+        }</div>
+        <button type="button" class="btn" (click)="addCourse()" [disabled]="busy||form.controls.courses.length>=30">+ Add course</button>
+      </section>
+      <section role="tabpanel" [id]="'offer-panel-'+documentId+'-fees'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-fees'" [hidden]="activeTab!=='fees'">
+        <h3>Fee details</h3><p>Keep the source amounts unchanged unless correcting an extraction. Conditional fees are selected later for each invoice.</p>
+        <div class="fields"><label>Currency<input formControlName="currency" maxlength="3" /></label><label>Stated offer total<input formControlName="total" inputmode="decimal" [attr.aria-invalid]="form.controls.total.touched&&offerMoneyInput(form.controls.total.value)===null" /></label></div>
+        <div formArrayName="fees" class="collection">@for(fee of form.controls.fees.controls;track fee;let i=$index){
+          <fieldset [formGroupName]="i" class="entry"><legend>Fee {{i+1}}</legend><div class="fields">
+            <label>Name<input formControlName="label" /></label><label>Amount<input formControlName="amount" inputmode="decimal" /></label>
+            <label class="checkbox"><input type="checkbox" formControlName="conditional" />Conditional fee</label><label>When it applies<input formControlName="condition" /></label>
+          </div><button type="button" class="btn danger" (click)="remove(form.controls.fees,i)" [disabled]="busy" [attr.aria-label]="'Remove fee '+(i+1)">Remove</button></fieldset>
+        }</div>
+        <button type="button" class="btn" (click)="addFee()" [disabled]="busy||form.controls.fees.length>=100">+ Add fee</button>
+        <p class="totals">Stated offer total: <strong>{{form.controls.currency.value}} {{form.controls.total.value}}</strong><br />Instalments total: <strong>{{money(paymentTotals.total)}}</strong> · Conditional fees already included: <strong>{{money(paymentTotals.included)}}</strong></p>
+        @if(totalsDiffer){<label class="checkbox notice"><input type="checkbox" formControlName="acknowledgeTotals" />I reviewed the difference between the offer total and instalments. My review note explains it.</label>}
+      </section>
+      <section role="tabpanel" [id]="'offer-panel-'+documentId+'-instalments'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-instalments'" [hidden]="activeTab!=='instalments'">
+        <h3>Instalment schedule</h3><p>Keep payment terms such as “Immediately” when the offer does not give a calendar date.</p>
+        <div formArrayName="instalments" class="collection">@for(payment of form.controls.instalments.controls;track payment;let i=$index){
+          <fieldset [formGroupName]="i" class="entry"><legend>Payment {{i+1}}</legend><div class="fields payment-fields">
+            <label>Instalment number<input formControlName="sequence" inputmode="numeric" /></label><label>Due date<input type="date" formControlName="dueOn" /></label><label>Payment term<input formControlName="dueTerm" placeholder="e.g. Immediately" /></label>
+            <label>Printed payment total<input formControlName="total" inputmode="decimal" /></label><label>Conditional fee already included<input formControlName="includedFee" inputmode="decimal" /></label>
+          </div>
+          <div formArrayName="components" class="components">@for(component of payment.controls.components.controls;track component;let j=$index){
+            <div [formGroupName]="j" class="component-fields"><label>Payment component<input formControlName="label" /></label><label>Component amount<input formControlName="amount" inputmode="decimal" /></label><button type="button" class="btn danger" (click)="remove(payment.controls.components,j)" [disabled]="busy" [attr.aria-label]="'Remove component '+(j+1)+' from payment '+(i+1)">Remove component</button></div>
+          }</div>
+          <div class="row-actions"><button type="button" class="btn" (click)="addComponent(payment)" [disabled]="busy||payment.controls.components.length>=20">+ Add payment component</button><button type="button" class="btn danger" (click)="remove(form.controls.instalments,i)" [disabled]="busy" [attr.aria-label]="'Remove payment '+(i+1)">Remove payment</button></div></fieldset>
+        }</div>
+        <button type="button" class="btn" (click)="addInstalment()" [disabled]="busy||form.controls.instalments.length>=200">+ Add instalment</button>
+        <p class="totals">Instalments total: <strong>{{form.controls.currency.value}} {{money(paymentTotals.total)}}</strong> · Conditional fees already included: <strong>{{money(paymentTotals.included)}}</strong></p>
+      </section>
+      <section role="tabpanel" [id]="'offer-panel-'+documentId+'-review'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-review'" [hidden]="activeTab!=='review'">
+        <h3>Source evidence</h3><div class="evidence" tabindex="0" aria-label="Offer source evidence">@for(e of source.evidence;track $index){<p><strong>Page {{e.page}}</strong> — {{e.quote}}</p>}@empty{<p>No readable evidence was found.</p>}</div>
+        @for(issue of source.issues;track $index){<p class="notice">{{issue}}</p>}
+        @if(analysis.reviewReason){<p>Previous review: {{analysis.reviewReason}}</p>}
+        <label>Review note<textarea rows="4" formControlName="reason" maxlength="500" [attr.aria-invalid]="form.controls.reason.touched&&form.controls.reason.invalid"></textarea></label>
+        <p>Explain any corrections and differences before confirming or rejecting the offer.</p>
+      </section>
+    </fieldset>
+  </div>
+  <footer class="offer-footer"><span>Review all sections before confirming.</span><div class="row-actions"><button type="button" class="btn danger" (click)="save('rejected')" [disabled]="busy">Reject offer</button><button type="submit" class="btn primary" [disabled]="busy||analysis.currentForType===false">{{busy?'Saving…':'Confirm offer'}}</button></div></footer>
 </form>
-@if(creating){<form [formGroup]="collegeForm" (ngSubmit)="createCollege()" class="college-form"><h3>New college</h3><p>Add the College Details fields here. Sites and contacts can be added later in Colleges.</p><fieldset [disabled]="busy"><label>College name *<input formControlName="college_name" maxlength="200" [attr.aria-invalid]="collegeForm.controls.college_name.touched&&collegeForm.controls.college_name.invalid" /></label><label>Owner name<input formControlName="owner_name" maxlength="200" /></label><label>ABN<input formControlName="abn" maxlength="80" /></label><label>Notes<textarea formControlName="notes" maxlength="5000"></textarea></label><footer><button type="button" class="btn" (click)="creating=false" [disabled]="busy">Cancel</button><button type="submit" class="btn primary" [disabled]="busy">Save college</button></footer></fieldset></form>}

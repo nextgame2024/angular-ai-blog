@@ -6,9 +6,16 @@
 }
 <dialog #modal aria-labelledby="document-modal-title" (cancel)="close($event)" [attr.aria-busy]="busy || loading">
   @if(isOpen){
-  <header><div><h2 id="document-modal-title">{{mode==='types'?'Manage document types':'Upload document'}}</h2><p>{{mode==='types'?'Manage the document types available to your company.':'Choose a document type and file to add to this case. Document storage is prepared automatically.'}}</p></div><button type="button" class="btn icon" (click)="close()" [disabled]="busy" aria-label="Close dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
   @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''"></app-manager-toast>}
-  @if(loading || busy){<div class="loading"><app-manager-list-loader [label]="busy?'Saving…':'Loading types…'" [overlay]="true"></app-manager-list-loader></div>}
+  <header><div><h2 id="document-modal-title">{{mode==='types'?'Manage document types':'Upload document'}}</h2><p>{{mode==='types'?'Manage the document types available to your company.':'Choose a document type and file to add to this case. Document storage is prepared automatically.'}}</p></div><button type="button" class="btn icon" (click)="close()" [disabled]="busy" aria-label="Close dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+  @if(loading || (busy && mode==='types')){<div class="loading"><app-manager-list-loader [label]="busy?'Saving…':'Loading types…'" [overlay]="true"></app-manager-list-loader></div>}
+  @if(busy && mode==='upload'){
+    <div class="upload-progress" aria-live="polite">
+      <app-manager-list-loader [label]="uploadMessage"></app-manager-list-loader>
+      <p>Configured document checks run in the background after upload: signature checks, passport expiry and offer details. Follow their status in Documents.</p>
+      <p>The window will close when your file has been saved. Please keep this page open.</p>
+    </div>
+  }
   @if(failed){<p class="empty" role="alert">Document types are unavailable. <button type="button" class="btn" (click)="loadTypes()">Retry</button></p>}
   @if(mode==='types'){
     <form [formGroup]="typeForm" (ngSubmit)="saveType()">
@@ -62,3 +69,4 @@
   }
   }
 </dialog>
+@if(message && !isOpen){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''"></app-manager-toast>}

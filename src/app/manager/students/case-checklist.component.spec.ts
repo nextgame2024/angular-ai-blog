@@ -61,6 +61,13 @@ describe('CaseChecklistComponent',()=>{
     api.caseChecklist.and.returnValue(of({status:'pre_sale',items:items.map(i=>({...i,completed:true}))}));
     f.componentRef.setInput('refreshToken',1);f.detectChanges();expect(f.componentInstance.complete).toBe(4);expect(api.caseChecklist).toHaveBeenCalledTimes(2);
   });
+  it('shows green completion and warning icons next to the checkbox, without warning on missing files',()=>{
+    api.caseChecklist.and.returnValue(of({status:'pre_sale',items:items.map((i,n)=>({...i,completed:n===0,validationState:n===0?'passed':n===2?'needs_review':'missing'}))}));
+    const f=setup(),rows=f.nativeElement.querySelectorAll('.checklist-item');
+    expect(rows[0].querySelector('.checklist-controls [aria-label="Validation complete"]')).not.toBeNull();
+    expect(rows[2].querySelector('.checklist-controls [aria-label="Needs review"]')).not.toBeNull();
+    expect(rows[1].querySelector('.validation-icon')).toBeNull();
+  });
   for(const width of [390,1440])for(const dark of [false,true])it(`fits accessible checklist controls at ${width}px, ${dark?'dark':'light'}`,()=>{
     const f=setup(),frame=document.createElement('iframe');frame.style.width=`${width}px`;document.body.appendChild(frame);
     try{

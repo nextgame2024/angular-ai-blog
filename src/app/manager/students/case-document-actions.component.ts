@@ -35,6 +35,10 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
   file:File|null=null; fileTouched=false; page=1; pageSize=25; descending=false;
   message=''; tone:'error'|'success'='error';
   private request:{fingerprint:string;key:string}|null=null;
+  uploadElapsed=0;
+  private uploadTimer:ReturnType<typeof setInterval>|null=null;
+  get uploadMessage(){return this.uploadElapsed>=10?'Still saving your document securely. Storage preparation can take a little longer.':'Preparing secure storage and uploading your document…';}
+  private stopUploadTimer(){if(this.uploadTimer)clearInterval(this.uploadTimer);this.uploadTimer=null;}
   readonly typeForm=new FormGroup({name:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(120)]}),required:new FormControl('no',{nonNullable:true})});
   readonly uploadForm=new FormGroup({documentTypeId:new FormControl('',{nonNullable:true,validators:[Validators.required]})});
   readonly yesNo=[{value:'no',label:'No'},{value:'yes',label:'Yes'}];
@@ -45,8 +49,8 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
   get pageStart(){return this.types.length ? (this.page-1)*this.pageSize+1 : 0;}
   get pageEnd(){return Math.min(this.page*this.pageSize,this.types.length);}
   get visibleTypes(){return [...this.types].sort((a,b)=>(a.name.localeCompare(b.name)||a.documentTypeId.localeCompare(b.documentTypeId))*(this.descending?-1:1)).slice((this.page-1)*this.pageSize,this.page*this.pageSize);}
-  ngOnChanges(){this.scope$.next();this.busy=this.loading=false;this.modal?.nativeElement.close();this.isOpen=false;this.request=null;}
-  ngOnDestroy(){this.scope$.next();this.scope$.complete();this.modal.nativeElement.close();}
+  ngOnChanges(){this.stopUploadTimer();this.scope$.next();this.busy=this.loading=false;this.modal?.nativeElement.close();this.isOpen=false;this.request=null;}
+  ngOnDestroy(){this.stopUploadTimer();this.scope$.next();this.scope$.complete();this.modal.nativeElement.close();}
   open(mode:'types'|'upload',typeId?:string) {
     if(!this.canManage || !this.caseId || this.busy) return;
     this.lockedTypeId=mode==='upload'&&typeId?typeId:null;
@@ -86,7 +90,8 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
     const file=this.file,typeId=this.lockedTypeId??this.uploadForm.controls.documentTypeId.value;this.fileTouched=true;this.uploadForm.markAllAsTouched();
     if(!file || !file.size || file.size>10*1024*1024 || !/\.(pdf|jpe?g|png)$/i.test(file.name) || !this.types.some(t=>t.documentTypeId===typeId)) {this.notify('Choose a document type and a PDF, JPEG or PNG file up to 10 MB.');return;}
     this.busy=true;
-    this.api.uploadCaseDocument(this.caseId,file,typeId,this.key({action:'upload',caseId:this.caseId,typeId,name:file.name,size:file.size,lastModified:file.lastModified})).pipe(takeUntil(this.scope$)).subscribe({next:()=>{this.busy=false;this.request=null;this.file=null;if(this.fileInput)this.fileInput.nativeElement.value='';this.uploadForm.controls.documentTypeId.reset(this.lockedTypeId??'');this.fileTouched=false;this.notify('Document uploaded.','success');this.changed.emit();},error:e=>{this.busy=false;this.notify(this.uploadError(e));}});
+    this.uploadElapsed=0;this.stopUploadTimer();this.uploadTimer=setInterval(()=>this.uploadElapsed++,1000);
+    this.api.uploadCaseDocument(this.caseId,file,typeId,this.key({action:'upload',caseId:this.caseId,typeId,name:file.name,size:file.size,lastModified:file.lastModified})).pipe(takeUntil(this.scope$)).subscribe({next:()=>{this.stopUploadTimer();this.busy=false;this.request=null;this.file=null;if(this.fileInput)this.fileInput.nativeElement.value='';this.uploadForm.controls.documentTypeId.reset(this.lockedTypeId??'');this.fileTouched=false;this.close();this.notify('Document uploaded.','success');this.changed.emit();},error:e=>{this.stopUploadTimer();this.busy=false;this.notify(this.uploadError(e));}});
   }
   private uploadError(e:any):string {
     const code=e?.error?.errorCode;
