@@ -39,6 +39,13 @@ th { position:sticky; top:0; background:#f5f8fb; color:#485b75; z-index:1 }
 .page-buttons > button:disabled { opacity:.45; cursor:not-allowed }
 .page-buttons > button:focus-visible { outline:2px solid #087f73; outline-offset:2px }
 .upload-fields { display:grid; gap:.8rem }
+.file-field { display:grid; gap:.3rem; min-width:0 }
+.file-label { font-size:.76rem; font-weight:700; color:#425675 }
+.file-picker { display:flex; align-items:center; gap:.75rem; min-width:0 }
+.file-button { flex:none; padding:.55rem 1rem; font-size:.85rem }
+.file-name { min-width:0; overflow-wrap:anywhere; font-size:.8rem; color:#526989 }
+.file-button[aria-invalid="true"] { outline:2px solid #dc3545; outline-offset:2px }
+:host-context(html.dark) .file-label,:host-context(html.dark) .file-name { color:#c1d0e6 }
 :host-context(html.dark) dialog { background:#1e293b; border-color:#334155; color:#e6edf6 }
 :host-context(html.dark) .btn,:host-context(html.dark) input { background:#263449; border-color:#4a6180; color:#c1d0e6 }
 :host-context(html.dark) .btn.primary { background:#0ca88b; border-color:#0ca88b; color:#fff }

@@ -191,6 +191,7 @@ export interface StudentCaseInvoices {
 }
 
 export interface StudentCaseDocuments {
+  requirements?: StudentDocumentRequirement[];
   documents: Array<{
     documentId: string; fileName: string; mimeType: string; sizeBytes: number;
     sourceKind: string; lastSeenAt: string;
@@ -203,15 +204,25 @@ export interface StudentCaseDocuments {
   total: number;
 }
 
+export interface StudentDocumentRequirement {
+  requirementKey:string; documentTypeId:string|null; name:string;
+  required:boolean; available:boolean; uploaded:boolean;
+}
+
 export interface StudentDocumentType {
   documentTypeId: string; name: string; required: boolean;
   status: 'active' | 'archived'; recordVersion: number;
 }
 
 export interface StudentCaseActivity {
-  activity: Array<{ activityId: string; eventType: string; summary: string; createdAt: string }>;
+  activity: Array<{ activityId: string; eventType: string; summary: string; createdAt: string; actorName?: string }>;
   page: number;
   limit: number;
+}
+
+export interface StudentCaseChecklist {
+  status: string;
+  items: Array<{key:string;label:string;completed:boolean;recordVersion:number;updatedBy:string|null;updatedAt:string|null}>;
 }
 
 export interface XeroConnectionSummary {

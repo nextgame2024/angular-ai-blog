@@ -1,0 +1,18 @@
+:host { display:block; min-width:0 }
+* { box-sizing:border-box }
+.checklist { position:relative; min-height:5rem }
+.hint,.empty { margin:0 0 .6rem; color:#63738d; font-size:.76rem; line-height:1.5 }
+.empty { padding:.75rem; border-radius:.5rem; background:#f7f9fc }
+.checklist-item { display:flex; justify-content:space-between; align-items:center; gap:.7rem; min-height:44px; padding:.6rem .2rem; border-bottom:1px solid #e7edf4; font-size:.8rem; color:#425675; cursor:pointer }
+.checklist-item span { min-width:0; overflow-wrap:anywhere }
+.checklist-item.completed { color:#087f73 }
+.checklist-item input { flex:none; width:1.15rem; height:1.15rem; margin:0 .25rem; accent-color:#0ca88b; cursor:pointer }
+.checklist-item input:disabled { cursor:not-allowed }
+.checklist-item:has(input:disabled) { cursor:default }
+.checklist-item input:focus-visible,.retry:focus-visible { outline:2px solid #0eac9e; outline-offset:3px }
+.retry { min-height:44px; padding:.4rem .7rem; border:1px solid #c8d9ed; border-radius:.45rem; background:#fff; color:#3866d5; font:inherit; font-size:.76rem; cursor:pointer }
+.loader { position:absolute; inset:0; z-index:2 }
+:host-context(html.dark) .hint,:host-context(html.dark) .checklist-item { color:#c1d0e6 }
+:host-context(html.dark) .checklist-item { border-color:#3b4c63 }
+:host-context(html.dark) .checklist-item.completed { color:#62dcbf }
+:host-context(html.dark) .empty,:host-context(html.dark) .retry { background:#263449; border-color:#4a6180; color:#c1d0e6 }

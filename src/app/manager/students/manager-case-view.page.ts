@@ -1,5 +1,6 @@
 import { PageJumpComponent } from '../../shared/components/page-jump/page-jump.component';
 import { CaseDocumentActionsComponent } from './case-document-actions.component';
+import { CaseChecklistComponent } from './case-checklist.component';
 import { ListNavigationStateService } from '../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
@@ -17,11 +18,12 @@ import type {
   StudentCaseList, StudentCaseStatus, StudentRegisterRow,
   StudentOperationsWorkspace,
   StudentCaseEditOptions, StudentCaseWorkflowOptions,
+  StudentDocumentRequirement,
 } from '../student-operations/student-operations.types';
 
 @Component({
   selector: 'app-manager-case-view',
-  imports: [CaseDocumentActionsComponent,PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
+  imports: [CaseChecklistComponent,CaseDocumentActionsComponent,PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
   templateUrl: './manager-case-view.page.html',
   styleUrls: ['./manager-case-view.page.css'],
 })
@@ -45,6 +47,15 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   relatedPage = 0;
   invoices: StudentCaseInvoices | null = null;
   documents: StudentCaseDocuments | null = null;
+  draftDocumentRequirements:StudentDocumentRequirement[]=[];
+  requirementsLoading=false;
+  requirementsError='';
+  private requirementRequest=0;
+  private documentRequest=0;
+  get missingDocumentRequirements():StudentDocumentRequirement[]{
+    const data=this.creationMode?this.draftDocumentRequirements:this.documents?.requirements??[];
+    return (this.documents?.page??1)===1?data.filter(r=>!r.uploaded):[];
+  }
   activity: StudentCaseActivity | null = null;
   loading = true;
   error = '';
@@ -272,6 +283,19 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     if (!this.stageOptions.some(item => item.value === current)) {
       this.editForm.controls.currentStage.setValue(this.stageOptions[0]?.value ?? '');
     }
+    if(this.creationMode)this.loadDocumentRequirements();
+  }
+
+  loadDocumentRequirements():void{
+    if(!this.creationMode)return;
+    const status=this.editForm.controls.status.value||this.case?.status;
+    if(!status)return;
+    const request=++this.requirementRequest;
+    this.requirementsLoading=true;this.requirementsError='';this.draftDocumentRequirements=[];
+    this.api.documentRequirements(status).pipe(takeUntil(this.destroy$)).subscribe({
+      next:result=>{if(request===this.requirementRequest){this.draftDocumentRequirements=result.requirements;this.requirementsLoading=false;}},
+      error:()=>{if(request===this.requirementRequest){this.requirementsLoading=false;this.requirementsError='Document requirements could not be loaded.';}},
+    });
   }
 
   cancelEdit(): void {
@@ -324,6 +348,8 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         this.saving = false;
         this.editing = false;
         this.showEditSuccess('Case saved.');
+        this.loadActivity(1);
+        this.loadDocuments(1,true);
         void this.router.navigate([], { relativeTo: this.route, queryParams: { edit: null }, queryParamsHandling: 'merge', replaceUrl: true });
       },
       error: error => {
@@ -475,21 +501,22 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       error: () => { if (id === this.currentId) { this.invoiceError = 'Invoices could not be loaded.'; this.loadingInvoices = false; } },
     });
   }
-  loadDocuments(page: number): void {
-    if (!this.case || this.loadingDocuments || page < 1) return;
+  loadDocuments(page: number,force=false): void {
+    if (!this.case || (this.loadingDocuments&&!force) || page < 1) return;
     this.stopDocumentPolling();
     const id = this.currentId;
+    const request=++this.documentRequest;
     this.loadingDocuments = true;
     this.documentError = '';
     this.api.caseDocuments(id, page).pipe(takeUntil(this.destroy$)).subscribe({
-      next: result => { if (id === this.currentId) {
+      next: result => { if (id === this.currentId && request===this.documentRequest) {
         this.loadingDocuments = false;
         const last = Math.max(1, Math.ceil(result.total / result.limit));
         if (result.page > last) { this.loadDocuments(last); return; }
         this.documents = result; this.rememberCasePage('documents', result.page);
         this.scheduleDocumentPoll();
       } },
-      error: () => { if (id === this.currentId) { this.documentError = 'Documents could not be loaded.'; this.loadingDocuments = false; } },
+      error: () => { if (id === this.currentId && request===this.documentRequest) { this.documentError = 'Documents could not be loaded.'; this.loadingDocuments = false; } },
     });
   }
   loadActivity(page: number): void {
@@ -592,6 +619,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.relatedPage = 0;
     this.invoices = null;
     this.documents = null;
+    this.draftDocumentRequirements=[];this.requirementsLoading=false;this.requirementsError='';this.requirementRequest++;this.documentRequest++;
     this.activity = null;
     this.error = this.invoiceError = this.documentError = this.activityError = this.relatedError = this.downloadError = '';
     this.loading = true;

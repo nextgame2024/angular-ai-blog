@@ -19,7 +19,9 @@ import type {
   StudentCaseInvoices,
   StudentCaseDocuments,
   StudentDocumentType,
+  StudentDocumentRequirement,
   StudentCaseActivity,
+  StudentCaseChecklist,
   XeroConnectionStatus,
   XeroConnectionTest,
   XeroStudentCandidateResult,
@@ -33,6 +35,15 @@ import type {
 
 @Injectable({ providedIn: 'root' })
 export class StudentOperationsService {
+  documentRequirements(status:string): Observable<{requirements:StudentDocumentRequirement[]}> {
+    return this.http.get<{requirements:StudentDocumentRequirement[]}>(`${this.workspaceBase}/cases/document-requirements`,{headers:this.headers(),params:new HttpParams().set('status',status)});
+  }
+  caseChecklist(caseId:string): Observable<StudentCaseChecklist> {
+    return this.http.get<StudentCaseChecklist>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/checklist`,{headers:this.headers()});
+  }
+  updateCaseChecklist(caseId:string,value:{itemKey:string;completed:boolean;recordVersion:number},key:string): Observable<StudentCaseChecklist> {
+    return this.http.patch<StudentCaseChecklist>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/checklist`,value,{headers:this.writeHeaders(key)});
+  }
   documentTypes(): Observable<{types: StudentDocumentType[]}> {
     return this.http.get<{types: StudentDocumentType[]}>(`${this.workspaceBase}/cases/document-types`,{headers:this.headers()});
   }

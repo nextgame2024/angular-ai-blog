@@ -123,7 +123,10 @@
 
     <div class="content-grid">
       <section class="card case-record-card" aria-labelledby="documents-heading" [attr.aria-busy]="loadingDocuments">
-        <div class="card-heading document-heading"><div><h2 id="documents-heading">Documents <span class="count">{{ documents?.total ?? '—' }}</span></h2><p>Files associated with this case</p></div><app-case-document-actions [caseId]="creationMode ? '' : item.caseId" [canManage]="canEditCases" (changed)="loadDocuments(1)"></app-case-document-actions></div>
+        <div class="card-heading document-heading"><div><h2 id="documents-heading">Documents <span class="count">{{ documents?.total ?? '—' }}</span></h2><p>Files associated with this case</p></div><app-case-document-actions #documentActions [caseId]="creationMode ? '' : item.caseId" [canManage]="canEditCases" (changed)="loadDocuments(1,true)"></app-case-document-actions></div>
+        @if(requirementsError){<p class="section-error" role="alert">{{requirementsError}} <button type="button" class="text-button" (click)="loadDocumentRequirements()">Retry</button></p>}
+        @if(requirementsLoading){<div class="section-loading"><app-manager-list-loader label="Loading document requirements…"></app-manager-list-loader></div>}
+        @if(creationMode && missingDocumentRequirements.length){<p class="notice">Save the case before uploading its documents.</p>}
         @if (documentError) { <p class="section-error" role="alert">{{ documentError }} <button type="button" class="text-button" (click)="loadDocuments(documents?.page || 1)">Retry</button></p> }
         @if (downloadError) { <p class="section-error" role="alert">{{ downloadError }}</p> }
         @if (loadingDocuments && !documents) { <div class="section-loading"><app-manager-list-loader label="Loading documents…"></app-manager-list-loader></div> }
@@ -132,8 +135,14 @@
           @if (discoveryProcessing) { <p class="notice" role="status">Checking {{ discoveryProcessing }} document source{{ discoveryProcessing === 1 ? '' : 's' }}. More files may appear as discovery completes.</p> }
           @if (discoveryPending || discoveryFailed) { <button type="button" class="secondary-button compact" (click)="loadDocuments(data.page)" [disabled]="loadingDocuments">Refresh document status</button> }
           @if (discoveryFailed) { <p class="notice warning" role="status">Discovery failed for {{ discoveryFailed }} source{{ discoveryFailed === 1 ? '' : 's' }}. Some files may be missing.</p> }
-          @if (data.documents.length) {
+          @if (data.documents.length || missingDocumentRequirements.length) {
             <div class="table-scroll record-table-scroll" role="region" aria-label="Case documents" tabindex="0"><table><thead><tr><th scope="col">File</th><th scope="col">Type</th><th scope="col">Last seen</th><th scope="col">Action</th></tr></thead><tbody>
+              @for(requirement of missingDocumentRequirements;track requirement.requirementKey){
+                <tr class="required-document-row"><td><strong>{{requirement.name}}</strong><small>{{requirement.required?'Required · ':''}}Not uploaded</small></td><td>{{requirement.name}}</td><td>—</td><td>
+                  <button type="button" class="secondary-button requirement-upload" (click)="documentActions.open('upload',requirement.documentTypeId!)" [disabled]="!!creationMode || !canEditCases || !requirement.available || !requirement.documentTypeId" [attr.aria-label]="'Upload '+requirement.name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 9 5-5 5 5M12 4v12M4 15v5h16v-5"/></svg>Upload</button>
+                  @if(!creationMode&&!requirement.available){<small>Type unavailable. Ask an administrator to update the document workflow.</small>}
+                </td></tr>
+              }
               @for (doc of data.documents; track doc.documentId) {
                 <tr><td><strong>{{ doc.fileName }}</strong><small>{{ fileSize(doc.sizeBytes) }}</small></td><td>{{ doc.documentTypeName || 'Not classified' }}</td><td>{{ dateLabel(doc.lastSeenAt) }}</td><td><div class="document-actions"><button type="button" class="document-action-button" (click)="view(doc)" [disabled]="!!downloadingId || !!viewingId || !previewMimeType(doc)" [attr.aria-label]="'View ' + doc.fileName" [attr.title]="previewMimeType(doc) ? 'View' : 'Preview unavailable; download instead'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.7"/></svg></button><button type="button" class="document-action-button" (click)="download(doc)" [disabled]="!!downloadingId || !!viewingId" [attr.aria-label]="'Download ' + doc.fileName" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3"/></svg></button></div></td></tr>
               }
@@ -159,13 +168,10 @@
         }
       </section>
 
-      <section class="card sophia-card" aria-labelledby="meet-sophia-heading">
-        <div class="card-heading"><div><h2 id="meet-sophia-heading">Meet Sophia</h2><p>Your case assistant</p></div><span class="availability-pill">Coming soon</span></div>
-        <img class="sophia-portrait" src="/assets/avatars/SophiaAiRuntime.jpg" alt="Portrait of Sophia AI" loading="lazy" />
-        <p class="sophia-message"><span aria-hidden="true">✦</span> Sophia will help review this case when Sophia AI Runtime is connected.</p>
-        <div class="sophia-actions">
-          <button type="button" class="sophia-button primary" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"/></svg>Chat with Sophia</button>
-          <button type="button" class="sophia-button secondary" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6m0-6-9 9"/><path d="M20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1 2-2V6a2 2 0 0 1 2-2h5"/></svg>Open full Sophia</button>
+      <section class="card case-actions-card" aria-labelledby="next-actions-heading">
+        <div class="card-heading"><div><h2 id="next-actions-heading">Next Actions</h2><p>Tasks for this case</p></div></div>
+        <div class="action-scroll" role="region" aria-label="Next case actions" tabindex="0">
+          <app-case-checklist [caseId]="creationMode ? '' : item.caseId" [status]="item.status" [canManage]="canEditCases" [disabled]="editing || saving" (changed)="loadActivity(1)"></app-case-checklist>
         </div>
       </section>
 
@@ -174,7 +180,7 @@
         @if (activityError) { <p class="section-error" role="alert">{{ activityError }} <button type="button" class="text-button" (click)="loadActivity(activity?.page || 1)">Retry</button></p> }
         @if (loadingActivity && !activity) { <div class="section-loading"><app-manager-list-loader label="Loading activity…"></app-manager-list-loader></div> }
         @if (activity; as data) {
-          @if (data.activity.length) { <div class="activity-scroll" role="region" aria-label="Recent case activity" tabindex="0"><ol class="activity-list">@for (event of data.activity; track event.activityId) { <li><span class="activity-dot" aria-hidden="true"></span><div><strong>{{ event.summary }}</strong><small>{{ dateTimeLabel(event.createdAt) }}</small></div></li> }</ol></div> }
+          @if (data.activity.length) { <div class="activity-scroll" role="region" aria-label="Recent case activity" tabindex="0"><ol class="activity-list">@for (event of data.activity; track event.activityId) { <li><span class="activity-dot" aria-hidden="true"></span><div><strong>{{ event.summary }}@if(event.actorName){ — {{event.actorName}}}</strong><small>{{ dateTimeLabel(event.createdAt) }}</small></div></li> }</ol></div> }
           @else { <p class="empty-note">No activity has been recorded for this case.</p> }
           @if (data.page > 1 || data.activity.length === data.limit) { <div class="pager"><app-page-jump [page]="data.page" [totalPages]="null" [disabled]="loadingActivity" label="Activity page number" (pageChange)="loadActivity($event)"></app-page-jump><button type="button" class="secondary-button compact" (click)="loadActivity(data.page - 1)" [disabled]="loadingActivity || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadActivity(data.page + 1)" [disabled]="loadingActivity || data.activity.length < data.limit">Next</button></div> }
         }
@@ -191,14 +197,13 @@
         </div>
       </section>
 
-      <section class="card case-actions-card" aria-labelledby="next-actions-heading">
-        <div class="card-heading"><div><h2 id="next-actions-heading">Next Actions</h2><p>Tasks for this case</p></div><span class="availability-pill">Coming soon</span></div>
-        <div class="action-scroll" role="region" aria-label="Next case actions" tabindex="0">
-          <div class="action-placeholder">
-            <span class="action-placeholder-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l2 2 4-4"/><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 17h8"/></svg></span>
-            <strong>Case actions will appear here</strong>
-            <p>Document requests, payment follow-ups and approvals will be shown when the action workflow is connected.</p>
-          </div>
+      <section class="card sophia-card" aria-labelledby="meet-sophia-heading">
+        <div class="card-heading"><div><h2 id="meet-sophia-heading">Meet Sophia</h2><p>Your case assistant</p></div><span class="availability-pill">Coming soon</span></div>
+        <img class="sophia-portrait" src="/assets/avatars/SophiaAiRuntime.jpg" alt="Portrait of Sophia AI" loading="lazy" />
+        <p class="sophia-message"><span aria-hidden="true">✦</span> Sophia will help review this case when Sophia AI Runtime is connected.</p>
+        <div class="sophia-actions">
+          <button type="button" class="sophia-button primary" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"/></svg>Chat with Sophia</button>
+          <button type="button" class="sophia-button secondary" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6m0-6-9 9"/><path d="M20 13v5a2 2 0 0 1-2 2H6a2 2 0 0 1 2-2V6a2 2 0 0 1 2-2h5"/></svg>Open full Sophia</button>
         </div>
       </section>
     </div>

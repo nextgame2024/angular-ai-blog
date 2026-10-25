@@ -40,6 +40,23 @@ describe('CaseDocumentActionsComponent',()=>{
     c.archive(c.types[0]);expect(api.updateDocumentType.calls.mostRecent().args[1]).toEqual({status:'archived',recordVersion:2});expect(c.types).toEqual([]);
     expect(api.uploadCaseDocument).not.toHaveBeenCalled();
   });
+  it('opens the hidden file picker from the custom Upload button and announces the selection',()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
+    const input=f.nativeElement.querySelector('input[type="file"]') as HTMLInputElement;
+    const button=f.nativeElement.querySelector('.file-button') as HTMLButtonElement;
+    expect(input.hidden).toBeTrue();expect(button.type).toBe('button');
+    expect(button.textContent).toContain('Upload');expect(button.querySelector('svg')).not.toBeNull();
+    const click=spyOn(input,'click');button.click();expect(click).toHaveBeenCalledTimes(1);
+    expect(f.nativeElement.querySelector('.file-name').textContent).toContain('No file selected');
+    c.upload();f.detectChanges();expect(button.getAttribute('aria-invalid')).toBe('true');
+    const files=new DataTransfer();files.items.add(new File(['pdf'],'Passport.pdf',{type:'application/pdf'}));
+    input.files=files.files;input.dispatchEvent(new Event('change'));f.detectChanges();
+    expect(c.file?.name).toBe('Passport.pdf');expect(f.nativeElement.querySelector('.file-name').textContent).toBe('Passport.pdf');
+    expect(button.getAttribute('aria-invalid')).toBe('false');
+    for(const state of ['busy','loading','failed'] as const){c[state]=true;f.detectChanges();expect(button.disabled).toBeTrue();c[state]=false;}
+    c.close();c.open('upload');f.detectChanges();expect(f.nativeElement.querySelector('.file-name').textContent).toContain('No file selected');
+    expect(api.uploadCaseDocument).not.toHaveBeenCalled();
+  });
   it('requires a typed file and delegates storage to the server with the same key on retry',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
     c.upload();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
@@ -52,6 +69,22 @@ describe('CaseDocumentActionsComponent',()=>{
     api.uploadCaseDocument.and.returnValue(of({documentId:'document-1'}));c.upload();
     expect(api.uploadCaseDocument.calls.mostRecent().args).toEqual(['case-1',jasmine.any(File),'type-1',key]);
     expect(c.message).toBe('Document uploaded.');expect(c.file).toBeNull();
+  });
+  it('locks a row-selected type across retries and success, but unlocks general Upload',()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload','type-1');f.detectChanges();
+    expect(c.uploadForm.controls.documentTypeId.value).toBe('type-1');expect(c.uploadForm.controls.documentTypeId.disabled).toBeTrue();
+    expect(f.nativeElement.querySelector('[aria-label="Document type"]').disabled).toBeTrue();
+    c.file=new File(['pdf'],'passport.pdf');api.uploadCaseDocument.and.returnValue(throwError(()=>({status:502})));c.upload();
+    const key=api.uploadCaseDocument.calls.mostRecent().args[3];expect(c.uploadForm.controls.documentTypeId.disabled).toBeTrue();
+    api.uploadCaseDocument.and.returnValue(of({documentId:'doc'}));c.upload();
+    expect(api.uploadCaseDocument.calls.mostRecent().args).toEqual(['case-1',jasmine.any(File),'type-1',key]);
+    expect(c.uploadForm.controls.documentTypeId.value).toBe('type-1');expect(c.uploadForm.controls.documentTypeId.disabled).toBeTrue();
+    c.close();c.open('upload');f.detectChanges();expect(c.lockedTypeId).toBeNull();expect(c.uploadForm.controls.documentTypeId.enabled).toBeTrue();expect(c.uploadForm.controls.documentTypeId.value).toBe('');
+  });
+  it('fails closed if a selected requirement type was archived before opening Upload',()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload','archived-type');f.detectChanges();
+    expect(c.failed).toBeTrue();expect(c.message).toContain('no longer available');
+    c.file=new File(['pdf'],'passport.pdf');c.upload();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
   });
   it('does not upload to an unlinked or disabled integration or accept active content',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
@@ -123,13 +156,20 @@ describe('CaseDocumentActionsComponent',()=>{
   for(const width of [390,1440]) for(const dark of [false,true]) it(`fits both modals at ${width}px in ${dark?'dark':'light'} mode`,()=>{
     const f=setup(),c=f.componentInstance;
     for(const mode of ['types','upload'] as const){
-      c.open(mode);if(mode==='types')c.types=Array.from({length:61},(_,i)=>({...type,documentTypeId:`type-${i}`,name:`Type ${i}`}));f.detectChanges();
+      c.open(mode);if(mode==='types')c.types=Array.from({length:61},(_,i)=>({...type,documentTypeId:`type-${i}`,name:`Type ${i}`}));
+      else c.file=new File(['pdf'],`${'LongDocumentName'.repeat(16)}.pdf`);f.detectChanges();
       const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
       try {
         const doc=frame.contentDocument!,win=frame.contentWindow!;document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';
         const host=f.nativeElement.cloneNode(true) as HTMLElement;doc.body.appendChild(host);const modal=host.querySelector('dialog')!;modal.removeAttribute('open');modal.showModal();
         expect(modal.scrollWidth).toBeLessThanOrEqual(modal.clientWidth+1);expect(modal.getBoundingClientRect().right).toBeLessThanOrEqual(width);
         expect(win.getComputedStyle(modal).backgroundColor).toBe(dark?'rgb(30, 41, 59)':'rgb(255, 255, 255)');
+        if(mode==='upload'){
+          const picker=modal.querySelector('.file-picker') as HTMLElement;
+          expect(picker.scrollWidth).toBeLessThanOrEqual(picker.clientWidth+1);
+          expect(win.getComputedStyle(modal.querySelector('.file-button')!).backgroundColor).toBe('rgb(12, 168, 139)');
+          expect(win.getComputedStyle(modal.querySelector('.file-name')!).color).toBe(dark?'rgb(193, 208, 230)':'rgb(82, 105, 137)');
+        }
         if(mode==='types'){
           const footer=modal.querySelector('.types-pagination') as HTMLElement;
           const buttons=footer.querySelector('.page-buttons') as HTMLElement;

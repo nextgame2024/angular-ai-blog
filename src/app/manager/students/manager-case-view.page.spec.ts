@@ -17,6 +17,11 @@ describe('ManagerCaseViewPageComponent', () => {
     advisors: [], colleges: [],
   };
   const api = {
+    documentRequirements:jasmine.createSpy().and.returnValue(of({requirements:[]})),
+    documentTypes:jasmine.createSpy().and.returnValue(of({types:[{documentTypeId:'passport-type',name:'Passport',required:true,status:'active',recordVersion:1}]})),
+    caseDocumentUploadOptions:jasmine.createSpy().and.returnValue(of({available:true,enabled:true})),
+    caseChecklist:jasmine.createSpy().and.returnValue(of({status:'pre_sale',items:[]})),
+    updateCaseChecklist:jasmine.createSpy(),
     workspace: jasmine.createSpy().and.returnValue(of({ role: 'chief_executive' })),
     caseDetail: jasmine.createSpy().and.returnValue(of(detail)),
     caseEditOptions: jasmine.createSpy().and.returnValue(of({ advisors: [{ advisorId: 'advisor-1', code: 'S15', name: 'Advisor Name', xeroLabel: 'S15 Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] })),
@@ -49,6 +54,7 @@ describe('ManagerCaseViewPageComponent', () => {
     params.next(convertToParamMap({ caseId: 'case-1' }));
     for (const spy of Object.values(api)) spy.calls.reset();
     api.workspace.and.returnValue(of({ role: 'chief_executive' }));
+    api.documentRequirements.and.returnValue(of({requirements:[]}));
     api.caseDetail.and.returnValue(of(detail));
     api.caseEditOptions.and.returnValue(of({ advisors: [{ advisorId: 'advisor-1', code: 'S15', name: 'Advisor Name', xeroLabel: 'S15 Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] }));
     api.updateCase.and.returnValue(of({ caseId: 'case-1', recordVersion: 2 }));
@@ -82,6 +88,59 @@ describe('ManagerCaseViewPageComponent', () => {
     (root.querySelector('.draft-case .cancel') as HTMLButtonElement).click();
     expect(navigate).toHaveBeenCalledWith(['/manager/students']);
     expect(api.createStudentWithCase).not.toHaveBeenCalled();
+  });
+
+  const requirementNames=['Engagement letter','Letter of Offer','Passport'];
+  const requirementRows=requirementNames.map((name,index)=>({requirementKey:`required-${index}`,documentTypeId:index===2?'passport-type':`type-${index}`,name,required:true,available:true,uploaded:false}));
+  it('shows the database requirements as disabled draft upload rows without allocating records',()=>{
+    routeData.creation='student';api.documentRequirements.and.returnValue(of({requirements:requirementRows}));
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();
+    const rows=[...f.nativeElement.querySelectorAll('.required-document-row')] as HTMLElement[];
+    expect(rows.map(row=>row.querySelector('strong')?.textContent)).toEqual(requirementNames);
+    expect(rows.every(row=>row.querySelector<HTMLButtonElement>('button')!.disabled)).toBeTrue();
+    expect(rows.every(row=>row.querySelectorAll('.document-action-button').length===0)).toBeTrue();
+    expect(api.documentRequirements).toHaveBeenCalledWith('pre_sale');expect(api.caseDocuments).not.toHaveBeenCalled();expect(api.createStudentWithCase).not.toHaveBeenCalled();
+  });
+  it('opens the shared upload modal with the missing requirement type locked',()=>{
+    api.caseDocuments.and.returnValue(of({documents:[],requirements:[requirementRows[2]],discovery:[],total:0,page:1,limit:25}));
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();
+    (f.nativeElement.querySelector('.requirement-upload') as HTMLButtonElement).click();f.detectChanges();
+    expect(f.nativeElement.querySelector('dialog').open).toBeTrue();
+    const selector=f.nativeElement.querySelector('dialog [aria-label="Document type"]') as HTMLButtonElement;
+    expect(selector.disabled).toBeTrue();expect(selector.textContent).toContain('Passport');
+  });
+  it('hides fulfilled rows using whole-case coverage, keeps real files and shows missing rows on page one only',()=>{
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();
+    const c=f.componentInstance;c.documents={...c.documents!,requirements:requirementRows.map((r,i)=>({...r,uploaded:i===2}))};f.detectChanges();
+    expect(f.nativeElement.querySelectorAll('.required-document-row').length).toBe(2);
+    expect(f.nativeElement.querySelectorAll('.document-action-button').length).toBe(2);
+    c.documents={...c.documents,page:2};f.detectChanges();expect(f.nativeElement.querySelector('.required-document-row')).toBeNull();
+  });
+  it('ignores stale draft requirement responses after the selected status changes',()=>{
+    routeData.creation='student';const pending=new Subject<any>();api.documentRequirements.and.returnValue(pending);
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();
+    api.documentRequirements.and.returnValue(of({requirements:[]}));f.componentInstance.editForm.controls.status.setValue('on_hold');pending.next({requirements:requirementRows});f.detectChanges();
+    expect(f.componentInstance.missingDocumentRequirements).toEqual([]);expect(f.componentInstance.requirementsLoading).toBeFalse();
+  });
+  for(const width of [390,1440])for(const dark of [false,true])it(`fits missing-document upload rows at ${width}px in ${dark?'dark':'light'} mode`,()=>{
+    routeData.creation='student';api.documentRequirements.and.returnValue(of({requirements:requirementRows}));
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();
+    const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='1000px';document.body.appendChild(frame);
+    try{const doc=frame.contentDocument!,win=frame.contentWindow!;document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);
+      const host=f.nativeElement.cloneNode(true) as HTMLElement;doc.body.appendChild(host);
+      const card=host.querySelector('[aria-labelledby="documents-heading"]') as HTMLElement;
+      expect(card.scrollWidth).toBeLessThanOrEqual(card.clientWidth+1);
+      for(const button of card.querySelectorAll<HTMLElement>('.requirement-upload'))expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      expect(win.getComputedStyle(card).backgroundColor).toBe(dark?'rgb(30, 41, 59)':'rgb(255, 255, 255)');
+    }finally{frame.remove();f.destroy();}
+  });
+
+  it('shows activity attribution and refreshes activity after a checklist change',()=>{
+    api.caseActivity.and.returnValue(of({activity:[{activityId:'completed',eventType:'case.checklist_completed',summary:'Checklist complete',actorName:'SophiaAi',createdAt:'2026-10-24T00:00:00Z'}],page:1,limit:25}));
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();
+    expect(f.nativeElement.querySelector('.activity-list strong').textContent).toContain('Checklist complete — SophiaAi');
+    expect(f.nativeElement.querySelector('.activity-list small').textContent).toContain('24 Oct 2026');
+    const before=api.caseActivity.calls.count();f.componentInstance.loadActivity(1);expect(api.caseActivity.calls.count()).toBe(before+1);
   });
 
   it('validates Add student and retries the exact save with the same idempotency key', () => {
@@ -670,7 +729,7 @@ describe('ManagerCaseViewPageComponent', () => {
       expect(getComputedStyle(activity).maxHeight).toBe('none');
     }
     if (window.innerWidth > 1250) {
-      expect(activity.getBoundingClientRect().height).toBe(actions.getBoundingClientRect().height);
+      expect(invoices.getBoundingClientRect().height).toBe(actions.getBoundingClientRect().height);
       expect(activity.getBoundingClientRect().height).toBeLessThan(420);
     }
   });
@@ -689,7 +748,7 @@ describe('ManagerCaseViewPageComponent', () => {
     const activityScroll = cards[3].querySelector('.activity-scroll') as HTMLElement;
 
     expect(cards.map(card => card.querySelector('h2')?.textContent?.trim())).toEqual([
-      'Documents 1', 'Linked invoices', 'Meet Sophia', 'Recent activity', 'Case at a glance', 'Next Actions',
+      'Documents 1', 'Linked invoices', 'Next Actions', 'Recent activity', 'Case at a glance', 'Meet Sophia',
     ]);
     expect(root.querySelector('.workspace-sidebar .case-summary')).toBeNull();
     expect(activityScroll.getAttribute('aria-label')).toBe('Recent case activity');
@@ -713,7 +772,7 @@ describe('ManagerCaseViewPageComponent', () => {
     const image = sophia.querySelector('img') as HTMLImageElement;
     const buttons = [...sophia.querySelectorAll('button')] as HTMLButtonElement[];
 
-    expect(actions.textContent).toContain('Case actions will appear here');
+    expect(actions.textContent).toContain('No checklist is configured for this case status yet.');
     expect(actions.textContent).not.toContain('pending');
     expect(sophia.textContent).toContain('Sophia AI Runtime is connected');
     expect(sophia.textContent).not.toContain('Online');

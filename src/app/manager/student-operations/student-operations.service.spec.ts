@@ -22,6 +22,19 @@ describe('StudentOperationsService', () => {
   });
 
   afterEach(() => http.verify());
+  it('loads company-scoped document requirements by status without a client company identifier',()=>{
+    service.documentRequirements('pre_sale').subscribe();const r=http.expectOne(q=>q.url.endsWith('/cases/document-requirements'));
+    expect(r.request.method).toBe('GET');expect(r.request.params.get('status')).toBe('pre_sale');expect(r.request.params.has('companyId')).toBeFalse();expect(r.request.headers.get('Authorization')).toBe('Token business-manager-token');r.flush({requirements:[]});
+  });
+  it('reads and updates case-linked checklists with authentication, version and idempotency headers',()=>{
+    service.caseChecklist('case/id').subscribe();
+    const read=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/checklist'));
+    expect(read.request.method).toBe('GET');expect(read.request.headers.get('Authorization')).toBe('Token business-manager-token');read.flush({status:'pre_sale',items:[]});
+    const value={itemKey:'signed_engagement_letter',completed:true,recordVersion:0};service.updateCaseChecklist('case/id',value,'checklist-key').subscribe();
+    const write=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/checklist'));
+    expect(write.request.method).toBe('PATCH');expect(write.request.body).toEqual(value);expect(write.request.headers.get('Idempotency-Key')).toBe('checklist-key');
+    expect(write.request.headers.get('Authorization')).toBe('Token business-manager-token');write.flush({status:'pre_sale',items:[]});
+  });
 
   it('uses authenticated metadata requests and never sends a client company for document types',()=>{
     service.documentTypes().subscribe();const list=http.expectOne(r=>r.url.endsWith('/cases/document-types'));expect(list.request.headers.get('Authorization')).toBe('Token business-manager-token');list.flush({types:[]});

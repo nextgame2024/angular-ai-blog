@@ -41,8 +41,19 @@
     <form [formGroup]="uploadForm" (ngSubmit)="upload()">
       <fieldset [disabled]="busy || loading || failed" class="upload-fields">
         <label>Type<app-manager-select formControlName="documentTypeId" [options]="typeOptions" [searchable]="true" ariaLabel="Document type" placeholder="Select a type" [attr.aria-invalid]="uploadForm.controls.documentTypeId.invalid && uploadForm.controls.documentTypeId.touched"></app-manager-select></label>
-        <label>File<input #fileInput type="file" accept=".pdf,.jpg,.jpeg,.png" (change)="selectFile($event)" [attr.aria-invalid]="fileTouched && !file" /></label>
-        <p class="hint">PDF, JPEG or PNG · Maximum 10 MB per file. One file per upload.</p>
+        <div class="file-field">
+          <span class="file-label">File</span>
+          <input #fileInput type="file" hidden aria-label="Document file" accept=".pdf,.jpg,.jpeg,.png" (change)="selectFile($event)" />
+          <div class="file-picker">
+            <button type="button" class="btn primary file-button" (click)="fileInput.click()"
+              [disabled]="busy || loading || failed" aria-label="Upload: choose a file"
+              aria-describedby="document-file-name document-file-hint" [attr.aria-invalid]="fileTouched && !file">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Upload
+            </button>
+            <span id="document-file-name" class="file-name" aria-live="polite" [title]="file?.name || ''">{{file?.name || 'No file selected'}}</span>
+          </div>
+        </div>
+        <p id="document-file-hint" class="hint">PDF, JPEG or PNG · Maximum 10 MB per file. One file per upload.</p>
         @if(!loading && !failed && !types.length){<p class="empty">Add an active type using Manage types before uploading.</p>}
         @if(!loading && !failed && (!storageAvailable || !uploadEnabled)){<p class="empty">An administrator must enable document storage in company integrations before you can upload files.</p>}
         <button type="submit" class="btn primary" [disabled]="!types.length || !storageAvailable || !uploadEnabled">{{busy?'Preparing storage and uploading…':'Upload document'}}</button>
