@@ -13,6 +13,9 @@ describe('ManagerCollegesService', () => {
     http = TestBed.inject(HttpTestingController);
   });
   afterEach(() => http.verify());
+  it('creates or reuses an offer college without a browser company identifier',()=>{
+    service.createFromOffer({college_name:'Example College',abn:'12345678901'}).subscribe();const request=http.expectOne(r=>r.url.endsWith('/bm/colleges/from-offer'));expect(request.request.method).toBe('POST');expect(request.request.body).toEqual({college:{college_name:'Example College',abn:'12345678901'}});request.flush({college:{collegeId:'college'}});
+  });
 
   it('searches the college directory independently of clients', () => {
     service.list('ATI', 2).subscribe((result) => expect(result.total).toBe(1));

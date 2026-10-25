@@ -1,5 +1,6 @@
 import { PageJumpComponent } from '../../shared/components/page-jump/page-jump.component';
 import { CaseDocumentActionsComponent } from './case-document-actions.component';
+import { CaseDocumentAnalysisComponent } from './case-document-analysis.component';
 import { CaseChecklistComponent } from './case-checklist.component';
 import { ListNavigationStateService } from '../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
@@ -23,7 +24,7 @@ import type {
 
 @Component({
   selector: 'app-manager-case-view',
-  imports: [CaseChecklistComponent,CaseDocumentActionsComponent,PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
+  imports: [CaseDocumentAnalysisComponent,CaseChecklistComponent,CaseDocumentActionsComponent,PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
   templateUrl: './manager-case-view.page.html',
   styleUrls: ['./manager-case-view.page.css'],
 })
@@ -166,13 +167,13 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   private scheduleDocumentPoll(): void {
     this.stopDocumentPolling();
     // Poll stored metadata only, never initiate provider work. Bound requests per visit.
-    if (!this.discoveryPending || this.documentPollCount >= 30) return;
+    if ((!this.discoveryPending&&!this.documents?.analysisPending) || this.documentPollCount >= 30) return;
     this.documentPollTimer = setTimeout(() => {
       this.documentPollTimer = null;
       if (document.hidden) { this.scheduleDocumentPoll(); return; }
       this.documentPollCount++;
       this.loadDocuments(this.documents?.page ?? 1);
-    }, this.discoveryProcessing ? 30_000 : 120_000);
+    }, this.documents?.analysisPending ? 10_000 : this.discoveryProcessing ? 30_000 : 120_000);
   }
 
   ngOnInit(): void {
@@ -503,6 +504,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
   loadDocuments(page: number,force=false): void {
     if (!this.case || (this.loadingDocuments&&!force) || page < 1) return;
+    if(force)this.documentPollCount=0;
     this.stopDocumentPolling();
     const id = this.currentId;
     const request=++this.documentRequest;
@@ -513,7 +515,9 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         this.loadingDocuments = false;
         const last = Math.max(1, Math.ceil(result.total / result.limit));
         if (result.page > last) { this.loadDocuments(last); return; }
+        const analysisFinished=this.documents?.analysisPending&&!result.analysisPending;
         this.documents = result; this.rememberCasePage('documents', result.page);
+        if(analysisFinished){this.loadActivity(1);this.refreshCaseSummary();}
         this.scheduleDocumentPoll();
       } },
       error: () => { if (id === this.currentId && request===this.documentRequest) { this.documentError = 'Documents could not be loaded.'; this.loadingDocuments = false; } },
@@ -528,6 +532,13 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       next: result => { if (id === this.currentId) { this.activity = result; this.loadingActivity = false; this.rememberCasePage('activity', result.page); } },
       error: () => { if (id === this.currentId) { this.activityError = 'Activity could not be loaded.'; this.loadingActivity = false; } },
     });
+  }
+
+  refreshCaseSummary():void{
+    if(!this.case||this.editing||this.saving||this.creationMode)return;
+    const id=this.currentId;this.api.caseDetail(id).pipe(takeUntil(this.destroy$)).subscribe({next:value=>{
+      if(id===this.currentId&&!this.editing&&!this.saving)this.case=value;
+    },error:()=>{}});
   }
 
   download(document: StudentCaseDocuments['documents'][number]): void {

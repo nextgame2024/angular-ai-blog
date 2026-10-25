@@ -54,6 +54,7 @@ export class ManagerCollegesService {
   }
 
   create(value: object) { return this.http.post<{ college: BmCollege }>(this.base, { college: value }); }
+  createFromOffer(value:object){return this.http.post<{college:BmCollege}>(`${this.base}/from-offer`,{college:value});}
   get(id: string) { return this.http.get<{ college: BmCollege }>(`${this.base}/${id}`); }
   update(id: string, value: object) { return this.http.put<{ college: BmCollege }>(`${this.base}/${id}`, { college: value }); }
   archive(id: string) { return this.http.delete<void>(`${this.base}/${id}`); }

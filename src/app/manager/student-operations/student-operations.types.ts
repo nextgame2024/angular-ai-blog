@@ -191,17 +191,40 @@ export interface StudentCaseInvoices {
 }
 
 export interface StudentCaseDocuments {
+  analysisPending?:boolean;
   requirements?: StudentDocumentRequirement[];
   documents: Array<{
     documentId: string; fileName: string; mimeType: string; sizeBytes: number;
     sourceKind: string; lastSeenAt: string;
     documentTypeId?: string | null; documentTypeName?: string | null; documentTypeRequired?: boolean | null;
+    analysisStatus?:string|null;
   }>;
   discovery: Array<{ status: string; errorCode: string | null; count: number }>;
   discoveryRequested: boolean;
   page: number;
   limit: number;
   total: number;
+}
+
+export interface StudentDocumentAnalysis {
+  canStart?:boolean;
+  documentId:string;jobId:string|null;resultId:string|null;status:string;reviewVersion:number;
+  extraction:({kind:'passport'|'engagement_letter';studentName:string|null;
+    evidence:Array<{page:number;quote:string}>;issues:string[];expiresOn?:string|null;
+    mrzExpiryMatches?:boolean|null;signerName?:string|null;status?:string;signedAt?:string|null;
+    completed?:boolean;documentIdMatches?:boolean|null}|StudentOfferExtraction)|null;
+  offer?:{resolution:string;exactCollegeId:string|null;candidates:Array<{collegeId:string;name:string;abn:string|null}>;
+    colleges:Array<{collegeId:string;name:string;abn:string|null}>;currentCollegeId:string|null;selectedCollegeId:string|null;
+    caseRecordVersion:number;offerId:string|null;isCurrent:boolean;problems:string[];
+    totals:{statedTotalMinor:number|null;instalmentTotalMinor:number;includedConditionalFeesMinor:number;baseInstalmentTotalMinor:number;unexplainedDifference:boolean}}|null;
+  reasons:string[];reviewReason:string|null;decision:string|null;enabled:boolean;
+}
+export interface StudentOfferExtraction {
+  kind:'letter_of_offer';studentName:string|null;evidence:Array<{page:number;quote:string}>;issues:string[];
+  collegeName:string|null;abn:string|null;cricosProviderCode:string|null;currency:string;statedTotalMinor:number|null;
+  courses:Array<{name:string;code:string|null;startsOn:string|null;endsOn:string|null;duration:string|null}>;
+  fees:Array<{label:string;amountMinor:number;conditional:boolean;condition:string|null}>;
+  instalments:Array<{sequence:number;dueTerm:string|null;dueOn:string|null;totalMinor:number;includedConditionalFeeMinor:number;components?:Array<{label:string;amountMinor:number}>}>;
 }
 
 export interface StudentDocumentRequirement {

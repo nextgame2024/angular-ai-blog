@@ -22,6 +22,14 @@ describe('StudentOperationsService', () => {
   });
 
   afterEach(() => http.verify());
+  it('queues checking a saved file with authenticated idempotency and no file body',()=>{
+    service.startDocumentAnalysis('case/id','doc/id','saved-check-key').subscribe();const request=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/documents/doc%2Fid/analysis/start'));expect(request.request.body).toEqual({});expect(request.request.headers.get('Idempotency-Key')).toBe('saved-check-key');expect(request.request.headers.get('Authorization')).toBe('Token business-manager-token');request.flush({queued:true});
+  });
+  it('loads document checks and sends review/retry with authentication and idempotency',()=>{
+    service.documentAnalysis('case/id','doc/id').subscribe();const read=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/documents/doc%2Fid/analysis'));expect(read.request.headers.get('Authorization')).toBe('Token business-manager-token');read.flush({});
+    const value={resultId:'result',expectedReviewVersion:1,decision:'confirmed',reason:'Checked',corrections:null};service.reviewDocumentAnalysis('case','doc',value,'review-key').subscribe();const review=http.expectOne(r=>r.url.endsWith('/analysis/review'));expect(review.request.body).toEqual(value);expect(review.request.headers.get('Idempotency-Key')).toBe('review-key');review.flush({});
+    service.retryDocumentAnalysis('case','doc','job','retry-key').subscribe();const retry=http.expectOne(r=>r.url.endsWith('/analysis/retry'));expect(retry.request.body).toEqual({jobId:'job'});expect(retry.request.headers.get('Idempotency-Key')).toBe('retry-key');retry.flush({});
+  });
   it('loads company-scoped document requirements by status without a client company identifier',()=>{
     service.documentRequirements('pre_sale').subscribe();const r=http.expectOne(q=>q.url.endsWith('/cases/document-requirements'));
     expect(r.request.method).toBe('GET');expect(r.request.params.get('status')).toBe('pre_sale');expect(r.request.params.has('companyId')).toBeFalse();expect(r.request.headers.get('Authorization')).toBe('Token business-manager-token');r.flush({requirements:[]});

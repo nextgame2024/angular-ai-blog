@@ -237,6 +237,19 @@ export class StudentOperationsService {
     });
   }
 
+  documentAnalysis(caseId:string,documentId:string):Observable<import('./student-operations.types').StudentDocumentAnalysis>{
+    return this.http.get<import('./student-operations.types').StudentDocumentAnalysis>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(documentId)}/analysis`,{headers:this.headers()});
+  }
+  reviewDocumentAnalysis(caseId:string,documentId:string,value:unknown,key:string){
+    return this.http.post(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(documentId)}/analysis/review`,value,{headers:this.headers().set('Idempotency-Key',key)});
+  }
+  retryDocumentAnalysis(caseId:string,documentId:string,jobId:string,key:string){
+    return this.http.post(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(documentId)}/analysis/retry`,{jobId},{headers:this.headers().set('Idempotency-Key',key)});
+  }
+  startDocumentAnalysis(caseId:string,documentId:string,key:string){
+    return this.http.post(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(documentId)}/analysis/start`,{},{headers:this.headers().set('Idempotency-Key',key)});
+  }
+
   caseActivity(caseId: string, page = 1): Observable<StudentCaseActivity> {
     return this.http.get<StudentCaseActivity>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/activity`, {
       headers: this.headers(), params: new HttpParams().set('page', page).set('limit', 25),

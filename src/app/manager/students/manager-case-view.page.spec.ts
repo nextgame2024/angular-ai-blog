@@ -343,6 +343,15 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(api.caseDocuments).toHaveBeenCalledTimes(1);
   }));
 
+  it('polls local analysis state independently of discovery and refreshes activity when checks finish',fakeAsync(()=>{
+    const pending={documents:[],discovery:[],discoveryRequested:false,total:0,page:1,limit:25,analysisPending:true};
+    api.caseDocuments.and.returnValue(of(pending));spyOnProperty(document,'hidden','get').and.returnValue(false);
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const activities=api.caseActivity.calls.count();
+    api.caseDocuments.and.returnValue(of({...pending,analysisPending:false}));tick(10000);
+    expect(api.caseDocuments).toHaveBeenCalledTimes(2);expect(api.caseActivity.calls.count()).toBe(activities+1);
+    tick(20000);expect(api.caseDocuments).toHaveBeenCalledTimes(2);fixture.destroy();
+  }));
+
   it('does not report an empty completed discovery when sources failed', () => {
     api.caseDocuments.and.returnValue(of({ documents: [], discovery: [{ status: 'failed', count: 2 }], discoveryRequested: true, total: 0, page: 1, limit: 25 }));
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent); fixture.detectChanges();
