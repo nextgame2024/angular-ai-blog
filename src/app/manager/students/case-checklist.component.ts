@@ -15,6 +15,7 @@ export class CaseChecklistComponent implements OnChanges,OnDestroy {
   @Input() status='';
   @Input() canManage=false;
   @Input() disabled=false;
+  @Input() refreshToken=0;
   @Output() changed=new EventEmitter<void>();
   private readonly api=inject(StudentOperationsService);
   private readonly scope$=new Subject<void>();
@@ -24,6 +25,7 @@ export class CaseChecklistComponent implements OnChanges,OnDestroy {
   private request:{fingerprint:string;key:string}|null=null;
   get complete(){return this.items.filter(i=>i.completed).length;}
   ngOnChanges(changes:import('@angular/core').SimpleChanges){
+    if(changes['refreshToken']&&!changes['caseId']&&!changes['status']){this.load();return;}
     if(!changes['caseId']&&!changes['status'])return;
     this.scope$.next();this.busy=this.loading=this.failed=false;this.message='';this.request=null;this.items=[];
     if(this.status!=='pre_sale')return;
@@ -44,7 +46,7 @@ export class CaseChecklistComponent implements OnChanges,OnDestroy {
   toggle(item:StudentCaseChecklist['items'][number],event:Event){
     // Keep the control at the confirmed server value until the save succeeds.
     (event.target as HTMLInputElement).checked=item.completed;
-    if(!this.caseId||!this.canManage||this.disabled||this.busy||this.loading||this.failed||this.status!=='pre_sale')return;
+    if(item.automatic||!this.caseId||!this.canManage||this.disabled||this.busy||this.loading||this.failed||this.status!=='pre_sale')return;
     const value={itemKey:item.key,completed:!item.completed,recordVersion:item.recordVersion};
     const fingerprint=JSON.stringify(value);
     if(this.request?.fingerprint!==fingerprint)this.request={fingerprint,key:crypto.randomUUID()};

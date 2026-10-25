@@ -516,8 +516,10 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         const last = Math.max(1, Math.ceil(result.total / result.limit));
         if (result.page > last) { this.loadDocuments(last); return; }
         const analysisFinished=this.documents?.analysisPending&&!result.analysisPending;
+        const analysisChanged=this.documents?.documents.some(previous=>result.documents.some(current=>current.documentId===previous.documentId&&current.analysisStatus!==previous.analysisStatus));
         this.documents = result; this.rememberCasePage('documents', result.page);
-        if(analysisFinished){this.loadActivity(1);this.refreshCaseSummary();}
+        if(force||analysisFinished||analysisChanged)this.checklistRefresh++;
+        if(analysisFinished||analysisChanged){this.loadActivity(1);this.refreshCaseSummary();}
         this.scheduleDocumentPoll();
       } },
       error: () => { if (id === this.currentId && request===this.documentRequest) { this.documentError = 'Documents could not be loaded.'; this.loadingDocuments = false; } },
@@ -533,6 +535,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       error: () => { if (id === this.currentId) { this.activityError = 'Activity could not be loaded.'; this.loadingActivity = false; } },
     });
   }
+  checklistRefresh=0;
 
   refreshCaseSummary():void{
     if(!this.case||this.editing||this.saving||this.creationMode)return;

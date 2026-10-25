@@ -5,6 +5,7 @@
 .empty { padding:.75rem; border-radius:.5rem; background:#f7f9fc }
 .checklist-item { display:flex; justify-content:space-between; align-items:center; gap:.7rem; min-height:44px; padding:.6rem .2rem; border-bottom:1px solid #e7edf4; font-size:.8rem; color:#425675; cursor:pointer }
 .checklist-item span { min-width:0; overflow-wrap:anywhere }
+.checklist-item small { display:block; font-size:.7rem; line-height:1.5; font-weight:400; margin-top:.15rem }
 .checklist-item.completed { color:#087f73 }
 .checklist-item input { flex:none; width:1.15rem; height:1.15rem; margin:0 .25rem; accent-color:#0ca88b; cursor:pointer }
 .checklist-item input:disabled { cursor:not-allowed }

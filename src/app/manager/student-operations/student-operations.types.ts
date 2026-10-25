@@ -207,6 +207,7 @@ export interface StudentCaseDocuments {
 }
 
 export interface StudentDocumentAnalysis {
+  currentForType?:boolean;
   canStart?:boolean;
   documentId:string;jobId:string|null;resultId:string|null;status:string;reviewVersion:number;
   extraction:({kind:'passport'|'engagement_letter';studentName:string|null;
@@ -245,7 +246,7 @@ export interface StudentCaseActivity {
 
 export interface StudentCaseChecklist {
   status: string;
-  items: Array<{key:string;label:string;completed:boolean;recordVersion:number;updatedBy:string|null;updatedAt:string|null}>;
+  items: Array<{key:string;label:string;completed:boolean;recordVersion:number;updatedBy:string|null;updatedAt:string|null;automatic?:boolean;hint?:string}>;
 }
 
 export interface XeroConnectionSummary {

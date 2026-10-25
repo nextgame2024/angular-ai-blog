@@ -21,6 +21,11 @@ describe('CaseDocumentAnalysisComponent',()=>{
     const f=setup();f.componentRef.setInput('canManage',false);f.detectChanges();f.componentInstance.open();
     expect(f.nativeElement.querySelector('.check-button')).toBeNull();expect(api.documentAnalysis).not.toHaveBeenCalled();
   });
+  it('keeps historical evidence readable but cannot confirm a superseded upload',()=>{
+    api.documentAnalysis.and.returnValue(of({...result,currentForType:false}));const f=setup(),c=f.componentInstance;c.open();f.detectChanges();
+    c.form.controls.reason.setValue('Reviewed old file');c.save('confirmed');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
+    expect(f.nativeElement.textContent).toContain('Review the latest upload');expect(f.nativeElement.querySelector('button[type="submit"]').disabled).toBeTrue();
+  });
   it('requires a note, sends corrected fields and version, and reuses the key on uncertain failure',()=>{
     const f=setup(),c=f.componentInstance;c.open();c.save('confirmed');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
     c.form.controls.reason.setValue('Verified original');c.form.controls.expiresOn.setValue('2036-08-06');

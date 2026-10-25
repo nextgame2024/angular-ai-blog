@@ -26,6 +26,10 @@ describe('CaseOfferReviewComponent',()=>{
   it('parses money exactly and rejects fractions of cents, negatives and exponent input',()=>{
     expect(offerMoneyInput('995.00')).toBe(99500);expect(offerMoneyInput('0.29')).toBe(29);for(const value of ['-25','2.555','1e3','NaN',''])expect(offerMoneyInput(value)).toBeNull();
   });
+  it('does not confirm a superseded offer',()=>{
+    const f=setup({...result,currentForType:false}),c=f.componentInstance;c.form.controls.reason.setValue('Historical offer');c.save('confirmed');
+    expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();expect(f.nativeElement.querySelector('button[type="submit"]').disabled).toBeTrue();
+  });
   it('requires note, selected college and acknowledged unexplained totals',()=>{
     const f=setup(),c=f.componentInstance,notice=spyOn(c.problem,'emit');c.save('confirmed');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
     c.form.controls.reason.setValue('Difference reviewed');c.form.controls.total.setValue('9100.00');c.save('confirmed');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();expect(notice).toHaveBeenCalledWith(jasmine.stringMatching('acknowledge'));

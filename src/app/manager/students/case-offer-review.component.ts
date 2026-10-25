@@ -65,6 +65,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   }
   save(decision:'confirmed'|'rejected'){
     if(this.busy||!this.analysis.resultId)return;
+    if(decision==='confirmed'&&this.analysis.currentForType===false)return;
     this.form.markAllAsTouched();const v=this.form.getRawValue();
     if(!v.reason.trim()){this.problem.emit('Add a review note.');return;}
     let corrections:StudentOfferExtraction|null=null;

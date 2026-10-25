@@ -52,6 +52,15 @@ describe('CaseChecklistComponent',()=>{
     expect(f.componentInstance.message).not.toContain('private');expect(f.nativeElement.querySelector('app-manager-toast')).not.toBeNull();
     api.caseChecklist.and.returnValue(of({items,status:'pre_sale'}));(f.nativeElement.querySelector('.retry') as HTMLButtonElement).click();f.detectChanges();expect(f.nativeElement.querySelectorAll('input').length).toBe(4);
   });
+  it('shows evidence-controlled items as read-only and refreshes them after document changes',()=>{
+    api.caseChecklist.and.returnValue(of({status:'pre_sale',items:items.map((i,n)=>({...i,automatic:n===0||n===2,hint:'Updated from document checks.'}))}));
+    const f=setup(),inputs=[...f.nativeElement.querySelectorAll('input')] as HTMLInputElement[];
+    expect(inputs[0].disabled).toBeTrue();expect(inputs[2].disabled).toBeTrue();expect(inputs[1].disabled).toBeFalse();
+    inputs[0].click();expect(api.updateCaseChecklist).not.toHaveBeenCalled();
+    expect(f.nativeElement.textContent).toContain('Updated from document checks.');
+    api.caseChecklist.and.returnValue(of({status:'pre_sale',items:items.map(i=>({...i,completed:true}))}));
+    f.componentRef.setInput('refreshToken',1);f.detectChanges();expect(f.componentInstance.complete).toBe(4);expect(api.caseChecklist).toHaveBeenCalledTimes(2);
+  });
   for(const width of [390,1440])for(const dark of [false,true])it(`fits accessible checklist controls at ${width}px, ${dark?'dark':'light'}`,()=>{
     const f=setup(),frame=document.createElement('iframe');frame.style.width=`${width}px`;document.body.appendChild(frame);
     try{

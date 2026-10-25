@@ -7,9 +7,9 @@
     @if(failed){<button type="button" class="retry" (click)="load()">Reload checklist</button>}
     @for(item of items;track item.key){
       <label class="checklist-item" [class.completed]="item.completed">
-        <span>{{item.label}}</span>
+        <span>{{item.label}}@if(item.automatic){<small>{{item.hint}}</small>}</span>
         <input type="checkbox" [checked]="item.completed" (change)="toggle(item,$event)"
-          [disabled]="!caseId || !canManage || disabled || loading || busy || failed" />
+          [disabled]="item.automatic || !caseId || !canManage || disabled || loading || busy || failed" />
       </label>
     }
   </div>

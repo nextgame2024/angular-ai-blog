@@ -7,6 +7,7 @@
   @if(loading){<app-manager-list-loader label="Loading document check"></app-manager-list-loader>}
   @if(failed){<button type="button" class="btn" (click)="load()">Retry loading</button>}
   @if(data;as item){
+    @if(item.currentForType===false){<p class="notice">A newer document of this type has been uploaded. Review the latest upload to update the checklist.</p>}
     @if(item.canStart){<p>This saved document is ready to be checked.</p><button type="button" class="btn primary" (click)="start()" [disabled]="busy">Check saved document</button>}
     @if(item.status==='checking'){<p role="status">This document is being checked. You can close this window and return later.</p>}
     @if(item.status==='check_failed'){<p>The check could not finish. Your uploaded file is still saved.</p><button type="button" class="btn primary" (click)="retry()" [disabled]="busy||!item.enabled">Retry check</button>}
@@ -31,7 +32,7 @@
           <div class="evidence" tabindex="0" aria-label="Document source evidence">@for(source of extraction.evidence;track $index){<p><strong>Page {{source.page}}</strong> — {{source.quote}}</p>}@empty{<p>No readable evidence was found.</p>}</div>
           @if(item.reviewReason){<p>Previous review: {{item.reviewReason}}</p>}
           <label>Review note<textarea rows="3" formControlName="reason" maxlength="500" [attr.aria-invalid]="form.controls.reason.touched&&form.controls.reason.invalid"></textarea></label>
-          <footer><button type="button" class="btn" (click)="load()" [disabled]="busy">Reload</button><button type="button" class="btn danger" (click)="save('rejected')" [disabled]="busy">Reject document</button><button type="submit" class="btn primary" [disabled]="busy">{{busy?'Saving…':'Confirm review'}}</button></footer>
+          <footer><button type="button" class="btn" (click)="load()" [disabled]="busy">Reload</button><button type="button" class="btn danger" (click)="save('rejected')" [disabled]="busy">Reject document</button><button type="submit" class="btn primary" [disabled]="busy||item.currentForType===false">{{busy?'Saving…':'Confirm review'}}</button></footer>
         </fieldset>
       </form>
       }

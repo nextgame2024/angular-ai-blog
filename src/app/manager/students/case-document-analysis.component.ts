@@ -35,6 +35,7 @@ export class CaseDocumentAnalysisComponent implements OnChanges,OnDestroy {
   private key(value:unknown){const fingerprint=JSON.stringify(value);if(this.request?.fingerprint!==fingerprint)this.request={fingerprint,key:crypto.randomUUID()};return this.request!.key;}
   save(decision:'confirmed'|'rejected'){
     const data=this.data;if(!this.canManage||this.busy||this.loading||!data?.resultId||!data.extraction||data.extraction.kind==='letter_of_offer')return;
+    if(decision==='confirmed'&&data.currentForType===false)return;
     this.form.markAllAsTouched();
     const fields=this.form.getRawValue();
     if(!fields.reason.trim()||this.form.controls.reason.invalid||(decision==='confirmed'&&(this.form.controls.name.invalid||!fields.name.trim()||(data.extraction.kind==='passport'&&(!fields.expiresOn||(data.extraction.mrzExpiryMatches===false&&!fields.expiryVerified)))))) {this.message='Enter the student name, verify the expiry date when applicable, and add a review note.';return;}
