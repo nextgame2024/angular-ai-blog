@@ -42,13 +42,20 @@
         <h3>Fee details</h3><p>Keep the source amounts unchanged unless correcting an extraction. Conditional fees are selected later for each invoice.</p>
         <div class="fields"><label>Currency<input formControlName="currency" maxlength="3" /></label><label>Stated offer total<input formControlName="total" inputmode="decimal" [attr.aria-invalid]="form.controls.total.touched&&offerMoneyInput(form.controls.total.value)===null" /></label></div>
         <div formArrayName="fees" class="collection">@for(fee of form.controls.fees.controls;track fee;let i=$index){
-          <fieldset [formGroupName]="i" class="entry"><legend>Fee {{i+1}}</legend><div class="fields">
-            <label>Name<input formControlName="label" /></label><label>Amount<input formControlName="amount" inputmode="decimal" /></label>
-            <label class="checkbox"><input type="checkbox" formControlName="conditional" />Conditional fee</label><label>When it applies<input formControlName="condition" /></label>
-          </div><button type="button" class="btn danger" (click)="remove(form.controls.fees,i)" [disabled]="busy" [attr.aria-label]="'Remove fee '+(i+1)">Remove</button></fieldset>
+          <fieldset [formGroupName]="i" class="entry fee-entry"><legend>Fee {{i+1}}</legend><div class="fee-fields">
+            <label class="fee-name">Name<input formControlName="label" /></label><label>Amount<input formControlName="amount" inputmode="decimal" /></label>
+            <label>When it applies<input formControlName="condition" /></label>
+            <label class="fee-conditional">Conditional fee<span class="conditional-toggle"><input type="checkbox" formControlName="conditional" /></span></label>
+            <button type="button" class="btn danger fee-remove" (click)="remove(form.controls.fees,i)" [disabled]="busy" [attr.aria-label]="'Remove fee '+(i+1)" [title]="'Remove fee '+(i+1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button>
+          </div></fieldset>
         }</div>
         <button type="button" class="btn" (click)="addFee()" [disabled]="busy||form.controls.fees.length>=100">+ Add fee</button>
-        <p class="totals">Stated offer total: <strong>{{form.controls.currency.value}} {{form.controls.total.value}}</strong><br />Instalments total: <strong>{{money(paymentTotals.total)}}</strong> · Conditional fees already included: <strong>{{money(paymentTotals.included)}}</strong></p>
+        <div class="totals fee-summary">
+          <h4>Whole-offer totals</h4>
+          <dl><div><dt>Offer total as stated in the document</dt><dd>{{form.controls.currency.value}} {{form.controls.total.value}}</dd></div><div><dt>Printed instalment total — all payments</dt><dd>{{form.controls.currency.value}} {{money(paymentTotals.total)}}</dd></div><div><dt>Conditional fees already included in those payments</dt><dd>{{form.controls.currency.value}} {{money(paymentTotals.included)}}</dd></div></dl>
+          @if(firstPaymentSummary;as payment){<h4>First scheduled payment</h4><dl><div><dt>Before the included conditional fees</dt><dd>{{form.controls.currency.value}} {{money(payment.base)}}</dd></div><div><dt>As printed, including those fees</dt><dd>{{form.controls.currency.value}} {{money(payment.total)}}</dd></div></dl>}
+          <p>First-payment amounts are part of the whole offer, not additional fees. Any conditional fee is selected later when creating an invoice; it is not added again here.</p>
+        </div>
         @if(totalsDiffer){<label class="checkbox notice"><input type="checkbox" formControlName="acknowledgeTotals" />I reviewed the difference between the offer total and instalments. My review note explains it.</label>}
       </section>
       <section role="tabpanel" [id]="'offer-panel-'+documentId+'-instalments'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-instalments'" [hidden]="activeTab!=='instalments'">
@@ -64,7 +71,7 @@
           <div class="row-actions"><button type="button" class="btn" (click)="addComponent(payment)" [disabled]="busy||payment.controls.components.length>=20">+ Add payment component</button><button type="button" class="btn danger" (click)="remove(form.controls.instalments,i)" [disabled]="busy" [attr.aria-label]="'Remove payment '+(i+1)">Remove payment</button></div></fieldset>
         }</div>
         <button type="button" class="btn" (click)="addInstalment()" [disabled]="busy||form.controls.instalments.length>=200">+ Add instalment</button>
-        <p class="totals">Instalments total: <strong>{{form.controls.currency.value}} {{money(paymentTotals.total)}}</strong> · Conditional fees already included: <strong>{{money(paymentTotals.included)}}</strong></p>
+        <p class="totals">Printed instalment total — all payments: <strong>{{form.controls.currency.value}} {{money(paymentTotals.total)}}</strong><br />Conditional fees already included in those payments: <strong>{{form.controls.currency.value}} {{money(paymentTotals.included)}}</strong></p>
       </section>
       <section role="tabpanel" [id]="'offer-panel-'+documentId+'-review'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-review'" [hidden]="activeTab!=='review'">
         <h3>Source evidence</h3><div class="evidence" tabindex="0" aria-label="Offer source evidence">@for(e of source.evidence;track $index){<p><strong>Page {{e.page}}</strong> — {{e.quote}}</p>}@empty{<p>No readable evidence was found.</p>}</div>

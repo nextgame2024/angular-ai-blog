@@ -26,6 +26,23 @@ describe('CaseOfferReviewComponent',()=>{
   it('parses money exactly and rejects fractions of cents, negatives and exponent input',()=>{
     expect(offerMoneyInput('995.00')).toBe(99500);expect(offerMoneyInput('0.29')).toBe(29);for(const value of ['-25','2.555','1e3','NaN',''])expect(offerMoneyInput(value)).toBeNull();
   });
+  it('separates first-payment amounts from whole-offer totals without applying a fee',()=>{
+    const f=setup({...result,extraction:{...source,instalments:[...source.instalments].reverse()}}),c=f.componentInstance;
+    c.selectTab('fees');f.detectChanges();expect(c.firstPaymentSummary).toEqual({base:97000,total:99500});
+    const summary=f.nativeElement.querySelector('.fee-summary').textContent;
+    for(const value of ['Whole-offer totals','First scheduled payment','AUD 9040.00','AUD 9065.00','AUD 25.00','AUD 970.00','AUD 995.00'])expect(summary).toContain(value);
+    expect(c.form.controls.instalments.getRawValue().map(r=>r.sequence)).toEqual(['2','1']);
+    c.form.controls.instalments.at(1).controls.includedFee.setValue('1000.00');expect(c.firstPaymentSummary).toBeNull();
+    expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
+  });
+  it('uses an accessible remove icon for each fee and only removes the chosen draft row',()=>{
+    const f=setup(),c=f.componentInstance;c.selectTab('fees');f.detectChanges();
+    const rows=f.nativeElement.querySelectorAll('.fee-entry');expect(rows.length).toBe(2);
+    const first=rows[0].querySelector('[aria-label="Remove fee 1"]') as HTMLButtonElement;expect(first.querySelector('svg')).not.toBeNull();
+    expect(Array.from(rows[0].querySelectorAll('label')).map((l:any)=>l.textContent.trim())).toEqual(['Name','Amount','When it applies','Conditional fee']);
+    c.busy=true;f.detectChanges();expect(first.disabled).toBeTrue();first.click();expect(c.form.controls.fees.length).toBe(2);
+    c.busy=false;f.detectChanges();first.click();f.detectChanges();expect(c.form.controls.fees.length).toBe(1);expect(c.form.controls.fees.at(0).controls.label.value).toBe('International transfer');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
+  });
   it('does not confirm a superseded offer',()=>{
     const f=setup({...result,currentForType:false}),c=f.componentInstance;c.form.controls.reason.setValue('Historical offer');c.save('confirmed');
     expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();expect(f.nativeElement.querySelector('button[type="submit"]').disabled).toBeTrue();
@@ -72,6 +89,21 @@ describe('CaseOfferReviewComponent',()=>{
         expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth+1);for(const b of host.querySelectorAll<HTMLButtonElement>('button'))if(b.getBoundingClientRect().height)expect(b.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
         const scroll=host.querySelector('.offer-scroll')!;scroll.scrollTop=scroll.scrollHeight;
         const footer=host.querySelector('.offer-footer')!;expect(footer.getBoundingClientRect().bottom).toBeLessThanOrEqual(host.getBoundingClientRect().bottom+1);expect(footer.getBoundingClientRect().top).toBeGreaterThanOrEqual(host.getBoundingClientRect().top);
+        if(tab.key==='fees'){
+          const row=host.querySelector('.fee-fields')!,remove=row.querySelector<HTMLButtonElement>('.fee-remove')!;
+          expect(remove.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);expect(remove.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+          expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth+1);
+          if(width===1440){const inputs=Array.from(row.querySelectorAll('input:not([type="checkbox"])'));const top=inputs[0].getBoundingClientRect().top;for(const input of inputs)expect(Math.abs(input.getBoundingClientRect().top-top)).toBeLessThan(2);expect(Math.abs(remove.getBoundingClientRect().top-top)).toBeLessThan(2);}
+          expect(win.getComputedStyle(remove).color).toBe(dark?'rgb(255, 173, 184)':'rgb(180, 56, 72)');
+        }
+        if(tab.key==='instalments'){
+          for(const row of host.querySelectorAll('.payment-fields')){
+            const inputs=Array.from(row.querySelectorAll('input'));expect(inputs.length).toBe(5);
+            expect(row.textContent).toContain('Conditional fee already included');expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth+1);
+            if(width===1440){const top=inputs[0].getBoundingClientRect().top;for(const input of inputs)expect(Math.abs(input.getBoundingClientRect().top-top)).toBeLessThan(2);}
+            else{for(let i=1;i<inputs.length;i++)expect(inputs[i].getBoundingClientRect().top).toBeGreaterThan(inputs[i-1].getBoundingClientRect().bottom);}
+          }
+        }
         expect(win.getComputedStyle(host.querySelector('input')!).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(255, 255, 255)');host.remove();
       }
     }finally{frame.remove();f.destroy();}

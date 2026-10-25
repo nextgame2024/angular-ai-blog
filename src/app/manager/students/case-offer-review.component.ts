@@ -67,6 +67,14 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   addComponent(payment:InstalmentForm){if(this.busy||payment.controls.components.length>=20)return;payment.controls.components.push(new FormGroup({label:control('',true),amount:amountControl('')}));}
   remove(array:FormArray,index:number){if(!this.busy)array.removeAt(index);}
   get paymentTotals(){const rows=this.form.controls.instalments.getRawValue();return {total:rows.reduce((n,r)=>n+(offerMoneyInput(r.total)??0),0),included:rows.reduce((n,r)=>n+(offerMoneyInput(r.includedFee)??0),0)};}
+  get firstPaymentSummary(){
+    const rows=this.form.controls.instalments.getRawValue();
+    if(!rows.length||rows.some(r=>!/^\d+$/.test(r.sequence)||!Number.isSafeInteger(Number(r.sequence))||Number(r.sequence)<1))return null;
+    const first=[...rows].sort((a,b)=>Number(a.sequence)-Number(b.sequence))[0];
+    if(rows.filter(r=>Number(r.sequence)===Number(first.sequence)).length!==1)return null;
+    const total=offerMoneyInput(first.total),included=offerMoneyInput(first.includedFee);
+    return total===null||included===null||included>total?null:{total,base:total-included};
+  }
   get totalsDiffer(){const total=offerMoneyInput(this.form.controls.total.value),rows=this.paymentTotals;return total!==null&&total!==rows.total&&total!==rows.total-rows.included;}
   beginCollege(){if(this.busy)return;this.activeTab='details';this.creating=true;this.collegeForm.reset({college_name:this.form.controls.collegeName.value.slice(0,200),owner_name:'',abn:this.form.controls.abn.value,notes:''});}
   createCollege(){
