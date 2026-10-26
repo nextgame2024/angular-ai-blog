@@ -231,6 +231,13 @@ export class StudentOperationsService {
     });
   }
 
+  caseInvoiceDrafts(caseId:string):Observable<import('./student-operations.types').CaseInvoiceDraftData>{
+    return this.http.get<import('./student-operations.types').CaseInvoiceDraftData>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts`,{headers:this.headers()});
+  }
+  prepareCaseInvoiceDrafts(caseId:string,value:unknown,key:string):Observable<{batchId:string;count:number}>{
+    return this.http.post<{batchId:string;count:number}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts`,value,{headers:this.writeHeaders(key)});
+  }
+
   caseDocuments(caseId: string, page = 1): Observable<StudentCaseDocuments> {
     return this.http.get<StudentCaseDocuments>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents`, {
       headers: this.headers(), params: new HttpParams().set('page', page).set('limit', 25),

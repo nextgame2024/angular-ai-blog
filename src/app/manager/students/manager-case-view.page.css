@@ -44,6 +44,8 @@ h2 { font-size:.97rem; font-weight:800 }
 .card-heading p { margin-top:.2rem; font-size:.76rem; color:#718099 }
 .card-heading p strong { color:#284f8d }
 .document-heading { flex-wrap:wrap }
+.invoice-heading{flex-wrap:wrap}.secondary-button.prepare-invoices{min-height:44px;background:#0ca88b;border-color:#0ca88b;color:#fff}:host-context(html.dark) .secondary-button.prepare-invoices{background:#0ca88b;border-color:#0ca88b;color:#fff}
+.secondary-button.prepare-invoices:hover:not(:disabled){background:#087f73}
 .secondary-button.requirement-upload { min-height:44px; gap:.35rem }
 .requirement-upload svg { width:1.1rem; height:1.1rem; flex:none }
 .count { display:inline-grid; place-items:center; min-width:1.65rem; height:1.65rem; padding:0 .35rem; border-radius:1rem; background:#edf4fb; color:#4a638d; font-size:.72rem; font-weight:700 }
@@ -118,6 +120,7 @@ h2 { font-size:.97rem; font-weight:800 }
 .stage-list li.current .stage-number { border-color:#0ca88b; background:#0ca88b; color:white; box-shadow:0 0 0 3px #0ca88b20 }
 .content-grid { display:grid; grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr) minmax(17rem,.67fr); align-items:stretch; gap:.7rem }
 .content-grid > .card { margin:0 }
+.invoice-content{overflow:auto;min-height:0;flex:1;overscroll-behavior:contain;scrollbar-width:thin}
 .case-record-card,.case-actions-card { display:flex; flex-direction:column; min-height:20rem; max-height:36rem }
 .case-secondary-card,.sophia-card { display:flex; flex-direction:column; min-height:16rem; max-height:28rem }
 .availability-pill { flex:none; border-radius:1rem; padding:.28rem .55rem; background:#edf2f7; color:#60738d; font-size:.68rem; font-weight:700; white-space:nowrap }

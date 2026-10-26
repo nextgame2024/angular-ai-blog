@@ -26,6 +26,7 @@ h3{font-size:.95rem;margin:0;font-weight:800}p{font-size:.8rem;line-height:1.5;o
 .fee-summary dt{min-width:0}.fee-summary dd{margin:0;text-align:right;font-weight:700;flex:none}
 .offer-footer{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex:none;padding:.85rem 1.25rem;border-top:1px solid #dbe5f0;background:#fff}
 .offer-footer>span{font-size:.75rem;color:#63738d}.offer-footer .row-actions{justify-content:flex-end}
+.college-actions{display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-width:0}.college-actions p{flex:1;min-width:0}.college-actions .row-actions{justify-content:flex-end}
 button:focus-visible,input:focus-visible,textarea:focus-visible,.evidence:focus-visible{outline:2px solid #0eac9e;outline-offset:2px}
 :host-context(html.dark) label,:host-context(html.dark) .tab,:host-context(html.dark) .offer-footer>span{color:#c1d0e6}
 :host-context(html.dark) input,:host-context(html.dark) textarea,:host-context(html.dark) .btn{background:#263449;color:#c1d0e6;border-color:#4a6180}
@@ -38,3 +39,4 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,.evidence:focus-
 @media(max-width:1000px){.fee-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.fee-name{grid-column:1/-1}.fee-remove{justify-self:end}}
 @media(max-width:600px){.fee-fields{grid-template-columns:minmax(0,1fr)}.fee-name{grid-column:auto}.fee-summary dl>div{flex-wrap:wrap;gap:.1rem .5rem}.fee-summary dd{text-align:left}}
 @media(min-width:721px) and (max-width:1000px){.payment-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.college-actions{flex-direction:column;align-items:stretch;gap:.5rem}.college-actions .row-actions{width:100%}}

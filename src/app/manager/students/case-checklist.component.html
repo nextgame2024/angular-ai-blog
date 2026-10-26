@@ -1,5 +1,5 @@
 @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''"></app-manager-toast>}
-@if(status==='pre_sale'){
+@if(status==='pre_sale'||status==='on_hold'){
   <div class="checklist" [attr.aria-busy]="loading || busy">
     <p class="hint" aria-live="polite">{{complete}} of {{items.length || 4}} complete</p>
     @if(!caseId){<p class="hint">Save the case to start its checklist.</p>}
@@ -10,7 +10,7 @@
         <span>{{item.label}}@if(item.automatic){<small>{{item.hint}}</small>}</span>
         <span class="checklist-controls">
           <input type="checkbox" [checked]="item.completed" (change)="toggle(item,$event)"
-            [disabled]="item.automatic || !caseId || !canManage || disabled || loading || busy || failed" />
+            [disabled]="status!=='pre_sale' || item.automatic || !caseId || !canManage || disabled || loading || busy || failed" />
           @if(item.completed || item.validationState==='passed'){
             <svg class="validation-icon passed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" role="img" aria-label="Validation complete"><circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 7-7"/></svg>
           }@else if(item.validationState==='needs_review'){

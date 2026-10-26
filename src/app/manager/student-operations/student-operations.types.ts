@@ -190,6 +190,28 @@ export interface StudentCaseInvoices {
   total: number;
 }
 
+export interface CaseInvoiceDraftLine {
+  kind:'tuition'|'enrolment'|'materials'|'visa'|'oshc'|'other';description:string;itemCode:string;
+  quantity:string;unitAmountMinor:number;unitPrice?:string;itemId?:string;taxAmountMinor?:number;amountMinor:number;accountCode:string;taxType:string;
+}
+export interface CaseInvoiceDraft {
+  sequence:number;issueDate:string;dueDate:string;conditionalFeeApplies:boolean;conditionalFeeMinor:number;
+  lines:CaseInvoiceDraftLine[];invoiceNumber:string;status:'DRAFT';paymentTrack:'PENDING';
+  sourceTotalMinor:number;sourceDueDate:string|null;sourceDueTerm:string|null;sourceIncludedConditionalFeeMinor:number;
+  expectedTotalMinor:number;differenceMinor:number;totalMinor:number;subtotalMinor?:number;taxMinor?:number;
+}
+export interface CaseInvoiceCatalogue {
+  connectionId:string;revision:number;lastSyncedAt:string;errorCode:string|null;
+  items:Array<{itemId:string;code:string;name:string;description:string;unitPrice:string|null;accountCode:string|null;taxType:string|null}>;
+  accounts:Array<{code:string;name:string;taxType:string|null}>;
+  taxRates:Array<{taxType:string;name:string;rate:string|null}>;
+}
+export interface CaseInvoiceDraftData {
+  batches:Array<{batchId:string;offerId:string;currentOffer:boolean;createdAt:string;snapshot:{studentName:string;advisorLabel:string;category:string|null;location:string|null;billingUnit:string|null;currency:string;collegeName:string;reviewNote:string;invoices:CaseInvoiceDraft[]}}>;
+  preparation:null|{offerId:string;offerVersion:number;caseVersion:number;source:StudentOfferExtraction;
+    advisors:Array<{advisorId:string;code:string;name:string}>;student:{name:string;advisorId:string|null};today:string;catalogue?:CaseInvoiceCatalogue|null};
+}
+
 export interface StudentCaseDocuments {
   analysisPending?:boolean;
   requirements?: StudentDocumentRequirement[];
@@ -197,7 +219,7 @@ export interface StudentCaseDocuments {
     documentId: string; fileName: string; mimeType: string; sizeBytes: number;
     sourceKind: string; lastSeenAt: string;
     documentTypeId?: string | null; documentTypeName?: string | null; documentTypeRequired?: boolean | null;
-    analysisStatus?:string|null;
+    analysisStatus?:string|null;canReplace?:boolean;
   }>;
   discovery: Array<{ status: string; errorCode: string | null; count: number }>;
   discoveryRequested: boolean;

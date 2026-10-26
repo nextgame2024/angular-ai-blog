@@ -63,6 +63,40 @@ describe('CaseOfferReviewComponent',()=>{
     api.documentAnalysis.and.returnValue(of({...result,offer:{...result.offer!,colleges:[...result.offer!.colleges,{collegeId:'new-college',name:'New College',abn:null}]}}));c.createCollege();
     expect(colleges.createFromOffer.calls.mostRecent().args[0]).toEqual({college_name:'New College',owner_name:'',abn:'',notes:''});expect(c.form.controls.collegeId.value).toBe('new-college');expect(c.form.controls.courses.at(0).controls.name.value).toBe('Edited English');expect(c.analysis.offer?.caseRecordVersion).toBe(2);
   });
+  it('keeps college actions inside the creation form, not the offer footer, and saves through the buttons',()=>{
+    const f=setup(),c=f.componentInstance;
+    const button=(text:string)=>Array.from(f.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(b=>b.textContent?.trim()===text)!;
+    button('+ Create college').click();f.detectChanges();
+    expect(f.nativeElement.querySelector('.college-form .college-actions').textContent).toContain('Save college');
+    expect(f.nativeElement.querySelector('.offer-footer').textContent).not.toContain('Save college');
+    expect(button('Cancel college').closest('.college-form')).not.toBeNull();
+    expect(button('Confirm offer').disabled).toBeTrue();
+    c.collegeForm.controls.college_name.setValue('New College');button('Edit new college').click();f.detectChanges();
+    expect(c.collegeForm.controls.college_name.value).toBe('New College');
+    api.documentAnalysis.and.returnValue(of({...result,offer:{...result.offer!,colleges:[...result.offer!.colleges,{collegeId:'new-college',name:'New College',abn:null}]}}));
+    button('Save college').click();f.detectChanges();
+    expect(c.creating).toBeFalse();expect(c.form.controls.collegeId.value).toBe('new-college');expect(button('Confirm offer').disabled).toBeFalse();
+    expect(f.nativeElement.textContent).toContain('College saved and selected');
+  });
+  it('shows validation and API failure toasts without losing the college draft',()=>{
+    const f=setup(),c=f.componentInstance;c.beginCollege();c.collegeForm.controls.college_name.setValue('   ');c.createCollege();f.detectChanges();
+    expect(colleges.createFromOffer).not.toHaveBeenCalled();expect(f.nativeElement.querySelector('app-manager-toast [role="alert"]').textContent).toContain('Enter a college name');
+    c.collegeForm.controls.college_name.setValue('New College');colleges.createFromOffer.and.returnValue(throwError(()=>({status:409})));c.createCollege();f.detectChanges();
+    expect(c.busy).toBeFalse();expect(c.creating).toBeTrue();expect(c.collegeForm.controls.college_name.value).toBe('New College');
+    expect(f.nativeElement.querySelector('app-manager-toast [role="alert"]').textContent).toContain('matching college');
+  });
+  it('blocks double saves and retries only directory loading once the college is saved',()=>{
+    const f=setup(),c=f.componentInstance,pending=new Subject<any>();c.beginCollege();colleges.createFromOffer.and.returnValue(pending);
+    c.createCollege();c.createCollege();expect(colleges.createFromOffer).toHaveBeenCalledTimes(1);expect(c.busy).toBeTrue();
+    api.documentAnalysis.and.returnValue(throwError(()=>({status:503})));pending.next({college:{collegeId:'new-college'}});pending.complete();f.detectChanges();
+    expect(c.collegeError).toContain('was saved');expect(c.collegeForm.disabled).toBeTrue();
+    api.documentAnalysis.and.returnValue(of({...result,offer:{...result.offer!,colleges:[...result.offer!.colleges,{collegeId:'new-college',name:'New College',abn:null}]}}));
+    c.createCollege();expect(colleges.createFromOffer).toHaveBeenCalledTimes(1);expect(c.form.controls.collegeId.value).toBe('new-college');expect(c.analysis.offer?.caseRecordVersion).toBe(2);
+  });
+  it('keeps offer submission blocked until college creation is saved or cancelled',()=>{
+    const f=setup(),c=f.componentInstance;c.beginCollege();c.save('confirmed');c.save('rejected');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
+    c.cancelCollege();expect(c.creating).toBeFalse();expect(c.collegeError).toBe('');
+  });
   it('rejects with a note even when extracted financial fields are incomplete',()=>{
     const f=setup(),c=f.componentInstance;c.form.controls.total.setValue('');c.form.controls.reason.setValue('Wrong offer');c.save('rejected');expect(api.reviewDocumentAnalysis.calls.mostRecent().args[2].corrections).toBeNull();
   });
@@ -106,6 +140,26 @@ describe('CaseOfferReviewComponent',()=>{
         }
         expect(win.getComputedStyle(host.querySelector('input')!).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(255, 255, 255)');host.remove();
       }
+      f.componentInstance.beginCollege();f.detectChanges();
+      const host=f.nativeElement.cloneNode(true) as HTMLElement;host.style.height='650px';host.style.width=`${Math.min(width-32,1180)}px`;doc.body.appendChild(host);
+      const footer=host.querySelector<HTMLElement>('.offer-footer')!;
+      expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth+1);
+      for(const b of footer.querySelectorAll<HTMLButtonElement>('button')){
+        expect(b.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+        expect(b.getBoundingClientRect().top).toBeGreaterThanOrEqual(host.getBoundingClientRect().top);
+        expect(b.getBoundingClientRect().bottom).toBeLessThanOrEqual(host.getBoundingClientRect().bottom+1);
+      }
+      expect(footer.textContent).not.toContain('Save college');
+      const college=host.querySelector<HTMLElement>('.college-form')!,actions=college.querySelector<HTMLElement>('.college-actions')!;
+      expect(actions.scrollWidth).toBeLessThanOrEqual(actions.clientWidth+1);
+      for(const b of actions.querySelectorAll<HTMLButtonElement>('button')){
+        expect(b.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+        expect(b.getBoundingClientRect().top).toBeGreaterThanOrEqual(college.getBoundingClientRect().top);
+        expect(b.getBoundingClientRect().bottom).toBeLessThanOrEqual(college.getBoundingClientRect().bottom);
+      }
+      const scroll=host.querySelector<HTMLElement>('.offer-scroll')!,before=actions.getBoundingClientRect().top,footerTop=footer.getBoundingClientRect().top;
+      scroll.scrollTop=100;expect(actions.getBoundingClientRect().top).toBeLessThan(before);expect(footer.getBoundingClientRect().top).toBe(footerTop);
+      expect(scroll.clientHeight).toBeGreaterThan(100);host.remove();
     }finally{frame.remove();f.destroy();}
   });
 });

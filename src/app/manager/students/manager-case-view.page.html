@@ -146,6 +146,7 @@
               @for (doc of data.documents; track doc.documentId) {
                 <tr><td><strong>{{ doc.fileName }}</strong><small>{{ fileSize(doc.sizeBytes) }}</small>
                   <app-case-document-analysis [caseId]="item.caseId" [documentId]="doc.documentId" [status]="doc.analysisStatus??null" [canManage]="canEditCases" (changed)="loadDocuments(data.page,true);loadActivity(1)" (caseChanged)="refreshCaseSummary()"></app-case-document-analysis>
+                  @if(doc.canReplace&&doc.documentTypeId){<button type="button" class="secondary-button requirement-upload" (click)="documentActions.open('upload',doc.documentTypeId!)" [disabled]="!canEditCases||editing||saving" [attr.aria-label]="'Upload replacement '+doc.documentTypeName">Upload replacement</button>}
                 </td><td>{{ doc.documentTypeName || 'Not classified' }}</td><td>{{ dateLabel(doc.lastSeenAt) }}</td><td><div class="document-actions"><button type="button" class="document-action-button" (click)="view(doc)" [disabled]="!!downloadingId || !!viewingId || !previewMimeType(doc)" [attr.aria-label]="'View ' + doc.fileName" [attr.title]="previewMimeType(doc) ? 'View' : 'Preview unavailable; download instead'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.7"/></svg></button><button type="button" class="document-action-button" (click)="download(doc)" [disabled]="!!downloadingId || !!viewingId" [attr.aria-label]="'Download ' + doc.fileName" title="Download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3"/></svg></button></div></td></tr>
               }
             </tbody></table></div>
@@ -155,7 +156,9 @@
       </section>
 
       <section class="card case-record-card" aria-labelledby="invoices-heading" [attr.aria-busy]="loadingInvoices">
-        <div class="card-heading"><div><h2 id="invoices-heading">Linked invoices</h2><p>Invoices associated with this case</p></div><span class="count">{{ invoices?.total ?? '—' }}</span></div>
+        <div class="card-heading invoice-heading"><div><h2 id="invoices-heading">Linked invoices <span class="count">{{ invoices?.total ?? '—' }}</span></h2><p>Invoices associated with this case</p></div>@if(!creationMode&&canEditCases&&invoiceDrafts?.canPrepare){<button type="button" class="secondary-button prepare-invoices" (click)="invoiceDrafts?.open()" [disabled]="editing||saving||invoiceDrafts?.loading||invoiceDrafts?.busy">Prepare invoices</button>}</div>
+        <div class="invoice-content">
+        @if(!creationMode&&canEditCases){<app-case-invoice-drafts [caseId]="item.caseId" [refreshToken]="checklistRefresh" [disabled]="editing||saving" (changed)="loadActivity(1)"></app-case-invoice-drafts>}
         @if (invoiceError) { <p class="section-error" role="alert">{{ invoiceError }} <button type="button" class="text-button" (click)="loadInvoices(invoices?.page || 1)">Retry</button></p> }
         @if (loadingInvoices && !invoices) { <div class="section-loading"><app-manager-list-loader label="Loading invoices…"></app-manager-list-loader></div> }
         @if (invoices; as data) {
@@ -165,9 +168,10 @@
                 <tr><td><strong>{{ invoiceDisplayNumber(invoice) }}</strong><small>Ref: {{ invoice.reference || '—' }}</small></td><td>{{ dateLabel(invoice.date) }}<small>Due {{ dateLabel(invoice.dueDate) }}</small></td><td><span class="invoice-status" [class.invoice-status-authorised]="invoice.status === 'AUTHORISED'" [class.invoice-status-paid]="invoice.status === 'PAID'" [class.invoice-status-submitted]="invoice.status === 'SUBMITTED'">{{ invoiceStatusLabel(invoice.status) }}</span></td><td>{{ invoice.paymentTrack || '—' }}</td><td>{{ moneyLabel(invoice.amountPaid, invoice.currency) }}</td><td>{{ moneyLabel(invoice.amountDue, invoice.currency) }}</td></tr>
               }
             </tbody></table></div>
-          } @else { <p class="empty-note">No invoices are linked to this case.</p> }
+          } @else { <p class="empty-note">No Xero invoices are linked to this case.</p> }
           @if (data.total > data.limit) { <div class="pager"><app-page-jump [page]="data.page" [totalPages]="Math.ceil(data.total / data.limit)" [disabled]="loadingInvoices" label="Invoices page number" (pageChange)="loadInvoices($event)"></app-page-jump><button type="button" class="secondary-button compact" (click)="loadInvoices(data.page - 1)" [disabled]="loadingInvoices || data.page === 1">Previous</button><button type="button" class="secondary-button compact" (click)="loadInvoices(data.page + 1)" [disabled]="loadingInvoices || data.page * data.limit >= data.total">Next</button></div> }
         }
+        </div>
       </section>
 
       <section class="card case-actions-card" aria-labelledby="next-actions-heading">

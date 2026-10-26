@@ -1,0 +1,128 @@
+import { CommonModule } from '@angular/common';
+import { Component,ElementRef,EventEmitter,Input,OnChanges,OnDestroy,Output,ViewChild,inject } from '@angular/core';
+import { FormArray,FormControl,FormGroup,ReactiveFormsModule,Validators } from '@angular/forms';
+import { Subject,takeUntil } from 'rxjs';
+import { ManagerSelectComponent } from '../components/shared/manager-select/manager-select.component';
+import { ManagerToastComponent } from '../components/shared/manager-toast/manager-toast.component';
+import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
+import { StudentOperationsService } from '../student-operations/student-operations.service';
+import type { CaseInvoiceDraftData,CaseInvoiceDraft,CaseInvoiceDraftLine } from '../student-operations/student-operations.types';
+import { offerMoneyInput } from './case-offer-review.component';
+
+const text=(value='',required=true)=>new FormControl(value,{nonNullable:true,validators:[Validators.maxLength(500),...(required?[Validators.required]:[])]});
+const amount=(value='')=>new FormControl(value,{nonNullable:true,validators:[c=>offerMoneyInput(c.value)===null?{money:true}:null]});
+const decimal4=/^\d{1,8}(\.\d{1,4})?$/;
+const scaled=(value:string)=>{const [whole,fraction='']=value.split('.');return BigInt(whole)*10000n+BigInt(fraction.padEnd(4,'0'));};
+const lineForm=(kind:CaseInvoiceDraftLine['kind'],label:string,value:number)=>new FormGroup({kind:text(kind),description:text(label),itemId:text('',false),itemCode:text('',false),
+  quantity:new FormControl('1',{nonNullable:true,validators:[Validators.required,Validators.pattern(/^\d{1,6}(\.\d{1,4})?$/),c=>Number(c.value)>0?null:{positive:true}]}),
+  price:new FormControl((value/100).toFixed(2),{nonNullable:true,validators:[Validators.required,Validators.pattern(decimal4)]}),accountCode:text('',false),taxType:text('',false)});
+type DraftLineForm=ReturnType<typeof lineForm>;
+const paymentForm=(sequence:number,date:string,dueDate:string,fee:number,lines:DraftLineForm[])=>new FormGroup({sequence:new FormControl(sequence,{nonNullable:true}),issueDate:text(date),dueDate:text(dueDate),
+  feeApplies:text(),fee:amount((fee/100).toFixed(2)),lines:new FormArray(lines)});
+
+@Component({selector:'app-case-invoice-drafts',imports:[CommonModule,ReactiveFormsModule,ManagerSelectComponent,ManagerToastComponent,ManagerListLoaderComponent],
+  templateUrl:'./case-invoice-drafts.component.html',styleUrls:['./case-invoice-drafts.component.css']})
+export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
+  readonly offerMoneyInput=offerMoneyInput;
+  @Input() caseId='';@Input() refreshToken=0;@Input() disabled=false;@Output() changed=new EventEmitter<void>();
+  @ViewChild('modal',{static:true}) modal!:ElementRef<HTMLDialogElement>;
+  private readonly api=inject(StudentOperationsService);private readonly scope$=new Subject<void>();
+  private readonly previewStop$=new Subject<void>();
+  data:CaseInvoiceDraftData|null=null;loading=false;busy=false;failed=false;message='';tone:'success'|'error'='error';
+  detail:{batch:CaseInvoiceDraftData['batches'][number];invoice:CaseInvoiceDraft}|null=null;
+  activePayment=0;
+  conflict=false;
+  private request:{fingerprint:string;key:string}|null=null;
+  private preview:NonNullable<CaseInvoiceDraftData['preparation']>|null=null;
+  readonly form=new FormGroup({advisorId:text(),reviewNote:text('',false),confirmed:new FormControl(false,{nonNullable:true,validators:[Validators.requiredTrue]}),invoices:new FormArray<ReturnType<typeof paymentForm>>([])});
+  readonly feeOptions=[{value:'yes',label:'Apply fee'},{value:'no',label:'Do not apply'}];
+  get preparation(){return this.preview??this.data?.preparation??null;}
+  get advisors(){return this.preparation?.advisors.map(a=>({value:a.advisorId,label:`${a.code} ${a.name}`}))??[];}
+  get canPrepare(){return Boolean(this.data?.preparation);}
+  get itemOptions(){return this.preparation?.catalogue?.items.map(i=>({value:i.itemId,label:`${i.code} — ${i.name}`}))??[];}
+  get activeInvoice(){return this.form.controls.invoices.at(this.activePayment);}
+  get activeInvoiceNumber():number|string{return this.activeInvoice?.getRawValue().sequence??'—';}
+  get advisorLabel(){return this.advisors.find(a=>a.value===this.form.controls.advisorId.value)?.label??'Select an advisor';}
+  accountLabel(line:DraftLineForm){const account=this.preparation?.catalogue?.accounts.find(a=>a.code===line.controls.accountCode.value);return account?`${account.code} — ${account.name}`:'Select an item';}
+  taxRate(line:DraftLineForm){return this.preparation?.catalogue?.taxRates.find(t=>t.taxType===line.controls.taxType.value);}
+  taxLabel(line:DraftLineForm){const tax=this.taxRate(line);return tax&&tax.rate!==null?`${tax.name} (${tax.rate}%)`:'Tax defaults missing';}
+  lineTax(line:DraftLineForm){const rate=this.taxRate(line)?.rate;return rate&&decimal4.test(rate)?Number((BigInt(this.lineAmount(line))*scaled(rate)+500000n)/1000000n):0;}
+  hasUnresolvedItems(payment:ReturnType<typeof paymentForm>){return payment.controls.lines.controls.some(l=>this.lineAmount(l)>0&&(!l.controls.itemId.value||!l.controls.accountCode.value||this.taxRate(l)?.rate==null));}
+  addLine(payment:ReturnType<typeof paymentForm>,kind:CaseInvoiceDraftLine['kind']='other',description='Additional fee',value=0){
+    if(this.busy||payment.controls.lines.length>=30)return;const line=lineForm(kind,description,value);payment.controls.lines.push(line);
+    line.controls.itemId.valueChanges.pipe(takeUntil(this.previewStop$),takeUntil(this.scope$)).subscribe(id=>this.selectItem(line,id));
+    const matches=this.preparation?.catalogue?.items.filter(i=>[i.code,i.name].some(s=>s.trim().toLowerCase()===description.trim().toLowerCase()))??[];
+    if(kind!=='tuition'&&matches.length===1)line.controls.itemId.setValue(matches[0].itemId);
+  }
+  removeLine(payment:ReturnType<typeof paymentForm>,index:number){if(!this.busy&&payment.controls.lines.at(index).controls.kind.value!=='tuition')payment.controls.lines.removeAt(index);}
+  selectItem(line:DraftLineForm,id:string){
+    const item=this.preparation?.catalogue?.items.find(i=>i.itemId===id);if(!item)return;
+    const current=this.lineAmount(line);line.patchValue({itemCode:item.code,accountCode:item.accountCode??'',taxType:item.taxType??''},{emitEvent:false});
+    if(item.unitPrice!==null&&decimal4.test(item.unitPrice)&&scaled(item.unitPrice)>0n){
+      if(line.controls.kind.value==='tuition'){
+        const divisor=scaled(item.unitPrice),units=BigInt(current)*1000000n;
+        line.controls.price.setValue(item.unitPrice);
+        if(current>0&&units%divisor===0n){const q=units/divisor;line.controls.quantity.setValue(`${q/10000n}.${String(q%10000n).padStart(4,'0')}`);}else line.controls.quantity.setValue('');
+      }else if(current===0)line.controls.price.setValue(item.unitPrice);
+    }
+  }
+  ngOnChanges(changes:import('@angular/core').SimpleChanges){
+    if(changes['caseId']){this.scope$.next();this.previewStop$.next();this.data=null;this.preview=null;this.loading=this.busy=this.conflict=false;this.modal?.nativeElement.close();this.request=null;}
+    if(changes['caseId']||changes['refreshToken'])this.load();
+  }
+  load(){if(!this.caseId||this.loading||this.busy)return;this.loading=true;this.failed=false;
+    this.api.caseInvoiceDrafts(this.caseId).pipe(takeUntil(this.scope$)).subscribe({next:data=>{this.data=data;this.loading=false;},error:()=>{this.failed=true;this.loading=false;}});
+  }
+  open(){
+    const p=this.data?.preparation;if(!p||this.busy||this.disabled||this.loading)return;this.preview=structuredClone(p);this.detail=null;this.activePayment=0;this.conflict=false;this.request=null;this.message='';
+    this.previewStop$.next();this.form.reset({advisorId:p.student.advisorId??'',reviewNote:'',confirmed:false});this.form.controls.invoices.clear();
+    const first=Math.min(...p.source.instalments.map(i=>i.sequence));
+    for(const source of p.source.instalments){
+      const tuition=source.components?.find(c=>/tuition/i.test(c.label))?.amountMinor??0;
+      const material=source.components?.find(c=>/material/i.test(c.label))?.amountMinor??0;
+      const enrolment=source.sequence===first?p.source.fees.find(f=>!f.conditional&&/enrol/i.test(f.label))?.amountMinor??0:0;
+      const course=p.source.courses.map(c=>`${c.name}${c.code?' · '+c.code:''}${c.startsOn?' · Starts '+c.startsOn:''}`).join('; ');
+      const payment=paymentForm(source.sequence,p.today,source.dueOn??'',source.includedConditionalFeeMinor,[]);
+      this.form.controls.invoices.push(payment);this.addLine(payment,'tuition',course||'Tuition Fee',tuition);
+      if(enrolment>0)this.addLine(payment,'enrolment','Enrolment Fee',enrolment);
+      if(material>0)this.addLine(payment,'materials','Materials fee',material);
+    }
+    this.modal.nativeElement.showModal();
+  }
+  show(batch:CaseInvoiceDraftData['batches'][number],invoice:CaseInvoiceDraft){if(this.busy)return;this.detail={batch,invoice};this.message='';this.modal.nativeElement.showModal();}
+  close(event?:Event){if(this.busy){event?.preventDefault();return;}this.modal.nativeElement.close();this.preview=null;this.previewStop$.next();if(this.conflict){this.conflict=false;this.load();}}
+  reloadItems(){this.close();this.load();}
+  lineAmount(line:DraftLineForm){
+    const q=line.controls.quantity.value,price=line.controls.price.value;if(!/^\d{1,6}(\.\d{1,4})?$/.test(q)||!decimal4.test(price))return 0;
+    return Number((scaled(q)*scaled(price)+500000n)/1000000n);
+  }
+  subtotal(payment:ReturnType<typeof paymentForm>){return payment.controls.lines.controls.reduce((n,l)=>n+this.lineAmount(l),0);}
+  taxTotal(payment:ReturnType<typeof paymentForm>){return payment.controls.lines.controls.reduce((n,l)=>n+this.lineTax(l),0);}
+  total(payment:ReturnType<typeof paymentForm>){return this.subtotal(payment)+this.taxTotal(payment)+(payment.controls.feeApplies.value==='yes'?(offerMoneyInput(payment.controls.fee.value)??0):0);}
+  money(value:number,currency=this.preparation?.source.currency??'AUD'){return new Intl.NumberFormat('en-AU',{style:'currency',currency}).format(value/100);}
+  save(){
+    const p=this.preview;if(!p||this.busy||this.disabled||this.detail||this.conflict)return;
+    if(!p.catalogue){this.message='The Xero item catalogue is not ready. Wait for background import, then close and reload items.';this.tone='error';return;}
+    for(const payment of this.form.controls.invoices.controls){
+      for(const line of payment.controls.lines.controls){
+        for(const control of [line.controls.itemId,line.controls.accountCode,line.controls.taxType,line.controls.itemCode]){
+          control.setValidators([Validators.maxLength(500),...(this.lineAmount(line)>0?[Validators.required,Validators.pattern(/\S/)]:[])]);control.updateValueAndValidity();
+        }
+      }
+      if(payment.controls.feeApplies.value==='yes'&&offerMoneyInput(payment.controls.fee.value)===0)payment.controls.fee.setErrors({positive:true});
+    }
+    this.form.markAllAsTouched();
+    const invalidPayment=this.form.controls.invoices.controls.findIndex(i=>i.invalid||this.hasUnresolvedItems(i)||i.controls.lines.controls.some(l=>Number(l.controls.quantity.value)<=0||this.lineAmount(l)>1_000_000_000));
+    if(this.form.invalid||invalidPayment>=0){if(invalidPayment>=0)this.activePayment=invalidPayment;this.message='Complete the preview fields, rates, accounting details and fee choices, then confirm the preview.';this.tone='error';return;}
+    const v=this.form.getRawValue();
+    const invoices=this.form.controls.invoices.controls.map(i=>{const invoice=i.getRawValue();return {sequence:invoice.sequence,issueDate:invoice.issueDate,dueDate:invoice.dueDate,
+      conditionalFeeApplies:invoice.feeApplies==='yes',conditionalFeeMinor:invoice.feeApplies==='yes'?offerMoneyInput(invoice.fee)!:0,
+      lines:i.controls.lines.controls.filter(l=>this.lineAmount(l)>0).map(l=>{const line=l.getRawValue();return {kind:line.kind,description:line.description,itemCode:line.itemCode,itemId:line.itemId,
+        quantity:line.quantity,unitPrice:line.price,amountMinor:this.lineAmount(l),accountCode:line.accountCode,taxType:line.taxType};})};});
+    const value={offerId:p.offerId,offerVersion:p.offerVersion,caseVersion:p.caseVersion,advisorId:v.advisorId,catalogueConnectionId:p.catalogue.connectionId,catalogueRevision:p.catalogue.revision,reviewNote:v.reviewNote,invoices};
+    const fingerprint=JSON.stringify(value);if(this.request?.fingerprint!==fingerprint)this.request={fingerprint,key:crypto.randomUUID()};
+    this.busy=true;this.form.disable({emitEvent:false});this.message='';
+    this.api.prepareCaseInvoiceDrafts(this.caseId,value,this.request!.key).pipe(takeUntil(this.scope$)).subscribe({next:result=>{this.busy=false;this.form.enable({emitEvent:false});this.modal.nativeElement.close();this.message=`${result.count} Sophia drafts saved. No invoices were created in Xero.`;this.tone='success';this.changed.emit();this.load();},error:e=>{this.busy=false;this.form.enable({emitEvent:false});this.conflict=e?.status===409;this.message=this.conflict?'The case or offer changed, or drafts already exist. Close this preview to reload before preparing again.':e?.status===400?'Check quantities, prices and dates. Explain any changes from the offer in the review note.':'Draft saving could not be confirmed. Retry the same preview.';this.tone='error';}});
+  }
+  ngOnDestroy(){this.scope$.next();this.scope$.complete();this.previewStop$.next();this.previewStop$.complete();}
+}

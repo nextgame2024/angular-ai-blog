@@ -22,11 +22,14 @@
         <p>Current case college: <strong>{{currentCollegeName}}</strong></p>
         <label>College for this case<app-manager-select formControlName="collegeId" [options]="collegeOptions" [searchable]="true" ariaLabel="College for this offer" placeholder="Select a college" [attr.aria-invalid]="form.controls.collegeId.touched&&form.controls.collegeId.invalid" /></label>
         @if(replacingCollege){<label class="checkbox"><input type="checkbox" formControlName="replaceCollege" />Replace the current case college with my selection.</label>}
-        <button type="button" class="btn" (click)="beginCollege()" [disabled]="busy">+ Create college</button>
+        <button type="button" class="btn" (click)="beginCollege()" [disabled]="busy" [attr.aria-expanded]="creating">{{creating?'Edit new college':'+ Create college'}}</button>
         @if(creating){
           <div [formGroup]="collegeForm" class="college-form"><h3>New college</h3><p>Add the College Details fields here. Sites and contacts can be added later in Colleges.</p>
             <div class="fields"><label>College name *<input formControlName="college_name" maxlength="200" [attr.aria-invalid]="collegeForm.controls.college_name.touched&&collegeForm.controls.college_name.invalid" /></label><label>Owner name<input formControlName="owner_name" maxlength="200" /></label><label>ABN<input formControlName="abn" maxlength="80" /></label><label>Notes<textarea formControlName="notes" maxlength="5000"></textarea></label></div>
-            <div class="row-actions"><button type="button" class="btn" (click)="creating=false" [disabled]="busy">Cancel</button><button type="button" class="btn primary" (click)="createCollege()" [disabled]="busy">Save college</button></div>
+            <div class="college-actions">
+              <p role="status">{{busy?'Saving college and loading its selection…':createdCollegeId?'College saved. Reload its selection to continue.':'Save this college to select it for the offer.'}}</p>
+              <div class="row-actions"><button type="button" class="btn" (click)="cancelCollege()" [disabled]="busy">Cancel college</button><button type="button" class="btn primary" (click)="createCollege()" [disabled]="busy">{{busy?'Saving college…':createdCollegeId?'Retry college selection':'Save college'}}</button></div>
+            </div>
           </div>
         }
         <h3>Courses</h3>
@@ -82,5 +85,8 @@
       </section>
     </fieldset>
   </div>
-  <footer class="offer-footer"><span>Review all sections before confirming.</span><div class="row-actions"><button type="button" class="btn danger" (click)="save('rejected')" [disabled]="busy">Reject offer</button><button type="submit" class="btn primary" [disabled]="busy||analysis.currentForType===false">{{busy?'Saving…':'Confirm offer'}}</button></div></footer>
+  <footer class="offer-footer">
+    <span>Review all sections before confirming.</span><div class="row-actions"><button type="button" class="btn danger" (click)="save('rejected')" [disabled]="busy||creating">Reject offer</button><button type="submit" class="btn primary" [disabled]="busy||creating||analysis.currentForType===false">{{busy&&!creating?'Saving…':'Confirm offer'}}</button></div>
+  </footer>
+  @if(collegeError||collegeNotice){<app-manager-toast [message]="collegeError||collegeNotice" [tone]="collegeError?'error':'success'" (closed)="collegeError='';collegeNotice=''" />}
 </form>

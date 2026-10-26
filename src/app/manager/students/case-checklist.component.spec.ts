@@ -18,6 +18,10 @@ describe('CaseChecklistComponent',()=>{
     const f=setup('');expect(f.nativeElement.textContent).toContain('Save the case');
     const inputs=[...f.nativeElement.querySelectorAll('input')] as HTMLInputElement[];
     expect(inputs.length).toBe(4);expect(inputs.every(i=>i.disabled&&!i.checked)).toBeTrue();expect(api.caseChecklist).not.toHaveBeenCalled();
+    expect(f.componentInstance.items.map(i=>i.key)).toEqual(['signed_engagement_letter','document_completeness','invoice_loo_consistency','pending_track_status']);
+  });
+  it('keeps document checks visible but read-only on hold',()=>{
+    const f=setup('case-1','on_hold');expect(api.caseChecklist).toHaveBeenCalledOnceWith('case-1');expect(f.nativeElement.querySelectorAll('input').length).toBe(4);expect([...f.nativeElement.querySelectorAll('input')].every((i:any)=>i.disabled)).toBeTrue();
   });
   it('loads saved state only for Pre-sale cases and makes advisor controls read-only',()=>{
     const f=setup('case-1','in_progress');expect(api.caseChecklist).not.toHaveBeenCalled();expect(f.nativeElement.querySelector('input')).toBeNull();

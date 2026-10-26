@@ -2,9 +2,10 @@ import { PageJumpComponent } from '../../shared/components/page-jump/page-jump.c
 import { CaseDocumentActionsComponent } from './case-document-actions.component';
 import { CaseDocumentAnalysisComponent } from './case-document-analysis.component';
 import { CaseChecklistComponent } from './case-checklist.component';
+import { CaseInvoiceDraftsComponent } from './case-invoice-drafts.component';
 import { ListNavigationStateService } from '../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Subject, catchError, distinctUntilChanged, forkJoin, map, of, switchMap, takeUntil } from 'rxjs';
@@ -24,11 +25,12 @@ import type {
 
 @Component({
   selector: 'app-manager-case-view',
-  imports: [CaseDocumentAnalysisComponent,CaseChecklistComponent,CaseDocumentActionsComponent,PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
+  imports: [CaseInvoiceDraftsComponent,CaseDocumentAnalysisComponent,CaseChecklistComponent,CaseDocumentActionsComponent,PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
   templateUrl: './manager-case-view.page.html',
   styleUrls: ['./manager-case-view.page.css'],
 })
 export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
+  @ViewChild(CaseInvoiceDraftsComponent) invoiceDrafts?:CaseInvoiceDraftsComponent;
   private readonly api = inject(StudentOperationsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -540,7 +542,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   refreshCaseSummary():void{
     if(!this.case||this.editing||this.saving||this.creationMode)return;
     const id=this.currentId;this.api.caseDetail(id).pipe(takeUntil(this.destroy$)).subscribe({next:value=>{
-      if(id===this.currentId&&!this.editing&&!this.saving)this.case=value;
+      if(id===this.currentId&&!this.editing&&!this.saving){this.case=value;this.checklistRefresh++;this.loadRelated(1);}
     },error:()=>{}});
   }
 

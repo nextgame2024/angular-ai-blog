@@ -1,7 +1,8 @@
 import { Component,ElementRef,Input,Output,EventEmitter,OnInit,OnDestroy,inject } from '@angular/core';
 import { FormArray,FormControl,FormGroup,ReactiveFormsModule,Validators } from '@angular/forms';
-import { Subject,takeUntil,switchMap } from 'rxjs';
+import { of,Subject,takeUntil,switchMap } from 'rxjs';
 import { ManagerSelectComponent } from '../components/shared/manager-select/manager-select.component';
+import { ManagerToastComponent } from '../components/shared/manager-toast/manager-toast.component';
 import { ManagerCollegesService } from '../services/manager.colleges.service';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import type { StudentDocumentAnalysis,StudentOfferExtraction } from '../student-operations/student-operations.types';
@@ -18,7 +19,7 @@ type CourseForm=FormGroup<TextControls<'name'|'code'|'startsOn'|'endsOn'|'durati
 type FeeForm=FormGroup<TextControls<'label'|'amount'|'condition'>&{conditional:FormControl<boolean>}>;
 type ComponentForm=FormGroup<TextControls<'label'|'amount'>>;
 type InstalmentForm=FormGroup<TextControls<'sequence'|'dueTerm'|'dueOn'|'total'|'includedFee'>&{components:FormArray<ComponentForm>}>;
-@Component({selector:'app-case-offer-review',imports:[ReactiveFormsModule,ManagerSelectComponent],providers:[ManagerCollegesService],
+@Component({selector:'app-case-offer-review',imports:[ReactiveFormsModule,ManagerSelectComponent,ManagerToastComponent],providers:[ManagerCollegesService],
   templateUrl:'./case-offer-review.component.html',styleUrls:['./case-offer-review.component.css']})
 export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   readonly offerMoneyInput=offerMoneyInput;
@@ -42,11 +43,12 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
     this.focusTimer=setTimeout(()=>{this.host.nativeElement.querySelector<HTMLElement>(`#offer-panel-${this.documentId}-${tab} [aria-invalid="true"] input, #offer-panel-${this.documentId}-${tab} input.ng-invalid, #offer-panel-${this.documentId}-${tab} textarea.ng-invalid, #offer-panel-${this.documentId}-${tab} app-manager-select[aria-invalid="true"] button`)?.focus();},0);
   }
   busy=false;creating=false;createdCollegeId:string|null=null;
+  collegeError='';collegeNotice='';
   directory:Array<{collegeId:string;name:string;abn:string|null}>=[];
   readonly form=new FormGroup({name:control('',true),collegeName:control('',true),abn:control(''),cricos:control(''),currency:control('AUD',true),total:amountControl(''),
     collegeId:control('',true),reason:control('',true),replaceCollege:new FormControl(false,{nonNullable:true}),acknowledgeTotals:new FormControl(false,{nonNullable:true}),
     courses:new FormArray<CourseForm>([]),fees:new FormArray<FeeForm>([]),instalments:new FormArray<InstalmentForm>([])});
-  readonly collegeForm=new FormGroup({college_name:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(200)]}),
+  readonly collegeForm=new FormGroup({college_name:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(200),c=>c.value.trim()?null:{required:true}]}),
     owner_name:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(200)]}),abn:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(80)]}),
     notes:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(5000)]})});
   get source(){return this.analysis.extraction as StudentOfferExtraction;}
@@ -76,18 +78,26 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
     return total===null||included===null||included>total?null:{total,base:total-included};
   }
   get totalsDiffer(){const total=offerMoneyInput(this.form.controls.total.value),rows=this.paymentTotals;return total!==null&&total!==rows.total&&total!==rows.total-rows.included;}
-  beginCollege(){if(this.busy)return;this.activeTab='details';this.creating=true;this.collegeForm.reset({college_name:this.form.controls.collegeName.value.slice(0,200),owner_name:'',abn:this.form.controls.abn.value,notes:''});}
+  beginCollege(){
+    if(this.busy)return;this.activeTab='details';
+    if(!this.creating){this.creating=true;this.createdCollegeId=null;this.collegeError='';this.collegeNotice='';this.collegeForm.enable({emitEvent:false});this.collegeForm.reset({college_name:this.form.controls.collegeName.value.slice(0,200),owner_name:'',abn:this.form.controls.abn.value,notes:''});}
+    if(this.focusTimer)clearTimeout(this.focusTimer);
+    this.focusTimer=setTimeout(()=>this.host.nativeElement.querySelector<HTMLInputElement>('.college-form input')?.focus(),0);
+  }
+  cancelCollege(){if(!this.busy){this.creating=false;this.collegeError='';}}
   createCollege(){
-    if(this.busy)return;this.collegeForm.markAllAsTouched();if(this.collegeForm.invalid){this.problem.emit('Enter a college name and valid details.');return;}
+    if(this.busy||!this.creating)return;this.activeTab='details';this.collegeError='';this.collegeForm.markAllAsTouched();if(this.collegeForm.invalid){this.collegeError='Enter a college name and valid details.';this.beginCollege();return;}
     this.setBusy(true);
-    this.colleges.createFromOffer(this.collegeForm.getRawValue()).pipe(switchMap(value=>{this.createdCollegeId=value.college.collegeId;return this.api.documentAnalysis(this.caseId,this.documentId);}),takeUntil(this.stop$)).subscribe({
-      next:result=>{this.directory=result.offer?.colleges??[];if(!this.directory.some(c=>c.collegeId===this.createdCollegeId)){this.setBusy(false);this.problem.emit('The college was saved. Reload the check to select it.');return;}
-        this.form.controls.collegeId.setValue(this.createdCollegeId!);this.creating=false;this.setBusy(false);},
-      error:err=>{this.setBusy(false);this.problem.emit(err?.status===409?'A matching college already exists or has conflicting details. Select an existing college.':this.createdCollegeId?'The college was saved. Retry to reload its selection.':'The college could not be saved. Check the details and retry.');},
+    const creation=this.createdCollegeId?of({college:{collegeId:this.createdCollegeId}}):this.colleges.createFromOffer(this.collegeForm.getRawValue());
+    creation.pipe(switchMap(value=>{this.createdCollegeId=value.college.collegeId;return this.api.documentAnalysis(this.caseId,this.documentId);}),takeUntil(this.stop$)).subscribe({
+      next:result=>{this.directory=result.offer?.colleges??[];if(!this.directory.some(c=>c.collegeId===this.createdCollegeId)){this.setBusy(false);this.collegeError='The college was saved but is not available for selection. Retry loading the selection or cancel and select an existing college.';return;}
+        this.form.controls.collegeId.setValue(this.createdCollegeId!);this.creating=false;this.collegeNotice='College saved and selected. Continue reviewing the offer.';this.setBusy(false);},
+      error:err=>{this.setBusy(false);this.collegeError=err?.status===409?'A matching college already exists or has conflicting details. Cancel and select an existing college.':this.createdCollegeId?'The college was saved. Retry loading its selection.':'The college could not be saved. Check the details and retry.';},
     });
   }
   save(decision:'confirmed'|'rejected'){
     if(this.busy||!this.analysis.resultId)return;
+    if(this.creating){this.activeTab='details';this.collegeError='Save or cancel the new college before reviewing the offer.';return;}
     if(decision==='confirmed'&&this.analysis.currentForType===false)return;
     this.form.markAllAsTouched();const v=this.form.getRawValue();
     if(!v.reason.trim()){this.showProblem('Add a review note.','review');return;}
@@ -114,6 +124,6 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
     const fingerprint=JSON.stringify(value);if(this.request?.fingerprint!==fingerprint)this.request={fingerprint,key:crypto.randomUUID()};
     this.setBusy(true);this.api.reviewDocumentAnalysis(this.caseId,this.documentId,value,this.request!.key).pipe(takeUntil(this.stop$)).subscribe({next:()=>{this.setBusy(false);this.saved.emit();},error:e=>{this.setBusy(false);this.problem.emit(e?.status===409?'The case or offer changed. Reload before saving.':'The offer could not be confirmed. Check dates, amounts and the selected college, then retry.');}});
   }
-  private setBusy(value:boolean){this.busy=value;for(const form of [this.form,this.collegeForm])value?form.disable({emitEvent:false}):form.enable({emitEvent:false});this.busyChange.emit(value);}
+  private setBusy(value:boolean){this.busy=value;for(const form of [this.form,this.collegeForm])value?form.disable({emitEvent:false}):form.enable({emitEvent:false});if(this.createdCollegeId&&this.creating)this.collegeForm.disable({emitEvent:false});this.busyChange.emit(value);}
   ngOnDestroy(){if(this.focusTimer)clearTimeout(this.focusTimer);this.stop$.next();this.stop$.complete();}
 }

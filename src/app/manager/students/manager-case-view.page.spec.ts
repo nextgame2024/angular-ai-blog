@@ -17,6 +17,7 @@ describe('ManagerCaseViewPageComponent', () => {
     advisors: [], colleges: [],
   };
   const api = {
+    caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batches:[],preparation:null})),
     documentRequirements:jasmine.createSpy().and.returnValue(of({requirements:[]})),
     documentTypes:jasmine.createSpy().and.returnValue(of({types:[{documentTypeId:'passport-type',name:'Passport',required:true,status:'active',recordVersion:1}]})),
     caseDocumentUploadOptions:jasmine.createSpy().and.returnValue(of({available:true,enabled:true})),
@@ -757,7 +758,7 @@ describe('ManagerCaseViewPageComponent', () => {
     const activityScroll = cards[3].querySelector('.activity-scroll') as HTMLElement;
 
     expect(cards.map(card => card.querySelector('h2')?.textContent?.trim())).toEqual([
-      'Documents 1', 'Linked invoices', 'Next Actions', 'Recent activity', 'Case at a glance', 'Meet Sophia',
+      'Documents 1', 'Linked invoices 1', 'Next Actions', 'Recent activity', 'Case at a glance', 'Meet Sophia',
     ]);
     expect(root.querySelector('.workspace-sidebar .case-summary')).toBeNull();
     expect(activityScroll.getAttribute('aria-label')).toBe('Recent case activity');

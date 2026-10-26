@@ -28,15 +28,15 @@ export class CaseChecklistComponent implements OnChanges,OnDestroy {
     if(changes['refreshToken']&&!changes['caseId']&&!changes['status']){this.load();return;}
     if(!changes['caseId']&&!changes['status'])return;
     this.scope$.next();this.busy=this.loading=this.failed=false;this.message='';this.request=null;this.items=[];
-    if(this.status!=='pre_sale')return;
+    if(!['pre_sale','on_hold'].includes(this.status))return;
     if(this.caseId)this.load();
     else this.items=[
-      ['signed_engagement_letter','Signed engagement letter'],['invoice_loo_consistency','Invoice/LoO consistency'],
-      ['document_completeness','Document completeness'],['pending_track_status','Pending Track status'],
+      ['signed_engagement_letter','Signed engagement letter'],['document_completeness','Document completeness'],
+      ['invoice_loo_consistency','Invoice/LoO consistency'],['pending_track_status','Pending Track status'],
     ].map(([key,label])=>({key,label,completed:false,recordVersion:0,updatedBy:null,updatedAt:null}));
   }
   load(){
-    if(!this.caseId||this.loading||this.busy||this.status!=='pre_sale')return;
+    if(!this.caseId||this.loading||this.busy||!['pre_sale','on_hold'].includes(this.status))return;
     this.loading=true;this.failed=false;
     this.api.caseChecklist(this.caseId).pipe(takeUntil(this.scope$)).subscribe({
       next:value=>{this.items=value.items;this.loading=false;},
