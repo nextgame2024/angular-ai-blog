@@ -296,8 +296,8 @@ export class SophiaDailyConversationBrowserAdapter
     this.tavus.speak(text);
   }
 
-  submitUserText(_text: string): void {
-    throw new Error('Typed conversation is unavailable for this experience. Use Essential or Professional mode.');
+  submitUserText(text: string): void {
+    this.tavus.respond(text);
   }
 
   async disconnect(): Promise<void> {

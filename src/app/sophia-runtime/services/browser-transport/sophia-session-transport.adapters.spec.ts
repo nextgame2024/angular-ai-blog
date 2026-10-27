@@ -16,8 +16,10 @@ import type {
 } from './sophia-browser-transport.types';
 import {
   SophiaGeminiLiveBrowserAdapter,
+  SophiaDailyConversationBrowserAdapter,
   SophiaNativeRealtimeBrowserAdapter,
 } from './sophia-session-transport.adapters';
+import { SophiaTavusClientService } from '../sophia-tavus-client.service';
 
 describe('SophiaNativeRealtimeBrowserAdapter', () => {
   let adapter: SophiaNativeRealtimeBrowserAdapter;
@@ -233,5 +235,25 @@ describe('SophiaGeminiLiveBrowserAdapter', () => {
     expect(live.interrupt).toHaveBeenCalled();
     await adapter.disconnect();
     expect(live.disconnect).toHaveBeenCalled();
+  });
+});
+
+describe('SophiaDailyConversationBrowserAdapter', () => {
+  it('routes typed user input to the Tavus conversation transport', () => {
+    const tavus = jasmine.createSpyObj<SophiaTavusClientService>(
+      'SophiaTavusClientService',
+      ['connect', 'interrupt', 'speak', 'respond', 'disconnect'],
+    );
+    TestBed.configureTestingModule({
+      providers: [
+        SophiaDailyConversationBrowserAdapter,
+        { provide: SophiaTavusClientService, useValue: tavus },
+      ],
+    });
+
+    TestBed.inject(SophiaDailyConversationBrowserAdapter)
+      .submitUserText('Show me homes in Brisbane');
+
+    expect(tavus.respond).toHaveBeenCalledOnceWith('Show me homes in Brisbane');
   });
 });

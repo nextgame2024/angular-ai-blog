@@ -41,6 +41,7 @@ export class SophiaTavusClientService {
   private onReplicaSpeechStarted: (() => void) | null = null;
   private onReplicaSpeechStopped: (() => void) | null = null;
   private onReplicaUtterance: (() => void) | null = null;
+  private lastLocalAudioDiagnostic: string | null = null;
 
   async connect(request: SophiaTavusConnectRequest): Promise<void> {
     await this.disconnect();
@@ -57,9 +58,11 @@ export class SophiaTavusClientService {
     this.onReplicaSpeechStarted = request.onReplicaSpeechStarted || null;
     this.onReplicaSpeechStopped = request.onReplicaSpeechStopped || null;
     this.onReplicaUtterance = request.onReplicaUtterance || null;
+    this.lastLocalAudioDiagnostic = null;
 
     const call = Daily.createCallObject({
       subscribeToTracksAutomatically: true,
+      audioSource: true,
       startAudioOff: false,
       startVideoOff: true,
     });
@@ -72,7 +75,7 @@ export class SophiaTavusClientService {
         this.attachRemoteTracks();
       })
       .on('participant-joined', () => this.attachRemoteTracks())
-      .on('participant-updated', () => this.attachRemoteTracks())
+      .on('participant-updated', () => this.refreshMediaState())
       .on('track-started', () => this.attachRemoteTracks())
       .on('participant-left', () => this.attachRemoteTracks())
       .on('app-message', (event) => {
@@ -98,6 +101,9 @@ export class SophiaTavusClientService {
         startAudioOff: false,
         startVideoOff: true,
       });
+      call.setLocalAudio(true);
+      await waitForPublishedMicrophone(call);
+      this.emitLocalAudioDiagnostic(call);
       this.attachRemoteTracks();
     } catch (error) {
       await this.disconnect();
@@ -114,6 +120,7 @@ export class SophiaTavusClientService {
     this.onReplicaSpeechStarted = null;
     this.onReplicaSpeechStopped = null;
     this.onReplicaUtterance = null;
+    this.lastLocalAudioDiagnostic = null;
 
     this.clearMediaElement(this.videoElement);
     this.clearMediaElement(this.audioElement);
@@ -160,11 +167,29 @@ export class SophiaTavusClientService {
       this.attachTrack(this.audioElement, audioTrack);
     }
 
-    if (videoTrack && audioTrack && !this.connected) {
+    if (videoTrack && audioTrack && microphoneIsPublished(call) && !this.connected) {
       this.connected = true;
       this.updateStatus('Tavus Full connected');
       this.emitEvent('tavus.remote_media_connected');
     }
+  }
+
+  private refreshMediaState(): void {
+    const call = this.call;
+    if (!call) return;
+    this.emitLocalAudioDiagnostic(call);
+    if (this.connected && !microphoneIsPublished(call)) {
+      this.connected = false;
+      this.updateStatus(localAudioFailureMessage(call));
+    }
+    this.attachRemoteTracks();
+  }
+
+  private emitLocalAudioDiagnostic(call: DailyCall): void {
+    const diagnostic = localAudioDiagnostic(call);
+    if (diagnostic === this.lastLocalAudioDiagnostic) return;
+    this.lastLocalAudioDiagnostic = diagnostic;
+    this.emitEvent(`tavus.local_audio.${diagnostic}`);
   }
 
   private async handleAppMessage(data: unknown): Promise<void> {
@@ -253,6 +278,16 @@ export class SophiaTavusClientService {
     }, '*');
   }
 
+  respond(text: string): void {
+    if (!this.call || !this.conversationId) return;
+    this.call.sendAppMessage({
+      message_type: 'conversation',
+      event_type: 'conversation.respond',
+      conversation_id: this.conversationId,
+      properties: { text },
+    }, '*');
+  }
+
   interrupt(): void {
     if (!this.call || !this.conversationId) return;
     this.call.sendAppMessage({
@@ -334,4 +369,50 @@ function formatDailyError(error: unknown): string {
   return error instanceof Error && error.message
     ? error.message
     : 'Could not join the Tavus conversation.';
+}
+
+async function waitForPublishedMicrophone(call: DailyCall): Promise<void> {
+  const deadline = Date.now() + 5_000;
+  while (!microphoneIsPublished(call) && Date.now() < deadline) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+  }
+  if (!microphoneIsPublished(call)) {
+    throw new Error(localAudioFailureMessage(call));
+  }
+}
+
+function microphoneIsPublished(call: DailyCall): boolean {
+  const audio = call.participants().local?.tracks.audio;
+  const track = audio?.track || audio?.persistentTrack;
+  return call.localAudio() && Boolean(
+    track && track.enabled && track.readyState === 'live' &&
+    audio && audio.state !== 'blocked' && audio.state !== 'off' && audio.state !== 'interrupted',
+  );
+}
+
+function localAudioFailureMessage(call: DailyCall): string {
+  const audio = call.participants().local?.tracks.audio;
+  if (audio?.state === 'blocked' && audio.blocked?.byPermissions) {
+    return 'Microphone permission is blocked. Allow microphone access and start Sophia again.';
+  }
+  if (audio?.state === 'blocked' && audio.blocked?.byDeviceMissing) {
+    return 'No microphone is available. Connect a microphone and start Sophia again.';
+  }
+  if (audio?.state === 'blocked' && audio.blocked?.byDeviceInUse) {
+    return 'The microphone is being used by another application. Close it and start Sophia again.';
+  }
+  if (audio?.state === 'off' && audio.off?.byCanSendPermission) {
+    return 'This Tavus room does not allow microphone audio.';
+  }
+  return 'The microphone could not publish audio to Tavus. Check the selected microphone and start Sophia again.';
+}
+
+function localAudioDiagnostic(call: DailyCall): string {
+  const audio = call.participants().local?.tracks.audio;
+  if (microphoneIsPublished(call)) return 'published';
+  if (audio?.state === 'blocked' && audio.blocked?.byPermissions) return 'blocked_permissions';
+  if (audio?.state === 'blocked' && audio.blocked?.byDeviceMissing) return 'blocked_missing_device';
+  if (audio?.state === 'blocked' && audio.blocked?.byDeviceInUse) return 'blocked_device_in_use';
+  if (audio?.state === 'off' && audio.off?.byCanSendPermission) return 'send_not_permitted';
+  return String(audio?.state || 'unavailable').replace(/[^a-z0-9_-]/gi, '_');
 }
