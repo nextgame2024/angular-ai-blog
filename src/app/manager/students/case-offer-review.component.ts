@@ -3,6 +3,7 @@ import { FormArray,FormControl,FormGroup,ReactiveFormsModule,Validators } from '
 import { of,Subject,takeUntil,switchMap } from 'rxjs';
 import { ManagerSelectComponent } from '../components/shared/manager-select/manager-select.component';
 import { ManagerToastComponent } from '../components/shared/manager-toast/manager-toast.component';
+import { ManagerAddressAutocompleteComponent } from '../components/shared/manager-address-autocomplete/manager-address-autocomplete.component';
 import { ManagerCollegesService } from '../services/manager.colleges.service';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import type { StudentDocumentAnalysis,StudentOfferExtraction } from '../student-operations/student-operations.types';
@@ -19,7 +20,7 @@ type CourseForm=FormGroup<TextControls<'name'|'code'|'startsOn'|'endsOn'|'durati
 type FeeForm=FormGroup<TextControls<'label'|'amount'|'condition'>&{conditional:FormControl<boolean>}>;
 type ComponentForm=FormGroup<TextControls<'label'|'amount'>>;
 type InstalmentForm=FormGroup<TextControls<'sequence'|'dueTerm'|'dueOn'|'total'|'includedFee'>&{components:FormArray<ComponentForm>}>;
-@Component({selector:'app-case-offer-review',imports:[ReactiveFormsModule,ManagerSelectComponent,ManagerToastComponent],providers:[ManagerCollegesService],
+@Component({selector:'app-case-offer-review',imports:[ReactiveFormsModule,ManagerSelectComponent,ManagerToastComponent,ManagerAddressAutocompleteComponent],providers:[ManagerCollegesService],
   templateUrl:'./case-offer-review.component.html',styleUrls:['./case-offer-review.component.css']})
 export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   readonly offerMoneyInput=offerMoneyInput;
@@ -45,7 +46,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   busy=false;creating=false;createdCollegeId:string|null=null;
   collegeError='';collegeNotice='';
   directory:Array<{collegeId:string;name:string;abn:string|null}>=[];
-  readonly form=new FormGroup({name:control('',true),collegeName:control('',true),abn:control(''),cricos:control(''),currency:control('AUD',true),total:amountControl(''),
+  readonly form=new FormGroup({name:control('',true),collegeName:control('',true),campusAddress:control(''),abn:control(''),cricos:control(''),currency:control('AUD',true),total:amountControl(''),
     collegeId:control('',true),reason:control('',true),replaceCollege:new FormControl(false,{nonNullable:true}),acknowledgeTotals:new FormControl(false,{nonNullable:true}),
     courses:new FormArray<CourseForm>([]),fees:new FormArray<FeeForm>([]),instalments:new FormArray<InstalmentForm>([])});
   readonly collegeForm=new FormGroup({college_name:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(200),c=>c.value.trim()?null:{required:true}]}),
@@ -58,7 +59,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   money(value:number|null){return value===null?'':`${Math.floor(value/100)}.${String(value%100).padStart(2,'0')}`;}
   ngOnInit(){
     const source=this.source;this.directory=this.analysis.offer?.colleges??[];
-    this.form.patchValue({name:source.studentName??'',collegeName:source.collegeName??'',abn:source.abn??'',cricos:source.cricosProviderCode??'',currency:source.currency,total:this.money(source.statedTotalMinor),collegeId:this.analysis.offer?.selectedCollegeId??''});
+    this.form.patchValue({name:source.studentName??'',collegeName:source.collegeName??'',campusAddress:source.campusAddress??'',abn:source.abn??'',cricos:source.cricosProviderCode??'',currency:source.currency,total:this.money(source.statedTotalMinor),collegeId:this.analysis.offer?.selectedCollegeId??''});
     for(const course of source.courses)this.addCourse(course);
     for(const fee of source.fees)this.addFee(fee);
     for(const item of source.instalments)this.addInstalment(item);
@@ -114,7 +115,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
       if(rows.some(r=>offerMoneyInput(r.includedFee)!>offerMoneyInput(r.total)!)){this.showProblem('An included conditional fee cannot exceed its payment.','instalments');return;}
       if(courses.some(c=>c.startsOn&&c.endsOn&&c.endsOn<c.startsOn)){this.showProblem('Course end dates must follow their start dates.','details');return;}
       if(this.totalsDiffer&&!v.acknowledgeTotals){this.showProblem('Review and acknowledge the difference between the total and instalments.','fees');return;}
-      corrections={...this.source,studentName:v.name.trim(),collegeName:v.collegeName.trim(),abn:v.abn.trim()||null,cricosProviderCode:v.cricos.trim()||null,currency:v.currency,statedTotalMinor:offerMoneyInput(v.total),
+      corrections={...this.source,studentName:v.name.trim(),collegeName:v.collegeName.trim(),campusAddress:v.campusAddress.trim()||null,abn:v.abn.trim()||null,cricosProviderCode:v.cricos.trim()||null,currency:v.currency,statedTotalMinor:offerMoneyInput(v.total),
         courses:courses.map(c=>({name:c.name.trim(),code:c.code.trim()||null,startsOn:c.startsOn||null,endsOn:c.endsOn||null,duration:c.duration.trim()||null})),
         fees:fees.map(f=>({label:f.label.trim(),amountMinor:offerMoneyInput(f.amount)!,conditional:f.conditional,condition:f.condition.trim()||null})),
         instalments:rows.map(r=>({sequence:Number(r.sequence),dueTerm:r.dueTerm.trim()||null,dueOn:r.dueOn||null,totalMinor:offerMoneyInput(r.total)!,includedConditionalFeeMinor:offerMoneyInput(r.includedFee)!,components:r.components.map(c=>({label:c.label.trim(),amountMinor:offerMoneyInput(c.amount)!}))}))};

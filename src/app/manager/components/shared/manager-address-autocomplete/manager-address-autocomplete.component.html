@@ -1,0 +1,10 @@
+<div class="address-field">
+  <input type="text" [value]="value" [disabled]="disabled" [placeholder]="placeholder" [maxLength]="maxLength" [attr.aria-label]="ariaLabel"
+    role="combobox" aria-autocomplete="list" [attr.aria-expanded]="suggestions.length>0" [attr.aria-controls]="suggestions.length?listId:null"
+    [attr.aria-activedescendant]="activeIndex>=0?listId+'-option-'+activeIndex:null" autocomplete="off"
+    (input)="input($any($event.target).value)" (focus)="focus()" (blur)="blur()" (keydown)="keydown($event)" />
+  @if(suggestions.length){<div class="address-suggestions" [id]="listId" role="listbox">
+    @for(suggestion of suggestions;track suggestion.placeId;let i=$index){<button type="button" class="address-suggestion" role="option"
+      [id]="listId+'-option-'+i" [class.is-active]="i===activeIndex" [attr.aria-selected]="i===activeIndex" (mousedown)="$event.preventDefault();select(suggestion)">{{suggestion.description}}</button>}
+  </div>}
+</div>

@@ -94,7 +94,7 @@
       @if (siteMode === 'form') {
         <form class="form" [formGroup]="siteForm" (ngSubmit)="saveSite()">
           <div class="grid-2"><label><span>City *</span><input formControlName="city" placeholder="City" maxlength="120" /></label><label><span>Category</span><input formControlName="category" placeholder="Category" maxlength="120" /></label></div>
-          <label><span>Address</span><input formControlName="address" placeholder="Address" maxlength="500" /></label>
+          <label><span>Address</span><app-manager-address-autocomplete formControlName="address" placeholder="Address" ariaLabel="College site address" [maxLength]="500" /></label>
           <div class="grid-2"><label><span>Email</span><input type="email" formControlName="email" placeholder="email@example.com" /></label><label><span>Mobile</span><input formControlName="mobile" placeholder="0412..." maxlength="80" /></label></div>
           <div class="grid-2"><label><span>Phone</span><input formControlName="phone" placeholder="07..." maxlength="80" /></label><label><span>Primary</span><app-manager-select formControlName="is_primary" [options]="primaryOptions" placeholder="Select primary status"></app-manager-select></label></div>
           @if (editingSite?.isPrimary) { <p class="site-primary-hint">To change the primary site, set another site to Yes first.</p> }

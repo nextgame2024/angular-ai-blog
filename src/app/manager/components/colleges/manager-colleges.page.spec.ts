@@ -3,6 +3,7 @@ import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { BmCollege, ManagerCollegesService } from '../../services/manager.colleges.service';
 import { ManagerCollegesPageComponent } from './manager-colleges.page';
+import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
 
 describe('ManagerCollegesPageComponent', () => {
   let api: jasmine.SpyObj<ManagerCollegesService>;
@@ -26,7 +27,7 @@ describe('ManagerCollegesPageComponent', () => {
     } }));
     await TestBed.configureTestingModule({
       imports: [ManagerCollegesPageComponent],
-      providers: [provideRouter([]), { provide: ManagerCollegesService, useValue: api }],
+      providers: [provideRouter([]), { provide: ManagerCollegesService, useValue: api }, { provide: TownPlannerV2Service, useValue: { suggestAddresses: () => of([]), getPlaceDetails: () => of(null) } }],
     }).compileComponents();
   });
 

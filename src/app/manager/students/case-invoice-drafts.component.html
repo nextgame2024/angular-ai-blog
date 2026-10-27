@@ -2,15 +2,15 @@
 <div class="draft-section">
   @if(loading){<app-manager-list-loader label="Loading invoice drafts…" />}
   @if(failed){<button type="button" class="btn" (click)="load()">Reload invoice drafts</button>}
-  @for(batch of data?.batches;track batch.batchId){
-    <p class="muted">Sophia-only drafts · {{batch.currentOffer?'Not yet created in Xero':'Historical — source offer replaced'}}</p>
+  @for(batch of data?.batches;track batch.batchId){@if(displayInvoices(batch);as invoices){@if(invoices.length){
+    <p class="muted">Xero invoice creation · {{batch.currentOffer?'Current approved offer':'Historical — source offer replaced'}}</p>
     <div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Due</th><th>Status</th><th>Payment Track</th><th>Total</th></tr></thead><tbody>
-      @for(invoice of batch.snapshot.invoices;track invoice.sequence){<tr><td><button type="button" class="link" (click)="show(batch,invoice)">{{invoice.invoiceNumber}}</button></td><td>{{invoice.dueDate}}</td><td>Draft</td><td>PENDING</td><td>{{money(invoice.totalMinor,batch.snapshot.currency)}}</td></tr>}
+      @for(invoice of invoices;track invoice.sequence){<tr><td><button type="button" class="link" (click)="show(batch,invoice)">{{invoice.invoiceNumber}}</button></td><td>{{invoice.dueDate}}</td><td>{{batch.exports[invoice.sequence]?.status==='created'?'Created in Xero':batch.exports[invoice.sequence]?.status==='review_required'?'Review required':'Creation pending'}}</td><td>PENDING</td><td>{{money(invoice.totalMinor,batch.snapshot.currency)}}</td></tr>}
     </tbody></table></div>
-  }
+  }}}
 </div>
 <dialog #modal (cancel)="close($event)" aria-label="Sophia invoice preview">
-  <header><div><h2>{{detail?detail.invoice.invoiceNumber:'Prepare invoices'}}</h2><p>Sophia drafts only — nothing is created or sent in Xero.</p></div><button type="button" class="btn close" (click)="close()" [disabled]="busy" aria-label="Close invoice preview">×</button></header>
+  <header><div><h2>{{detail?detail.invoice.invoiceNumber:'Prepare invoices'}}</h2><p>Review and save Sophia drafts, or create unsent draft invoices in Xero.</p></div><button type="button" class="btn close" (click)="close()" [disabled]="busy" aria-label="Close invoice preview">×</button></header>
   @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}
   @if(detail;as d){
     <div class="scroll">
@@ -20,18 +20,19 @@
       </tbody></table></div>
       <div class="invoice-totals"><div><span>Subtotal</span><strong>{{money(d.invoice.subtotalMinor??(d.invoice.totalMinor-d.invoice.conditionalFeeMinor),d.batch.snapshot.currency)}}</strong></div><div><span>Tax</span><strong>{{money(d.invoice.taxMinor??0,d.batch.snapshot.currency)}}</strong></div><div><span>Conditional transfer fee</span><strong>{{money(d.invoice.conditionalFeeMinor,d.batch.snapshot.currency)}}</strong></div></div>
       @if(d.batch.snapshot.reviewNote){<p>Review note: {{d.batch.snapshot.reviewNote}}</p>}
+      @if(d.batch.exports[d.invoice.sequence];as receipt){@if(receipt.status==='created'){<p class="notice">Created in Xero{{receipt.invoiceNumber?' as '+receipt.invoiceNumber:''}}.</p>}@else if(receipt.status==='not_attempted'){<p class="notice">Xero setup needs attention. No invoice was sent; retry after the connection is fixed.</p>}@else{<p class="notice">Creation is held for review to prevent a duplicate invoice.</p>}}
     </div>
-    <footer><strong class="grand-total">Total {{money(d.invoice.totalMinor,d.batch.snapshot.currency)}}</strong><button type="button" class="btn" (click)="close()">Close</button></footer>
+    <footer><strong class="grand-total">Total {{money(d.invoice.totalMinor,d.batch.snapshot.currency)}}</strong><div class="footer-actions"><button type="button" class="btn" (click)="close()" [disabled]="busy">Close</button></div></footer>
   }@else{
     <form [formGroup]="form" (ngSubmit)="save()">
-      <nav class="payment-tabs" aria-label="Invoice instalments">@for(payment of form.controls.invoices.controls;track payment;let i=$index){<button type="button" class="btn" [attr.aria-current]="activePayment===i?'step':null" [disabled]="busy" (click)="activePayment=i">INV-{{payment.controls.sequence.value}}</button>}</nav>
+      <nav class="payment-tabs" aria-label="Invoice instalments">@for(payment of form.controls.invoices.controls;track payment;let i=$index){@if(!isFrozenSequence(payment.controls.sequence.value)){<button type="button" class="btn" [attr.aria-current]="activePayment===i?'step':null" [disabled]="busy" (click)="activePayment=i">INV-{{payment.controls.sequence.value}}</button>}}</nav>
       <div class="scroll">
         <div class="invoice-meta fields"><label>Student<input [value]="preparation?.student?.name??''" readonly /></label><label>Advisor<app-manager-select formControlName="advisorId" [options]="advisors" [searchable]="true" placeholder="Select an advisor" [attr.aria-invalid]="form.controls.advisorId.touched&&form.controls.advisorId.invalid" /></label><label>Reference / College<input [value]="preparation?.source?.collegeName??''" readonly /></label></div>
         @if(!preparation?.catalogue){<p class="notice">The Xero Items catalogue is waiting for background import. <button type="button" class="link" (click)="reloadItems()">Close and reload items</button></p>}
         @else{<p class="muted">Items and sales defaults imported {{preparation?.catalogue?.lastSyncedAt | date:'d MMM y, h:mm a'}}.@if(preparation?.catalogue?.errorCode){ Last refresh failed; the previous catalogue is shown.}</p>}
         <div formArrayName="invoices">
           @for(payment of form.controls.invoices.controls;track payment;let i=$index){
-            <fieldset [formGroupName]="i" [hidden]="activePayment!==i"><legend>INV-{{payment.controls.sequence.value}} · Draft</legend>
+            <fieldset [formGroupName]="i" [hidden]="activePayment!==i||isFrozenSequence(payment.controls.sequence.value)"><legend>INV-{{payment.controls.sequence.value}} · Draft</legend>
               <div class="invoice-dates fields"><label>Issue date<input type="date" formControlName="issueDate" /></label><label>Due date<input type="date" formControlName="dueDate" /></label><label>Payment Track<input value="PENDING" readonly /></label></div>
               <p class="muted">Offer: {{money(preparation?.source?.instalments?.[i]?.totalMinor??0)}} · {{preparation?.source?.instalments?.[i]?.dueTerm||'Scheduled payment'}} · Included conditional fee {{money(preparation?.source?.instalments?.[i]?.includedConditionalFeeMinor??0)}}.</p>
               <div class="table-wrap editor-wrap" formArrayName="lines"><table class="line-editor"><thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Account</th><th>Tax rate</th><th>Tax amount</th><th>Payment Track</th><th>Sales Representative</th><th>Amount</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>
@@ -49,10 +50,10 @@
             </fieldset>
           }
         </div>
-        <details><summary>Review note — explain any amount or date changes from the offer</summary><textarea formControlName="reviewNote" maxlength="500" aria-label="Review note"></textarea></details>
-        <label class="check"><input type="checkbox" formControlName="confirmed" />I reviewed all instalments, selected items, quantities, prices, dates and applicable fees.</label>
+        <label class="review-note">Review note — explain any amount or date changes from the offer<textarea formControlName="reviewNote" maxlength="500" rows="3" aria-label="Review note"></textarea></label>
+        <div class="review-action"><label class="check"><input type="checkbox" formControlName="confirmed" />I reviewed all instalments, selected items, quantities, prices, dates and applicable fees.</label>@if(data?.canCreateXero){<button type="button" class="btn xero" (click)="createCurrent()" [disabled]="busy||disabled||conflict||!preparation?.catalogue||!form.controls.confirmed.value">{{busy?'Creating…':'Create Xero Invoice'}}</button>}</div>
       </div>
-      <footer><div class="footer-total" aria-live="polite"><span>INV-{{activeInvoiceNumber}} · Total</span><strong class="grand-total">{{activeInvoice?money(total(activeInvoice)):'—'}}</strong>@if(activeInvoice&&(hasUnresolvedItems(activeInvoice)||activeInvoice.controls.feeApplies.value==='')){<small>Preview — confirm items and fees</small>}</div><div class="footer-actions"><button type="button" class="btn" (click)="close()" [disabled]="busy">Cancel</button><button type="submit" class="btn primary" [disabled]="busy||disabled||conflict||!preparation?.catalogue">{{busy?'Saving drafts…':'Save Sophia drafts'}}</button></div></footer>
+      <footer><div class="footer-total" aria-live="polite"><span>INV-{{activeInvoiceNumber}} · Total</span><strong class="grand-total">{{activeInvoice?money(total(activeInvoice)):'—'}}</strong>@if(activeInvoice&&(hasUnresolvedItems(activeInvoice)||activeInvoice.controls.feeApplies.value==='')){<small>Preview — confirm items and fees</small>}</div><div class="footer-actions"><button type="button" class="btn" (click)="close()" [disabled]="busy">Cancel</button><button type="submit" class="btn primary" [disabled]="busy||disabled||conflict||!preparation?.catalogue">{{busy?'Saving drafts…':'Save drafts'}}</button>@if(data?.canCreateXero){<button type="button" class="btn xero" (click)="createAll()" [disabled]="busy||disabled||conflict||!preparation?.catalogue||!form.controls.confirmed.value">{{busy?'Creating…':'Create Xero invoices'}}</button>}</div></footer>
     </form>
   }
 </dialog>

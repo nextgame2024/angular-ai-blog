@@ -3,8 +3,9 @@ import { of,Subject,throwError } from 'rxjs';
 import { CaseOfferReviewComponent,offerMoneyInput } from './case-offer-review.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import { ManagerCollegesService } from '../services/manager.colleges.service';
+import { TownPlannerV2Service } from '../../townplanner/services/townplanner_v2.service';
 import type { StudentDocumentAnalysis,StudentOfferExtraction } from '../student-operations/student-operations.types';
-const source:StudentOfferExtraction={kind:'letter_of_offer',studentName:'Example Student',collegeName:'Example College',abn:null,cricosProviderCode:'03829G',currency:'AUD',statedTotalMinor:904000,evidence:[{page:2,quote:'Grand total $9040'}],issues:[],
+const source:StudentOfferExtraction={kind:'letter_of_offer',studentName:'Example Student',collegeName:'Example College',campusAddress:'16 Cook St, MORTDALE, NSW, 2223',abn:null,cricosProviderCode:'03829G',currency:'AUD',statedTotalMinor:904000,evidence:[{page:2,quote:'Grand total $9040'}],issues:[],
   courses:[{name:'General English',code:'116682E',startsOn:'2027-01-25',endsOn:'2028-03-19',duration:'60 weeks'}],
   fees:[{label:'Tuition and materials',amountMinor:904000,conditional:false,condition:null},{label:'International transfer',amountMinor:2500,conditional:true,condition:'International payments only'}],
   instalments:[{sequence:1,dueTerm:'Immediately',dueOn:null,totalMinor:99500,includedConditionalFeeMinor:2500,components:[{label:'Material',amountMinor:5000},{label:'Tuition',amountMinor:72000}]},{sequence:2,dueTerm:null,dueOn:'2028-01-31',totalMinor:807000,includedConditionalFeeMinor:0,components:[]}]};
@@ -15,13 +16,14 @@ describe('CaseOfferReviewComponent',()=>{
   beforeEach(async()=>{
     api={reviewDocumentAnalysis:jasmine.createSpy().and.returnValue(of({saved:true})),documentAnalysis:jasmine.createSpy().and.returnValue(of(result))};
     colleges={createFromOffer:jasmine.createSpy().and.returnValue(of({college:{collegeId:'new-college'}}))};
-    await TestBed.configureTestingModule({imports:[CaseOfferReviewComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).overrideComponent(CaseOfferReviewComponent,{set:{providers:[{provide:ManagerCollegesService,useValue:colleges}]}}).compileComponents();
+    await TestBed.configureTestingModule({imports:[CaseOfferReviewComponent],providers:[{provide:StudentOperationsService,useValue:api},{provide:TownPlannerV2Service,useValue:{suggestAddresses:()=>of([]),getPlaceDetails:()=>of(null)}}]}).overrideComponent(CaseOfferReviewComponent,{set:{providers:[{provide:ManagerCollegesService,useValue:colleges}]}}).compileComponents();
   });
   function setup(input=result){const f=TestBed.createComponent(CaseOfferReviewComponent);f.componentRef.setInput('analysis',structuredClone(input));f.componentRef.setInput('caseId','case');f.componentRef.setInput('documentId','doc');f.detectChanges();return f;}
   it('keeps both totals and conditional fee without an applicability decision',()=>{
     const f=setup(),c=f.componentInstance;expect(c.paymentTotals).toEqual({total:906500,included:2500});expect(c.totalsDiffer).toBeFalse();
+    expect(c.form.controls.campusAddress.value).toBe('16 Cook St, MORTDALE, NSW, 2223');c.form.controls.campusAddress.setValue('Corrected campus');
     c.form.controls.reason.setValue('Reviewed source');c.save('confirmed');const value=api.reviewDocumentAnalysis.calls.mostRecent().args[2];
-    expect(value.expectedCaseVersion).toBe(2);expect(value.collegeId).toBe('college');expect(value.corrections.instalments[0]).toEqual(source.instalments[0]);expect(value.corrections.statedTotalMinor).toBe(904000);expect(value.corrections.fees[1].conditional).toBeTrue();expect(value).not.toEqual(jasmine.objectContaining({feeApplies:jasmine.anything()}));
+    expect(value.expectedCaseVersion).toBe(2);expect(value.collegeId).toBe('college');expect(value.corrections.campusAddress).toBe('Corrected campus');expect(value.corrections.instalments[0]).toEqual(source.instalments[0]);expect(value.corrections.statedTotalMinor).toBe(904000);expect(value.corrections.fees[1].conditional).toBeTrue();expect(value).not.toEqual(jasmine.objectContaining({feeApplies:jasmine.anything()}));
   });
   it('parses money exactly and rejects fractions of cents, negatives and exponent input',()=>{
     expect(offerMoneyInput('995.00')).toBe(99500);expect(offerMoneyInput('0.29')).toBe(29);for(const value of ['-25','2.555','1e3','NaN',''])expect(offerMoneyInput(value)).toBeNull();

@@ -234,8 +234,12 @@ export class StudentOperationsService {
   caseInvoiceDrafts(caseId:string):Observable<import('./student-operations.types').CaseInvoiceDraftData>{
     return this.http.get<import('./student-operations.types').CaseInvoiceDraftData>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts`,{headers:this.headers()});
   }
-  prepareCaseInvoiceDrafts(caseId:string,value:unknown,key:string):Observable<{batchId:string;count:number}>{
-    return this.http.post<{batchId:string;count:number}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts`,value,{headers:this.writeHeaders(key)});
+  prepareCaseInvoiceDrafts(caseId:string,value:unknown,key:string):Observable<{batchId:string;count:number;revision:number;updatedAt:string}>{
+    return this.http.post<{batchId:string;count:number;revision:number;updatedAt:string}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts`,value,{headers:this.writeHeaders(key)});
+  }
+  createCaseXeroInvoices(caseId:string,batchId:string,sequences:number[]):Observable<{created:number;skipped:number;results:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null}>}>{
+    return this.http.post<{created:number;skipped:number;results:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null}>}>(
+      `${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/xero`,{sequences,confirmed:true},{headers:this.headers()});
   }
 
   caseDocuments(caseId: string, page = 1): Observable<StudentCaseDocuments> {

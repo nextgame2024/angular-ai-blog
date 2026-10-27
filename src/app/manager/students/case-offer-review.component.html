@@ -17,6 +17,7 @@
         <div class="fields">
           <label>Student name<input formControlName="name" [attr.aria-invalid]="form.controls.name.touched&&form.controls.name.invalid" /></label>
           <label>College on the offer<input formControlName="collegeName" [attr.aria-invalid]="form.controls.collegeName.touched&&form.controls.collegeName.invalid" /></label>
+          <label>Address / campus<app-manager-address-autocomplete formControlName="campusAddress" placeholder="e.g. 16 Cook St, Mortdale NSW 2223" ariaLabel="Address or campus" /></label>
           <label>ABN<input formControlName="abn" /></label><label>CRICOS provider code<input formControlName="cricos" /></label>
         </div>
         <p>Current case college: <strong>{{currentCollegeName}}</strong></p>

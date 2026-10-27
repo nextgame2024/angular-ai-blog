@@ -6,11 +6,12 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
+import { ManagerAddressAutocompleteComponent } from '../shared/manager-address-autocomplete/manager-address-autocomplete.component';
 import { BmCollege, BmCollegeContact, BmCollegeSite, BmCollegeSort, ManagerCollegesService } from '../../services/manager.colleges.service';
 
 @Component({
   selector: 'app-manager-colleges-page',
-  imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
+  imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerAddressAutocompleteComponent],
   templateUrl: './manager-colleges.page.html',
   styleUrls: ['../clients/manager-clients.page.css', '../users/manager-users.page.css', './manager-colleges.page.css'],
 })

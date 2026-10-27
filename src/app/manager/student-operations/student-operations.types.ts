@@ -207,9 +207,11 @@ export interface CaseInvoiceCatalogue {
   taxRates:Array<{taxType:string;name:string;rate:string|null}>;
 }
 export interface CaseInvoiceDraftData {
-  batches:Array<{batchId:string;offerId:string;currentOffer:boolean;createdAt:string;snapshot:{studentName:string;advisorLabel:string;category:string|null;location:string|null;billingUnit:string|null;currency:string;collegeName:string;reviewNote:string;invoices:CaseInvoiceDraft[]}}>;
+  batches:Array<{batchId:string;offerId:string;advisorId:string;revision:number;currentOffer:boolean;createdAt:string;updatedAt?:string;exports:Record<string,{status:'not_attempted'|'creating'|'created'|'review_required';invoiceId:string|null;invoiceNumber:string|null}>;snapshot:{studentName:string;advisorLabel:string;category:string|null;location:string|null;billingUnit:string|null;currency:string;collegeName:string;reviewNote:string;invoices:CaseInvoiceDraft[]}}>;
+  canCreateXero?:boolean;
   preparation:null|{offerId:string;offerVersion:number;caseVersion:number;source:StudentOfferExtraction;
-    advisors:Array<{advisorId:string;code:string;name:string}>;student:{name:string;advisorId:string|null};today:string;catalogue?:CaseInvoiceCatalogue|null};
+    advisors:Array<{advisorId:string;code:string;name:string}>;student:{name:string;advisorId:string|null};today:string;catalogue?:CaseInvoiceCatalogue|null;
+    savedBatch:null|{batchId:string;revision:number;advisorId:string;snapshot:CaseInvoiceDraftData['batches'][number]['snapshot'];exports:CaseInvoiceDraftData['batches'][number]['exports']}};
 }
 
 export interface StudentCaseDocuments {
@@ -245,6 +247,7 @@ export interface StudentDocumentAnalysis {
 export interface StudentOfferExtraction {
   kind:'letter_of_offer';studentName:string|null;evidence:Array<{page:number;quote:string}>;issues:string[];
   collegeName:string|null;abn:string|null;cricosProviderCode:string|null;currency:string;statedTotalMinor:number|null;
+  campusAddress?:string|null;
   courses:Array<{name:string;code:string|null;startsOn:string|null;endsOn:string|null;duration:string|null}>;
   fees:Array<{label:string;amountMinor:number;conditional:boolean;condition:string|null}>;
   instalments:Array<{sequence:number;dueTerm:string|null;dueOn:string|null;totalMinor:number;includedConditionalFeeMinor:number;components?:Array<{label:string;amountMinor:number}>}>;
