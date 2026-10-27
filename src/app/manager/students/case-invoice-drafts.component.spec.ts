@@ -85,12 +85,24 @@ describe('CaseInvoiceDraftsComponent',()=>{
     c.form.controls.invoices.at(1).controls.lines.at(0).controls.description.setValue('Updated before Xero');c.save();
     const request=api.prepareCaseInvoiceDrafts.calls.mostRecent().args[1];expect(request.invoices[1].lines[0].description).toBe('Updated before Xero');expect(request).toEqual(jasmine.objectContaining({draftBatchId:'batch',draftRevision:3}));expect(c.modal.nativeElement.open).toBeTrue();
   });
-  it('shows only attempted invoices in the table and opens created invoices read-only',()=>{
+  it('shows only created invoices in the table and opens them read-only',()=>{
     const fixture=savedData({'1':{status:'created',invoiceId:'xero-id',invoiceNumber:'XERO-1'}});api.caseInvoiceDrafts.and.returnValue(of(fixture));
     const f=setup(),c=f.componentInstance;f.detectChanges();const rows=f.nativeElement.querySelectorAll('.draft-section tbody tr');expect(rows.length).toBe(1);expect(rows[0].textContent).toContain('Created in Xero');
     c.open();f.detectChanges();expect(c.activeInvoiceNumber).toBe(2);expect(c.form.controls.advisorId.disabled).toBeTrue();expect(f.nativeElement.querySelector('.payment-tabs').textContent).not.toContain('INV-1');expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-2');
     c.close();(f.nativeElement.querySelector('.draft-section .link') as HTMLButtonElement).click();f.detectChanges();
     expect(f.nativeElement.querySelector('dialog header h2').textContent).toContain('INV-1');expect(f.nativeElement.querySelector('dialog .xero')).toBeNull();expect(f.nativeElement.querySelector('dialog').textContent).toContain('Created in Xero as XERO-1');
+  });
+  it('keeps review-required invoices inside the preparation modal and out of the created table',()=>{
+    const fixture=savedData({'1':{status:'review_required',invoiceId:null,invoiceNumber:null}});api.caseInvoiceDrafts.and.returnValue(of(fixture));
+    const f=setup(),c=f.componentInstance;f.detectChanges();expect(f.nativeElement.querySelector('.draft-section table')).toBeNull();
+    c.open();f.detectChanges();expect(c.activeInvoiceNumber).toBe(2);expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-1 · Review');
+    const reviewButtons=Array.from(f.nativeElement.querySelectorAll('.payment-tabs button')) as HTMLButtonElement[];const reviewButton=reviewButtons.find(button=>button.textContent?.includes('INV-1'))!;reviewButton.click();f.detectChanges();
+    expect(c.activeNeedsReview).toBeTrue();expect(c.form.controls.invoices.at(0).disabled).toBeTrue();expect(f.nativeElement.querySelector('fieldset:not([hidden]) .notice').textContent).toContain('did not confirm');expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeTrue();
+  });
+  it('keeps an ambiguous Xero result in the modal while advancing to another editable invoice',()=>{
+    api.createCaseXeroInvoices.and.returnValue(of({created:0,skipped:1,results:[{sequence:1,status:'review_required'}]}));
+    const f=setup(),c=f.componentInstance;c.open();complete(c);c.createCurrent();f.detectChanges();
+    expect(c.modal.nativeElement.open).toBeTrue();expect(c.activeInvoiceNumber).toBe(2);expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-1 · Review');expect(f.nativeElement.querySelector('.draft-section table')).toBeNull();
   });
   it('still requires confirmation before either Xero creation action',()=>{
     const current=setup().componentInstance;current.open();complete(current,false);current.createCurrent();

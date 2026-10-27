@@ -45,10 +45,19 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   get itemOptions(){return this.preparation?.catalogue?.items.map(i=>({value:i.itemId,label:`${i.code} — ${i.name}`}))??[];}
   get activeInvoice(){return this.form.controls.invoices.at(this.activePayment);}
   get activeInvoiceNumber():number|string{return this.activeInvoice?.getRawValue().sequence??'—';}
+  get activeNeedsReview(){return Boolean(this.activeInvoice&&this.isReviewSequence(this.activeInvoice.controls.sequence.value));}
+  get hasCreatableInvoices(){return this.form.controls.invoices.controls.some(payment=>!this.isFrozenSequence(payment.controls.sequence.value));}
   get advisorLabel(){return this.advisors.find(a=>a.value===this.form.controls.advisorId.value)?.label??'Select an advisor';}
-  isFrozenSequence(sequence:number){const receipt=this.sessionExports[String(sequence)]??this.preparation?.savedBatch?.exports[String(sequence)];return Boolean(receipt&&receipt.status!=='not_attempted');}
-  displayInvoices(batch:CaseInvoiceDraftData['batches'][number]){return batch.snapshot.invoices.filter(invoice=>{const receipt=batch.exports[String(invoice.sequence)];return Boolean(receipt&&receipt.status!=='not_attempted');});}
-  private enableEditor(){this.form.enable({emitEvent:false});if(Object.values(this.sessionExports).some(receipt=>receipt.status!=='not_attempted'))this.form.controls.advisorId.disable({emitEvent:false});}
+  private receipt(sequence:number){return this.sessionExports[String(sequence)]??this.preparation?.savedBatch?.exports[String(sequence)];}
+  isCreatedSequence(sequence:number){return this.receipt(sequence)?.status==='created';}
+  isReviewSequence(sequence:number){const status=this.receipt(sequence)?.status;return status==='creating'||status==='review_required';}
+  isFrozenSequence(sequence:number){return this.isCreatedSequence(sequence)||this.isReviewSequence(sequence);}
+  displayInvoices(batch:CaseInvoiceDraftData['batches'][number]){return batch.snapshot.invoices.filter(invoice=>batch.exports[String(invoice.sequence)]?.status==='created');}
+  private enableEditor(){
+    this.form.enable({emitEvent:false});
+    for(const payment of this.form.controls.invoices.controls)if(this.isFrozenSequence(payment.controls.sequence.value))payment.disable({emitEvent:false});
+    if(Object.values(this.sessionExports).some(receipt=>receipt.status!=='not_attempted'))this.form.controls.advisorId.disable({emitEvent:false});
+  }
   private courseDescription(){
     const source=this.preparation?.source;if(!source)return 'Course Name: \nCampus: \nStart Date: ';
     const date=(value:string|null)=>value?new Intl.DateTimeFormat('en-AU',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(`${value}T00:00:00Z`)):'';
@@ -161,7 +170,8 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       if(material>0)this.addLine(payment,'materials','Materials fee',material);
     }
     const firstEditable=this.form.controls.invoices.controls.findIndex(payment=>!this.isFrozenSequence(payment.controls.sequence.value));
-    this.activePayment=Math.max(0,firstEditable);
+    const firstUnresolved=this.form.controls.invoices.controls.findIndex(payment=>!this.isCreatedSequence(payment.controls.sequence.value));
+    this.activePayment=Math.max(0,firstEditable>=0?firstEditable:firstUnresolved);
     this.enableEditor();
     this.modal.nativeElement.showModal();
   }
@@ -181,6 +191,8 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   createAll(){this.persist('all');}
   private persist(action:'save'|'current'|'all'){
     const p=this.preview;if(!p||this.busy||this.disabled||this.detail||this.conflict)return;
+    if(action==='current'&&this.activeNeedsReview){this.message='This invoice needs review and cannot be sent again until its Xero outcome is reconciled.';this.tone='error';return;}
+    if(action==='all'&&!this.hasCreatableInvoices){this.message='No pending invoice is available to create. Review the unresolved Xero outcome first.';this.tone='error';return;}
     if(!p.catalogue){this.message='The Xero item catalogue is not ready. Wait for background import, then close and reload items.';this.tone='error';return;}
     for(const payment of this.form.controls.invoices.controls){
       for(const line of payment.controls.lines.controls){
@@ -209,7 +221,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     this.api.prepareCaseInvoiceDrafts(this.caseId,value,this.request!.key).pipe(takeUntil(this.scope$)).subscribe({next:result=>{
       this.draftIdentity={batchId:result.batchId,revision:result.revision};
       if(action==='save'){this.busy=false;this.enableEditor();this.message=`${result.count} Sophia drafts saved. You can continue reviewing and editing them here.`;this.tone='success';this.changed.emit();this.load();return;}
-      const sequences=action==='all'?invoices.map(i=>i.sequence):[invoices[this.activePayment].sequence];
+      const sequences=action==='all'?invoices.filter(i=>!this.isFrozenSequence(i.sequence)).map(i=>i.sequence):[invoices[this.activePayment].sequence];
       this.api.createCaseXeroInvoices(this.caseId,result.batchId,sequences).pipe(takeUntil(this.scope$)).subscribe({next:r=>this.exportComplete(r),error:()=>{this.busy=false;this.enableEditor();this.message='The Sophia drafts were saved, but Xero creation could not be confirmed. Reload the drafts before trying again.';this.tone='error';this.changed.emit();this.load();}});
     },error:e=>{this.busy=false;this.enableEditor();this.conflict=e?.status===409;this.message=this.conflict?'The case, offer, or a read-only Xero invoice changed. Close this preview and reopen it before editing again.':e?.status===400?'Check quantities, prices and dates. Explain any changes from the offer in the review note.':'Draft saving could not be confirmed. Retry the same preview.';this.tone='error';}});
   }
@@ -224,9 +236,12 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const existing=result.results?.filter(item=>item.status==='already_created').length??0;
     const setup=result.results?.filter(item=>item.status==='not_attempted').length??0;
     const setupReason=result.results?.find(item=>item.status==='not_attempted'&&item.message)?.message;
-    this.message=`${result.created} Xero draft invoice${result.created===1?'':'s'} created.${existing?` ${existing} already existed and was skipped.`:''}${setup?` ${setup} was not sent.${setupReason?` ${setupReason}`:' Xero setup needs attention.'}`:''}${review?` ${review} ${review===1?'needs':'need'} review before any retry.`:''}`;
+    const reviewReason=result.results?.find(item=>(item.status==='review_required'||item.status==='creating')&&item.message)?.message;
+    this.message=`${result.created} Xero draft invoice${result.created===1?'':'s'} created.${existing?` ${existing} already existed and was skipped.`:''}${setup?` ${setup} was not sent.${setupReason?` ${setupReason}`:' Xero setup needs attention.'}`:''}${review?` ${review} ${review===1?'needs':'need'} review before any retry.${reviewReason?` ${reviewReason}`:''}`:''}`;
     this.tone=review||setup?'error':'success';
-    const next=this.form.controls.invoices.controls.findIndex(payment=>!this.isFrozenSequence(payment.controls.sequence.value));
+    const nextEditable=this.form.controls.invoices.controls.findIndex(payment=>!this.isFrozenSequence(payment.controls.sequence.value));
+    const nextReview=this.form.controls.invoices.controls.findIndex(payment=>this.isReviewSequence(payment.controls.sequence.value));
+    const next=nextEditable>=0?nextEditable:nextReview;
     if(next<0){this.modal.nativeElement.close();this.preview=null;this.sessionExports={};this.previewStop$.next();}
     else{this.activePayment=next;this.form.controls.confirmed.setValue(false);}
     this.changed.emit();this.load();}
