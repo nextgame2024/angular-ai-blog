@@ -21,7 +21,7 @@ function savedData(exports:CaseInvoiceDraftData['batches'][number]['exports']={}
 describe('CaseInvoiceDraftsComponent',()=>{
   let api:any;
   beforeEach(async()=>{
-    api={caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of(structuredClone(data))),prepareCaseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batchId:'batch',count:8,revision:1,updatedAt:'2026-10-26T00:00:00Z'})),createCaseXeroInvoices:jasmine.createSpy().and.callFake((_caseId:string,_batchId:string,sequences:number[])=>of({created:sequences.length,skipped:0,results:sequences.map(sequence=>({sequence,status:'created',invoiceId:`xero-${sequence}`,invoiceNumber:`XERO-${sequence}`}))}))};
+    api={caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of(structuredClone(data))),prepareCaseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batchId:'batch',count:8,revision:1,updatedAt:'2026-10-26T00:00:00Z'})),createCaseXeroInvoices:jasmine.createSpy().and.callFake((_caseId:string,_batchId:string,sequences:number[])=>of({created:sequences.length,skipped:0,results:sequences.map(sequence=>({sequence,status:'created',invoiceId:`xero-${sequence}`,invoiceNumber:`XERO-${sequence}`}))})),reconcileCaseXeroInvoice:jasmine.createSpy().and.returnValue(of({created:1,skipped:0,results:[{sequence:1,status:'created',invoiceId:'xero-1',invoiceNumber:'INV-10577',message:'Confirmed against the exact invoice in Xero.'}]}))};
     await TestBed.configureTestingModule({imports:[CaseInvoiceDraftsComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(){const f=TestBed.createComponent(CaseInvoiceDraftsComponent);f.componentRef.setInput('caseId','case');f.detectChanges();return f;}
@@ -97,7 +97,9 @@ describe('CaseInvoiceDraftsComponent',()=>{
     const f=setup(),c=f.componentInstance;f.detectChanges();expect(f.nativeElement.querySelector('.draft-section table')).toBeNull();
     c.open();f.detectChanges();expect(c.activeInvoiceNumber).toBe(2);expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-1 · Review');
     const reviewButtons=Array.from(f.nativeElement.querySelectorAll('.payment-tabs button')) as HTMLButtonElement[];const reviewButton=reviewButtons.find(button=>button.textContent?.includes('INV-1'))!;reviewButton.click();f.detectChanges();
-    expect(c.activeNeedsReview).toBeTrue();expect(c.form.controls.invoices.at(0).disabled).toBeTrue();expect(f.nativeElement.querySelector('fieldset:not([hidden]) .notice').textContent).toContain('did not confirm');expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeTrue();
+    expect(c.activeNeedsReview).toBeTrue();expect(c.form.controls.invoices.at(0).disabled).toBeTrue();expect(f.nativeElement.querySelector('fieldset:not([hidden]) .notice').textContent).toContain('not yet linked');expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeTrue();
+    (f.nativeElement.querySelector('.review-notice button') as HTMLButtonElement).click();f.detectChanges();
+    expect(api.reconcileCaseXeroInvoice).toHaveBeenCalledWith('case','batch',1);expect(c.message).toContain('Confirmed against the exact invoice');expect(f.nativeElement.querySelector('.payment-tabs').textContent).not.toContain('INV-1');
   });
   it('keeps an ambiguous Xero result in the modal while advancing to another editable invoice',()=>{
     api.createCaseXeroInvoices.and.returnValue(of({created:0,skipped:1,results:[{sequence:1,status:'review_required'}]}));

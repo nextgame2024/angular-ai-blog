@@ -241,6 +241,10 @@ export class StudentOperationsService {
     return this.http.post<{created:number;skipped:number;results:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null;errorCode?:string;message?:string}>}>(
       `${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/xero`,{sequences,confirmed:true},{headers:this.headers()});
   }
+  reconcileCaseXeroInvoice(caseId:string,batchId:string,sequence:number):Observable<{created:number;skipped:number;results:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null;errorCode?:string;message?:string}>}>{
+    return this.http.post<{created:number;skipped:number;results:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null;errorCode?:string;message?:string}>}>(
+      `${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/xero/reconcile`,{sequence},{headers:this.headers()});
+  }
 
   caseDocuments(caseId: string, page = 1): Observable<StudentCaseDocuments> {
     return this.http.get<StudentCaseDocuments>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents`, {

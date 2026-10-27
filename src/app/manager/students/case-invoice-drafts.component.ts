@@ -189,6 +189,13 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   save(){this.persist('save');}
   createCurrent(){this.persist('current');}
   createAll(){this.persist('all');}
+  reconcileCurrent(){
+    const invoice=this.activeInvoice,batchId=this.draftIdentity?.batchId;if(!invoice||!batchId||!this.activeNeedsReview||this.busy||this.disabled)return;
+    this.busy=true;this.busyLabel='Checking Xero invoice status…';this.form.disable({emitEvent:false});this.message='';
+    this.api.reconcileCaseXeroInvoice(this.caseId,batchId,invoice.controls.sequence.value).pipe(takeUntil(this.scope$)).subscribe({next:result=>this.exportComplete(result),error:()=>{
+      this.busy=false;this.enableEditor();this.message='Sophia could not check Xero right now. The invoice remains safely held for review; try again.';this.tone='error';
+    }});
+  }
   private persist(action:'save'|'current'|'all'){
     const p=this.preview;if(!p||this.busy||this.disabled||this.detail||this.conflict)return;
     if(action==='current'&&this.activeNeedsReview){this.message='This invoice needs review and cannot be sent again until its Xero outcome is reconciled.';this.tone='error';return;}
@@ -237,7 +244,8 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const setup=result.results?.filter(item=>item.status==='not_attempted').length??0;
     const setupReason=result.results?.find(item=>item.status==='not_attempted'&&item.message)?.message;
     const reviewReason=result.results?.find(item=>(item.status==='review_required'||item.status==='creating')&&item.message)?.message;
-    this.message=`${result.created} Xero draft invoice${result.created===1?'':'s'} created.${existing?` ${existing} already existed and was skipped.`:''}${setup?` ${setup} was not sent.${setupReason?` ${setupReason}`:' Xero setup needs attention.'}`:''}${review?` ${review} ${review===1?'needs':'need'} review before any retry.${reviewReason?` ${reviewReason}`:''}`:''}`;
+    const successReason=result.results?.find(item=>(item.status==='created'||item.status==='already_created')&&item.message)?.message;
+    this.message=`${result.created} Xero draft invoice${result.created===1?'':'s'} created.${successReason?` ${successReason}`:''}${existing?` ${existing} already existed and was skipped.`:''}${setup?` ${setup} was not sent.${setupReason?` ${setupReason}`:' Xero setup needs attention.'}`:''}${review?` ${review} ${review===1?'needs':'need'} review before any retry.${reviewReason?` ${reviewReason}`:''}`:''}`;
     this.tone=review||setup?'error':'success';
     const nextEditable=this.form.controls.invoices.controls.findIndex(payment=>!this.isFrozenSequence(payment.controls.sequence.value));
     const nextReview=this.form.controls.invoices.controls.findIndex(payment=>this.isReviewSequence(payment.controls.sequence.value));
