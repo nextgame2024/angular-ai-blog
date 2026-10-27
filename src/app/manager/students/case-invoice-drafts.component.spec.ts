@@ -21,7 +21,7 @@ function savedData(exports:CaseInvoiceDraftData['batches'][number]['exports']={}
 describe('CaseInvoiceDraftsComponent',()=>{
   let api:any;
   beforeEach(async()=>{
-    api={caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of(structuredClone(data))),prepareCaseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batchId:'batch',count:8,revision:1,updatedAt:'2026-10-26T00:00:00Z'})),createCaseXeroInvoices:jasmine.createSpy().and.returnValue(of({created:8,skipped:0,results:[]}))};
+    api={caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of(structuredClone(data))),prepareCaseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batchId:'batch',count:8,revision:1,updatedAt:'2026-10-26T00:00:00Z'})),createCaseXeroInvoices:jasmine.createSpy().and.callFake((_caseId:string,_batchId:string,sequences:number[])=>of({created:sequences.length,skipped:0,results:sequences.map(sequence=>({sequence,status:'created',invoiceId:`xero-${sequence}`,invoiceNumber:`XERO-${sequence}`}))}))};
     await TestBed.configureTestingModule({imports:[CaseInvoiceDraftsComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(){const f=TestBed.createComponent(CaseInvoiceDraftsComponent);f.componentRef.setInput('caseId','case');f.detectChanges();return f;}
@@ -51,8 +51,20 @@ describe('CaseInvoiceDraftsComponent',()=>{
   it('requires review confirmation and creates either the active Xero invoice or all invoices after saving one immutable batch',()=>{
     const f=setup(),c=f.componentInstance;c.open();f.detectChanges();expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeTrue();complete(c);f.detectChanges();
     expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeFalse();c.activePayment=2;c.createCurrent();
-    expect(api.prepareCaseInvoiceDrafts).toHaveBeenCalledTimes(1);expect(api.createCaseXeroInvoices).toHaveBeenCalledWith('case','batch',[3]);
-    const second=setup().componentInstance;second.open();complete(second);second.createAll();expect(api.createCaseXeroInvoices).toHaveBeenCalledWith('case','batch',[1,2,3,4,5,6,7,8]);
+    expect(api.prepareCaseInvoiceDrafts).toHaveBeenCalledTimes(1);expect(api.createCaseXeroInvoices).toHaveBeenCalledWith('case','batch',[3]);expect(c.modal.nativeElement.open).toBeTrue();expect(c.activeInvoiceNumber).toBe(1);
+    f.detectChanges();expect(f.nativeElement.querySelector('.payment-tabs').textContent).not.toContain('INV-3');expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-1');
+    const second=setup().componentInstance;second.open();complete(second);second.createAll();expect(api.createCaseXeroInvoices).toHaveBeenCalledWith('case','batch',[1,2,3,4,5,6,7,8]);expect(second.modal.nativeElement.open).toBeFalse();
+  });
+  it('keeps a pre-send failure editable and shows the connector setup reason',()=>{
+    api.createCaseXeroInvoices.and.returnValue(of({created:0,skipped:1,results:[{sequence:1,status:'not_attempted',errorCode:'xero_invoice_write_scope_missing',message:'An administrator must reconnect Xero and authorize invoice creation.'}]}));
+    const f=setup(),c=f.componentInstance;c.open();complete(c);c.createCurrent();f.detectChanges();
+    expect(c.modal.nativeElement.open).toBeTrue();expect(c.activeInvoiceNumber).toBe(1);expect(c.message).toContain('reconnect Xero');expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-1');
+  });
+  it('uses the shared overlay loader and keeps action labels stable while creation is pending',()=>{
+    const pending=new Subject<any>();api.createCaseXeroInvoices.and.returnValue(pending);const f=setup(),c=f.componentInstance;c.open();complete(c);c.createCurrent();f.detectChanges();
+    expect(f.nativeElement.querySelector('app-manager-list-loader.overlay-host')).not.toBeNull();expect(f.nativeElement.querySelector('app-manager-list-loader').textContent).toContain('Creating Xero invoice');
+    expect(Array.from(f.nativeElement.querySelectorAll('button')).some((button:any)=>button.textContent.trim()==='Creating…')).toBeFalse();
+    pending.next({created:1,skipped:0,results:[{sequence:1,status:'created'}]});pending.complete();
   });
   it('saves local drafts, excludes zero optional fees and preserves source amounts',()=>{
     const f=setup(),c=f.componentInstance;c.open();complete(c);c.save();f.detectChanges();

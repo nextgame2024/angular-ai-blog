@@ -29,13 +29,14 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   @ViewChild('modal',{static:true}) modal!:ElementRef<HTMLDialogElement>;
   private readonly api=inject(StudentOperationsService);private readonly scope$=new Subject<void>();
   private readonly previewStop$=new Subject<void>();
-  data:CaseInvoiceDraftData|null=null;loading=false;busy=false;failed=false;message='';tone:'success'|'error'='error';
+  data:CaseInvoiceDraftData|null=null;loading=false;busy=false;busyLabel='';failed=false;message='';tone:'success'|'error'='error';
   detail:{batch:CaseInvoiceDraftData['batches'][number];invoice:CaseInvoiceDraft}|null=null;
   activePayment=0;
   conflict=false;
   private request:{fingerprint:string;key:string}|null=null;
   private draftIdentity:{batchId:string;revision:number}|null=null;
   private preview:NonNullable<CaseInvoiceDraftData['preparation']>|null=null;
+  private sessionExports:CaseInvoiceDraftData['batches'][number]['exports']={};
   readonly form=new FormGroup({advisorId:text(),reviewNote:text('',false),confirmed:new FormControl(false,{nonNullable:true}),invoices:new FormArray<ReturnType<typeof paymentForm>>([])});
   readonly feeOptions=[{value:'yes',label:'Apply fee'},{value:'no',label:'Do not apply'}];
   get preparation(){return this.preview??this.data?.preparation??null;}
@@ -45,9 +46,9 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   get activeInvoice(){return this.form.controls.invoices.at(this.activePayment);}
   get activeInvoiceNumber():number|string{return this.activeInvoice?.getRawValue().sequence??'—';}
   get advisorLabel(){return this.advisors.find(a=>a.value===this.form.controls.advisorId.value)?.label??'Select an advisor';}
-  isFrozenSequence(sequence:number){const receipt=this.preparation?.savedBatch?.exports[String(sequence)];return Boolean(receipt&&receipt.status!=='not_attempted');}
+  isFrozenSequence(sequence:number){const receipt=this.sessionExports[String(sequence)]??this.preparation?.savedBatch?.exports[String(sequence)];return Boolean(receipt&&receipt.status!=='not_attempted');}
   displayInvoices(batch:CaseInvoiceDraftData['batches'][number]){return batch.snapshot.invoices.filter(invoice=>{const receipt=batch.exports[String(invoice.sequence)];return Boolean(receipt&&receipt.status!=='not_attempted');});}
-  private enableEditor(){this.form.enable({emitEvent:false});if(this.preparation?.savedBatch&&Object.values(this.preparation.savedBatch.exports).some(receipt=>receipt.status!=='not_attempted'))this.form.controls.advisorId.disable({emitEvent:false});}
+  private enableEditor(){this.form.enable({emitEvent:false});if(Object.values(this.sessionExports).some(receipt=>receipt.status!=='not_attempted'))this.form.controls.advisorId.disable({emitEvent:false});}
   private courseDescription(){
     const source=this.preparation?.source;if(!source)return 'Course Name: \nCampus: \nStart Date: ';
     const date=(value:string|null)=>value?new Intl.DateTimeFormat('en-AU',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(`${value}T00:00:00Z`)):'';
@@ -123,7 +124,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     }
   }
   ngOnChanges(changes:import('@angular/core').SimpleChanges){
-    if(changes['caseId']){this.scope$.next();this.previewStop$.next();this.data=null;this.preview=null;this.loading=this.busy=this.conflict=false;this.modal?.nativeElement.close();this.request=null;this.draftIdentity=null;}
+    if(changes['caseId']){this.scope$.next();this.previewStop$.next();this.data=null;this.preview=null;this.sessionExports={};this.loading=this.busy=this.conflict=false;this.modal?.nativeElement.close();this.request=null;this.draftIdentity=null;}
     if(changes['caseId']||changes['refreshToken'])this.load();
   }
   load(){if(!this.caseId||this.loading||this.busy)return;this.loading=true;this.failed=false;
@@ -132,6 +133,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   open(){
     const p=this.data?.preparation;if(!p||this.busy||this.disabled||this.loading)return;this.preview=structuredClone(p);this.detail=null;this.activePayment=0;this.conflict=false;this.request=null;this.message='';
     const saved=p.savedBatch;
+    this.sessionExports=structuredClone(saved?.exports??{});
     this.draftIdentity=saved?{batchId:saved.batchId,revision:saved.revision}:null;
     this.previewStop$.next();this.form.reset({advisorId:saved?.advisorId??p.student.advisorId??'',reviewNote:saved?.snapshot.reviewNote??'',confirmed:false});this.form.controls.invoices.clear();
     const first=Math.min(...p.source.instalments.map(i=>i.sequence));
@@ -164,7 +166,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     this.modal.nativeElement.showModal();
   }
   show(batch:CaseInvoiceDraftData['batches'][number],invoice:CaseInvoiceDraft){if(this.busy)return;this.detail={batch,invoice};this.message='';this.modal.nativeElement.showModal();}
-  close(event?:Event){if(this.busy){event?.preventDefault();return;}this.modal.nativeElement.close();this.preview=null;this.previewStop$.next();if(this.conflict){this.conflict=false;this.load();}}
+  close(event?:Event){if(this.busy){event?.preventDefault();return;}this.modal.nativeElement.close();this.preview=null;this.sessionExports={};this.previewStop$.next();if(this.conflict){this.conflict=false;this.load();}}
   reloadItems(){this.close();this.load();}
   lineAmount(line:DraftLineForm){
     const q=line.controls.quantity.value,price=line.controls.price.value;if(!/^\d{1,6}(\.\d{1,4})?$/.test(q)||!decimal4.test(price))return 0;
@@ -203,7 +205,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
         quantity:line.quantity,unitPrice:line.price,amountMinor:this.lineAmount(l),accountCode:line.accountCode,taxType:line.taxType};})};});
     const value={offerId:p.offerId,offerVersion:p.offerVersion,caseVersion:p.caseVersion,advisorId:v.advisorId,...(this.draftIdentity?{draftBatchId:this.draftIdentity.batchId,draftRevision:this.draftIdentity.revision}:{}),catalogueConnectionId:p.catalogue.connectionId,catalogueRevision:p.catalogue.revision,reviewNote:v.reviewNote,invoices};
     const fingerprint=JSON.stringify(value);if(this.request?.fingerprint!==fingerprint)this.request={fingerprint,key:crypto.randomUUID()};
-    this.busy=true;this.form.disable({emitEvent:false});this.message='';
+    this.busy=true;this.busyLabel=action==='save'?'Saving invoice drafts…':action==='current'?'Creating Xero invoice…':'Creating Xero invoices…';this.form.disable({emitEvent:false});this.message='';
     this.api.prepareCaseInvoiceDrafts(this.caseId,value,this.request!.key).pipe(takeUntil(this.scope$)).subscribe({next:result=>{
       this.draftIdentity={batchId:result.batchId,revision:result.revision};
       if(action==='save'){this.busy=false;this.enableEditor();this.message=`${result.count} Sophia drafts saved. You can continue reviewing and editing them here.`;this.tone='success';this.changed.emit();this.load();return;}
@@ -211,11 +213,22 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       this.api.createCaseXeroInvoices(this.caseId,result.batchId,sequences).pipe(takeUntil(this.scope$)).subscribe({next:r=>this.exportComplete(r),error:()=>{this.busy=false;this.enableEditor();this.message='The Sophia drafts were saved, but Xero creation could not be confirmed. Reload the drafts before trying again.';this.tone='error';this.changed.emit();this.load();}});
     },error:e=>{this.busy=false;this.enableEditor();this.conflict=e?.status===409;this.message=this.conflict?'The case, offer, or a read-only Xero invoice changed. Close this preview and reopen it before editing again.':e?.status===400?'Check quantities, prices and dates. Explain any changes from the offer in the review note.':'Draft saving could not be confirmed. Retry the same preview.';this.tone='error';}});
   }
-  private exportComplete(result:{created:number;skipped:number;results?:Array<{status:string}>}){this.busy=false;this.enableEditor();this.modal.nativeElement.close();
+  private exportComplete(result:{created:number;skipped:number;results?:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null;errorCode?:string;message?:string}>}){this.busy=false;
+    for(const item of result.results??[]){
+      const previous=this.sessionExports[String(item.sequence)];
+      this.sessionExports[String(item.sequence)]={status:item.status==='already_created'?'created':item.status as 'not_attempted'|'creating'|'created'|'review_required',
+        invoiceId:item.invoiceId??previous?.invoiceId??null,invoiceNumber:item.invoiceNumber??previous?.invoiceNumber??null};
+    }
+    this.enableEditor();
     const review=result.results?.filter(item=>item.status==='review_required'||item.status==='creating').length??result.skipped;
     const existing=result.results?.filter(item=>item.status==='already_created').length??0;
     const setup=result.results?.filter(item=>item.status==='not_attempted').length??0;
-    this.message=`${result.created} Xero draft invoice${result.created===1?'':'s'} created.${existing?` ${existing} already existed and was skipped.`:''}${setup?` ${setup} was not sent because Xero setup needs attention.`:''}${review?` ${review} ${review===1?'needs':'need'} review before any retry.`:''}`;
-    this.tone=review||setup?'error':'success';this.changed.emit();this.load();}
+    const setupReason=result.results?.find(item=>item.status==='not_attempted'&&item.message)?.message;
+    this.message=`${result.created} Xero draft invoice${result.created===1?'':'s'} created.${existing?` ${existing} already existed and was skipped.`:''}${setup?` ${setup} was not sent.${setupReason?` ${setupReason}`:' Xero setup needs attention.'}`:''}${review?` ${review} ${review===1?'needs':'need'} review before any retry.`:''}`;
+    this.tone=review||setup?'error':'success';
+    const next=this.form.controls.invoices.controls.findIndex(payment=>!this.isFrozenSequence(payment.controls.sequence.value));
+    if(next<0){this.modal.nativeElement.close();this.preview=null;this.sessionExports={};this.previewStop$.next();}
+    else{this.activePayment=next;this.form.controls.confirmed.setValue(false);}
+    this.changed.emit();this.load();}
   ngOnDestroy(){this.scope$.next();this.scope$.complete();this.previewStop$.next();this.previewStop$.complete();}
 }

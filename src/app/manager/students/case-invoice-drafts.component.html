@@ -11,6 +11,7 @@
 </div>
 <dialog #modal (cancel)="close($event)" aria-label="Sophia invoice preview">
   <header><div><h2>{{detail?detail.invoice.invoiceNumber:'Prepare invoices'}}</h2><p>Review and save Sophia drafts, or create unsent draft invoices in Xero.</p></div><button type="button" class="btn close" (click)="close()" [disabled]="busy" aria-label="Close invoice preview">×</button></header>
+  @if(busy){<app-manager-list-loader [label]="busyLabel" [overlay]="true" />}
   @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}
   @if(detail;as d){
     <div class="scroll">
@@ -51,9 +52,9 @@
           }
         </div>
         <label class="review-note">Review note — explain any amount or date changes from the offer<textarea formControlName="reviewNote" maxlength="500" rows="3" aria-label="Review note"></textarea></label>
-        <div class="review-action"><label class="check"><input type="checkbox" formControlName="confirmed" />I reviewed all instalments, selected items, quantities, prices, dates and applicable fees.</label>@if(data?.canCreateXero){<button type="button" class="btn xero" (click)="createCurrent()" [disabled]="busy||disabled||conflict||!preparation?.catalogue||!form.controls.confirmed.value">{{busy?'Creating…':'Create Xero Invoice'}}</button>}</div>
+        <div class="review-action"><label class="check"><input type="checkbox" formControlName="confirmed" />I reviewed all instalments, selected items, quantities, prices, dates and applicable fees.</label>@if(data?.canCreateXero){<button type="button" class="btn xero" (click)="createCurrent()" [disabled]="busy||disabled||conflict||!preparation?.catalogue||!form.controls.confirmed.value">Create Xero Invoice</button>}</div>
       </div>
-      <footer><div class="footer-total" aria-live="polite"><span>INV-{{activeInvoiceNumber}} · Total</span><strong class="grand-total">{{activeInvoice?money(total(activeInvoice)):'—'}}</strong>@if(activeInvoice&&(hasUnresolvedItems(activeInvoice)||activeInvoice.controls.feeApplies.value==='')){<small>Preview — confirm items and fees</small>}</div><div class="footer-actions"><button type="button" class="btn" (click)="close()" [disabled]="busy">Cancel</button><button type="submit" class="btn primary" [disabled]="busy||disabled||conflict||!preparation?.catalogue">{{busy?'Saving drafts…':'Save drafts'}}</button>@if(data?.canCreateXero){<button type="button" class="btn xero" (click)="createAll()" [disabled]="busy||disabled||conflict||!preparation?.catalogue||!form.controls.confirmed.value">{{busy?'Creating…':'Create Xero invoices'}}</button>}</div></footer>
+      <footer><div class="footer-total" aria-live="polite"><span>INV-{{activeInvoiceNumber}} · Total</span><strong class="grand-total">{{activeInvoice?money(total(activeInvoice)):'—'}}</strong>@if(activeInvoice&&(hasUnresolvedItems(activeInvoice)||activeInvoice.controls.feeApplies.value==='')){<small>Preview — confirm items and fees</small>}</div><div class="footer-actions"><button type="button" class="btn" (click)="close()" [disabled]="busy">Cancel</button><button type="submit" class="btn primary" [disabled]="busy||disabled||conflict||!preparation?.catalogue">Save drafts</button>@if(data?.canCreateXero){<button type="button" class="btn xero" (click)="createAll()" [disabled]="busy||disabled||conflict||!preparation?.catalogue||!form.controls.confirmed.value">Create Xero invoices</button>}</div></footer>
     </form>
   }
 </dialog>
