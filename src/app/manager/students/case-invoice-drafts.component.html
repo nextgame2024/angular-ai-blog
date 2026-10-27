@@ -5,12 +5,12 @@
   @for(batch of data?.batches;track batch.batchId){@if(displayInvoices(batch);as invoices){@if(invoices.length){
     <p class="muted">Xero invoice creation · {{batch.currentOffer?'Current approved offer':'Historical — source offer replaced'}}</p>
     <div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Due</th><th>Status</th><th>Payment Track</th><th>Total</th></tr></thead><tbody>
-      @for(invoice of invoices;track invoice.sequence){<tr><td><button type="button" class="link" (click)="show(batch,invoice)">{{invoice.invoiceNumber}}</button></td><td>{{invoice.dueDate}}</td><td>Created in Xero</td><td>PENDING</td><td>{{money(invoice.totalMinor,batch.snapshot.currency)}}</td></tr>}
+      @for(invoice of invoices;track invoice.sequence){<tr><td><button type="button" class="link" (click)="show(batch,invoice)">{{invoiceLabel(batch,invoice)}}</button></td><td>{{invoice.dueDate}}</td><td>Created in Xero</td><td>PENDING</td><td>{{money(invoice.totalMinor,batch.snapshot.currency)}}</td></tr>}
     </tbody></table></div>
   }}}
 </div>
-<dialog #modal (cancel)="close($event)" aria-label="Sophia invoice preview">
-  <header><div><h2>{{detail?detail.invoice.invoiceNumber:'Prepare invoices'}}</h2><p>Review and save Sophia drafts, or create unsent draft invoices in Xero.</p></div><button type="button" class="btn close" (click)="close()" [disabled]="busy" aria-label="Close invoice preview">×</button></header>
+<dialog #modal (cancel)="close($event)" aria-label="Invoice preview">
+  <header><div><h2>{{detail?invoiceLabel(detail.batch,detail.invoice):'Prepare invoices'}}</h2><p>Review and save drafts, or create unsent draft invoices in Xero.</p></div><button type="button" class="btn close" (click)="close()" [disabled]="busy" aria-label="Close invoice preview">×</button></header>
   @if(busy){<app-manager-list-loader [label]="busyLabel" [overlay]="true" />}
   @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}
   @if(detail;as d){
@@ -34,7 +34,7 @@
         <div formArrayName="invoices">
           @for(payment of form.controls.invoices.controls;track payment;let i=$index){
             <fieldset [formGroupName]="i" [hidden]="activePayment!==i||isCreatedSequence(payment.controls.sequence.value)"><legend>INV-{{payment.controls.sequence.value}} · {{isReviewSequence(payment.controls.sequence.value)?'Review required':'Draft'}}</legend>
-              @if(isReviewSequence(payment.controls.sequence.value)){<div class="notice review-notice"><span>Xero created may have succeeded, but Sophia has not yet linked the confirmed Xero invoice. Check Xero now to reconcile the exact invoice; do not create it again.</span><button type="button" class="btn" (click)="reconcileCurrent()" [disabled]="busy">Check Xero status</button></div>}
+              @if(isReviewSequence(payment.controls.sequence.value)){<div class="notice review-notice"><span>The Xero request may have succeeded, but the invoice has not yet been linked. Check Xero status to match the exact invoice; do not create it again.</span><button type="button" class="btn" (click)="reconcileCurrent()" [disabled]="busy">Check Xero status</button></div>}
               <div class="invoice-dates fields"><label>Issue date<input type="date" formControlName="issueDate" /></label><label>Due date<input type="date" formControlName="dueDate" /></label><label>Payment Track<input value="PENDING" readonly /></label></div>
               <p class="muted">Offer: {{money(preparation?.source?.instalments?.[i]?.totalMinor??0)}} · {{preparation?.source?.instalments?.[i]?.dueTerm||'Scheduled payment'}} · Included conditional fee {{money(preparation?.source?.instalments?.[i]?.includedConditionalFeeMinor??0)}}.</p>
               <div class="table-wrap editor-wrap" formArrayName="lines"><table class="line-editor"><thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Account</th><th>Tax rate</th><th>Tax amount</th><th>Payment Track</th><th>Sales Representative</th><th>Amount</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>

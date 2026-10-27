@@ -72,7 +72,7 @@ describe('CaseInvoiceDraftsComponent',()=>{
     expect(value.invoices[0].conditionalFeeApplies).toBeFalse();expect(value.invoices[0].conditionalFeeMinor).toBe(0);expect(c.data!.preparation!.source.instalments[0].totalMinor).toBe(12500);expect(c.modal.nativeElement.open).toBeTrue();expect(c.message).toContain('continue reviewing');
     expect(value.catalogueRevision).toBe(1);expect(value.category).toBeUndefined();expect(value.location).toBeUndefined();
   });
-  it('saves complete Sophia drafts without requiring the Xero creation confirmation',()=>{
+  it('saves complete drafts without requiring the Xero creation confirmation',()=>{
     const f=setup(),c=f.componentInstance;c.open();complete(c,false);c.save();
     expect(api.prepareCaseInvoiceDrafts).toHaveBeenCalledTimes(1);expect(api.createCaseXeroInvoices).not.toHaveBeenCalled();
     expect(c.message).toContain('continue reviewing');expect(c.modal.nativeElement.open).toBeTrue();
@@ -90,14 +90,17 @@ describe('CaseInvoiceDraftsComponent',()=>{
     const f=setup(),c=f.componentInstance;f.detectChanges();const rows=f.nativeElement.querySelectorAll('.draft-section tbody tr');expect(rows.length).toBe(1);expect(rows[0].textContent).toContain('Created in Xero');
     c.open();f.detectChanges();expect(c.activeInvoiceNumber).toBe(2);expect(c.form.controls.advisorId.disabled).toBeTrue();expect(f.nativeElement.querySelector('.payment-tabs').textContent).not.toContain('INV-1');expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-2');
     c.close();(f.nativeElement.querySelector('.draft-section .link') as HTMLButtonElement).click();f.detectChanges();
-    expect(f.nativeElement.querySelector('dialog header h2').textContent).toContain('INV-1');expect(f.nativeElement.querySelector('dialog .xero')).toBeNull();expect(f.nativeElement.querySelector('dialog').textContent).toContain('Created in Xero as XERO-1');
+    expect(rows[0].querySelector('.link').textContent).toBe('XERO-1');
+    expect(f.nativeElement.querySelector('dialog header h2').textContent).toContain('XERO-1');expect(f.nativeElement.querySelector('dialog .xero')).toBeNull();expect(f.nativeElement.querySelector('dialog').textContent).toContain('Created in Xero as XERO-1');
+    expect(c.invoiceLabel({...fixture.batches[0],exports:{}},fixture.batches[0].snapshot.invoices[0])).toBe('INV-1');
+    expect(c.invoiceLabel({...fixture.batches[0],exports:{'1':{status:'created',invoiceNumber:null,invoiceId:'xero-id'}}},fixture.batches[0].snapshot.invoices[0])).toBe('Created in Xero');
   });
   it('keeps review-required invoices inside the preparation modal and out of the created table',()=>{
     const fixture=savedData({'1':{status:'review_required',invoiceId:null,invoiceNumber:null}});api.caseInvoiceDrafts.and.returnValue(of(fixture));
     const f=setup(),c=f.componentInstance;f.detectChanges();expect(f.nativeElement.querySelector('.draft-section table')).toBeNull();
     c.open();f.detectChanges();expect(c.activeInvoiceNumber).toBe(2);expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-1 · Review');
     const reviewButtons=Array.from(f.nativeElement.querySelectorAll('.payment-tabs button')) as HTMLButtonElement[];const reviewButton=reviewButtons.find(button=>button.textContent?.includes('INV-1'))!;reviewButton.click();f.detectChanges();
-    expect(c.activeNeedsReview).toBeTrue();expect(c.form.controls.invoices.at(0).disabled).toBeTrue();expect(f.nativeElement.querySelector('fieldset:not([hidden]) .notice').textContent).toContain('not yet linked');expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeTrue();
+    expect(c.activeNeedsReview).toBeTrue();expect(c.form.controls.invoices.at(0).disabled).toBeTrue();expect(f.nativeElement.querySelector('fieldset:not([hidden]) .notice').textContent).toContain('not yet been linked');expect(f.nativeElement.querySelector('fieldset:not([hidden]) .notice').textContent).not.toContain('Sophia');expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeTrue();
     (f.nativeElement.querySelector('.review-notice button') as HTMLButtonElement).click();f.detectChanges();
     expect(api.reconcileCaseXeroInvoice).toHaveBeenCalledWith('case','batch',1);expect(c.message).toContain('Confirmed against the exact invoice');expect(f.nativeElement.querySelector('.payment-tabs').textContent).not.toContain('INV-1');
   });

@@ -53,6 +53,10 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   isReviewSequence(sequence:number){const status=this.receipt(sequence)?.status;return status==='creating'||status==='review_required';}
   isFrozenSequence(sequence:number){return this.isCreatedSequence(sequence)||this.isReviewSequence(sequence);}
   displayInvoices(batch:CaseInvoiceDraftData['batches'][number]){return batch.snapshot.invoices.filter(invoice=>batch.exports[String(invoice.sequence)]?.status==='created');}
+  invoiceLabel(batch:CaseInvoiceDraftData['batches'][number],invoice:CaseInvoiceDraft){
+    const receipt=batch.exports[String(invoice.sequence)];
+    return receipt?.status==='created'?(receipt.invoiceNumber?.trim()||'Created in Xero'):invoice.invoiceNumber;
+  }
   private enableEditor(){
     this.form.enable({emitEvent:false});
     for(const payment of this.form.controls.invoices.controls)if(this.isFrozenSequence(payment.controls.sequence.value))payment.disable({emitEvent:false});
@@ -193,7 +197,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const invoice=this.activeInvoice,batchId=this.draftIdentity?.batchId;if(!invoice||!batchId||!this.activeNeedsReview||this.busy||this.disabled)return;
     this.busy=true;this.busyLabel='Checking Xero invoice status…';this.form.disable({emitEvent:false});this.message='';
     this.api.reconcileCaseXeroInvoice(this.caseId,batchId,invoice.controls.sequence.value).pipe(takeUntil(this.scope$)).subscribe({next:result=>this.exportComplete(result),error:()=>{
-      this.busy=false;this.enableEditor();this.message='Sophia could not check Xero right now. The invoice remains safely held for review; try again.';this.tone='error';
+      this.busy=false;this.enableEditor();this.message='Xero could not be checked right now. The invoice remains safely held for review; try again.';this.tone='error';
     }});
   }
   private persist(action:'save'|'current'|'all'){
@@ -227,9 +231,9 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     this.busy=true;this.busyLabel=action==='save'?'Saving invoice drafts…':action==='current'?'Creating Xero invoice…':'Creating Xero invoices…';this.form.disable({emitEvent:false});this.message='';
     this.api.prepareCaseInvoiceDrafts(this.caseId,value,this.request!.key).pipe(takeUntil(this.scope$)).subscribe({next:result=>{
       this.draftIdentity={batchId:result.batchId,revision:result.revision};
-      if(action==='save'){this.busy=false;this.enableEditor();this.message=`${result.count} Sophia drafts saved. You can continue reviewing and editing them here.`;this.tone='success';this.changed.emit();this.load();return;}
+      if(action==='save'){this.busy=false;this.enableEditor();this.message=`${result.count} drafts saved. You can continue reviewing and editing them here.`;this.tone='success';this.changed.emit();this.load();return;}
       const sequences=action==='all'?invoices.filter(i=>!this.isFrozenSequence(i.sequence)).map(i=>i.sequence):[invoices[this.activePayment].sequence];
-      this.api.createCaseXeroInvoices(this.caseId,result.batchId,sequences).pipe(takeUntil(this.scope$)).subscribe({next:r=>this.exportComplete(r),error:()=>{this.busy=false;this.enableEditor();this.message='The Sophia drafts were saved, but Xero creation could not be confirmed. Reload the drafts before trying again.';this.tone='error';this.changed.emit();this.load();}});
+      this.api.createCaseXeroInvoices(this.caseId,result.batchId,sequences).pipe(takeUntil(this.scope$)).subscribe({next:r=>this.exportComplete(r),error:()=>{this.busy=false;this.enableEditor();this.message='The drafts were saved, but Xero creation could not be confirmed. Reload the drafts before trying again.';this.tone='error';this.changed.emit();this.load();}});
     },error:e=>{this.busy=false;this.enableEditor();this.conflict=e?.status===409;this.message=this.conflict?'The case, offer, or a read-only Xero invoice changed. Close this preview and reopen it before editing again.':e?.status===400?'Check quantities, prices and dates. Explain any changes from the offer in the review note.':'Draft saving could not be confirmed. Retry the same preview.';this.tone='error';}});
   }
   private exportComplete(result:{created:number;skipped:number;results?:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null;errorCode?:string;message?:string}>}){this.busy=false;
