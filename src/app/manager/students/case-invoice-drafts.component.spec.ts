@@ -22,6 +22,7 @@ describe('CaseInvoiceDraftsComponent',()=>{
   let api:any;
   beforeEach(async()=>{
     api={caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of(structuredClone(data))),prepareCaseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batchId:'batch',count:8,revision:1,updatedAt:'2026-10-26T00:00:00Z'})),createCaseXeroInvoices:jasmine.createSpy().and.callFake((_caseId:string,_batchId:string,sequences:number[])=>of({created:sequences.length,skipped:0,results:sequences.map(sequence=>({sequence,status:'created',invoiceId:`xero-${sequence}`,invoiceNumber:`XERO-${sequence}`}))})),reconcileCaseXeroInvoice:jasmine.createSpy().and.returnValue(of({created:1,skipped:0,results:[{sequence:1,status:'created',invoiceId:'xero-1',invoiceNumber:'INV-10577',message:'Confirmed against the exact invoice in Xero.'}]}))};
+    api.caseInvoiceDetail=jasmine.createSpy().and.returnValue(of({invoiceId:'xero-id',invoiceNumber:'XERO-1',studentName:'Fixture Student',advisorName:'Fixture Advisor',reference:'Fixture College',status:'PAID',type:'ACCREC',date:'2026-10-26',dueDate:'2026-10-26',currency:'AUD',total:'100',amountPaid:'100',amountDue:'0',paymentTrack:'Paid out',lineItems:[]}));
     await TestBed.configureTestingModule({imports:[CaseInvoiceDraftsComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(){const f=TestBed.createComponent(CaseInvoiceDraftsComponent);f.componentRef.setInput('caseId','case');f.detectChanges();return f;}
@@ -41,12 +42,36 @@ describe('CaseInvoiceDraftsComponent',()=>{
     c.save();expect(api.prepareCaseInvoiceDrafts).not.toHaveBeenCalled();expect(c.message).toContain('Complete');
     expect(f.nativeElement.querySelector('dialog').open).toBeTrue();
   });
-  it('defaults both dates to today and formats the editable course, campus and start-date description',()=>{
+  it('defaults undated payments to today and formats the editable course, campus and start-date description',()=>{
     const c=setup().componentInstance;c.open();const first=c.form.controls.invoices.at(0);
     expect(first.controls.issueDate.value).toBe('2026-10-26');expect(first.controls.dueDate.value).toBe('2026-10-26');
     expect(first.controls.lines.at(0).controls.description.value).toBe('Course Name: GENERAL ENGLISH - 48 weeks\nCampus: 16 Cook St, MORTDALE, NSW, 2223\nStart Date: 25 Jan 2027');
     const withoutAddress=structuredClone(data);delete withoutAddress.preparation!.source.campusAddress;api.caseInvoiceDrafts.and.returnValue(of(withoutAddress));const other=setup().componentInstance;other.open();expect(other.form.controls.invoices.at(0).controls.lines.at(0).controls.description.value).toContain('\nCampus: \n');
     const legacy=structuredClone(withoutAddress);legacy.preparation!.source.evidence=[{page:1,quote:'Address: 16 Cook St, MORTDALE, NSW, 2223'}];api.caseInvoiceDrafts.and.returnValue(of(legacy));const fallback=setup().componentInstance;fallback.open();expect(fallback.form.controls.invoices.at(0).controls.lines.at(0).controls.description.value).toContain('\nCampus: 16 Cook St, MORTDALE, NSW, 2223\n');
+  });
+  it('uses each dated instalment schedule rather than today and sends operator-selected dates unchanged',()=>{
+    const source=structuredClone(data);
+    source.preparation!.source.instalments[1].dueOn='2027-02-15';
+    source.preparation!.source.instalments[2].dueOn='2027-04-19';
+    api.caseInvoiceDrafts.and.returnValue(of(source));
+    const c=setup().componentInstance;c.open();
+    expect(c.form.controls.invoices.at(1).getRawValue()).toEqual(jasmine.objectContaining({issueDate:'2027-02-15',dueDate:'2027-02-15'}));
+    expect(c.form.controls.invoices.at(2).getRawValue()).toEqual(jasmine.objectContaining({issueDate:'2027-04-19',dueDate:'2027-04-19'}));
+    complete(c);
+    c.form.controls.invoices.at(1).patchValue({issueDate:'2027-02-01',dueDate:'2027-02-15'});
+    c.form.controls.invoices.at(2).patchValue({issueDate:'2027-04-01',dueDate:'2027-04-19'});
+    c.createAll();
+    const sent=api.prepareCaseInvoiceDrafts.calls.mostRecent().args[1].invoices;
+    expect(sent[1]).toEqual(jasmine.objectContaining({sequence:2,issueDate:'2027-02-01',dueDate:'2027-02-15'}));
+    expect(sent[2]).toEqual(jasmine.objectContaining({sequence:3,issueDate:'2027-04-01',dueDate:'2027-04-19'}));
+  });
+  it('restores saved issue and due dates independently without replacing them with today or the offer schedule',()=>{
+    const saved=savedData();saved.preparation!.source.instalments[1].dueOn='2027-03-01';
+    saved.preparation!.savedBatch!.snapshot.invoices[1].issueDate='2027-02-01';
+    saved.preparation!.savedBatch!.snapshot.invoices[1].dueDate='2027-02-15';
+    api.caseInvoiceDrafts.and.returnValue(of(saved));const c=setup().componentInstance;c.open();
+    expect(c.form.controls.invoices.at(1).getRawValue()).toEqual(jasmine.objectContaining({issueDate:'2027-02-01',dueDate:'2027-02-15'}));
+    c.save();expect(api.prepareCaseInvoiceDrafts.calls.mostRecent().args[1].invoices[1]).toEqual(jasmine.objectContaining({issueDate:'2027-02-01',dueDate:'2027-02-15'}));
   });
   it('requires review confirmation and creates either the active Xero invoice or all invoices after saving one immutable batch',()=>{
     const f=setup(),c=f.componentInstance;c.open();f.detectChanges();expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeTrue();complete(c);f.detectChanges();
@@ -59,6 +84,18 @@ describe('CaseInvoiceDraftsComponent',()=>{
     api.createCaseXeroInvoices.and.returnValue(of({created:0,skipped:1,results:[{sequence:1,status:'not_attempted',errorCode:'xero_invoice_write_scope_missing',message:'An administrator must reconnect Xero and authorize invoice creation.'}]}));
     const f=setup(),c=f.componentInstance;c.open();complete(c);c.createCurrent();f.detectChanges();
     expect(c.modal.nativeElement.open).toBeTrue();expect(c.activeInvoiceNumber).toBe(1);expect(c.message).toContain('reconnect Xero');expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-1');
+  });
+  it('shows an actionable contact conflict without exposing arbitrary provider or server errors',()=>{
+    const pending=new Subject<any>();api.createCaseXeroInvoices.and.returnValue(pending);
+    const f=setup(),c=f.componentInstance;c.open();complete(c);c.createCurrent();
+    pending.error({status:409,error:{errorCode:'student_invoice_contact_unavailable',message:'private provider payload'}});
+    expect(c.message).toContain('active linked Xero Contact');expect(c.message).not.toContain('private');expect(c.busy).toBeFalse();expect(c.modal.nativeElement.open).toBeTrue();
+  });
+  it('preserves uncertain-send guidance for unknown failures and never retries automatically',()=>{
+    const pending=new Subject<any>();api.createCaseXeroInvoices.and.returnValue(pending);
+    const f=setup(),c=f.componentInstance;c.open();complete(c);c.createCurrent();
+    pending.error({status:500,error:{errorCode:'student_invoice_contact_unavailable',message:'private database error'}});
+    expect(c.message).toContain('could not be confirmed');expect(c.message).not.toContain('private');expect(api.createCaseXeroInvoices).toHaveBeenCalledTimes(1);
   });
   it('uses the shared overlay loader and keeps action labels stable while creation is pending',()=>{
     const pending=new Subject<any>();api.createCaseXeroInvoices.and.returnValue(pending);const f=setup(),c=f.componentInstance;c.open();complete(c);c.createCurrent();f.detectChanges();
@@ -91,9 +128,30 @@ describe('CaseInvoiceDraftsComponent',()=>{
     c.open();f.detectChanges();expect(c.activeInvoiceNumber).toBe(2);expect(c.form.controls.advisorId.disabled).toBeTrue();expect(f.nativeElement.querySelector('.payment-tabs').textContent).not.toContain('INV-1');expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-2');
     c.close();(f.nativeElement.querySelector('.draft-section .link') as HTMLButtonElement).click();f.detectChanges();
     expect(rows[0].querySelector('.link').textContent).toBe('XERO-1');
-    expect(f.nativeElement.querySelector('dialog header h2').textContent).toContain('XERO-1');expect(f.nativeElement.querySelector('dialog .xero')).toBeNull();expect(f.nativeElement.querySelector('dialog').textContent).toContain('Created in Xero as XERO-1');
+    expect(f.nativeElement.querySelector('dialog header h2').textContent).toContain('XERO-1');expect(f.nativeElement.querySelector('dialog .xero')).toBeNull();expect(f.nativeElement.querySelector('dialog .notice')).toBeNull();
     expect(c.invoiceLabel({...fixture.batches[0],exports:{}},fixture.batches[0].snapshot.invoices[0])).toBe('INV-1');
     expect(c.invoiceLabel({...fixture.batches[0],exports:{'1':{status:'created',invoiceNumber:null,invoiceId:'xero-id'}}},fixture.batches[0].snapshot.invoices[0])).toBe('Created in Xero');
+  });
+  it('can use the shared case table while retaining read-only receipt details',()=>{
+    const fixture=savedData({'1':{status:'created',invoiceId:'xero-id',invoiceNumber:'XERO-1'},'2':{status:'review_required',invoiceId:null,invoiceNumber:null}});api.caseInvoiceDrafts.and.returnValue(of(fixture));
+    const f=setup(),c=f.componentInstance;c.showCreatedInvoices=false;f.detectChanges();
+    expect(f.nativeElement.querySelector('.draft-section table')).toBeNull();expect(c.createdInvoice('missing')).toBeNull();
+    const created=c.createdInvoice('xero-id')!;c.show(created.batch,created.invoice);f.detectChanges();
+    expect(f.nativeElement.querySelector('dialog header h2').textContent).toContain('XERO-1');expect(f.nativeElement.querySelector('dialog .notice')).toBeNull();
+    expect(f.nativeElement.querySelector('dialog input')).toBeNull();
+  });
+  it('opens imported invoices without loading proposals and reads the latest cached provider status',()=>{
+    const f=setup(),c=f.componentInstance;c.showInvoice('connection','imported-invoice');f.detectChanges();
+    expect(api.caseInvoiceDetail).toHaveBeenCalledWith('case','connection','imported-invoice');expect(c.detail?.status).toBe('PAID');
+    expect(f.nativeElement.querySelector('dialog input')).toBeNull();expect(f.nativeElement.querySelector('dialog').textContent).toContain('Paid out');
+  });
+  it('cancels a closed detail request and provides a retry for failed cached details',()=>{
+    const pending=new Subject<any>();api.caseInvoiceDetail.and.returnValue(pending);const f=setup(),c=f.componentInstance;
+    c.showInvoice('connection','invoice');f.detectChanges();expect(f.nativeElement.querySelectorAll('dialog app-manager-list-loader').length).toBe(1);
+    c.close();pending.next({invoiceNumber:'stale'});expect(c.detail).toBeNull();
+    api.caseInvoiceDetail.and.returnValue(throwError(()=>({status:503})));c.showInvoice('connection','invoice');f.detectChanges();
+    expect(c.detailFailed).toBeTrue();expect(f.nativeElement.querySelector('dialog form')).toBeNull();
+    c.reloadInvoice();expect(api.caseInvoiceDetail).toHaveBeenCalledTimes(3);
   });
   it('keeps review-required invoices inside the preparation modal and out of the created table',()=>{
     const fixture=savedData({'1':{status:'review_required',invoiceId:null,invoiceNumber:null}});api.caseInvoiceDrafts.and.returnValue(of(fixture));

@@ -234,6 +234,10 @@ export class StudentOperationsService {
   caseInvoiceDrafts(caseId:string):Observable<import('./student-operations.types').CaseInvoiceDraftData>{
     return this.http.get<import('./student-operations.types').CaseInvoiceDraftData>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts`,{headers:this.headers()});
   }
+  caseInvoiceDetail(caseId:string,connectionId:string,invoiceId:string):Observable<import('./student-operations.types').StudentCaseInvoiceDetail>{
+    const identity=connectionId?`${encodeURIComponent(connectionId)}/${encodeURIComponent(invoiceId)}`:encodeURIComponent(invoiceId);
+    return this.http.get<import('./student-operations.types').StudentCaseInvoiceDetail>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoices/${identity}`,{headers:this.headers()});
+  }
   prepareCaseInvoiceDrafts(caseId:string,value:unknown,key:string):Observable<{batchId:string;count:number;revision:number;updatedAt:string}>{
     return this.http.post<{batchId:string;count:number;revision:number;updatedAt:string}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts`,value,{headers:this.writeHeaders(key)});
   }

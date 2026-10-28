@@ -89,6 +89,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   });
   loadingRelated = false;
   loadingInvoices = false;
+  private invoiceRefreshPending=false;
   loadingDocuments = false;
   loadingActivity = false;
   private currentId = '';
@@ -489,6 +490,15 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       error: () => { if (id === this.currentId) { this.relatedError = 'Related cases could not be loaded.'; this.loadingRelated = false; } },
     });
   }
+  onInvoiceDraftsChanged():void{
+    this.refreshCaseSummary();
+    this.loadActivity(1);
+    if(this.loadingInvoices)this.invoiceRefreshPending=true;
+    else this.loadInvoices(this.invoices?.page??1);
+  }
+  showInvoice(invoice:StudentCaseInvoices['invoices'][number]):void{
+    this.invoiceDrafts?.showInvoice(invoice.connectionId??'',invoice.invoiceId);
+  }
   loadInvoices(page: number): void {
     if (!this.case || this.loadingInvoices || page < 1) return;
     const id = this.currentId;
@@ -500,8 +510,9 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         const last = Math.max(1, Math.ceil(result.total / result.limit));
         if (result.page > last) { this.loadInvoices(last); return; }
         this.invoices = result; this.rememberCasePage('invoices', result.page);
+        if(this.invoiceRefreshPending){this.invoiceRefreshPending=false;this.loadInvoices(result.page);}
       } },
-      error: () => { if (id === this.currentId) { this.invoiceError = 'Invoices could not be loaded.'; this.loadingInvoices = false; } },
+      error: () => { if (id === this.currentId) { this.invoiceError = 'Invoices could not be loaded.'; this.loadingInvoices = false;this.invoiceRefreshPending=false; } },
     });
   }
   loadDocuments(page: number,force=false): void {
@@ -640,6 +651,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.error = this.invoiceError = this.documentError = this.activityError = this.relatedError = this.downloadError = '';
     this.loading = true;
     this.loadingRelated = this.loadingInvoices = this.loadingDocuments = this.loadingActivity = false;
+    this.invoiceRefreshPending=false;
     this.downloadingId = null;
     this.viewingId = null;
   }

@@ -6,7 +6,7 @@ import { ManagerSelectComponent } from '../components/shared/manager-select/mana
 import { ManagerToastComponent } from '../components/shared/manager-toast/manager-toast.component';
 import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
-import type { CaseInvoiceDraftData,CaseInvoiceDraft,CaseInvoiceDraftLine } from '../student-operations/student-operations.types';
+import type { CaseInvoiceDraftData,CaseInvoiceDraft,CaseInvoiceDraftLine,StudentCaseInvoiceDetail } from '../student-operations/student-operations.types';
 import { offerMoneyInput } from './case-offer-review.component';
 
 const text=(value='',required=true)=>new FormControl(value,{nonNullable:true,validators:[Validators.maxLength(4000),...(required?[Validators.required]:[])]});
@@ -25,12 +25,15 @@ const paymentForm=(sequence:number,date:string,dueDate:string,fee:number,lines:D
   templateUrl:'./case-invoice-drafts.component.html',styleUrls:['./case-invoice-drafts.component.css']})
 export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   readonly offerMoneyInput=offerMoneyInput;
-  @Input() caseId='';@Input() refreshToken=0;@Input() disabled=false;@Output() changed=new EventEmitter<void>();
+  @Input() caseId='';@Input() refreshToken=0;@Input() disabled=false;@Input() showCreatedInvoices=true;@Output() changed=new EventEmitter<void>();
   @ViewChild('modal',{static:true}) modal!:ElementRef<HTMLDialogElement>;
   private readonly api=inject(StudentOperationsService);private readonly scope$=new Subject<void>();
   private readonly previewStop$=new Subject<void>();
   data:CaseInvoiceDraftData|null=null;loading=false;busy=false;busyLabel='';failed=false;message='';tone:'success'|'error'='error';
-  detail:{batch:CaseInvoiceDraftData['batches'][number];invoice:CaseInvoiceDraft}|null=null;
+  detail:StudentCaseInvoiceDetail|null=null;
+  readonlyMode=false;detailLoading=false;detailFailed=false;
+  private readonly detailStop$=new Subject<void>();
+  private detailTarget:{connectionId:string;invoiceId:string}|null=null;
   activePayment=0;
   conflict=false;
   private request:{fingerprint:string;key:string}|null=null;
@@ -56,6 +59,13 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   invoiceLabel(batch:CaseInvoiceDraftData['batches'][number],invoice:CaseInvoiceDraft){
     const receipt=batch.exports[String(invoice.sequence)];
     return receipt?.status==='created'?(receipt.invoiceNumber?.trim()||'Created in Xero'):invoice.invoiceNumber;
+  }
+  createdInvoice(invoiceId:string){
+    for(const batch of this.data?.batches??[]){
+      const invoice=batch.snapshot.invoices.find(item=>{const receipt=batch.exports[String(item.sequence)];return receipt?.status==='created'&&receipt.invoiceId===invoiceId;});
+      if(invoice)return {batch,invoice};
+    }
+    return null;
   }
   private enableEditor(){
     this.form.enable({emitEvent:false});
@@ -137,14 +147,14 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     }
   }
   ngOnChanges(changes:import('@angular/core').SimpleChanges){
-    if(changes['caseId']){this.scope$.next();this.previewStop$.next();this.data=null;this.preview=null;this.sessionExports={};this.loading=this.busy=this.conflict=false;this.modal?.nativeElement.close();this.request=null;this.draftIdentity=null;}
+    if(changes['caseId']){this.scope$.next();this.previewStop$.next();this.detailStop$.next();this.detail=null;this.detailLoading=false;this.data=null;this.preview=null;this.sessionExports={};this.loading=this.busy=this.conflict=false;this.modal?.nativeElement.close();this.request=null;this.draftIdentity=null;}
     if(changes['caseId']||changes['refreshToken'])this.load();
   }
   load(){if(!this.caseId||this.loading||this.busy)return;this.loading=true;this.failed=false;
     this.api.caseInvoiceDrafts(this.caseId).pipe(takeUntil(this.scope$)).subscribe({next:data=>{this.data=data;this.loading=false;},error:()=>{this.failed=true;this.loading=false;}});
   }
   open(){
-    const p=this.data?.preparation;if(!p||this.busy||this.disabled||this.loading)return;this.preview=structuredClone(p);this.detail=null;this.activePayment=0;this.conflict=false;this.request=null;this.message='';
+    const p=this.data?.preparation;if(!p||this.busy||this.disabled||this.loading)return;this.preview=structuredClone(p);this.readonlyMode=false;this.detail=null;this.activePayment=0;this.conflict=false;this.request=null;this.message='';
     const saved=p.savedBatch;
     this.sessionExports=structuredClone(saved?.exports??{});
     this.draftIdentity=saved?{batchId:saved.batchId,revision:saved.revision}:null;
@@ -168,7 +178,10 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       const material=source.components?.find(c=>/material/i.test(c.label))?.amountMinor??0;
       const enrolment=source.sequence===first?p.source.fees.find(f=>!f.conditional&&/enrol/i.test(f.label))?.amountMinor??0:0;
       const course=this.courseDescription();
-      const payment=paymentForm(source.sequence,p.today,p.today,source.includedConditionalFeeMinor,[]);
+      // Keep each offer instalment's schedule; only undated payments start today.
+      // Saved/operator-selected dates above always take precedence on reopening.
+      const scheduledDate=source.dueOn??p.today;
+      const payment=paymentForm(source.sequence,scheduledDate,scheduledDate,source.includedConditionalFeeMinor,[]);
       this.form.controls.invoices.push(payment);this.bindFeeChoice(payment);this.addLine(payment,'tuition',course||'Tuition Fee',tuition);
       if(enrolment>0)this.addLine(payment,'enrolment','Enrolment Fee',enrolment);
       if(material>0)this.addLine(payment,'materials','Materials fee',material);
@@ -179,8 +192,22 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     this.enableEditor();
     this.modal.nativeElement.showModal();
   }
-  show(batch:CaseInvoiceDraftData['batches'][number],invoice:CaseInvoiceDraft){if(this.busy)return;this.detail={batch,invoice};this.message='';this.modal.nativeElement.showModal();}
-  close(event?:Event){if(this.busy){event?.preventDefault();return;}this.modal.nativeElement.close();this.preview=null;this.sessionExports={};this.previewStop$.next();if(this.conflict){this.conflict=false;this.load();}}
+  show(batch:CaseInvoiceDraftData['batches'][number],invoice:CaseInvoiceDraft){
+    const receipt=batch.exports[String(invoice.sequence)];if(receipt?.status!=='created'||!receipt.invoiceId)return;
+    this.showInvoice((batch.snapshot as {catalogueConnectionId?:string}).catalogueConnectionId??this.preparation?.catalogue?.connectionId??'',receipt.invoiceId);
+  }
+  showInvoice(connectionId:string,invoiceId:string){
+    if(this.busy||this.disabled)return;this.detailStop$.next();this.readonlyMode=true;this.detail=null;this.message='';this.detailFailed=false;this.detailLoading=true;
+    this.detailTarget={connectionId,invoiceId};if(!this.modal.nativeElement.open)this.modal.nativeElement.showModal();
+    this.api.caseInvoiceDetail(this.caseId,connectionId,invoiceId).pipe(takeUntil(this.scope$),takeUntil(this.detailStop$)).subscribe({
+      next:detail=>{this.detail=detail;this.detailLoading=false;},error:()=>{this.detailLoading=false;this.detailFailed=true;},
+    });
+  }
+  reloadInvoice(){if(this.detailTarget)this.showInvoice(this.detailTarget.connectionId,this.detailTarget.invoiceId);}
+  invoiceMoney(value:string|number|null|undefined){return value===null||value===undefined||!Number.isFinite(Number(value))||!this.detail?.currency?'—':new Intl.NumberFormat('en-AU',{style:'currency',currency:this.detail.currency}).format(Number(value));}
+  get invoiceTax(){const lines=this.detail?.lineItems??[];return lines.length&&lines.every(line=>typeof line.taxAmount==='number'&&Number.isFinite(line.taxAmount))?lines.reduce((sum,line)=>sum+Number(line.taxAmount),0):null;}
+  get invoiceSubtotal(){return this.invoiceTax===null?null:Number(this.detail?.total)-this.invoiceTax;}
+  close(event?:Event){if(this.busy){event?.preventDefault();return;}this.detailStop$.next();this.detailLoading=false;this.modal.nativeElement.close();this.preview=null;this.sessionExports={};this.previewStop$.next();if(this.conflict){this.conflict=false;this.load();}}
   reloadItems(){this.close();this.load();}
   lineAmount(line:DraftLineForm){
     const q=line.controls.quantity.value,price=line.controls.price.value;if(!/^\d{1,6}(\.\d{1,4})?$/.test(q)||!decimal4.test(price))return 0;
@@ -233,7 +260,10 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       this.draftIdentity={batchId:result.batchId,revision:result.revision};
       if(action==='save'){this.busy=false;this.enableEditor();this.message=`${result.count} drafts saved. You can continue reviewing and editing them here.`;this.tone='success';this.changed.emit();this.load();return;}
       const sequences=action==='all'?invoices.filter(i=>!this.isFrozenSequence(i.sequence)).map(i=>i.sequence):[invoices[this.activePayment].sequence];
-      this.api.createCaseXeroInvoices(this.caseId,result.batchId,sequences).pipe(takeUntil(this.scope$)).subscribe({next:r=>this.exportComplete(r),error:()=>{this.busy=false;this.enableEditor();this.message='The drafts were saved, but Xero creation could not be confirmed. Reload the drafts before trying again.';this.tone='error';this.changed.emit();this.load();}});
+      this.api.createCaseXeroInvoices(this.caseId,result.batchId,sequences).pipe(takeUntil(this.scope$)).subscribe({next:r=>this.exportComplete(r),error:e=>{this.busy=false;this.enableEditor();
+        const known:Record<string,string>={student_invoice_contact_unavailable:'The student needs an active linked Xero Contact. Ask an administrator to review the contact.',xero_contact_read_scope_missing:'An administrator must authorize Xero contact access in company integrations.'};
+        this.message=(e?.status===409&&Object.prototype.hasOwnProperty.call(known,e?.error?.errorCode)&&known[e.error.errorCode])||'The drafts were saved, but Xero creation could not be confirmed. Reload the drafts before trying again.';
+        this.tone='error';this.changed.emit();this.load();}});
     },error:e=>{this.busy=false;this.enableEditor();this.conflict=e?.status===409;this.message=this.conflict?'The case, offer, or a read-only Xero invoice changed. Close this preview and reopen it before editing again.':e?.status===400?'Check quantities, prices and dates. Explain any changes from the offer in the review note.':'Draft saving could not be confirmed. Retry the same preview.';this.tone='error';}});
   }
   private exportComplete(result:{created:number;skipped:number;results?:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null;errorCode?:string;message?:string}>}){this.busy=false;
@@ -257,5 +287,5 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     if(next<0){this.modal.nativeElement.close();this.preview=null;this.sessionExports={};this.previewStop$.next();}
     else{this.activePayment=next;this.form.controls.confirmed.setValue(false);}
     this.changed.emit();this.load();}
-  ngOnDestroy(){this.scope$.next();this.scope$.complete();this.previewStop$.next();this.previewStop$.complete();}
+  ngOnDestroy(){this.scope$.next();this.scope$.complete();this.previewStop$.next();this.previewStop$.complete();this.detailStop$.next();this.detailStop$.complete();}
 }

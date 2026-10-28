@@ -180,7 +180,8 @@ export interface StudentCaseList {
 
 export interface StudentCaseInvoices {
   invoices: Array<{
-    invoiceId: string; invoiceNumber: string | null; type: string; status: string;
+    invoiceId: string; connectionId?:string; invoiceNumber: string | null; type: string; status: string;
+    draftBatchId?: string | null; draftSequence?: number | null;
     date: string | null; dueDate: string | null; reference?: string | null;
     paymentTrack?: string | null; currency?: string | null;
     total?: string | null; amountPaid?: string | null; amountDue?: string | null;
@@ -194,6 +195,10 @@ export interface CaseInvoiceDraftLine {
   kind:'tuition'|'enrolment'|'materials'|'visa'|'oshc'|'other';description:string;itemCode:string;
   quantity:string;unitAmountMinor:number;unitPrice?:string;itemId?:string;taxAmountMinor?:number;amountMinor:number;accountCode:string;taxType:string;
 }
+
+export type StudentCaseInvoiceDetail=StudentCaseInvoices['invoices'][number]&{
+  studentName:string;advisorName:string|null;lineItems:XeroStudentInvoiceLineItem[];updatedAt:string|null;
+};
 export interface CaseInvoiceDraft {
   sequence:number;issueDate:string;dueDate:string;conditionalFeeApplies:boolean;conditionalFeeMinor:number;
   lines:CaseInvoiceDraftLine[];invoiceNumber:string;status:'DRAFT';paymentTrack:'PENDING';
@@ -271,7 +276,7 @@ export interface StudentCaseActivity {
 
 export interface StudentCaseChecklist {
   status: string;
-  items: Array<{key:string;label:string;completed:boolean;recordVersion:number;updatedBy:string|null;updatedAt:string|null;automatic?:boolean;hint?:string;validationState?:'passed'|'needs_review'|'checking'|'missing'}>;
+  items: Array<{key:string;label:string;completed:boolean;recordVersion:number;updatedBy:string|null;updatedAt:string|null;automatic?:boolean;hint?:string;validationState?:'passed'|'needs_review'|'checking'|'missing'|'pending'}>;
 }
 
 export interface XeroConnectionSummary {

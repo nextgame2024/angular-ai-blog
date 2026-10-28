@@ -17,6 +17,7 @@ describe('ManagerCaseViewPageComponent', () => {
     advisors: [], colleges: [],
   };
   const api = {
+    caseInvoiceDetail:jasmine.createSpy().and.returnValue(of({invoiceId:'xero-1',invoiceNumber:'INV-10577',studentName:'Example Student',advisorName:'Advisor Name',reference:'Fixture College',status:'PAID',type:'ACCREC',date:'2026-10-27',dueDate:'2026-10-27',currency:'AUD',total:'100',amountPaid:'100',amountDue:'0',paymentTrack:'Paid out',lineItems:[]})),
     caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batches:[],preparation:null})),
     documentRequirements:jasmine.createSpy().and.returnValue(of({requirements:[]})),
     documentTypes:jasmine.createSpy().and.returnValue(of({types:[{documentTypeId:'passport-type',name:'Passport',required:true,status:'active',recordVersion:1}]})),
@@ -55,6 +56,7 @@ describe('ManagerCaseViewPageComponent', () => {
     params.next(convertToParamMap({ caseId: 'case-1' }));
     for (const spy of Object.values(api)) spy.calls.reset();
     api.workspace.and.returnValue(of({ role: 'chief_executive' }));
+    api.caseInvoiceDrafts.and.returnValue(of({batches:[],preparation:null}));
     api.documentRequirements.and.returnValue(of({requirements:[]}));
     api.caseDetail.and.returnValue(of(detail));
     api.caseEditOptions.and.returnValue(of({ advisors: [{ advisorId: 'advisor-1', code: 'S15', name: 'Advisor Name', xeroLabel: 'S15 Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] }));
@@ -68,6 +70,64 @@ describe('ManagerCaseViewPageComponent', () => {
       providers: [provideRouter([]), { provide: ActivatedRoute, useValue: { paramMap: params.asObservable(), snapshot: { data: routeData } } },
         { provide: StudentOperationsService, useValue: api }],
     }).compileComponents();
+  });
+
+  it('shows eight confirmed invoices once, counts them in both locations and opens read-only details without a creation notice',()=>{
+    const invoices=Array.from({length:8},(_,index)=>({invoiceId:`xero-${index+1}`,connectionId:'connection',invoiceNumber:`INV-${10577+index}`,draftBatchId:'batch',type:'ACCREC',status:'DRAFT',date:'2026-10-27',dueDate:'2026-10-27',currency:'AUD',amountPaid:'0',amountDue:'100'}));
+    api.caseInvoices.and.returnValue(of({invoices,total:8,page:1,limit:25}));
+    api.caseInvoiceDrafts.and.returnValue(of({canCreateXero:true,preparation:null,batches:[{batchId:'batch',currentOffer:true,exports:Object.fromEntries(invoices.map((invoice,index)=>[String(index+1),{status:'created',invoiceId:invoice.invoiceId,invoiceNumber:invoice.invoiceNumber}])),snapshot:{studentName:'Example Student',advisorLabel:'Advisor Name',collegeName:'Fixture College',currency:'AUD',reviewNote:'',invoices:invoices.map((invoice,index)=>({sequence:index+1,invoiceNumber:`INV-${index+1}`,issueDate:invoice.date,dueDate:invoice.dueDate,totalMinor:10000,conditionalFeeMinor:0,lines:[]}))}}]}));
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const root=fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('#invoices-heading .count')?.textContent).toBe('8');expect(root.querySelector('.case-summary dd')?.textContent).toBe('8');
+    expect(root.querySelectorAll('.invoice-table tbody tr').length).toBe(8);expect(root.querySelector('.draft-section table')).toBeNull();expect(root.textContent).not.toContain('No Xero invoices are linked');
+    (root.querySelector('.invoice-number') as HTMLButtonElement).click();fixture.detectChanges();
+    const dialog=root.querySelector('app-case-invoice-drafts dialog') as HTMLDialogElement;expect(dialog.open).toBeTrue();
+    expect(dialog.querySelector('h2')?.textContent).toBe('INV-10577');expect(dialog.querySelector('.notice')).toBeNull();expect(dialog.querySelector('input')).toBeNull();
+    expect(getComputedStyle(dialog.querySelector('h2')!).fontSize).toBe('14.4px');
+    expect(getComputedStyle(root.querySelector('.invoice-number')!).fontSize).toBe('12px');
+  });
+
+  it('uses the same six headers and read-only detail request for imported invoices',()=>{
+    api.caseInvoices.and.returnValue(of({invoices:[{invoiceId:'imported',connectionId:'connection',invoiceNumber:'INV-8602',type:'ACCREC',status:'PAID'}],total:1,page:1,limit:25}));
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const root=fixture.nativeElement as HTMLElement;
+    expect(Array.from(root.querySelectorAll('.invoice-table th')).map(header=>header.textContent?.trim())).toEqual(['Invoice','Date / Due','Status','Track','Paid','Due']);
+    (root.querySelector('.invoice-number') as HTMLButtonElement).click();fixture.detectChanges();
+    expect(api.caseInvoiceDetail).toHaveBeenCalledWith('case-1','connection','imported');
+    expect((root.querySelector('app-case-invoice-drafts dialog') as HTMLDialogElement).open).toBeTrue();
+  });
+  it('keeps imported and newly created invoice links clickable when connection metadata is absent',()=>{
+    const invoices=[{invoiceId:'imported',invoiceNumber:'INV-8602',type:'ACCREC',status:'PAID'},
+      {invoiceId:'created',invoiceNumber:'INV-10584',type:'ACCREC',status:'DRAFT',draftBatchId:'batch'}];
+    api.caseInvoices.and.returnValue(of({invoices,total:2,page:1,limit:25}));
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const root=fixture.nativeElement as HTMLElement;
+    const links=root.querySelectorAll<HTMLButtonElement>('.invoice-table button.invoice-number');expect(links.length).toBe(2);
+    for(let index=0;index<links.length;index++){
+      links[index].click();fixture.detectChanges();expect(api.caseInvoiceDetail).toHaveBeenCalledWith('case-1','',invoices[index].invoiceId);
+      expect((root.querySelector('app-case-invoice-drafts dialog') as HTMLDialogElement).open).toBeTrue();
+      fixture.componentInstance.invoiceDrafts?.close();fixture.detectChanges();
+    }
+  });
+
+  it('shows just one invoice loader while the register and preparation requests are pending',()=>{
+    api.caseInvoices.and.returnValue(new Subject());api.caseInvoiceDrafts.and.returnValue(new Subject());
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('section[aria-labelledby="invoices-heading"] app-manager-list-loader').length).toBe(1);
+  });
+
+  it('refreshes the invoice count after creation, including when an earlier list request is pending',()=>{
+    const initial=new Subject<unknown>();api.caseInvoices.and.returnValue(initial);
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const component=fixture.componentInstance;
+    api.caseInvoices.and.returnValue(of({invoices:[],total:8,page:1,limit:25}));component.onInvoiceDraftsChanged();
+    initial.next({invoices:[],total:0,page:1,limit:25});initial.complete();fixture.detectChanges();
+    expect(api.caseInvoices).toHaveBeenCalledTimes(2);expect(component.invoices?.total).toBe(8);
+  });
+
+  it('refreshes the stage, related case and checklist after invoice creation without changing Pre-sale status',()=>{
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+    const c=fixture.componentInstance,before=c.checklistRefresh;
+    api.caseDetail.and.returnValue(of({...c.case,currentStage:'awaiting_payment',status:'pre_sale'}));
+    c.onInvoiceDraftsChanged();fixture.detectChanges();
+    expect(c.case?.currentStage).toBe('awaiting_payment');expect(c.case?.status).toBe('pre_sale');expect(c.checklistRefresh).toBeGreaterThan(before);
+    expect(fixture.nativeElement.querySelector('.current')?.textContent).toContain('Awaiting Payment');
   });
 
   it('opens Add student as a completely unsaved form without loading case records or allocating IDs', () => {
@@ -716,6 +776,35 @@ describe('ManagerCaseViewPageComponent', () => {
     }
   });
 
+  for(const width of [390,1440]) for(const dark of [false,true]) {
+    it(`can reach the last invoice with compact non-underlined links at ${width}px in ${dark?'dark':'light'} mode`,()=>{
+      const invoices=Array.from({length:25},(_,index)=>({invoiceId:`invoice-${index}`,invoiceNumber:`INV-${index}`,reference:'Fixture College',type:'ACCREC',status:'DRAFT',date:'2026-10-28',dueDate:'2027-01-15',amountDue:'100',currency:'AUD'}));
+      api.caseInvoices.and.returnValue(of({invoices,total:25,page:1,limit:25}));
+      const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+      const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
+      try{
+        const doc=frame.contentDocument!,win=frame.contentWindow!;
+        document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));
+        doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';
+        const host=fixture.nativeElement.cloneNode(true) as HTMLElement;host.style.display='block';doc.body.appendChild(host);
+        const scroll=host.querySelector('[aria-label="Linked case invoices"]') as HTMLElement;
+        const card=scroll.closest('.case-record-card') as HTMLElement;
+        expect(scroll.clientHeight).toBeGreaterThan(44);expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight);
+        expect(scroll.getBoundingClientRect().bottom).toBeLessThanOrEqual(card.getBoundingClientRect().bottom);
+        scroll.scrollTop=scroll.scrollHeight;
+        expect(scroll.scrollTop).toBeGreaterThan(0);
+        const last=scroll.querySelector('tbody tr:last-child') as HTMLElement;
+        expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(scroll.getBoundingClientRect().bottom+1);
+        const link=scroll.querySelector('.invoice-number') as HTMLElement;
+        expect(win.getComputedStyle(link).textDecorationLine).toBe('none');
+        expect(link.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+        const number=link.querySelector('span')!,reference=link.querySelector('small')!;
+        expect(reference.getBoundingClientRect().top-number.getBoundingClientRect().bottom).toBeLessThan(5);
+        expect(win.getComputedStyle(reference).textDecorationLine).toBe('none');
+      }finally{frame.remove();fixture.destroy();}
+    });
+  }
+
   it('keeps sparse case cards compact and aligned instead of reserving a tall empty row', () => {
     api.caseDocuments.and.returnValue(of({ documents: [], discovery: [], discoveryRequested: true, total: 0, page: 1, limit: 25 }));
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
@@ -849,7 +938,7 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(cells[3]).toBe('Student → college');
     expect(cells[4]).toBe('$2,100.00');
     expect(cells[5]).toBe('$0.00');
-    expect(getComputedStyle(table).minWidth).toBe('672px');
+    expect(getComputedStyle(table).minWidth).toBe('576px');
   });
 
   it('shortens the awaiting-payment status in case details and identifies unnumbered overpayments', () => {

@@ -1,29 +1,32 @@
 @if(message&&!modal.open){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}
 <div class="draft-section">
-  @if(loading){<app-manager-list-loader label="Loading invoice drafts…" />}
+  @if(loading&&showCreatedInvoices){<app-manager-list-loader label="Loading invoice drafts…" />}
   @if(failed){<button type="button" class="btn" (click)="load()">Reload invoice drafts</button>}
-  @for(batch of data?.batches;track batch.batchId){@if(displayInvoices(batch);as invoices){@if(invoices.length){
+  @if(showCreatedInvoices){@for(batch of data?.batches;track batch.batchId){@if(displayInvoices(batch);as invoices){@if(invoices.length){
     <p class="muted">Xero invoice creation · {{batch.currentOffer?'Current approved offer':'Historical — source offer replaced'}}</p>
     <div class="table-wrap"><table><thead><tr><th>Invoice</th><th>Due</th><th>Status</th><th>Payment Track</th><th>Total</th></tr></thead><tbody>
       @for(invoice of invoices;track invoice.sequence){<tr><td><button type="button" class="link" (click)="show(batch,invoice)">{{invoiceLabel(batch,invoice)}}</button></td><td>{{invoice.dueDate}}</td><td>Created in Xero</td><td>PENDING</td><td>{{money(invoice.totalMinor,batch.snapshot.currency)}}</td></tr>}
     </tbody></table></div>
-  }}}
+  }}}}
 </div>
 <dialog #modal (cancel)="close($event)" aria-label="Invoice preview">
-  <header><div><h2>{{detail?invoiceLabel(detail.batch,detail.invoice):'Prepare invoices'}}</h2><p>Review and save drafts, or create unsent draft invoices in Xero.</p></div><button type="button" class="btn close" (click)="close()" [disabled]="busy" aria-label="Close invoice preview">×</button></header>
+  <header><div><h2 [class.invoice-title]="readonlyMode">{{readonlyMode?(detail?.invoiceNumber||'Invoice details'):'Prepare invoices'}}</h2><p>{{readonlyMode?'Invoice details · Read only':'Review and save drafts, or create unsent draft invoices in Xero.'}}</p></div><button type="button" class="btn close" (click)="close()" [disabled]="busy" aria-label="Close invoice preview">×</button></header>
   @if(busy){<app-manager-list-loader [label]="busyLabel" [overlay]="true" />}
   @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}
-  @if(detail;as d){
+  @if(readonlyMode){
     <div class="scroll">
-      <dl class="details"><div><dt>Student</dt><dd>{{d.batch.snapshot.studentName}}</dd></div><div><dt>College / Reference</dt><dd>{{d.batch.snapshot.collegeName}}</dd></div><div><dt>Advisor</dt><dd>{{d.batch.snapshot.advisorLabel}}</dd></div><div><dt>Issue / Due</dt><dd>{{d.invoice.issueDate}} / {{d.invoice.dueDate}}</dd></div><div><dt>Payment Track</dt><dd>PENDING</dd></div></dl>
+      @if(detailLoading){<app-manager-list-loader label="Loading invoice details…" />}
+      @if(detailFailed){<p class="notice" role="alert">Invoice details could not be loaded. <button type="button" class="btn" (click)="reloadInvoice()">Retry</button></p>}
+      @if(detail;as d){
+      <dl class="details"><div><dt>Student</dt><dd>{{d.studentName}}</dd></div><div><dt>College / Reference</dt><dd>{{d.reference||'—'}}</dd></div><div><dt>Advisor</dt><dd>{{d.advisorName||'—'}}</dd></div><div><dt>Issue / Due</dt><dd>{{d.date | date:'d MMM y'}} / {{d.dueDate | date:'d MMM y'}}</dd></div><div><dt>Payment Track</dt><dd>{{d.paymentTrack||'—'}}</dd></div><div><dt>Status</dt><dd>{{d.status}}</dd></div></dl>
       <div class="table-wrap"><table><thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Account</th><th>Tax</th><th>Tracking</th><th>Amount</th></tr></thead><tbody>
-        @for(line of d.invoice.lines;track $index){<tr><td>{{line.itemCode}}</td><td>{{line.description}}</td><td>{{line.quantity}}</td><td>{{line.unitPrice??(line.unitAmountMinor/100)}}</td><td>{{line.accountCode}}</td><td>{{line.taxType}}<small>{{money(line.taxAmountMinor??0,d.batch.snapshot.currency)}}</small></td><td>PENDING<br />{{d.batch.snapshot.advisorLabel}}</td><td>{{money(line.amountMinor,d.batch.snapshot.currency)}}</td></tr>}
+        @for(line of d.lineItems;track line.lineItemId||$index){<tr><td>{{line.itemCode||'—'}}</td><td class="line-description">{{line.description||'—'}}</td><td>{{line.quantity | number:'1.0-2'}}</td><td>{{invoiceMoney(line.unitAmount)}}</td><td>{{line.accountCode||'—'}}</td><td>{{line.taxType||'—'}}<small>{{invoiceMoney(line.taxAmount)}}</small></td><td>@for(item of line.tracking;track $index){<small>{{item.name}}: {{item.option}}</small>}</td><td>{{invoiceMoney(line.lineAmount)}}</td></tr>}
       </tbody></table></div>
-      <div class="invoice-totals"><div><span>Subtotal</span><strong>{{money(d.invoice.subtotalMinor??(d.invoice.totalMinor-d.invoice.conditionalFeeMinor),d.batch.snapshot.currency)}}</strong></div><div><span>Tax</span><strong>{{money(d.invoice.taxMinor??0,d.batch.snapshot.currency)}}</strong></div><div><span>Conditional transfer fee</span><strong>{{money(d.invoice.conditionalFeeMinor,d.batch.snapshot.currency)}}</strong></div></div>
-      @if(d.batch.snapshot.reviewNote){<p>Review note: {{d.batch.snapshot.reviewNote}}</p>}
-      @if(d.batch.exports[d.invoice.sequence];as receipt){@if(receipt.status==='created'){<p class="notice">Created in Xero{{receipt.invoiceNumber?' as '+receipt.invoiceNumber:''}}.</p>}@else if(receipt.status==='not_attempted'){<p class="notice">Xero setup needs attention. No invoice was sent; retry after the connection is fixed.</p>}@else{<p class="notice">Xero did not confirm that this invoice was created. Review its Xero outcome before retrying.</p>}}
+      @if(!d.lineItems.length){<p class="muted">No line item details are available in the synchronized record.</p>}
+      <div class="invoice-totals"><div><span>Subtotal</span><strong>{{invoiceMoney(invoiceSubtotal)}}</strong></div><div><span>Tax</span><strong>{{invoiceMoney(invoiceTax)}}</strong></div><div><span>Paid</span><strong>{{invoiceMoney(d.amountPaid)}}</strong></div><div><span>Due</span><strong>{{invoiceMoney(d.amountDue)}}</strong></div></div>
+      }
     </div>
-    <footer><strong class="grand-total">Total {{money(d.invoice.totalMinor,d.batch.snapshot.currency)}}</strong><div class="footer-actions"><button type="button" class="btn" (click)="close()" [disabled]="busy">Close</button></div></footer>
+    <footer><strong class="grand-total">Total {{invoiceMoney(detail?.total)}}</strong><div class="footer-actions"><button type="button" class="btn" (click)="close()">Close</button></div></footer>
   }@else{
     <form [formGroup]="form" (ngSubmit)="save()">
       <nav class="payment-tabs" aria-label="Invoice instalments">@for(payment of form.controls.invoices.controls;track payment;let i=$index){@if(!isCreatedSequence(payment.controls.sequence.value)){<button type="button" class="btn" [class.review]="isReviewSequence(payment.controls.sequence.value)" [attr.aria-current]="activePayment===i?'step':null" [disabled]="busy" (click)="activePayment=i">INV-{{payment.controls.sequence.value}}{{isReviewSequence(payment.controls.sequence.value)?' · Review':''}}</button>}}</nav>

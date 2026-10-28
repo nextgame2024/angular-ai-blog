@@ -22,6 +22,16 @@ describe('StudentOperationsService', () => {
   });
 
   afterEach(() => http.verify());
+  it('reads case-authorized invoice details from the cached workspace endpoint',()=>{
+    service.caseInvoiceDetail('case/id','connection/id','invoice/id').subscribe();
+    const request=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/invoices/connection%2Fid/invoice%2Fid'));
+    expect(request.request.method).toBe('GET');expect(request.request.headers.get('Authorization')).toBe('Token business-manager-token');request.flush({lineItems:[]});
+  });
+  it('resolves case invoice details without requiring connection metadata in a list row',()=>{
+    service.caseInvoiceDetail('case/id','','invoice/id').subscribe();
+    const request=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/invoices/invoice%2Fid'));
+    expect(request.request.method).toBe('GET');expect(request.request.headers.get('Authorization')).toBe('Token business-manager-token');request.flush({lineItems:[]});
+  });
   it('reads local invoice proposals and prepares them with authenticated idempotency, without provider paths',()=>{
     service.caseInvoiceDrafts('case/id').subscribe();const read=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/invoice-drafts'));expect(read.request.headers.get('Authorization')).toBe('Token business-manager-token');read.flush({batches:[],preparation:null});
     const value={offerId:'offer',caseVersion:1,invoices:[]};service.prepareCaseInvoiceDrafts('case/id',value,'draft-key').subscribe();const write=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/invoice-drafts'));expect(write.request.method).toBe('POST');expect(write.request.headers.get('Idempotency-Key')).toBe('draft-key');expect(write.request.body).toEqual(value);write.flush({batchId:'batch',count:8});

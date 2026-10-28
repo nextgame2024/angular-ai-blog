@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed,fakeAsync,tick } from '@angular/core/testing';
 import { of,Subject,throwError } from 'rxjs';
 import { CaseChecklistComponent } from './case-checklist.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
@@ -72,6 +72,17 @@ describe('CaseChecklistComponent',()=>{
     expect(rows[2].querySelector('.checklist-controls [aria-label="Needs review"]')).not.toBeNull();
     expect(rows[1].querySelector('.validation-icon')).toBeNull();
   });
+  it('shows an explicit invoice waiting state instead of pretending validation is running',()=>{
+    api.caseChecklist.and.returnValue(of({status:'pre_sale',items:items.map((i,n)=>({...i,automatic:true,validationState:n===1||n===3?'pending':'passed',hint:n===1||n===3?'Waiting for all reviewed invoices to be created.':'Confirmed.'}))}));
+    const f=setup();expect(f.nativeElement.textContent).not.toContain('Checking');expect(f.nativeElement.textContent).toContain('Waiting for all reviewed invoices');
+    expect(f.nativeElement.querySelectorAll('.validation-pending').length).toBe(2);
+    expect([...f.nativeElement.querySelectorAll('input')].every((input:any)=>input.disabled)).toBeTrue();
+  });
+  it('does not poll financial checks over time; changes trigger a single refresh',fakeAsync(()=>{
+    const f=setup();tick(60*60*1000);expect(api.caseChecklist).toHaveBeenCalledTimes(1);
+    f.componentRef.setInput('refreshToken',1);f.detectChanges();expect(api.caseChecklist).toHaveBeenCalledTimes(2);
+    tick(60*60*1000);expect(api.caseChecklist).toHaveBeenCalledTimes(2);f.destroy();
+  }));
   for(const width of [390,1440])for(const dark of [false,true])it(`fits accessible checklist controls at ${width}px, ${dark?'dark':'light'}`,()=>{
     const f=setup(),frame=document.createElement('iframe');frame.style.width=`${width}px`;document.body.appendChild(frame);
     try{
