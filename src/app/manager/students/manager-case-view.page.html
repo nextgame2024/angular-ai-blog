@@ -177,7 +177,7 @@
       <section class="card case-actions-card" aria-labelledby="next-actions-heading">
         <div class="card-heading"><div><h2 id="next-actions-heading">Next Actions</h2><p>Tasks for this case</p></div></div>
         <div class="action-scroll" role="region" aria-label="Next case actions" tabindex="0">
-          <app-case-checklist [caseId]="creationMode ? '' : item.caseId" [status]="item.status" [canManage]="canEditCases" [disabled]="editing || saving" [refreshToken]="checklistRefresh" (changed)="loadActivity(1)"></app-case-checklist>
+          <app-case-checklist [caseId]="creationMode ? '' : item.caseId" [status]="item.status" [canManage]="canEditCases" [disabled]="editing || saving" [refreshToken]="checklistRefresh" (changed)="loadActivity(1)" (workflowUpdated)="onInvoiceDraftsChanged()"></app-case-checklist>
         </div>
       </section>
 

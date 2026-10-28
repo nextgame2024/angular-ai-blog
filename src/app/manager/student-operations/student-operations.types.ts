@@ -276,6 +276,7 @@ export interface StudentCaseActivity {
 
 export interface StudentCaseChecklist {
   status: string;
+  progress?: {revision:string;backgroundPending:boolean};
   items: Array<{key:string;label:string;completed:boolean;recordVersion:number;updatedBy:string|null;updatedAt:string|null;automatic?:boolean;hint?:string;validationState?:'passed'|'needs_review'|'checking'|'missing'|'pending'}>;
 }
 

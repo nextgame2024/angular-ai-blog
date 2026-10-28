@@ -8,7 +8,7 @@ describe('CaseChecklistComponent',()=>{
     .map(([key,label])=>({key,label,completed:false,recordVersion:0,updatedBy:null,updatedAt:null}));
   let api:any;
   beforeEach(async()=>{
-    api={caseChecklist:jasmine.createSpy().and.returnValue(of({status:'pre_sale',items})),updateCaseChecklist:jasmine.createSpy()};
+    api={caseChecklist:jasmine.createSpy().and.returnValue(of({status:'pre_sale',items})),caseChecklistProgress:jasmine.createSpy(),updateCaseChecklist:jasmine.createSpy()};
     await TestBed.configureTestingModule({imports:[CaseChecklistComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(id='case-1',status='pre_sale',manage=true){
@@ -82,6 +82,39 @@ describe('CaseChecklistComponent',()=>{
     const f=setup();tick(60*60*1000);expect(api.caseChecklist).toHaveBeenCalledTimes(1);
     f.componentRef.setInput('refreshToken',1);f.detectChanges();expect(api.caseChecklist).toHaveBeenCalledTimes(2);
     tick(60*60*1000);expect(api.caseChecklist).toHaveBeenCalledTimes(2);f.destroy();
+  }));
+  it('observes only saved background status, refreshes completion once and then stops',fakeAsync(()=>{
+    spyOnProperty(document,'hidden','get').and.returnValue(false);
+    api.caseChecklist.and.returnValue(of({status:'pre_sale',items,progress:{revision:'pending',backgroundPending:true}}));
+    api.caseChecklistProgress.and.returnValue(of({revision:'finished',backgroundPending:false}));
+    const f=setup(),updated=spyOn(f.componentInstance.workflowUpdated,'emit');
+    api.caseChecklist.and.returnValue(of({status:'pre_sale',items:items.map(i=>({...i,completed:true})),progress:{revision:'finished',backgroundPending:false}}));
+    tick(5000);f.detectChanges();expect(f.componentInstance.complete).toBe(4);expect(updated).toHaveBeenCalledTimes(1);
+    expect(api.caseChecklistProgress).toHaveBeenCalledOnceWith('case-1');expect(api.caseChecklist).toHaveBeenCalledTimes(2);
+    tick(60*60*1000);expect(api.caseChecklistProgress).toHaveBeenCalledTimes(1);expect(api.caseChecklist).toHaveBeenCalledTimes(2);f.destroy();
+  }));
+  it('bounds status observation and exposes a manual refresh instead of polling indefinitely',fakeAsync(()=>{
+    spyOnProperty(document,'hidden','get').and.returnValue(false);
+    api.caseChecklist.and.returnValue(of({status:'pre_sale',items,progress:{revision:'pending',backgroundPending:true}}));
+    api.caseChecklistProgress.and.returnValue(of({revision:'pending',backgroundPending:true}));
+    const f=setup();tick(5*60*1000);f.detectChanges();expect(api.caseChecklistProgress).toHaveBeenCalledTimes(60);
+    expect(api.caseChecklist).toHaveBeenCalledTimes(1);expect(f.nativeElement.textContent).toContain('Refresh status');
+    tick(60*60*1000);expect(api.caseChecklistProgress).toHaveBeenCalledTimes(60);f.destroy();
+  }));
+  it('pauses hidden pages, cancels stale responses on navigation and stops after destruction',fakeAsync(()=>{
+    const hidden=spyOnProperty(document,'hidden','get').and.returnValue(true),response=new Subject<any>();
+    api.caseChecklist.and.returnValue(of({status:'pre_sale',items,progress:{revision:'pending',backgroundPending:true}}));
+    api.caseChecklistProgress.and.returnValue(response);const f=setup(),updated=spyOn(f.componentInstance.workflowUpdated,'emit');
+    tick(10000);expect(api.caseChecklistProgress).not.toHaveBeenCalled();hidden.and.returnValue(false);f.componentInstance.visibilityChanged();tick(5000);
+    expect(api.caseChecklistProgress).toHaveBeenCalledTimes(1);f.componentRef.setInput('caseId','');f.detectChanges();response.next({revision:'finished',backgroundPending:false});
+    expect(updated).not.toHaveBeenCalled();expect(f.componentInstance.complete).toBe(0);f.destroy();tick(60*60*1000);expect(api.caseChecklistProgress).toHaveBeenCalledTimes(1);
+  }));
+  it('stops on a status error without exposing details or blocking confirmed checklist rows',fakeAsync(()=>{
+    spyOnProperty(document,'hidden','get').and.returnValue(false);
+    api.caseChecklist.and.returnValue(of({status:'pre_sale',items,progress:{revision:'pending',backgroundPending:true}}));
+    api.caseChecklistProgress.and.returnValue(throwError(()=>new Error('private SQL detail')));const f=setup();tick(5000);f.detectChanges();
+    expect(f.componentInstance.failed).toBeFalse();expect(f.componentInstance.message).not.toContain('private');expect(f.nativeElement.textContent).toContain('Refresh status');
+    tick(60000);expect(api.caseChecklistProgress).toHaveBeenCalledTimes(1);f.destroy();
   }));
   for(const width of [390,1440])for(const dark of [false,true])it(`fits accessible checklist controls at ${width}px, ${dark?'dark':'light'}`,()=>{
     const f=setup(),frame=document.createElement('iframe');frame.style.width=`${width}px`;document.body.appendChild(frame);

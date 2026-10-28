@@ -5,6 +5,7 @@
     @if(!caseId){<p class="hint">Save the case to start its checklist.</p>}
     @if(loading || busy){<div class="loader"><app-manager-list-loader [label]="busy?'Saving checklist…':'Loading checklist…'" [overlay]="true"></app-manager-list-loader></div>}
     @if(failed){<button type="button" class="retry" (click)="load()">Reload checklist</button>}
+    @if(backgroundPaused){<p class="hint">Automatic status updates paused. <button type="button" class="retry" (click)="load()">Refresh status</button></p>}
     @for(item of items;track item.key){
       <label class="checklist-item" [class.completed]="item.completed">
         <span>{{item.label}}@if(item.automatic){<small>{{item.hint}}</small>}</span>

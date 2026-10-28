@@ -25,6 +25,20 @@ describe('CaseOfferReviewComponent',()=>{
     c.form.controls.reason.setValue('Reviewed source');c.save('confirmed');const value=api.reviewDocumentAnalysis.calls.mostRecent().args[2];
     expect(value.expectedCaseVersion).toBe(2);expect(value.collegeId).toBe('college');expect(value.corrections.campusAddress).toBe('Corrected campus');expect(value.corrections.instalments[0]).toEqual(source.instalments[0]);expect(value.corrections.statedTotalMinor).toBe(904000);expect(value.corrections.fees[1].conditional).toBeTrue();expect(value).not.toEqual(jasmine.objectContaining({feeApplies:jasmine.anything()}));
   });
+  it('groups student/college details in a card and keeps create/add/remove actions in their requested positions',()=>{
+    const f=setup({...result,offer:{...result.offer!,currentCollegeId:'college'}}),c=f.componentInstance;
+    const card=f.nativeElement.querySelector('fieldset.student-college') as HTMLElement;
+    expect(card.getAttribute('aria-labelledby')).toBe('student-college-heading-doc');
+    expect(card.querySelector('.detail-heading')!.textContent).toContain('Current case college: Example College');
+    expect(card.querySelector('.detail-heading button')!.textContent).toContain('Create college');
+    const labels=(selector:string)=>Array.from(f.nativeElement.querySelectorAll(`${selector}>label`)).map((label:any)=>label.firstChild.textContent.trim());
+    expect(labels('.details-fields')).toEqual(['Student name','College on the offer','Address / campus','ABN','CRICOS provider code','College for this case']);
+    expect(labels('.course-fields')).toEqual(['Name','Course code','Duration','Start date','End date']);
+    expect(card.querySelector('app-manager-address-autocomplete')).not.toBeNull();expect(card.querySelector('app-manager-select')).not.toBeNull();
+    (f.nativeElement.querySelector('.courses-heading button') as HTMLButtonElement).click();f.detectChanges();expect(c.form.controls.courses.length).toBe(2);
+    (f.nativeElement.querySelector('[aria-label="Remove course 2"]') as HTMLButtonElement).click();f.detectChanges();
+    expect(c.form.controls.courses.length).toBe(1);expect(c.form.controls.courses.at(0).controls.name.value).toBe('General English');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
+  });
   it('parses money exactly and rejects fractions of cents, negatives and exponent input',()=>{
     expect(offerMoneyInput('995.00')).toBe(99500);expect(offerMoneyInput('0.29')).toBe(29);for(const value of ['-25','2.555','1e3','NaN',''])expect(offerMoneyInput(value)).toBeNull();
   });
@@ -41,9 +55,25 @@ describe('CaseOfferReviewComponent',()=>{
     const f=setup(),c=f.componentInstance;c.selectTab('fees');f.detectChanges();
     const rows=f.nativeElement.querySelectorAll('.fee-entry');expect(rows.length).toBe(2);
     const first=rows[0].querySelector('[aria-label="Remove fee 1"]') as HTMLButtonElement;expect(first.querySelector('svg')).not.toBeNull();
-    expect(Array.from(rows[0].querySelectorAll('label')).map((l:any)=>l.textContent.trim())).toEqual(['Name','Amount','When it applies','Conditional fee']);
+    expect(Array.from(rows[0].querySelectorAll('label')).map((l:any)=>l.textContent.trim())).toEqual(['Fee','Amount','When it applies','Conditional fee']);
     c.busy=true;f.detectChanges();expect(first.disabled).toBeTrue();first.click();expect(c.form.controls.fees.length).toBe(2);
     c.busy=false;f.detectChanges();first.click();f.detectChanges();expect(c.form.controls.fees.length).toBe(1);expect(c.form.controls.fees.at(0).controls.label.value).toBe('International transfer');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
+  });
+  it('uses one compact fee-table header, preserves each extracted value and adds editable rows below it',()=>{
+    const names=['Enrolment fee','COE Issue Fee','Total Material Fee','Total Tuition Fee','International Fund Transfer (IFT) Fee','OSHC (if applicable & organised by ECC)'];
+    const fees=names.map((label,i)=>({label,amountMinor:i===0?20000:i===3?864000:0,conditional:i===4,condition:i===4?'International payments':null}));
+    const f=setup({...result,extraction:{...source,fees}}),c=f.componentInstance;c.selectTab('fees');f.detectChanges();
+    const table=f.nativeElement.querySelector('.fees-table') as HTMLTableElement;
+    expect(Array.from(table.querySelectorAll('th')).map(th=>th.textContent!.trim())).toEqual(['Fee','Amount','When it applies','Conditional fee','Action']);
+    expect(Array.from(table.querySelectorAll('th')).every(th=>th.scope==='col')).toBeTrue();
+    expect(table.querySelectorAll('tbody tr').length).toBe(6);expect(table.querySelector('legend')).toBeNull();
+    expect(Array.from(table.querySelectorAll<HTMLInputElement>('[formcontrolname="label"]')).map(input=>input.value)).toEqual(names);
+    expect((table.querySelector('[aria-label="Fee 1 amount"]') as HTMLInputElement).value).toBe('200.00');
+    expect((table.querySelector('[aria-label="Fee 5 is conditional"]') as HTMLInputElement).checked).toBeTrue();
+    expect(f.nativeElement.querySelector('.fee-summary').textContent).toContain('Whole-offer totals');
+    const add=Array.from(f.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(b=>b.textContent?.trim()==='+ Add fee')!;
+    expect(table.contains(add)).toBeFalse();add.click();f.detectChanges();expect(table.querySelectorAll('tbody tr').length).toBe(7);
+    expect(c.form.controls.fees.getRawValue().slice(0,6).map(fee=>fee.label)).toEqual(names);expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
   });
   it('does not confirm a superseded offer',()=>{
     const f=setup({...result,currentForType:false}),c=f.componentInstance;c.form.controls.reason.setValue('Historical offer');c.save('confirmed');
@@ -117,7 +147,7 @@ describe('CaseOfferReviewComponent',()=>{
     c.form.controls.collegeId.setValue('college');c.form.controls.total.setValue('bad');c.save('confirmed');expect(c.activeTab).toBe('fees');
     c.form.controls.total.setValue('9040.00');c.form.controls.instalments.at(0).controls.total.setValue('bad');c.save('confirmed');expect(c.activeTab).toBe('instalments');f.destroy();
   });
-  for(const width of [390,1440])for(const dark of [false,true])it(`fits offer fields at ${width}px in ${dark?'dark':'light'} mode`,()=>{
+  for(const width of [390,900,1440])for(const dark of [false,true])it(`fits offer fields at ${width}px in ${dark?'dark':'light'} mode`,()=>{
     const f=setup();const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
     try{const doc=frame.contentDocument!,win=frame.contentWindow!;document.querySelectorAll('style').forEach(s=>doc.head.appendChild(s.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';
       for(const tab of f.componentInstance.tabs){f.componentInstance.activeTab=tab.key;f.detectChanges();
@@ -125,10 +155,29 @@ describe('CaseOfferReviewComponent',()=>{
         expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth+1);for(const b of host.querySelectorAll<HTMLButtonElement>('button'))if(b.getBoundingClientRect().height)expect(b.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
         const scroll=host.querySelector('.offer-scroll')!;scroll.scrollTop=scroll.scrollHeight;
         const footer=host.querySelector('.offer-footer')!;expect(footer.getBoundingClientRect().bottom).toBeLessThanOrEqual(host.getBoundingClientRect().bottom+1);expect(footer.getBoundingClientRect().top).toBeGreaterThanOrEqual(host.getBoundingClientRect().top);
+        if(tab.key==='details'){
+          const columns=width===1440?3:width===900?2:1;
+          for(const selector of ['.details-fields','.course-fields']){
+            const grid=host.querySelector<HTMLElement>(selector)!,labels=Array.from(grid.querySelectorAll<HTMLElement>(':scope>label'));
+            expect(win.getComputedStyle(grid).gridTemplateColumns.split(' ').length).toBe(columns);
+            expect(grid.scrollWidth).toBeLessThanOrEqual(grid.clientWidth+1);
+            for(let i=1;i<columns;i++)expect(Math.abs(labels[i].getBoundingClientRect().top-labels[0].getBoundingClientRect().top)).toBeLessThan(2);
+            expect(labels[columns].getBoundingClientRect().top).toBeGreaterThanOrEqual(labels[0].getBoundingClientRect().bottom);
+          }
+          const card=host.querySelector<HTMLElement>('.student-college')!,course=host.querySelector<HTMLElement>('.course-entry')!;
+          expect(win.getComputedStyle(card).borderColor).toBe(win.getComputedStyle(course).borderColor);
+          expect(win.getComputedStyle(card.querySelector('.detail-heading')!).color).toBe(dark?'rgb(193, 208, 230)':'rgb(23, 32, 51)');
+          if(columns===3){
+            const date=course.querySelector<HTMLInputElement>('[formcontrolname="endsOn"]')!,remove=course.querySelector<HTMLElement>('.course-remove')!;
+            expect(Math.abs(date.getBoundingClientRect().bottom-remove.getBoundingClientRect().bottom)).toBeLessThan(2);
+          }
+        }
         if(tab.key==='fees'){
-          const row=host.querySelector('.fee-fields')!,remove=row.querySelector<HTMLButtonElement>('.fee-remove')!;
+          const row=host.querySelector('.fee-entry')!,remove=row.querySelector<HTMLButtonElement>('.fee-remove')!;
           expect(remove.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);expect(remove.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
           expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth+1);
+          expect(win.getComputedStyle(host.querySelector('.fees-table thead')!).display).toBe(width===390?'none':'table-header-group');
+          expect(win.getComputedStyle(row.querySelector('.fee-cell-label')!).display).toBe(width===390?'block':'none');
           if(width===1440){const inputs=Array.from(row.querySelectorAll('input:not([type="checkbox"])'));const top=inputs[0].getBoundingClientRect().top;for(const input of inputs)expect(Math.abs(input.getBoundingClientRect().top-top)).toBeLessThan(2);expect(Math.abs(remove.getBoundingClientRect().top-top)).toBeLessThan(2);}
           expect(win.getComputedStyle(remove).color).toBe(dark?'rgb(255, 173, 184)':'rgb(180, 56, 72)');
         }
@@ -137,7 +186,7 @@ describe('CaseOfferReviewComponent',()=>{
             const inputs=Array.from(row.querySelectorAll('input'));expect(inputs.length).toBe(5);
             expect(row.textContent).toContain('Conditional fee already included');expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth+1);
             if(width===1440){const top=inputs[0].getBoundingClientRect().top;for(const input of inputs)expect(Math.abs(input.getBoundingClientRect().top-top)).toBeLessThan(2);}
-            else{for(let i=1;i<inputs.length;i++)expect(inputs[i].getBoundingClientRect().top).toBeGreaterThan(inputs[i-1].getBoundingClientRect().bottom);}
+            else if(width===390){for(let i=1;i<inputs.length;i++)expect(inputs[i].getBoundingClientRect().top).toBeGreaterThan(inputs[i-1].getBoundingClientRect().bottom);}
           }
         }
         expect(win.getComputedStyle(host.querySelector('input')!).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(255, 255, 255)');host.remove();

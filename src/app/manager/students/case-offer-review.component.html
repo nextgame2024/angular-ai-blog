@@ -9,21 +9,23 @@
   <div class="offer-scroll">
     <fieldset [disabled]="busy">
       <section role="tabpanel" [id]="'offer-panel-'+documentId+'-details'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-details'" [hidden]="activeTab!=='details'">
-        <h3>Student & college</h3>
+        <fieldset class="entry student-college" [attr.aria-labelledby]="'student-college-heading-'+documentId">
+        <div class="detail-heading">
+          <div class="college-heading-text"><h3 [id]="'student-college-heading-'+documentId">Student & college</h3><p>Current case college: <strong>{{currentCollegeName}}</strong></p></div>
+          <button type="button" class="btn" (click)="beginCollege()" [disabled]="busy" [attr.aria-expanded]="creating">{{creating?'Edit new college':'+ Create college'}}</button>
+        </div>
         @if(analysis.offer?.resolution==='identifier_conflict'){<p class="notice">The college name matches, but its ABN differs. Check the original document and select the correct college.</p>}
         @if(analysis.offer?.resolution==='multiple_exact'){<p class="notice">Several colleges have this name. Select the correct college.</p>}
         @if(analysis.offer?.resolution==='partial'){<p>Possible matches: @for(c of analysis.offer?.candidates;track c.collegeId){<span>{{c.name}}; </span>}</p>}
         @if(analysis.offer?.resolution==='none'){<p>No matching college was found. Select an existing college or create one below.</p>}
-        <div class="fields">
+        <div class="fields details-fields">
           <label>Student name<input formControlName="name" [attr.aria-invalid]="form.controls.name.touched&&form.controls.name.invalid" /></label>
           <label>College on the offer<input formControlName="collegeName" [attr.aria-invalid]="form.controls.collegeName.touched&&form.controls.collegeName.invalid" /></label>
           <label>Address / campus<app-manager-address-autocomplete formControlName="campusAddress" placeholder="e.g. 16 Cook St, Mortdale NSW 2223" ariaLabel="Address or campus" /></label>
           <label>ABN<input formControlName="abn" /></label><label>CRICOS provider code<input formControlName="cricos" /></label>
+          <label>College for this case<app-manager-select formControlName="collegeId" [options]="collegeOptions" [searchable]="true" ariaLabel="College for this offer" placeholder="Select a college" [attr.aria-invalid]="form.controls.collegeId.touched&&form.controls.collegeId.invalid" /></label>
         </div>
-        <p>Current case college: <strong>{{currentCollegeName}}</strong></p>
-        <label>College for this case<app-manager-select formControlName="collegeId" [options]="collegeOptions" [searchable]="true" ariaLabel="College for this offer" placeholder="Select a college" [attr.aria-invalid]="form.controls.collegeId.touched&&form.controls.collegeId.invalid" /></label>
         @if(replacingCollege){<label class="checkbox"><input type="checkbox" formControlName="replaceCollege" />Replace the current case college with my selection.</label>}
-        <button type="button" class="btn" (click)="beginCollege()" [disabled]="busy" [attr.aria-expanded]="creating">{{creating?'Edit new college':'+ Create college'}}</button>
         @if(creating){
           <div [formGroup]="collegeForm" class="college-form"><h3>New college</h3><p>Add the College Details fields here. Sites and contacts can be added later in Colleges.</p>
             <div class="fields"><label>College name *<input formControlName="college_name" maxlength="200" [attr.aria-invalid]="collegeForm.controls.college_name.touched&&collegeForm.controls.college_name.invalid" /></label><label>Owner name<input formControlName="owner_name" maxlength="200" /></label><label>ABN<input formControlName="abn" maxlength="80" /></label><label>Notes<textarea formControlName="notes" maxlength="5000"></textarea></label></div>
@@ -33,26 +35,32 @@
             </div>
           </div>
         }
-        <h3>Courses</h3>
+        </fieldset>
+        <div class="detail-heading courses-heading"><h3>Courses</h3><button type="button" class="btn" (click)="addCourse()" [disabled]="busy||form.controls.courses.length>=30">+ Add course</button></div>
         <div formArrayName="courses" class="collection">@for(course of form.controls.courses.controls;track course;let i=$index){
-          <fieldset [formGroupName]="i" class="entry"><legend>Course {{i+1}}</legend><div class="fields">
+          <fieldset [formGroupName]="i" class="entry course-entry"><legend>Course {{i+1}}</legend><div class="fields course-fields">
             <label>Name<input formControlName="name" [attr.aria-invalid]="course.get('name')?.touched&&course.get('name')?.invalid" /></label><label>Course code<input formControlName="code" /></label>
-            <label>Start date<input type="date" formControlName="startsOn" /></label><label>End date<input type="date" formControlName="endsOn" /></label><label>Duration<input formControlName="duration" /></label>
-          </div><button type="button" class="btn danger" (click)="remove(form.controls.courses,i)" [disabled]="busy" [attr.aria-label]="'Remove course '+(i+1)">Remove</button></fieldset>
+            <label>Duration<input formControlName="duration" /></label><label>Start date<input type="date" formControlName="startsOn" /></label><label>End date<input type="date" formControlName="endsOn" /></label>
+            <button type="button" class="btn danger course-remove" (click)="remove(form.controls.courses,i)" [disabled]="busy" [attr.aria-label]="'Remove course '+(i+1)">Remove</button>
+          </div></fieldset>
         }</div>
-        <button type="button" class="btn" (click)="addCourse()" [disabled]="busy||form.controls.courses.length>=30">+ Add course</button>
       </section>
       <section role="tabpanel" [id]="'offer-panel-'+documentId+'-fees'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-fees'" [hidden]="activeTab!=='fees'">
         <h3>Fee details</h3><p>Keep the source amounts unchanged unless correcting an extraction. Conditional fees are selected later for each invoice.</p>
         <div class="fields"><label>Currency<input formControlName="currency" maxlength="3" /></label><label>Stated offer total<input formControlName="total" inputmode="decimal" [attr.aria-invalid]="form.controls.total.touched&&offerMoneyInput(form.controls.total.value)===null" /></label></div>
-        <div formArrayName="fees" class="collection">@for(fee of form.controls.fees.controls;track fee;let i=$index){
-          <fieldset [formGroupName]="i" class="entry fee-entry"><legend>Fee {{i+1}}</legend><div class="fee-fields">
-            <label class="fee-name">Name<input formControlName="label" /></label><label>Amount<input formControlName="amount" inputmode="decimal" /></label>
-            <label>When it applies<input formControlName="condition" /></label>
-            <label class="fee-conditional">Conditional fee<span class="conditional-toggle"><input type="checkbox" formControlName="conditional" /></span></label>
-            <button type="button" class="btn danger fee-remove" (click)="remove(form.controls.fees,i)" [disabled]="busy" [attr.aria-label]="'Remove fee '+(i+1)" [title]="'Remove fee '+(i+1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button>
-          </div></fieldset>
-        }</div>
+        <div class="fee-table-wrap"><table class="fees-table" aria-label="Offer fees">
+          <colgroup><col class="fee-name-column" /><col class="fee-amount-column" /><col class="fee-condition-column" /><col class="fee-conditional-column" /><col class="fee-action-column" /></colgroup>
+          <thead><tr><th scope="col">Fee</th><th scope="col">Amount</th><th scope="col">When it applies</th><th scope="col">Conditional fee</th><th scope="col">Action</th></tr></thead>
+          <tbody formArrayName="fees">@for(fee of form.controls.fees.controls;track fee;let i=$index){
+            <tr [formGroupName]="i" class="fee-entry">
+              <td class="fee-name-cell"><label><span class="fee-cell-label">Fee</span><input formControlName="label" [attr.aria-label]="'Fee '+(i+1)+' name'" /></label></td>
+              <td><label><span class="fee-cell-label">Amount</span><input class="fee-amount" formControlName="amount" inputmode="decimal" [attr.aria-label]="'Fee '+(i+1)+' amount'" /></label></td>
+              <td><label><span class="fee-cell-label">When it applies</span><input formControlName="condition" [attr.aria-label]="'When fee '+(i+1)+' applies'" /></label></td>
+              <td><label class="fee-conditional"><span class="fee-cell-label">Conditional fee</span><span class="conditional-toggle"><input type="checkbox" formControlName="conditional" [attr.aria-label]="'Fee '+(i+1)+' is conditional'" /></span></label></td>
+              <td class="fee-action-cell"><span class="fee-cell-label">Action</span><button type="button" class="btn danger fee-remove" (click)="remove(form.controls.fees,i)" [disabled]="busy" [attr.aria-label]="'Remove fee '+(i+1)" [title]="'Remove fee '+(i+1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button></td>
+            </tr>
+          }</tbody>
+        </table></div>
         <button type="button" class="btn" (click)="addFee()" [disabled]="busy||form.controls.fees.length>=100">+ Add fee</button>
         <div class="totals fee-summary">
           <h4>Whole-offer totals</h4>

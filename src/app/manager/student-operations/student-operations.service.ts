@@ -41,6 +41,9 @@ export class StudentOperationsService {
   caseChecklist(caseId:string): Observable<StudentCaseChecklist> {
     return this.http.get<StudentCaseChecklist>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/checklist`,{headers:this.headers()});
   }
+  caseChecklistProgress(caseId:string): Observable<{revision:string;backgroundPending:boolean}> {
+    return this.http.get<{revision:string;backgroundPending:boolean}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/checklist/progress`,{headers:this.headers()});
+  }
   updateCaseChecklist(caseId:string,value:{itemKey:string;completed:boolean;recordVersion:number},key:string): Observable<StudentCaseChecklist> {
     return this.http.patch<StudentCaseChecklist>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/checklist`,value,{headers:this.writeHeaders(key)});
   }

@@ -4,6 +4,8 @@ import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import type { StudentCaseDetail } from '../student-operations/student-operations.types';
 import { ManagerCaseViewPageComponent } from './manager-case-view.page';
+import {By} from '@angular/platform-browser';
+import {CaseChecklistComponent} from './case-checklist.component';
 
 describe('ManagerCaseViewPageComponent', () => {
   const params = new BehaviorSubject(convertToParamMap({ caseId: 'case-1' }));
@@ -128,6 +130,17 @@ describe('ManagerCaseViewPageComponent', () => {
     c.onInvoiceDraftsChanged();fixture.detectChanges();
     expect(c.case?.currentStage).toBe('awaiting_payment');expect(c.case?.status).toBe('pre_sale');expect(c.checklistRefresh).toBeGreaterThan(before);
     expect(fixture.nativeElement.querySelector('.current')?.textContent).toContain('Awaiting Payment');
+  });
+  it('refreshes the case stage, invoices and activity when background checklist completion arrives',()=>{
+    api.caseDetail.and.returnValue(of({...detail,status:'pre_sale',currentStage:'checklist_complete'}));
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();
+    const checklist=f.debugElement.query(By.directive(CaseChecklistComponent)).componentInstance as CaseChecklistComponent;
+    const activity=api.caseActivity.calls.count(),invoices=api.caseInvoices.calls.count();
+    api.caseDetail.and.returnValue(of({...detail,status:'pre_sale',currentStage:'awaiting_payment'}));
+    checklist.workflowUpdated.emit();f.detectChanges();
+    expect(f.componentInstance.case?.currentStage).toBe('awaiting_payment');expect(f.componentInstance.case?.status).toBe('pre_sale');
+    expect(api.caseActivity.calls.count()).toBe(activity+1);expect(api.caseInvoices.calls.count()).toBe(invoices+1);
+    expect(f.nativeElement.querySelector('.current').textContent).toContain('Awaiting Payment');f.destroy();
   });
 
   it('opens Add student as a completely unsaved form without loading case records or allocating IDs', () => {

@@ -6,6 +6,10 @@
 .offer-scroll{min-height:0;overflow:auto;flex:1;padding:1rem 1.25rem;scrollbar-width:thin;scrollbar-color:#91b9d1 #edf4fa;overscroll-behavior:contain}
 fieldset{min-width:0;border:0;padding:0;margin:0}section[role=tabpanel]{display:grid;gap:.85rem}section[hidden]{display:none!important}
 .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.payment-fields{grid-template-columns:repeat(5,minmax(0,1fr));align-items:end}
+.details-fields,.course-fields{grid-template-columns:repeat(3,minmax(0,1fr));align-items:end}
+.detail-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.65rem 1rem;min-width:0;color:#172033}
+.college-heading-text{display:flex;align-items:baseline;flex-wrap:wrap;gap:.35rem .75rem;min-width:0;flex:1}
+.detail-heading>.btn{flex:none;margin-left:auto}.course-remove{align-self:end}
 label{display:grid;gap:.3rem;min-width:0;color:#425675;font-size:.8rem;font-weight:600}
 input,textarea{width:100%;min-width:0;min-height:44px;padding:.6rem;border:1px solid #cbd8e6;border-radius:.5rem;background:#fff;color:#172033;font:inherit;font-weight:400}
 input.ng-invalid.ng-touched,textarea.ng-invalid.ng-touched,input[aria-invalid=true],textarea[aria-invalid=true],app-manager-select[aria-invalid=true]{border:1px solid #dc3545;border-radius:.5rem}
@@ -18,7 +22,12 @@ h3{font-size:.95rem;margin:0;font-weight:800}p{font-size:.8rem;line-height:1.5;o
 .notice{color:#9c4b12}.totals{padding:.75rem;background:#eff8f8;border-radius:.5rem}.evidence{overflow-wrap:anywhere;background:#f5f8fb;padding:.85rem;border-radius:.5rem}.evidence p+p{margin-top:.6rem}
 .college-form{display:grid;gap:.8rem;padding:1rem;border:1px solid #c8d9ed;border-radius:.6rem}
 .row-actions{display:flex;align-items:center;flex-wrap:wrap;gap:.5rem}
-.fee-fields{display:grid;grid-template-columns:minmax(0,2fr) minmax(6.5rem,.75fr) minmax(0,1.7fr) minmax(8rem,1fr) 44px;align-items:end;gap:.75rem}
+.fee-table-wrap{min-width:0;overflow:hidden;border:1px solid #dbe5f0;border-radius:.65rem}
+.fees-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:.8rem}
+.fee-name-column{width:35%}.fee-amount-column{width:13%}.fee-condition-column{width:28%}.fee-conditional-column{width:16%}.fee-action-column{width:4rem}
+.fees-table th,.fees-table td{text-align:left;padding:.45rem .5rem;border-bottom:1px solid #dbe5f0;vertical-align:middle;color:#425675}
+.fees-table th{background:#f5f8fb;font-size:.75rem;font-weight:700}.fees-table tbody tr:last-child td{border-bottom:0}
+.fee-cell-label{display:none}.fee-amount{text-align:right}.fees-table .fee-action-cell{text-align:center}
 .fee-remove{width:44px;padding:0}.fee-remove svg{width:18px;height:18px;flex:none}
 .conditional-toggle{display:flex;align-items:center;min-height:44px}.conditional-toggle input{width:20px;min-height:20px;accent-color:#0ca88b}
 .fee-summary{display:grid;gap:.6rem}.fee-summary h4{margin:0;font-size:.85rem}.fee-summary h4:not(:first-child){margin-top:.4rem}
@@ -29,14 +38,19 @@ h3{font-size:.95rem;margin:0;font-weight:800}p{font-size:.8rem;line-height:1.5;o
 .college-actions{display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-width:0}.college-actions p{flex:1;min-width:0}.college-actions .row-actions{justify-content:flex-end}
 button:focus-visible,input:focus-visible,textarea:focus-visible,.evidence:focus-visible{outline:2px solid #0eac9e;outline-offset:2px}
 :host-context(html.dark) label,:host-context(html.dark) .tab,:host-context(html.dark) .offer-footer>span{color:#c1d0e6}
+:host-context(html.dark) .detail-heading{color:#c1d0e6}
 :host-context(html.dark) input,:host-context(html.dark) textarea,:host-context(html.dark) .btn{background:#263449;color:#c1d0e6;border-color:#4a6180}
 :host-context(html.dark) .entry,:host-context(html.dark) .college-form,:host-context(html.dark) .form-tabs,:host-context(html.dark) .offer-footer{border-color:#4a6180}
 :host-context(html.dark) .form-tabs,:host-context(html.dark) .evidence,:host-context(html.dark) .totals{background:#263449}
 :host-context(html.dark) .offer-footer{background:#1e293b}:host-context(html.dark) .tab.active{color:#62dcbf}
 :host-context(html.dark) .btn.primary{background:#0ca88b;color:#fff}:host-context(html.dark) .btn.danger{color:#ffadb8}:host-context(html.dark) .notice{color:#f6c086}
 :host-context(html.dark) .offer-scroll{scrollbar-color:#52748e #263449}
+:host-context(html.dark) .fee-table-wrap,:host-context(html.dark) .fees-table td,:host-context(html.dark) .fees-table th{border-color:#4a6180;color:#c1d0e6}
+:host-context(html.dark) .fees-table th{background:#263449}
 @media(max-width:720px){.form-tabs{padding:.4rem .75rem 0}.tab{flex:1 1 40%;padding:.5rem;font-size:.75rem}.offer-scroll{padding:.85rem}.fields,.payment-fields,.component-fields{grid-template-columns:minmax(0,1fr)}.entry,.college-form{padding:.75rem}.offer-footer{padding:.75rem;flex-wrap:wrap}.offer-footer>span{display:none}.offer-footer>.row-actions{width:100%}.offer-footer .btn{flex:1}}
-@media(max-width:1000px){.fee-fields{grid-template-columns:repeat(2,minmax(0,1fr))}.fee-name{grid-column:1/-1}.fee-remove{justify-self:end}}
-@media(max-width:600px){.fee-fields{grid-template-columns:minmax(0,1fr)}.fee-name{grid-column:auto}.fee-summary dl>div{flex-wrap:wrap;gap:.1rem .5rem}.fee-summary dd{text-align:left}}
+@media(max-width:720px){.fee-table-wrap{border:0;overflow:visible}.fees-table,.fees-table tbody,.fees-table tr,.fees-table td{display:block;width:100%}.fees-table colgroup,.fees-table thead{display:none}.fees-table tbody{display:grid;gap:.75rem}.fees-table .fee-entry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;padding:.75rem;border:1px solid #dbe5f0;border-radius:.65rem}.fees-table td{padding:0;border:0;min-width:0}.fee-name-cell{grid-column:1/-1}.fee-cell-label{display:block;font-size:.8rem;font-weight:600;text-align:left}.fee-action-cell{display:grid!important;align-content:end;justify-items:start;gap:.3rem}.fee-amount{text-align:left}:host-context(html.dark) .fees-table .fee-entry{border-color:#4a6180}}
+@media(max-width:480px){.fees-table .fee-entry{grid-template-columns:minmax(0,1fr)}.fee-name-cell{grid-column:auto}}
+@media(max-width:600px){.fee-summary dl>div{flex-wrap:wrap;gap:.1rem .5rem}.fee-summary dd{text-align:left}}
 @media(min-width:721px) and (max-width:1000px){.payment-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:721px) and (max-width:1000px){.details-fields,.course-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.college-actions{flex-direction:column;align-items:stretch;gap:.5rem}.college-actions .row-actions{width:100%}}

@@ -59,6 +59,11 @@ describe('StudentOperationsService', () => {
     expect(write.request.method).toBe('PATCH');expect(write.request.body).toEqual(value);expect(write.request.headers.get('Idempotency-Key')).toBe('checklist-key');
     expect(write.request.headers.get('Authorization')).toBe('Token business-manager-token');write.flush({status:'pre_sale',items:[]});
   });
+  it('observes saved checklist progress with authentication and no client tenant or mutation',()=>{
+    service.caseChecklistProgress('case/id').subscribe();const read=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/checklist/progress'));
+    expect(read.request.method).toBe('GET');expect(read.request.headers.get('Authorization')).toBe('Token business-manager-token');expect(read.request.params.keys()).toEqual([]);
+    read.flush({revision:'complete',backgroundPending:false});
+  });
 
   it('uses authenticated metadata requests and never sends a client company for document types',()=>{
     service.documentTypes().subscribe();const list=http.expectOne(r=>r.url.endsWith('/cases/document-types'));expect(list.request.headers.get('Authorization')).toBe('Token business-manager-token');list.flush({types:[]});
