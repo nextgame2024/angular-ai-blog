@@ -35,6 +35,11 @@ describe('CaseOfferReviewComponent',()=>{
     expect(labels('.details-fields')).toEqual(['Student name','College on the offer','Address / campus','ABN','CRICOS provider code','College for this case']);
     expect(labels('.course-fields')).toEqual(['Name','Course code','Duration','Start date','End date']);
     expect(card.querySelector('app-manager-address-autocomplete')).not.toBeNull();expect(card.querySelector('app-manager-select')).not.toBeNull();
+    const courses=f.nativeElement.querySelector('fieldset.courses-card') as HTMLElement;
+    expect(courses.getAttribute('aria-labelledby')).toBe('courses-heading-doc');
+    expect(courses.querySelector('.courses-heading h3')!.textContent).toBe('Courses');
+    expect(courses.querySelector('.courses-heading button')!.textContent).toContain('Add course');
+    expect(courses.querySelector('.course-entry')).not.toBeNull();
     (f.nativeElement.querySelector('.courses-heading button') as HTMLButtonElement).click();f.detectChanges();expect(c.form.controls.courses.length).toBe(2);
     (f.nativeElement.querySelector('[aria-label="Remove course 2"]') as HTMLButtonElement).click();f.detectChanges();
     expect(c.form.controls.courses.length).toBe(1);expect(c.form.controls.courses.at(0).controls.name.value).toBe('General English');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
@@ -165,6 +170,10 @@ describe('CaseOfferReviewComponent',()=>{
             expect(labels[columns].getBoundingClientRect().top).toBeGreaterThanOrEqual(labels[0].getBoundingClientRect().bottom);
           }
           const card=host.querySelector<HTMLElement>('.student-college')!,course=host.querySelector<HTMLElement>('.course-entry')!;
+          const courses=host.querySelector<HTMLElement>('.courses-card')!;
+          expect(win.getComputedStyle(courses).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+          expect(win.getComputedStyle(course).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(248, 250, 252)');
+          expect(win.getComputedStyle(courses).borderColor).toBe(win.getComputedStyle(card).borderColor);
           expect(win.getComputedStyle(card).borderColor).toBe(win.getComputedStyle(course).borderColor);
           expect(win.getComputedStyle(card.querySelector('.detail-heading')!).color).toBe(dark?'rgb(193, 208, 230)':'rgb(23, 32, 51)');
           if(columns===3){
@@ -182,6 +191,10 @@ describe('CaseOfferReviewComponent',()=>{
           expect(win.getComputedStyle(remove).color).toBe(dark?'rgb(255, 173, 184)':'rgb(180, 56, 72)');
         }
         if(tab.key==='instalments'){
+          for(const payment of host.querySelectorAll('.payment-entry')){
+            expect(win.getComputedStyle(payment).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(248, 250, 252)');
+            expect(win.getComputedStyle(payment.querySelector('input')!).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(255, 255, 255)');
+          }
           for(const row of host.querySelectorAll('.payment-fields')){
             const inputs=Array.from(row.querySelectorAll('input'));expect(inputs.length).toBe(5);
             expect(row.textContent).toContain('Conditional fee already included');expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth+1);

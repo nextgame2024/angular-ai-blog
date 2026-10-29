@@ -50,6 +50,8 @@ export class ManagerStudentsPageComponent implements OnInit, OnDestroy {
     { value: '', label: 'All status' },
     { value: 'pre_sale', label: 'Pre-sale' },
     { value: 'in_progress', label: 'In progress' },
+    { value: 'awaiting_payment', label: 'Awaiting Payment' },
+    { value: 'payment_received', label: 'Payment Received' },
     { value: 'on_hold', label: 'On hold' },
     { value: 'payment_overdue', label: 'Payment overdue' },
     { value: 'collections', label: 'In collections' },

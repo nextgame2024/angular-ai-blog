@@ -36,7 +36,8 @@
           </div>
         }
         </fieldset>
-        <div class="detail-heading courses-heading"><h3>Courses</h3><button type="button" class="btn" (click)="addCourse()" [disabled]="busy||form.controls.courses.length>=30">+ Add course</button></div>
+        <fieldset class="entry courses-card" [attr.aria-labelledby]="'courses-heading-'+documentId">
+        <div class="detail-heading courses-heading"><h3 [id]="'courses-heading-'+documentId">Courses</h3><button type="button" class="btn" (click)="addCourse()" [disabled]="busy||form.controls.courses.length>=30">+ Add course</button></div>
         <div formArrayName="courses" class="collection">@for(course of form.controls.courses.controls;track course;let i=$index){
           <fieldset [formGroupName]="i" class="entry course-entry"><legend>Course {{i+1}}</legend><div class="fields course-fields">
             <label>Name<input formControlName="name" [attr.aria-invalid]="course.get('name')?.touched&&course.get('name')?.invalid" /></label><label>Course code<input formControlName="code" /></label>
@@ -44,6 +45,7 @@
             <button type="button" class="btn danger course-remove" (click)="remove(form.controls.courses,i)" [disabled]="busy" [attr.aria-label]="'Remove course '+(i+1)">Remove</button>
           </div></fieldset>
         }</div>
+        </fieldset>
       </section>
       <section role="tabpanel" [id]="'offer-panel-'+documentId+'-fees'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-fees'" [hidden]="activeTab!=='fees'">
         <h3>Fee details</h3><p>Keep the source amounts unchanged unless correcting an extraction. Conditional fees are selected later for each invoice.</p>
@@ -73,7 +75,7 @@
       <section role="tabpanel" [id]="'offer-panel-'+documentId+'-instalments'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-instalments'" [hidden]="activeTab!=='instalments'">
         <h3>Instalment schedule</h3><p>Keep payment terms such as “Immediately” when the offer does not give a calendar date.</p>
         <div formArrayName="instalments" class="collection">@for(payment of form.controls.instalments.controls;track payment;let i=$index){
-          <fieldset [formGroupName]="i" class="entry"><legend>Payment {{i+1}}</legend><div class="fields payment-fields">
+          <fieldset [formGroupName]="i" class="entry payment-entry"><legend>Payment {{i+1}}</legend><div class="fields payment-fields">
             <label>Instalment number<input formControlName="sequence" inputmode="numeric" /></label><label>Due date<input type="date" formControlName="dueOn" /></label><label>Payment term<input formControlName="dueTerm" placeholder="e.g. Immediately" /></label>
             <label>Printed payment total<input formControlName="total" inputmode="decimal" /></label><label>Conditional fee already included<input formControlName="includedFee" inputmode="decimal" /></label>
           </div>

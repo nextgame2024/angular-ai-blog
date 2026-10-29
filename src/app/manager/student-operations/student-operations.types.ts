@@ -134,7 +134,7 @@ export interface StudentRegisterResult {
   };
 }
 
-export type StudentCaseStatus = 'pre_sale' | 'on_hold' | 'in_progress' | 'payment_overdue' | 'collections' | 'payment_done' | 'closed' | 'cancelled';
+export type StudentCaseStatus = 'pre_sale' | 'on_hold' | 'in_progress' | 'awaiting_payment' | 'payment_received' | 'payment_overdue' | 'collections' | 'payment_done' | 'closed' | 'cancelled';
 
 export interface StudentCaseDetail {
   caseId: string;

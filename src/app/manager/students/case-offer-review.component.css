@@ -15,6 +15,7 @@ input,textarea{width:100%;min-width:0;min-height:44px;padding:.6rem;border:1px s
 input.ng-invalid.ng-touched,textarea.ng-invalid.ng-touched,input[aria-invalid=true],textarea[aria-invalid=true],app-manager-select[aria-invalid=true]{border:1px solid #dc3545;border-radius:.5rem}
 h3{font-size:.95rem;margin:0;font-weight:800}p{font-size:.8rem;line-height:1.5;overflow-wrap:anywhere;margin:0}
 .collection,.components{display:grid;gap:.85rem}.entry{display:grid;gap:.75rem;padding:1rem;border:1px solid #dbe5f0;border-radius:.65rem}.entry legend{padding:0 .35rem;font-size:.8rem;font-weight:700}
+.payment-entry,.course-entry{background-color:#f8fafc}
 .component-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.65fr) auto;align-items:end;gap:.65rem}
 .checkbox{display:flex;align-items:center;gap:.5rem;min-height:44px}.checkbox input{width:20px;min-height:20px;flex:none;accent-color:#0ca88b}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;min-height:44px;padding:.5rem .8rem;border:1px solid #c8d9ed;border-radius:.5rem;background:#fff;color:#3866d5;font:inherit;font-size:.75rem;font-weight:700;cursor:pointer;justify-self:start}
@@ -45,6 +46,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,.evidence:focus-
 :host-context(html.dark) .offer-footer{background:#1e293b}:host-context(html.dark) .tab.active{color:#62dcbf}
 :host-context(html.dark) .btn.primary{background:#0ca88b;color:#fff}:host-context(html.dark) .btn.danger{color:#ffadb8}:host-context(html.dark) .notice{color:#f6c086}
 :host-context(html.dark) .offer-scroll{scrollbar-color:#52748e #263449}
+:host-context(html.dark) .payment-entry,:host-context(html.dark) .course-entry{background-color:#263449}
 :host-context(html.dark) .fee-table-wrap,:host-context(html.dark) .fees-table td,:host-context(html.dark) .fees-table th{border-color:#4a6180;color:#c1d0e6}
 :host-context(html.dark) .fees-table th{background:#263449}
 @media(max-width:720px){.form-tabs{padding:.4rem .75rem 0}.tab{flex:1 1 40%;padding:.5rem;font-size:.75rem}.offer-scroll{padding:.85rem}.fields,.payment-fields,.component-fields{grid-template-columns:minmax(0,1fr)}.entry,.college-form{padding:.75rem}.offer-footer{padding:.75rem;flex-wrap:wrap}.offer-footer>span{display:none}.offer-footer>.row-actions{width:100%}.offer-footer .btn{flex:1}}

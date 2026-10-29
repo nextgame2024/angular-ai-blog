@@ -29,7 +29,7 @@ describe('ManagerCaseViewPageComponent', () => {
     workspace: jasmine.createSpy().and.returnValue(of({ role: 'chief_executive' })),
     caseDetail: jasmine.createSpy().and.returnValue(of(detail)),
     caseEditOptions: jasmine.createSpy().and.returnValue(of({ advisors: [{ advisorId: 'advisor-1', code: 'S15', name: 'Advisor Name', xeroLabel: 'S15 Advisor Name' }], colleges: [{ collegeId: 'college-1', name: 'ECA College' }] })),
-    caseWorkflowOptions: jasmine.createSpy().and.returnValue(of({ statuses: ['in_progress', 'pre_sale', 'on_hold'], stages: ['documents_requested', 'awaiting_payment', 'payment_received'], allowedStatuses: { imported_pending_review: ['in_progress'], documents_requested: ['pre_sale'], awaiting_payment: ['pre_sale', 'on_hold'], payment_received: ['in_progress'] } })),
+    caseWorkflowOptions: jasmine.createSpy().and.returnValue(of({ statuses: ['in_progress', 'pre_sale', 'on_hold', 'awaiting_payment', 'payment_received'], stages: ['documents_requested', 'awaiting_payment', 'payment_monitoring'], allowedStatuses: { imported_pending_review: ['in_progress'], documents_requested: ['pre_sale'], awaiting_payment: ['pre_sale', 'on_hold'], payment_monitoring: ['awaiting_payment','payment_received'] } })),
     updateCase: jasmine.createSpy().and.returnValue(of({ caseId: 'case-1', recordVersion: 2 })),
     createCase: jasmine.createSpy(),
     createStudentWithCase: jasmine.createSpy(),
@@ -649,6 +649,19 @@ describe('ManagerCaseViewPageComponent', () => {
     fixture.detectChanges();
     expect((fixture.nativeElement as HTMLElement).querySelector('app-manager-toast .toast[role="alert"]')).not.toBeNull();
   });
+  it('removes retired progress steps and puts both new statuses under Payment Monitoring only',()=>{
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();const c=f.componentInstance;
+    expect(c.workflowStages.map(stage=>stage.value)).not.toContain('payment_received');
+    expect(c.workflowStages.map(stage=>stage.value)).not.toContain('invoices_created');
+    const progress=f.nativeElement.querySelector('.stage-list') as HTMLElement;
+    expect(progress.textContent).not.toContain('Invoices Created');expect(progress.textContent).not.toContain('Payment Received');
+    c.beginEdit('case-1');f.detectChanges();c.editForm.controls.status.setValue('in_progress');
+    expect(c.stageOptions.map(stage=>stage.value)).toEqual(['imported_pending_review']);
+    for(const status of ['awaiting_payment','payment_received']){
+      c.editForm.controls.status.setValue(status);expect(c.stageOptions.map(stage=>stage.value)).toEqual(['payment_monitoring']);
+    }
+    expect(c.statusLabel('payment_received')).toBe('Payment Received');expect(c.statusLabel('awaiting_payment')).toBe('Awaiting Payment');f.destroy();
+  });
 
   it('opens a fetched PDF in a new tab with its preview MIME type', () => {
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
@@ -721,12 +734,12 @@ describe('ManagerCaseViewPageComponent', () => {
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
     const steps = [...root.querySelectorAll('.stage-list li')] as HTMLElement[];
-    expect(steps).toHaveSize(8);
+    expect(steps).toHaveSize(6);
     expect(steps[0].textContent).toContain('Imported — Pending Review');
     expect(steps[0].classList.contains('current')).toBeTrue();
     expect(steps[0].getAttribute('aria-current')).toBe('step');
     expect(steps.slice(1).every(step => !step.classList.contains('current'))).toBeTrue();
-    expect(steps[7].textContent).toContain('Payments Complete');
+    expect(steps[5].textContent).toContain('Payments Complete');
     const stageList = root.querySelector('.stage-list') as HTMLElement;
     expect(getComputedStyle(stageList).flexWrap).toBe('nowrap');
     expect(getComputedStyle(stageList).overflowX).toBe('auto');
@@ -737,7 +750,7 @@ describe('ManagerCaseViewPageComponent', () => {
     const normal = TestBed.createComponent(ManagerCaseViewPageComponent);
     normal.detectChanges();
     const normalSteps = [...normal.nativeElement.querySelectorAll('.stage-list li')] as HTMLElement[];
-    expect(normalSteps).toHaveSize(7);
+    expect(normalSteps).toHaveSize(5);
     expect(normalSteps.map(step => step.textContent).join(' ')).not.toContain('Imported — Pending Review');
     expect(normalSteps[2].classList.contains('current')).toBeTrue();
     expect(normal.nativeElement.textContent).toContain('Pre-sale');
@@ -751,7 +764,7 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelector('.student-identifiers')?.textContent).not.toContain('Not recorded');
   });
 
-  it('fits all eight timeline steps on desktop and scrolls one row on mobile', () => {
+  it('fits the six current timeline steps on desktop and scrolls one row on mobile', () => {
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
@@ -761,7 +774,7 @@ describe('ManagerCaseViewPageComponent', () => {
     root.style.width = '390px';
     const steps = [...list.querySelectorAll('li')] as HTMLElement[];
     expect(list.scrollWidth).toBeGreaterThan(list.clientWidth);
-    expect(steps[0].getBoundingClientRect().top).toBe(steps[7].getBoundingClientRect().top);
+    expect(steps[0].getBoundingClientRect().top).toBe(steps[5].getBoundingClientRect().top);
   });
 
   it('keeps long invoice lists inside a scrollable card with a visible table header', () => {
