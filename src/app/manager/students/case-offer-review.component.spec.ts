@@ -6,6 +6,7 @@ import { ManagerCollegesService } from '../services/manager.colleges.service';
 import { TownPlannerV2Service } from '../../townplanner/services/townplanner_v2.service';
 import type { StudentDocumentAnalysis,StudentOfferExtraction } from '../student-operations/student-operations.types';
 const source:StudentOfferExtraction={kind:'letter_of_offer',studentName:'Example Student',collegeName:'Example College',campusAddress:'16 Cook St, MORTDALE, NSW, 2223',abn:null,cricosProviderCode:'03829G',currency:'AUD',statedTotalMinor:904000,evidence:[{page:2,quote:'Grand total $9040'}],issues:[],
+  studentSigned:true,studentSignerName:'Example Student',studentSignedOn:'2026-09-16',collegeSigned:true,
   courses:[{name:'General English',code:'116682E',startsOn:'2027-01-25',endsOn:'2028-03-19',duration:'60 weeks'}],
   fees:[{label:'Tuition and materials',amountMinor:904000,conditional:false,condition:null},{label:'International transfer',amountMinor:2500,conditional:true,condition:'International payments only'}],
   instalments:[{sequence:1,dueTerm:'Immediately',dueOn:null,totalMinor:99500,includedConditionalFeeMinor:2500,components:[{label:'Material',amountMinor:5000},{label:'Tuition',amountMinor:72000}]},{sequence:2,dueTerm:null,dueOn:'2028-01-31',totalMinor:807000,includedConditionalFeeMinor:0,components:[]}]};
@@ -43,6 +44,13 @@ describe('CaseOfferReviewComponent',()=>{
     (f.nativeElement.querySelector('.courses-heading button') as HTMLButtonElement).click();f.detectChanges();expect(c.form.controls.courses.length).toBe(2);
     (f.nativeElement.querySelector('[aria-label="Remove course 2"]') as HTMLButtonElement).click();f.detectChanges();
     expect(c.form.controls.courses.length).toBe(1);expect(c.form.controls.courses.at(0).controls.name.value).toBe('General English');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
+  });
+  it('requires and preserves the Letter of Offer student signature review',()=>{
+    const f=setup(),c=f.componentInstance;c.selectTab('details');f.detectChanges();
+    expect((f.nativeElement.querySelector('[formcontrolname="studentSigned"]') as HTMLInputElement).checked).toBeTrue();expect((f.nativeElement.querySelector('[formcontrolname="studentSignerName"]') as HTMLInputElement).value).toBe('Example Student');expect(f.nativeElement.textContent).toContain('College countersignature: Present');
+    c.form.controls.studentSigned.setValue(false);c.save('confirmed');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();expect(c.activeTab).toBe('details');
+    c.form.controls.studentSigned.setValue(true);c.form.controls.reason.setValue('Signature checked');c.save('confirmed');const corrections=api.reviewDocumentAnalysis.calls.mostRecent().args[2].corrections;
+    expect(corrections).toEqual(jasmine.objectContaining({studentSigned:true,studentSignerName:'Example Student',studentSignedOn:'2026-09-16',collegeSigned:true}));
   });
   it('parses money exactly and rejects fractions of cents, negatives and exponent input',()=>{
     expect(offerMoneyInput('995.00')).toBe(99500);expect(offerMoneyInput('0.29')).toBe(29);for(const value of ['-25','2.555','1e3','NaN',''])expect(offerMoneyInput(value)).toBeNull();

@@ -7,13 +7,13 @@
 <dialog #modal aria-labelledby="document-modal-title" (cancel)="close($event)" [attr.aria-busy]="busy || loading">
   @if(isOpen){
   @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''"></app-manager-toast>}
-  <header><div><h2 id="document-modal-title">{{mode==='types'?'Manage document types':'Upload document'}}</h2><p>{{mode==='types'?'Manage the document types available to your company.':'Choose a document type and file to add to this case. Document storage is prepared automatically.'}}</p></div><button type="button" class="btn icon" (click)="close()" [disabled]="busy" aria-label="Close dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
+  <header><div><h2 id="document-modal-title">{{mode==='types'?'Manage document types':'Upload documents'}}</h2><p>{{mode==='types'?'Manage the document types available to your company.':'Add one or more files to the list, then upload them together. Configured document checks run automatically.'}}</p></div><button type="button" class="btn icon" (click)="close()" [disabled]="busy" aria-label="Close dialog"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></header>
   @if(loading || (busy && mode==='types')){<div class="loading"><app-manager-list-loader [label]="busy?'Saving…':'Loading types…'" [overlay]="true"></app-manager-list-loader></div>}
   @if(busy && mode==='upload'){
     <div class="upload-progress" aria-live="polite">
       <app-manager-list-loader [label]="uploadMessage"></app-manager-list-loader>
       <p>Configured document checks run in the background after upload: signature checks, passport expiry and offer details. Follow their status in Documents.</p>
-      <p>The window will close when your file has been saved. Please keep this page open.</p>
+      <p>The window will close when all files have been saved. Please keep this page open.</p>
     </div>
   }
   @if(failed){<p class="empty" role="alert">Document types are unavailable. <button type="button" class="btn" (click)="loadTypes()">Retry</button></p>}
@@ -45,27 +45,32 @@
       </footer>
     }
   } @else {
-    <form [formGroup]="uploadForm" (ngSubmit)="upload()">
+    <form [formGroup]="uploadForm" (ngSubmit)="addFiles()">
       <fieldset [disabled]="busy || loading || failed" class="upload-fields">
         <label>Type<app-manager-select formControlName="documentTypeId" [options]="typeOptions" [searchable]="true" ariaLabel="Document type" placeholder="Select a type" [attr.aria-invalid]="uploadForm.controls.documentTypeId.invalid && uploadForm.controls.documentTypeId.touched"></app-manager-select></label>
         <div class="file-field">
           <span class="file-label">File</span>
-          <input #fileInput type="file" hidden aria-label="Document file" accept=".pdf,.jpg,.jpeg,.png" (change)="selectFile($event)" />
+          <input #fileInput type="file" hidden multiple aria-label="Document files" accept=".pdf,.jpg,.jpeg,.png" (change)="selectFiles($event)" />
           <div class="file-picker">
             <button type="button" class="btn primary file-button" (click)="fileInput.click()"
-              [disabled]="busy || loading || failed" aria-label="Upload: choose a file"
-              aria-describedby="document-file-name document-file-hint" [attr.aria-invalid]="fileTouched && !file">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Upload
+              [disabled]="busy || loading || failed" aria-label="Choose document files"
+              aria-describedby="document-file-name document-file-hint" [attr.aria-invalid]="fileTouched && !selectedFiles.length">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Select
             </button>
-            <span id="document-file-name" class="file-name" aria-live="polite" [title]="file?.name || ''">{{file?.name || 'No file selected'}}</span>
+            <span id="document-file-name" class="file-name" aria-live="polite" [title]="selectedFilesLabel">{{selectedFilesLabel}}</span>
           </div>
         </div>
-        <p id="document-file-hint" class="hint">PDF, JPEG or PNG · Maximum 10 MB per file. One file per upload.</p>
+        <button type="submit" class="btn add-files" [disabled]="!types.length || !selectedFiles.length">+ Add</button>
+        <p id="document-file-hint" class="hint upload-hint">PDF, JPEG or PNG · Maximum 10 MB per file. Selecting files does not upload them.</p>
         @if(!loading && !failed && !types.length){<p class="empty">Add an active type using Manage types before uploading.</p>}
         @if(!loading && !failed && (!storageAvailable || !uploadEnabled)){<p class="empty">An administrator must enable document storage in company integrations before you can upload files.</p>}
-        <button type="submit" class="btn primary" [disabled]="!types.length || !storageAvailable || !uploadEnabled">{{busy?'Preparing storage and uploading…':'Upload document'}}</button>
       </fieldset>
     </form>
+    <div class="table-scroll upload-table" role="region" aria-label="Documents ready to upload" tabindex="0"><table><thead><tr><th scope="col">Type</th><th scope="col">File</th><th scope="col">Action</th></tr></thead><tbody>
+      @for(item of stagedDocuments;track item.id){<tr><td data-label="Type">{{item.documentTypeName}}</td><td data-label="File"><div class="staged-file-details"><span class="staged-file">{{item.file.name}}</span>@if(item.error){<small class="row-error" role="alert">{{item.error}}</small>}</div></td><td data-label="Action"><button type="button" class="btn icon danger" (click)="removeStaged(item.id)" [disabled]="busy" [attr.aria-label]="'Remove '+item.file.name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></button></td></tr>}
+      @empty{<tr><td colspan="3" class="empty">No documents added yet.</td></tr>}
+    </tbody></table></div>
+    <button type="button" class="btn primary upload-submit" (click)="upload()" [disabled]="busy || loading || failed || !stagedDocuments.length || !storageAvailable || !uploadEnabled">{{busy?'Uploading documents…':'Upload document(s)'}}</button>
   }
   }
 </dialog>

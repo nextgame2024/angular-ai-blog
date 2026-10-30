@@ -16,6 +16,7 @@ describe('CaseDocumentActionsComponent',()=>{
     await TestBed.configureTestingModule({imports:[CaseDocumentActionsComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(){const fixture=TestBed.createComponent(CaseDocumentActionsComponent);fixture.componentRef.setInput('caseId','case-1');fixture.componentRef.setInput('canManage',true);fixture.detectChanges();return fixture;}
+  function stage(c:CaseDocumentActionsComponent,...files:File[]){c.uploadForm.controls.documentTypeId.setValue('type-1');c.selectedFiles=files;c.addFiles();}
   it('does not fetch types on ordinary page viewing and disables upload for an unsaved case',()=>{
     const f=setup();expect(api.documentTypes).not.toHaveBeenCalled();
     f.componentRef.setInput('caseId','');f.detectChanges();
@@ -45,37 +46,58 @@ describe('CaseDocumentActionsComponent',()=>{
     const input=f.nativeElement.querySelector('input[type="file"]') as HTMLInputElement;
     const button=f.nativeElement.querySelector('.file-button') as HTMLButtonElement;
     expect(input.hidden).toBeTrue();expect(button.type).toBe('button');
-    expect(button.textContent).toContain('Upload');expect(button.querySelector('svg')).not.toBeNull();
+    expect(input.multiple).toBeTrue();expect(button.textContent).toContain('Select');expect(button.querySelector('svg')).not.toBeNull();
     const click=spyOn(input,'click');button.click();expect(click).toHaveBeenCalledTimes(1);
-    expect(f.nativeElement.querySelector('.file-name').textContent).toContain('No file selected');
-    c.upload();f.detectChanges();expect(button.getAttribute('aria-invalid')).toBe('true');
-    const files=new DataTransfer();files.items.add(new File(['pdf'],'Passport.pdf',{type:'application/pdf'}));
+    expect(f.nativeElement.querySelector('.file-name').textContent).toContain('No files selected');
+    c.addFiles();f.detectChanges();expect(button.getAttribute('aria-invalid')).toBe('true');
+    const files=new DataTransfer();files.items.add(new File(['pdf'],'Passport.pdf',{type:'application/pdf'}));files.items.add(new File(['pdf'],'Offer.pdf',{type:'application/pdf'}));
     input.files=files.files;input.dispatchEvent(new Event('change'));f.detectChanges();
-    expect(c.file?.name).toBe('Passport.pdf');expect(f.nativeElement.querySelector('.file-name').textContent).toBe('Passport.pdf');
+    expect(c.selectedFiles.map(file=>file.name)).toEqual(['Passport.pdf','Offer.pdf']);expect(f.nativeElement.querySelector('.file-name').textContent).toContain('2 files selected');
     expect(button.getAttribute('aria-invalid')).toBe('false');
+    c.uploadForm.controls.documentTypeId.setValue('type-1');(f.nativeElement.querySelector('.add-files') as HTMLButtonElement).click();f.detectChanges();
+    expect(c.stagedDocuments.map(item=>item.file.name)).toEqual(['Passport.pdf','Offer.pdf']);expect(f.nativeElement.querySelectorAll('.upload-table tbody tr').length).toBe(2);
+    expect(api.uploadCaseDocument).not.toHaveBeenCalled();
     for(const state of ['busy','loading','failed'] as const){c[state]=true;f.detectChanges();expect(button.disabled).toBeTrue();c[state]=false;}
-    c.close();c.open('upload');f.detectChanges();expect(f.nativeElement.querySelector('.file-name').textContent).toContain('No file selected');
+    c.close();c.open('upload');f.detectChanges();expect(f.nativeElement.querySelector('.file-name').textContent).toContain('No files selected');
     expect(api.uploadCaseDocument).not.toHaveBeenCalled();
   });
   it('requires a typed file and delegates storage to the server with the same key on retry',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
     c.upload();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
-    c.uploadForm.controls.documentTypeId.setValue('type-1');
-    c.file=new File(['%PDF-1.7\n%%EOF'],'passport.pdf',{type:'application/pdf'});
+    stage(c,new File(['%PDF-1.7\n%%EOF'],'passport.pdf',{type:'application/pdf'}));
     expect(f.nativeElement.querySelector('[formControlName="contact"]')).toBeNull();
     expect(f.nativeElement.textContent).not.toContain('Xero Contact');
     api.uploadCaseDocument.and.returnValue(throwError(()=>({status:502})));c.upload();const key=api.uploadCaseDocument.calls.mostRecent().args[3];
     expect(c.message).toContain('retry this same file');
     api.uploadCaseDocument.and.returnValue(of({documentId:'document-1'}));c.upload();
     expect(api.uploadCaseDocument.calls.mostRecent().args).toEqual(['case-1',jasmine.any(File),'type-1',key]);
-    expect(c.message).toBe('Document uploaded.');expect(c.file).toBeNull();expect(c.modal.nativeElement.open).toBeFalse();expect(c.isOpen).toBeFalse();
+    expect(c.message).toContain('1 document uploaded');expect(c.stagedDocuments).toEqual([]);expect(c.modal.nativeElement.open).toBeFalse();expect(c.isOpen).toBeFalse();
     f.detectChanges();expect(f.nativeElement.querySelector('app-manager-toast')).not.toBeNull();
+  });
+  it('stages unique valid files and removes a row without uploading',()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
+    const valid=new File(['pdf'],'passport.pdf',{lastModified:7});
+    c.uploadForm.controls.documentTypeId.setValue('type-1');c.selectedFiles=[valid,valid,new File([],'empty.pdf'),new File(['svg'],'active.svg')];c.addFiles();f.detectChanges();
+    expect(c.stagedDocuments.length).toBe(1);expect(c.message).toContain('3 files were not added');expect(api.uploadCaseDocument).not.toHaveBeenCalled();
+    (f.nativeElement.querySelector('.upload-table .btn.danger') as HTMLButtonElement).click();f.detectChanges();
+    expect(c.stagedDocuments).toEqual([]);expect(f.nativeElement.querySelector('.upload-table .empty').textContent).toContain('No documents added');
+  });
+  it('uploads with bounded concurrency, refreshes once, and keeps only failed rows for retry',()=>{
+    const f=setup(),c=f.componentInstance,changed=spyOn(c.changed,'emit');c.open('upload');f.detectChanges();
+    stage(c,new File(['a'],'a.pdf'),new File(['b'],'b.pdf'),new File(['c'],'c.pdf'));
+    const pending=[new Subject<any>(),new Subject<any>(),new Subject<any>()];let index=0;
+    api.uploadCaseDocument.and.callFake(()=>pending[index++]);c.upload();
+    expect(api.uploadCaseDocument).toHaveBeenCalledTimes(2);expect(c.uploadTotal).toBe(3);
+    pending[0].next({documentId:'a'});pending[0].complete();expect(api.uploadCaseDocument).toHaveBeenCalledTimes(3);
+    pending[1].error({status:502});pending[2].next({documentId:'c'});pending[2].complete();f.detectChanges();
+    expect(c.busy).toBeFalse();expect(c.stagedDocuments.map(item=>item.file.name)).toEqual(['b.pdf']);expect(c.stagedDocuments[0].error).toContain('retry this same file');
+    expect(changed).toHaveBeenCalledTimes(1);expect(c.message).toContain('2 documents uploaded');expect(c.modal.nativeElement.open).toBeTrue();
   });
   it('locks a row-selected type across retries and success, but unlocks general Upload',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload','type-1');f.detectChanges();
     expect(c.uploadForm.controls.documentTypeId.value).toBe('type-1');expect(c.uploadForm.controls.documentTypeId.disabled).toBeTrue();
     expect(f.nativeElement.querySelector('[aria-label="Document type"]').disabled).toBeTrue();
-    c.file=new File(['pdf'],'passport.pdf');api.uploadCaseDocument.and.returnValue(throwError(()=>({status:502})));c.upload();
+    stage(c,new File(['pdf'],'passport.pdf'));api.uploadCaseDocument.and.returnValue(throwError(()=>({status:502})));c.upload();
     const key=api.uploadCaseDocument.calls.mostRecent().args[3];expect(c.uploadForm.controls.documentTypeId.disabled).toBeTrue();
     api.uploadCaseDocument.and.returnValue(of({documentId:'doc'}));c.upload();
     expect(api.uploadCaseDocument.calls.mostRecent().args).toEqual(['case-1',jasmine.any(File),'type-1',key]);
@@ -85,42 +107,42 @@ describe('CaseDocumentActionsComponent',()=>{
   it('fails closed if a selected requirement type was archived before opening Upload',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload','archived-type');f.detectChanges();
     expect(c.failed).toBeTrue();expect(c.message).toContain('no longer available');
-    c.file=new File(['pdf'],'passport.pdf');c.upload();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
+    c.selectedFiles=[new File(['pdf'],'passport.pdf')];c.addFiles();c.upload();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
   });
   it('does not upload to an unlinked or disabled integration or accept active content',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
-    c.uploadForm.controls.documentTypeId.setValue('type-1');c.file=new File(['<svg/>'],'test.svg');c.upload();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
-    c.file=new File(['pdf'],'test.pdf');c.storageAvailable=false;c.upload();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
+    c.uploadForm.controls.documentTypeId.setValue('type-1');c.selectedFiles=[new File(['<svg/>'],'test.svg')];c.addFiles();c.upload();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
+    stage(c,new File(['pdf'],'test.pdf'));c.storageAvailable=false;c.upload();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
     c.storageAvailable=true;c.uploadEnabled=false;c.upload();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
   });
   it('blocks duplicate submissions and closing while an upload is in flight',()=>{
-    const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();c.uploadForm.controls.documentTypeId.setValue('type-1');c.file=new File(['pdf'],'test.pdf');
+    const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();stage(c,new File(['pdf'],'test.pdf'));
     const pending=new Subject<{documentId:string}>();api.uploadCaseDocument.and.returnValue(pending);c.upload();c.upload();const event=new Event('cancel',{cancelable:true});c.close(event);
     expect(api.uploadCaseDocument).toHaveBeenCalledTimes(1);expect(event.defaultPrevented).toBeTrue();expect(c.modal.nativeElement.open).toBeTrue();
-    pending.next({documentId:'d'});expect(c.busy).toBeFalse();expect(c.modal.nativeElement.open).toBeFalse();
+    pending.next({documentId:'d'});pending.complete();expect(c.busy).toBeFalse();expect(c.modal.nativeElement.open).toBeFalse();
   });
   it('explains a slow storage save without pretending extraction is part of the upload request',fakeAsync(()=>{
-    const f=setup(),c=f.componentInstance;c.open('upload','type-1');c.file=new File(['pdf'],'passport.pdf');
+    const f=setup(),c=f.componentInstance;c.open('upload','type-1');stage(c,new File(['pdf'],'passport.pdf'));
     const pending=new Subject<any>();api.uploadCaseDocument.and.returnValue(pending);c.upload();f.detectChanges();
     expect(f.nativeElement.textContent).toContain('Preparing secure storage');expect(f.nativeElement.textContent).toContain('background after upload');
     tick(11000);f.detectChanges();expect(f.nativeElement.textContent).toContain('Still saving');expect(c.modal.nativeElement.open).toBeTrue();
-    pending.error({status:502});f.detectChanges();expect(c.file?.name).toBe('passport.pdf');expect(c.modal.nativeElement.open).toBeTrue();
+    pending.error({status:502});f.detectChanges();expect(c.stagedDocuments[0].file.name).toBe('passport.pdf');expect(c.modal.nativeElement.open).toBeTrue();
     const elapsed=c.uploadElapsed;tick(5000);expect(c.uploadElapsed).toBe(elapsed);f.destroy();
   }));
   it('keeps the selected file and shows an actionable capacity message without technical Contact controls',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
-    c.uploadForm.controls.documentTypeId.setValue('type-1');c.file=new File(['pdf'],'test.pdf');
+    stage(c,new File(['pdf'],'test.pdf'));
     api.uploadCaseDocument.and.returnValue(throwError(()=>({status:409,error:{errorCode:'student_document_storage_full'}})));
     c.upload();expect(c.message).toBe('Document storage is full. Contact your administrator before uploading more files.');
-    expect(c.file?.name).toBe('test.pdf');expect(c.busy).toBeFalse();
+    expect(c.stagedDocuments[0].file.name).toBe('test.pdf');expect(c.busy).toBeFalse();
   });
   it('preserves the file and request identity while overflow storage is prepared automatically',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
-    c.uploadForm.controls.documentTypeId.setValue('type-1');c.file=new File(['pdf'],'test.pdf');
+    stage(c,new File(['pdf'],'test.pdf'));
     api.uploadCaseDocument.and.returnValue(throwError(()=>({status:409,error:{errorCode:'student_document_storage_pending'}})));
     c.upload();const key=api.uploadCaseDocument.calls.mostRecent().args[3];
     expect(c.message).toContain('storage is being prepared');expect(c.message).not.toContain('Contact');
-    expect(c.file?.name).toBe('test.pdf');c.upload();expect(api.uploadCaseDocument.calls.mostRecent().args[3]).toBe(key);
+    expect(c.stagedDocuments[0].file.name).toBe('test.pdf');c.upload();expect(api.uploadCaseDocument.calls.mostRecent().args[3]).toBe(key);
   });
   it('keeps the server error safe and allows a failed options request to be retried',()=>{
     const f=setup(),c=f.componentInstance;api.documentTypes.and.returnValue(throwError(()=>({error:'private database details'})));c.open('types');f.detectChanges();
@@ -166,7 +188,7 @@ describe('CaseDocumentActionsComponent',()=>{
     const f=setup(),c=f.componentInstance;
     for(const mode of ['types','upload'] as const){
       c.open(mode);if(mode==='types')c.types=Array.from({length:61},(_,i)=>({...type,documentTypeId:`type-${i}`,name:`Type ${i}`}));
-      else c.file=new File(['pdf'],`${'LongDocumentName'.repeat(16)}.pdf`);f.detectChanges();
+      else stage(c,new File(['pdf'],`${'LongDocumentName'.repeat(16)}.pdf`));f.detectChanges();
       const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
       try {
         const doc=frame.contentDocument!,win=frame.contentWindow!;document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';

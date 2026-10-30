@@ -78,6 +78,11 @@ describe('StudentOperationsService', () => {
     expect(request.request.headers.has('Content-Type')).toBeFalse();
     const form=request.request.body as FormData;expect(form.get('file')).toEqual(file);expect(form.has('contactId')).toBeFalse();expect(form.has('connectionId')).toBeFalse();expect(form.get('documentTypeId')).toBe('type-1');expect(form.has('companyId')).toBeFalse();expect(form.has('sourceKind')).toBeFalse();request.flush({documentId:'document-1'});
   });
+  it('replaces document bytes with PUT and deletes only through explicit idempotent requests',()=>{
+    const file=new File(['pdf'],'replacement.pdf',{type:'application/pdf'});service.replaceCaseDocument('case/id','doc/id',file,'replace-key').subscribe();
+    const replace=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/documents/doc%2Fid/content'));expect(replace.request.method).toBe('PUT');expect(replace.request.headers.get('Idempotency-Key')).toBe('replace-key');expect(replace.request.headers.has('Content-Type')).toBeFalse();expect((replace.request.body as FormData).get('file')).toEqual(file);replace.flush({documentId:'doc/id',replaced:true,cleanupPending:false});
+    service.deleteCaseDocument('case/id','doc/id','delete-key').subscribe();const remove=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/documents/doc%2Fid'));expect(remove.request.method).toBe('DELETE');expect(remove.request.headers.get('Idempotency-Key')).toBe('delete-key');remove.flush({deleted:true});
+  });
 
   it('creates a student and first case with one authenticated idempotent request', () => {
     const value={studentName:'Student',studentEmail:'student@example.test',mobile:null,phone:null,courseName:null,collegeId:null,advisorId:null,status:'pre_sale',currentStage:'documents_requested'};

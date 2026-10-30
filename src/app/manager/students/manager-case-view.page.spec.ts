@@ -51,6 +51,8 @@ describe('ManagerCaseViewPageComponent', () => {
       createdAt: '2026-10-16T00:00:00Z',
     }], page: 1, limit: 25 })),
     caseDocumentContent: jasmine.createSpy(),
+    replaceCaseDocument:jasmine.createSpy().and.returnValue(of({documentId:'document-1',replaced:true,cleanupPending:false})),
+    deleteCaseDocument:jasmine.createSpy().and.returnValue(of({deleted:true})),
   };
 
   beforeEach(async () => {
@@ -67,6 +69,8 @@ describe('ManagerCaseViewPageComponent', () => {
     api.caseInvoices.and.returnValue(of({ invoices: [{ invoiceId: 'invoice-1', invoiceNumber: 'INV-1', type: 'ACCREC', status: 'PAID', date: '2026-10-16', dueDate: '2026-10-20', amountDue: '0', currency: 'AUD' }], total: 1, page: 1, limit: 25 }));
     api.caseDocuments.and.returnValue(of({ documents: [{ documentId: 'document-1', fileName: 'offer.pdf', mimeType: 'application/pdf', sizeBytes: 1024, sourceKind: 'invoice', lastSeenAt: '2026-10-16T00:00:00Z' }], discovery: [], discoveryRequested: true, total: 1, page: 1, limit: 25 }));
     api.caseActivity.and.returnValue(of({ activity: [{ activityId: 'activity-1', eventType: 'case.created', summary: 'Case created', createdAt: '2026-10-16T00:00:00Z' }], page: 1, limit: 25 }));
+    api.replaceCaseDocument.and.returnValue(of({documentId:'document-1',replaced:true,cleanupPending:false}));
+    api.deleteCaseDocument.and.returnValue(of({deleted:true}));
     await TestBed.configureTestingModule({
       imports: [ManagerCaseViewPageComponent],
       providers: [provideRouter([]), { provide: ActivatedRoute, useValue: { paramMap: params.asObservable(), snapshot: { data: routeData } } },
@@ -708,6 +712,21 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(actions[0].disabled).toBeTrue();
     expect(actions[0].title).toBe('Preview unavailable; download instead');
     expect(actions[1].disabled).toBeFalse();
+  });
+
+  it('offers replacement for every document and deletion only for new Files uploads',()=>{
+    api.caseDocuments.and.returnValue(of({documents:[
+      {documentId:'legacy',fileName:'legacy.pdf',mimeType:'application/pdf',sizeBytes:20,sourceKind:'Contacts',lastSeenAt:'2026-10-16',canReplaceFile:true,canDelete:false},
+      {documentId:'files',fileName:'new.pdf',mimeType:'application/pdf',sizeBytes:20,sourceKind:'Contacts',lastSeenAt:'2026-10-16',canReplaceFile:true,canDelete:true},
+    ],discovery:[],discoveryRequested:true,total:2,page:1,limit:25}));
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const root=fixture.nativeElement as HTMLElement;
+    expect(root.querySelectorAll('button[title="Replace document"]').length).toBe(2);expect(root.querySelectorAll('button[title="Delete document"]').length).toBe(1);
+    const legacyReplace=root.querySelector('button[aria-label="Replace legacy.pdf"]') as HTMLButtonElement,input=root.querySelector('input[type="file"]') as HTMLInputElement;
+    legacyReplace.click();const file=new File(['%PDF-1.7\n%%EOF'],'replacement.pdf',{type:'application/pdf'});Object.defineProperty(input,'files',{configurable:true,value:[file]});input.dispatchEvent(new Event('change'));fixture.detectChanges();
+    const dialog=root.querySelector('.document-mutation-dialog') as HTMLDialogElement;expect(dialog.open).toBeTrue();expect(dialog.textContent).toContain('legacy.pdf');
+    (dialog.querySelector('.mutation-confirm') as HTMLButtonElement).click();fixture.detectChanges();expect(api.replaceCaseDocument).toHaveBeenCalledWith('case-1','legacy',file,jasmine.any(String));expect(dialog.open).toBeFalse();
+    (root.querySelector('button[aria-label="Delete new.pdf"]') as HTMLButtonElement).click();fixture.detectChanges();expect(dialog.open).toBeTrue();expect(dialog.textContent).toContain('cannot be undone');
+    (dialog.querySelector('.mutation-confirm') as HTMLButtonElement).click();fixture.detectChanges();expect(api.deleteCaseDocument).toHaveBeenCalledWith('case-1','files',jasmine.any(String));expect(dialog.open).toBeFalse();
   });
 
   it('shows an access-safe error when the case cannot be read', () => {

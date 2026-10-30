@@ -284,6 +284,15 @@ export class StudentOperationsService {
     });
   }
 
+  replaceCaseDocument(caseId:string,documentId:string,file:File,key:string):Observable<{documentId:string;replaced:true;cleanupPending:boolean}>{
+    const body=new FormData();body.set('file',file,file.name);
+    return this.http.put<{documentId:string;replaced:true;cleanupPending:boolean}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(documentId)}/content`,body,{headers:this.writeHeaders(key)});
+  }
+
+  deleteCaseDocument(caseId:string,documentId:string,key:string):Observable<{deleted:true}>{
+    return this.http.delete<{deleted:true}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/documents/${encodeURIComponent(documentId)}`,{headers:this.writeHeaders(key)});
+  }
+
   student(studentId: string): Observable<StudentOperationsStudentDetail> {
     return this.http.get<StudentOperationsStudentDetail>(
       `${this.workspaceBase}/students/${encodeURIComponent(studentId)}`,

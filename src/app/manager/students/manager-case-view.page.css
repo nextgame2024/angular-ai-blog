@@ -172,6 +172,21 @@ td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 .document-action-button:hover:not(:disabled) { background:#f2f8ff; border-color:#8bb5ec }
 .document-action-button:focus-visible { outline:2px solid #0eac9e; outline-offset:2px }
 .document-action-button:disabled { opacity:.45; cursor:not-allowed }
+.document-action-button.danger { color:#bd3142; border-color:#efc1c7 }
+.document-action-button.danger:hover:not(:disabled) { background:#fff3f4; border-color:#df8290 }
+.document-mutation-dialog { width:min(31rem,calc(100vw - 2rem)); padding:0; border:0; border-radius:.75rem; background:#fff; color:#172033; box-shadow:0 1.25rem 4rem #17203340 }
+.document-mutation-dialog::backdrop { background:#17203380 }
+.document-mutation-panel { display:grid; gap:.8rem; padding:1.2rem }
+.document-mutation-panel h2 { font-size:1rem }
+.document-mutation-panel p { margin:0; color:#526783; font-size:.8rem; line-height:1.5; overflow-wrap:anywhere }
+.document-mutation-panel p strong { color:#172033 }
+.document-mutation-actions { display:flex; justify-content:flex-end; gap:.5rem; margin-top:.2rem }
+.mutation-confirm { min-height:2.5rem; padding:.45rem .8rem; border:1px solid #0ca88b; border-radius:.45rem; background:#0ca88b; color:#fff; font:inherit; font-size:.76rem; font-weight:700; cursor:pointer }
+.mutation-confirm.danger { border-color:#bd3142; background:#bd3142 }
+.mutation-confirm:disabled { opacity:.55; cursor:not-allowed }
+:host-context(html.dark) .document-mutation-dialog { background:#1f2b3d; color:#e2e8f0 }
+:host-context(html.dark) .document-mutation-panel p { color:#c1d0e6 }
+:host-context(html.dark) .document-mutation-panel p strong { color:#fff }
 .secondary-button { display:inline-flex; align-items:center; justify-content:center; min-height:2rem; padding:.35rem .6rem; border:1px solid #c8d9ed; border-radius:.45rem; background:#fff; color:#3866d5; font:inherit; font-size:.76rem; font-weight:600; cursor:pointer }
 .secondary-button:hover:not(:disabled) { background:#f2f8ff }
 .secondary-button:disabled { opacity:.48; cursor:not-allowed }

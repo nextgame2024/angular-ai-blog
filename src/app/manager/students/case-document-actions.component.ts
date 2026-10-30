@@ -1,12 +1,21 @@
 import { Component,ElementRef,EventEmitter,Input,Output,ViewChild,OnDestroy,OnChanges,inject } from '@angular/core';
 import { FormControl,FormGroup,FormsModule,ReactiveFormsModule,Validators } from '@angular/forms';
-import { Subject,takeUntil,forkJoin,of } from 'rxjs';
+import { Subject,takeUntil,forkJoin,of,from,mergeMap,map,catchError,toArray,tap } from 'rxjs';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
 import type { StudentDocumentType } from '../student-operations/student-operations.types';
 import { ManagerSelectComponent } from '../components/shared/manager-select/manager-select.component';
 import { ManagerToastComponent } from '../components/shared/manager-toast/manager-toast.component';
 import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
 import { PageJumpComponent } from '../../shared/components/page-jump/page-jump.component';
+
+interface StagedDocument {
+  id:string;
+  file:File;
+  documentTypeId:string;
+  documentTypeName:string;
+  key:string;
+  error:string;
+}
 
 @Component({
   selector:'app-case-document-actions',
@@ -32,12 +41,13 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
   storageAvailable=false;
   uploadEnabled=false;
   lockedTypeId:string|null=null;
-  file:File|null=null; fileTouched=false; page=1; pageSize=25; descending=false;
+  selectedFiles:File[]=[]; stagedDocuments:StagedDocument[]=[]; fileTouched=false; page=1; pageSize=25; descending=false;
   message=''; tone:'error'|'success'='error';
   private request:{fingerprint:string;key:string}|null=null;
-  uploadElapsed=0;
+  uploadElapsed=0; uploadCompleted=0; uploadTotal=0;
   private uploadTimer:ReturnType<typeof setInterval>|null=null;
-  get uploadMessage(){return this.uploadElapsed>=10?'Still saving your document securely. Storage preparation can take a little longer.':'Preparing secure storage and uploading your document…';}
+  get uploadMessage(){const progress=this.uploadTotal?` (${this.uploadCompleted} of ${this.uploadTotal})`:'';return (this.uploadElapsed>=10?'Still saving your documents securely. Storage preparation can take a little longer.':'Preparing secure storage and uploading your documents…')+progress;}
+  get selectedFilesLabel(){return this.selectedFiles.length===0?'No files selected':this.selectedFiles.length===1?this.selectedFiles[0].name:`${this.selectedFiles.length} files selected`;}
   private stopUploadTimer(){if(this.uploadTimer)clearInterval(this.uploadTimer);this.uploadTimer=null;}
   readonly typeForm=new FormGroup({name:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(120)]}),required:new FormControl('no',{nonNullable:true})});
   readonly uploadForm=new FormGroup({documentTypeId:new FormControl('',{nonNullable:true,validators:[Validators.required]})});
@@ -54,7 +64,7 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
   open(mode:'types'|'upload',typeId?:string) {
     if(!this.canManage || !this.caseId || this.busy) return;
     this.lockedTypeId=mode==='upload'&&typeId?typeId:null;
-    this.mode=mode;this.message='';this.page=1;this.file=null;this.fileTouched=false;this.cancelTypeEdit();this.uploadForm.reset({documentTypeId:this.lockedTypeId??''});this.request=null;this.storageAvailable=false;this.uploadEnabled=false;
+    this.mode=mode;this.message='';this.page=1;this.selectedFiles=[];this.stagedDocuments=[];this.fileTouched=false;this.cancelTypeEdit();this.uploadForm.reset({documentTypeId:this.lockedTypeId??''});this.request=null;this.storageAvailable=false;this.uploadEnabled=false;
     if(this.fileInput) this.fileInput.nativeElement.value='';
     this.isOpen=true;this.modal.nativeElement.showModal();this.loadTypes();
   }
@@ -84,14 +94,49 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
     this.busy=true;
     this.api.updateDocumentType(type.documentTypeId,{status:'archived',recordVersion:type.recordVersion},this.key({action:'archive',id:type.documentTypeId,version:type.recordVersion})).pipe(takeUntil(this.scope$)).subscribe({next:()=>{this.types=this.types.filter(t=>t.documentTypeId!==type.documentTypeId);this.page=Math.min(this.page,this.pages);if(this.editingType?.documentTypeId===type.documentTypeId)this.cancelTypeEdit();this.busy=false;this.request=null;this.notify('Document type archived. Existing documents are unchanged.','success');this.changed.emit();},error:()=>{this.busy=false;this.notify('The type could not be archived. Reload the list and try again.');}});
   }
-  selectFile(event:Event){this.file=(event.target as HTMLInputElement).files?.[0]??null;this.fileTouched=true;this.request=null;}
+  selectFiles(event:Event){this.selectedFiles=Array.from((event.target as HTMLInputElement).files??[]);this.fileTouched=true;}
+  addFiles(){
+    if(!this.canManage || this.busy || this.loading || this.failed)return;
+    const typeId=this.lockedTypeId??this.uploadForm.controls.documentTypeId.value;
+    this.fileTouched=true;this.uploadForm.markAllAsTouched();
+    const type=this.types.find(t=>t.documentTypeId===typeId);
+    if(!type || !this.selectedFiles.length){this.notify('Choose a document type and at least one PDF, JPEG or PNG file up to 10 MB.');return;}
+    const valid=this.selectedFiles.filter(file=>file.size>0&&file.size<=10*1024*1024&&/\.(pdf|jpe?g|png)$/i.test(file.name));
+    const existing=new Set(this.stagedDocuments.map(item=>this.fileIdentity(item.documentTypeId,item.file)));
+    const added:StagedDocument[]=[];
+    for(const file of valid){
+      const identity=this.fileIdentity(typeId,file);
+      if(existing.has(identity))continue;
+      existing.add(identity);added.push({id:crypto.randomUUID(),file,documentTypeId:typeId,documentTypeName:type.name,key:crypto.randomUUID(),error:''});
+    }
+    this.stagedDocuments=[...this.stagedDocuments,...added];
+    const rejected=this.selectedFiles.length-added.length;
+    this.selectedFiles=[];this.fileTouched=false;if(this.fileInput)this.fileInput.nativeElement.value='';
+    if(!this.lockedTypeId)this.uploadForm.controls.documentTypeId.reset('');
+    if(rejected)this.notify(`${rejected} file${rejected===1?' was':'s were'} not added because it was invalid or already selected.`);
+    else this.message='';
+  }
+  removeStaged(id:string){if(!this.busy)this.stagedDocuments=this.stagedDocuments.filter(item=>item.id!==id);}
+  private fileIdentity(typeId:string,file:File){return JSON.stringify([typeId,file.name,file.size,file.lastModified]);}
   upload(){
     if(!this.canManage || !this.caseId || this.busy || this.loading || this.failed || !this.uploadEnabled || !this.storageAvailable)return;
-    const file=this.file,typeId=this.lockedTypeId??this.uploadForm.controls.documentTypeId.value;this.fileTouched=true;this.uploadForm.markAllAsTouched();
-    if(!file || !file.size || file.size>10*1024*1024 || !/\.(pdf|jpe?g|png)$/i.test(file.name) || !this.types.some(t=>t.documentTypeId===typeId)) {this.notify('Choose a document type and a PDF, JPEG or PNG file up to 10 MB.');return;}
+    if(!this.stagedDocuments.length){this.notify('Add at least one document before uploading.');return;}
+    const batch=[...this.stagedDocuments];
     this.busy=true;
-    this.uploadElapsed=0;this.stopUploadTimer();this.uploadTimer=setInterval(()=>this.uploadElapsed++,1000);
-    this.api.uploadCaseDocument(this.caseId,file,typeId,this.key({action:'upload',caseId:this.caseId,typeId,name:file.name,size:file.size,lastModified:file.lastModified})).pipe(takeUntil(this.scope$)).subscribe({next:()=>{this.stopUploadTimer();this.busy=false;this.request=null;this.file=null;if(this.fileInput)this.fileInput.nativeElement.value='';this.uploadForm.controls.documentTypeId.reset(this.lockedTypeId??'');this.fileTouched=false;this.close();this.notify('Document uploaded.','success');this.changed.emit();},error:e=>{this.stopUploadTimer();this.busy=false;this.notify(this.uploadError(e));}});
+    this.uploadElapsed=0;this.uploadCompleted=0;this.uploadTotal=batch.length;this.stopUploadTimer();this.uploadTimer=setInterval(()=>this.uploadElapsed++,1000);
+    from(batch).pipe(mergeMap(item=>this.api.uploadCaseDocument(this.caseId,item.file,item.documentTypeId,item.key).pipe(
+      map(()=>({item,ok:true as const,error:''})),catchError(error=>of({item,ok:false as const,error:this.uploadError(error)})),tap(()=>this.uploadCompleted++)
+    ),2),toArray(),takeUntil(this.scope$)).subscribe({next:results=>{
+      this.stopUploadTimer();this.busy=false;
+      const failed=results.filter(result=>!result.ok);
+      const succeeded=results.length-failed.length;
+      const errors=new Map(failed.map(result=>[result.item.id,result.error]));
+      this.stagedDocuments=batch.filter(item=>errors.has(item.id)).map(item=>({...item,error:errors.get(item.id)!}));
+      if(succeeded)this.changed.emit();
+      if(!failed.length){this.close();this.notify(`${succeeded} document${succeeded===1?'':'s'} uploaded. Configured checks are running in the background.`,'success');return;}
+      const summary=succeeded?`${succeeded} document${succeeded===1?'':'s'} uploaded. ${failed.length} could not be uploaded and remain in the list.`:failed[0].error;
+      this.notify(summary,'error');
+    }});
   }
   private uploadError(e:any):string {
     const code=e?.error?.errorCode;
@@ -99,7 +144,7 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
     if(code==='student_document_storage_review_required')return 'This document needs administrator review before it can be uploaded again.';
     if(code==='student_document_storage_full')return 'Document storage is full. Contact your administrator before uploading more files.';
     if(e?.status===413)return 'The file is too large. Maximum size is 10 MB.';
-    if(['xero_attachment_write_scope_missing','xero_contact_write_scope_missing','student_document_setup_required'].includes(code))return 'An administrator must enable document storage in company integrations.';
+    if(['xero_attachment_write_scope_missing','xero_files_write_scope_missing','xero_files_storage_disabled','xero_contact_write_scope_missing','student_document_setup_required'].includes(code))return 'An administrator must enable document storage in company integrations.';
     if(code==='xero_rate_limited')return 'Document storage is temporarily busy. Wait, then retry this same file.';
     return e?.status===409?'The upload is processing or its details changed. Wait two minutes, then retry the same file; reload types if needed.':'The upload could not be confirmed. Wait two minutes and retry this same file.';
   }

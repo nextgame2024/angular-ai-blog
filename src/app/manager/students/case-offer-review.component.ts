@@ -47,6 +47,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   collegeError='';collegeNotice='';scheduleError='';addingPayment=false;
   directory:Array<{collegeId:string;name:string;abn:string|null}>=[];
   readonly form=new FormGroup({name:control('',true),collegeName:control('',true),campusAddress:control(''),abn:control(''),cricos:control(''),currency:control('AUD',true),total:amountControl(''),
+    studentSigned:new FormControl(false,{nonNullable:true}),studentSignerName:control(''),studentSignedOn:control(''),
     collegeId:control('',true),reason:control(''),replaceCollege:new FormControl(false,{nonNullable:true}),acknowledgeTotals:new FormControl(false,{nonNullable:true}),
     courses:new FormArray<CourseForm>([]),fees:new FormArray<FeeForm>([]),instalments:new FormArray<InstalmentForm>([])});
   readonly paymentName=control('',true);
@@ -60,7 +61,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   money(value:number|null){return value===null?'':`${Math.floor(value/100)}.${String(value%100).padStart(2,'0')}`;}
   ngOnInit(){
     const source=this.source;this.directory=this.analysis.offer?.colleges??[];
-    this.form.patchValue({name:source.studentName??'',collegeName:source.collegeName??'',campusAddress:source.campusAddress??'',abn:source.abn??'',cricos:source.cricosProviderCode??'',currency:source.currency,total:this.money(source.statedTotalMinor),collegeId:this.analysis.offer?.selectedCollegeId??''});
+    this.form.patchValue({name:source.studentName??'',collegeName:source.collegeName??'',campusAddress:source.campusAddress??'',abn:source.abn??'',cricos:source.cricosProviderCode??'',studentSigned:source.studentSigned===true,studentSignerName:source.studentSignerName??'',studentSignedOn:source.studentSignedOn??'',currency:source.currency,total:this.money(source.statedTotalMinor),collegeId:this.analysis.offer?.selectedCollegeId??''});
     for(const course of source.courses)this.addCourse(course);
     for(const fee of source.fees)this.addFee(fee);
     for(const item of source.instalments)this.addInstalment(item);
@@ -141,11 +142,12 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
         const feesInvalid=!fees.length||this.form.controls.fees.invalid||this.form.controls.currency.invalid||!/^[A-Z]{3}$/.test(v.currency)||offerMoneyInput(v.total)===null;
         this.showProblem('Complete the offer, choose a college, and enter valid amounts with up to two decimal places.',detailsInvalid?'details':feesInvalid?'fees':'instalments');return;}
       if(this.replacingCollege&&!v.replaceCollege){this.showProblem('Confirm replacing the existing case college.','details');return;}
+      if(!v.studentSigned||!v.studentSignerName.trim()){this.showProblem('Confirm that the student signed the Letter of Offer and enter the signer name.','details');return;}
       if(new Set(rows.map(r=>Number(r.sequence))).size!==rows.length){this.showProblem('Each instalment needs a unique number.','instalments');return;}
       if(rows.some(r=>offerMoneyInput(r.includedFee)!>offerMoneyInput(r.total)!)){this.showProblem('An included conditional fee cannot exceed its payment.','instalments');return;}
       if(courses.some(c=>c.startsOn&&c.endsOn&&c.endsOn<c.startsOn)){this.showProblem('Course end dates must follow their start dates.','details');return;}
       if(this.totalsDiffer&&!v.acknowledgeTotals){this.showProblem('Review and acknowledge the difference between the total and instalments.','fees');return;}
-      corrections={...this.source,studentName:v.name.trim(),collegeName:v.collegeName.trim(),campusAddress:v.campusAddress.trim()||null,abn:v.abn.trim()||null,cricosProviderCode:v.cricos.trim()||null,currency:v.currency,statedTotalMinor:offerMoneyInput(v.total),
+      corrections={...this.source,studentName:v.name.trim(),collegeName:v.collegeName.trim(),campusAddress:v.campusAddress.trim()||null,abn:v.abn.trim()||null,cricosProviderCode:v.cricos.trim()||null,studentSigned:v.studentSigned,studentSignerName:v.studentSignerName.trim()||null,studentSignedOn:v.studentSignedOn||null,currency:v.currency,statedTotalMinor:offerMoneyInput(v.total),
         courses:courses.map(c=>({name:c.name.trim(),code:c.code.trim()||null,startsOn:c.startsOn||null,endsOn:c.endsOn||null,duration:c.duration.trim()||null})),
         fees:fees.map(f=>({label:f.label.trim(),amountMinor:offerMoneyInput(f.amount)!,conditional:f.conditional,condition:f.condition.trim()||null})),
         instalments:rows.map(r=>({sequence:Number(r.sequence),dueTerm:r.dueTerm.trim()||null,dueOn:r.dueOn||null,totalMinor:offerMoneyInput(r.total)!,includedConditionalFeeMinor:offerMoneyInput(r.includedFee)!,components:r.components.map(c=>({label:c.label.trim(),amountMinor:offerMoneyInput(c.amount)!}))}))};

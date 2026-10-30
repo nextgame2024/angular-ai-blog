@@ -36,6 +36,16 @@
           </div>
         }
         </fieldset>
+        <fieldset class="entry acceptance-card" [attr.aria-labelledby]="'offer-acceptance-heading-'+documentId">
+          <div class="detail-heading"><div><h3 [id]="'offer-acceptance-heading-'+documentId">Offer acceptance</h3><p>Confirm the student signed the acceptance or declaration section.</p></div></div>
+          <div class="fields acceptance-fields">
+            <label class="checkbox signature-check"><input type="checkbox" formControlName="studentSigned" />Student signature is present</label>
+            <label>Student signer name<input formControlName="studentSignerName" [attr.aria-invalid]="form.controls.studentSignerName.touched&&form.controls.studentSigned.value&&!form.controls.studentSignerName.value.trim()" /></label>
+            <label>Signed date<input type="date" formControlName="studentSignedOn" /></label>
+          </div>
+          <p>College countersignature: <strong>{{source.collegeSigned===true?'Present':source.collegeSigned===false?'Not found':'Not available'}}</strong></p>
+          @if(!form.controls.studentSigned.value){<p class="notice">The student signature was not found. Check the original Letter of Offer before confirming.</p>}
+        </fieldset>
         <fieldset class="entry courses-card" [attr.aria-labelledby]="'courses-heading-'+documentId">
         <div class="detail-heading courses-heading"><h3 [id]="'courses-heading-'+documentId">Courses</h3><button type="button" class="btn" (click)="addCourse()" [disabled]="busy||form.controls.courses.length>=30">+ Add course</button></div>
         <div formArrayName="courses" class="collection">@for(course of form.controls.courses.controls;track course;let i=$index){

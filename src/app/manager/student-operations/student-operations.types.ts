@@ -226,7 +226,7 @@ export interface StudentCaseDocuments {
     documentId: string; fileName: string; mimeType: string; sizeBytes: number;
     sourceKind: string; lastSeenAt: string;
     documentTypeId?: string | null; documentTypeName?: string | null; documentTypeRequired?: boolean | null;
-    analysisStatus?:string|null;canReplace?:boolean;
+    analysisStatus?:string|null;canReplace?:boolean;canReplaceFile?:boolean;canDelete?:boolean;
   }>;
   discovery: Array<{ status: string; errorCode: string | null; count: number }>;
   discoveryRequested: boolean;
@@ -253,6 +253,7 @@ export interface StudentOfferExtraction {
   kind:'letter_of_offer';studentName:string|null;evidence:Array<{page:number;quote:string}>;issues:string[];
   collegeName:string|null;abn:string|null;cricosProviderCode:string|null;currency:string;statedTotalMinor:number|null;
   campusAddress?:string|null;
+  studentSigned?:boolean;studentSignerName?:string|null;studentSignedOn?:string|null;collegeSigned?:boolean|null;
   courses:Array<{name:string;code:string|null;startsOn:string|null;endsOn:string|null;duration:string|null}>;
   fees:Array<{label:string;amountMinor:number;conditional:boolean;condition:string|null}>;
   instalments:Array<{sequence:number;dueTerm:string|null;dueOn:string|null;totalMinor:number;includedConditionalFeeMinor:number;components?:Array<{label:string;amountMinor:number}>}>;
