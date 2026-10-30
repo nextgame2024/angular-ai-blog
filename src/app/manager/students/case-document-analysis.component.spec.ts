@@ -16,13 +16,17 @@ describe('CaseDocumentAnalysisComponent',()=>{
   });
   function setup(){const f=TestBed.createComponent(CaseDocumentAnalysisComponent);f.componentRef.setInput('caseId','case');f.componentRef.setInput('documentId','doc');f.componentRef.setInput('status','needs_review');f.componentRef.setInput('canManage',true);f.detectChanges();return f;}
   it('shows state without fetching private extraction until opened',()=>{
-    const f=setup();expect(api.documentAnalysis).not.toHaveBeenCalled();expect(f.nativeElement.textContent).toContain('Needs review');
+    const f=setup();expect(api.documentAnalysis).not.toHaveBeenCalled();expect(f.nativeElement.textContent).toContain('Pending review');
     f.componentInstance.open();f.detectChanges();expect(api.documentAnalysis).toHaveBeenCalledOnceWith('case','doc');expect(f.componentInstance.modal.nativeElement.open).toBeTrue();
     expect(f.nativeElement.textContent).toContain('Expiry date: 06 August 2035');
   });
   it('advisors see status without the review action',()=>{
     const f=setup();f.componentRef.setInput('canManage',false);f.detectChanges();f.componentInstance.open();
     expect(f.nativeElement.querySelector('.check-button')).toBeNull();expect(api.documentAnalysis).not.toHaveBeenCalled();
+  });
+  it('keeps automatically passed documents available for manager review',()=>{
+    const f=setup();f.componentRef.setInput('status','passed');f.detectChanges();
+    const button=f.nativeElement.querySelector('.check-button') as HTMLButtonElement;expect(button.textContent?.trim()).toBe('Passed');button.click();expect(api.documentAnalysis).toHaveBeenCalledOnceWith('case','doc');
   });
   it('keeps historical evidence readable but cannot confirm a superseded upload',()=>{
     api.documentAnalysis.and.returnValue(of({...result,currentForType:false}));const f=setup(),c=f.componentInstance;c.open();f.detectChanges();

@@ -21,7 +21,7 @@ export class CaseDocumentAnalysisComponent implements OnChanges,OnDestroy {
     expiresOn:new FormControl('',{nonNullable:true}),signerName:new FormControl('',{nonNullable:true}),
     expiryVerified:new FormControl(false,{nonNullable:true}),
     reason:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(500)]})});
-  get label(){return ({checking:'Checking',passed:'Passed',needs_review:'Needs review',invalid:'Invalid',check_failed:'Check failed'} as Record<string,string>)[this.status??'']??'Not checked';}
+  get label(){return ({checking:'Checking',passed:'Passed',needs_review:'Pending review',invalid:'Invalid',check_failed:'Check failed'} as Record<string,string>)[this.status??'']??'Not checked';}
   ngOnChanges(changes:SimpleChanges){if(!changes['caseId']&&!changes['documentId'])return;this.scope$.next();this.modal?.nativeElement.close();this.data=null;this.busy=this.loading=false;this.request=null;}
   open(){if(!this.caseId||!this.documentId||!this.canManage||this.busy)return;this.modal.nativeElement.showModal();this.load();}
   close(event?:Event){if(this.busy){event?.preventDefault();return;}this.scope$.next();this.loading=false;this.modal.nativeElement.close();}
@@ -55,6 +55,6 @@ export class CaseDocumentAnalysisComponent implements OnChanges,OnDestroy {
   private success(){this.busy=false;this.request=null;this.form.enable({emitEvent:false});this.modal.nativeElement.close();this.changed.emit();this.caseChanged.emit();}
   offerSaved(){this.success();}
   private error(error:any){this.busy=false;this.form.enable({emitEvent:false});this.message=error?.status===409?'This check changed. Reload before saving.':'The change could not be confirmed. Check the fields and retry, or reload the check.';}
-  reasonLabel(reason:string){return ({missing_evidence:'Source evidence needs review.',student_identity_needs_review:'Check that this document belongs to the student.',expiry_unreadable:'Confirm the passport expiry date.',expiry_conflict:'Printed and machine-readable expiry dates disagree.',passport_expired:'The passport has expired.',signature_evidence_needs_review:'Confirm the student signed the completed agreement.'} as Record<string,string>)[reason]??reason;}
+  reasonLabel(reason:string){return ({missing_evidence:'Source evidence needs review.',student_identity_needs_review:'Check that this document belongs to the student.',expiry_unreadable:'Confirm the passport expiry date.',expiry_conflict:'Printed and machine-readable expiry dates disagree.',passport_expired:'The passport has expired.',passport_expiring_soon:'The passport expires within six months.',signature_evidence_needs_review:'Confirm the student signed the completed agreement.'} as Record<string,string>)[reason]??reason;}
   ngOnDestroy(){this.scope$.next();this.scope$.complete();this.modal.nativeElement.close();}
 }

@@ -69,7 +69,7 @@ describe('CaseChecklistComponent',()=>{
     api.caseChecklist.and.returnValue(of({status:'pre_sale',items:items.map((i,n)=>({...i,completed:n===0,validationState:n===0?'passed':n===2?'needs_review':'missing'}))}));
     const f=setup(),rows=f.nativeElement.querySelectorAll('.checklist-item');
     expect(rows[0].querySelector('.checklist-controls [aria-label="Validation complete"]')).not.toBeNull();
-    expect(rows[2].querySelector('.checklist-controls [aria-label="Needs review"]')).not.toBeNull();
+    expect(rows[2].querySelector('.checklist-controls [aria-label="Pending review"]')).not.toBeNull();
     expect(rows[1].querySelector('.validation-icon')).toBeNull();
   });
   it('shows an explicit invoice waiting state instead of pretending validation is running',()=>{

@@ -15,7 +15,7 @@
           @if(item.completed || item.validationState==='passed'){
             <svg class="validation-icon passed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" role="img" aria-label="Validation complete"><circle cx="12" cy="12" r="9"/><path d="m7 12 3 3 7-7"/></svg>
           }@else if(item.validationState==='needs_review'){
-            <svg class="validation-icon warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" role="img" aria-label="Needs review"><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v5m0 3v1"/></svg>
+            <svg class="validation-icon warning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" role="img" aria-label="Pending review"><path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v5m0 3v1"/></svg>
           }@else if(item.validationState==='checking'){
             <span class="validation-pending" role="status">Checking…</span>
           }@else if(item.validationState==='pending'){
