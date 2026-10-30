@@ -44,11 +44,12 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
     this.focusTimer=setTimeout(()=>{this.host.nativeElement.querySelector<HTMLElement>(`#offer-panel-${this.documentId}-${tab} [aria-invalid="true"] input, #offer-panel-${this.documentId}-${tab} input.ng-invalid, #offer-panel-${this.documentId}-${tab} textarea.ng-invalid, #offer-panel-${this.documentId}-${tab} app-manager-select[aria-invalid="true"] button`)?.focus();},0);
   }
   busy=false;creating=false;createdCollegeId:string|null=null;
-  collegeError='';collegeNotice='';
+  collegeError='';collegeNotice='';scheduleError='';addingPayment=false;
   directory:Array<{collegeId:string;name:string;abn:string|null}>=[];
   readonly form=new FormGroup({name:control('',true),collegeName:control('',true),campusAddress:control(''),abn:control(''),cricos:control(''),currency:control('AUD',true),total:amountControl(''),
-    collegeId:control('',true),reason:control('',true),replaceCollege:new FormControl(false,{nonNullable:true}),acknowledgeTotals:new FormControl(false,{nonNullable:true}),
+    collegeId:control('',true),reason:control(''),replaceCollege:new FormControl(false,{nonNullable:true}),acknowledgeTotals:new FormControl(false,{nonNullable:true}),
     courses:new FormArray<CourseForm>([]),fees:new FormArray<FeeForm>([]),instalments:new FormArray<InstalmentForm>([])});
+  readonly paymentName=control('',true);
   readonly collegeForm=new FormGroup({college_name:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(200),c=>c.value.trim()?null:{required:true}]}),
     owner_name:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(200)]}),abn:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(80)]}),
     notes:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(5000)]})});
@@ -67,7 +68,37 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   addCourse(v?:StudentOfferExtraction['courses'][number]){if(this.busy||this.form.controls.courses.length>=30)return;this.form.controls.courses.push(new FormGroup({name:control(v?.name??'',true),code:control(v?.code??''),startsOn:control(v?.startsOn??''),endsOn:control(v?.endsOn??''),duration:control(v?.duration??'')}));}
   addFee(v?:StudentOfferExtraction['fees'][number]){if(this.busy||this.form.controls.fees.length>=100)return;this.form.controls.fees.push(new FormGroup({label:control(v?.label??'',true),amount:amountControl(this.money(v?.amountMinor??null)),conditional:new FormControl(v?.conditional??false,{nonNullable:true}),condition:control(v?.condition??'')}));}
   addInstalment(v?:StudentOfferExtraction['instalments'][number]){if(this.busy||this.form.controls.instalments.length>=200)return;this.form.controls.instalments.push(new FormGroup({sequence:control(String(v?.sequence??this.form.controls.instalments.length+1),true),dueTerm:control(v?.dueTerm??''),dueOn:control(v?.dueOn??''),total:amountControl(this.money(v?.totalMinor??null)),includedFee:amountControl(this.money(v?.includedConditionalFeeMinor??0)),components:new FormArray<ComponentForm>((v?.components??[]).map(c=>new FormGroup({label:control(c.label,true),amount:amountControl(this.money(c.amountMinor))})))}));}
-  addComponent(payment:InstalmentForm){if(this.busy||payment.controls.components.length>=20)return;payment.controls.components.push(new FormGroup({label:control('',true),amount:amountControl('')}));}
+  get componentLabels(){
+    const labels:string[]=[];
+    for(const payment of this.form.controls.instalments.controls)for(const component of payment.controls.components.controls){const label=component.controls.label.value.trim();if(label&&!labels.some(value=>value.toLocaleLowerCase()===label.toLocaleLowerCase()))labels.push(label);}
+    return labels;
+  }
+  get conditionalFeeLabel(){
+    const labels=this.form.controls.fees.controls.filter(fee=>fee.controls.conditional.value).map(fee=>fee.controls.label.value.trim()).filter(Boolean);
+    return labels.length===1?labels[0]:labels.length>1?'Conditional fees':'Conditional fee';
+  }
+  componentFor(payment:InstalmentForm,label:string){return payment.controls.components.controls.find(component=>component.controls.label.value.trim().toLocaleLowerCase()===label.toLocaleLowerCase())??null;}
+  setComponentAmount(payment:InstalmentForm,label:string,event:Event){
+    const value=(event.target as HTMLInputElement).value,existing=this.componentFor(payment,label);
+    if(existing){existing.controls.amount.setValue(value);return;}
+    if(payment.controls.components.length<20)payment.controls.components.push(new FormGroup({label:control(label,true),amount:amountControl(value)}));
+  }
+  openAddPayment(){
+    if(this.busy||!this.form.controls.instalments.length||this.componentLabels.length>=20)return;
+    this.scheduleError='';this.paymentName.reset('');this.addingPayment=true;
+    if(this.focusTimer)clearTimeout(this.focusTimer);
+    this.focusTimer=setTimeout(()=>this.host.nativeElement.querySelector<HTMLInputElement>('#new-payment-name')?.focus(),0);
+  }
+  cancelAddPayment(){if(!this.busy){this.addingPayment=false;this.scheduleError='';}}
+  addPaymentColumn(){
+    if(this.busy||!this.addingPayment)return;
+    this.paymentName.markAsTouched();const name=this.paymentName.value.trim();
+    if(!name){this.scheduleError='Enter a payment name.';return;}
+    if(this.componentLabels.some(label=>label.toLocaleLowerCase()===name.toLocaleLowerCase())){this.scheduleError='A payment with that name already exists.';return;}
+    if(this.form.controls.instalments.controls.some(payment=>payment.controls.components.length>=20)){this.scheduleError='The schedule cannot have more than 20 payment columns.';return;}
+    for(const payment of this.form.controls.instalments.controls)payment.controls.components.push(new FormGroup({label:control(name,true),amount:amountControl('0.00')}));
+    this.addingPayment=false;this.paymentName.reset('');
+  }
   remove(array:FormArray,index:number){if(!this.busy)array.removeAt(index);}
   get paymentTotals(){const rows=this.form.controls.instalments.getRawValue();return {total:rows.reduce((n,r)=>n+(offerMoneyInput(r.total)??0),0),included:rows.reduce((n,r)=>n+(offerMoneyInput(r.includedFee)??0),0)};}
   get firstPaymentSummary(){
@@ -101,7 +132,6 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
     if(this.creating){this.activeTab='details';this.collegeError='Save or cancel the new college before reviewing the offer.';return;}
     if(decision==='confirmed'&&this.analysis.currentForType===false)return;
     this.form.markAllAsTouched();const v=this.form.getRawValue();
-    if(!v.reason.trim()){this.showProblem('Add a review note.','review');return;}
     let corrections:StudentOfferExtraction|null=null;
     if(decision==='confirmed'){
       const rows=v.instalments??[],courses=v.courses??[],fees=v.fees??[];
@@ -121,7 +151,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
         instalments:rows.map(r=>({sequence:Number(r.sequence),dueTerm:r.dueTerm.trim()||null,dueOn:r.dueOn||null,totalMinor:offerMoneyInput(r.total)!,includedConditionalFeeMinor:offerMoneyInput(r.includedFee)!,components:r.components.map(c=>({label:c.label.trim(),amountMinor:offerMoneyInput(c.amount)!}))}))};
     }
     const value={resultId:this.analysis.resultId,expectedReviewVersion:this.analysis.reviewVersion,expectedCaseVersion:this.analysis.offer?.caseRecordVersion,
-      decision,reason:v.reason.trim(),corrections,collegeId:v.collegeId||null,replaceCollege:v.replaceCollege,acknowledgeTotals:v.acknowledgeTotals};
+      decision,reason:v.reason.trim()||null,corrections,collegeId:v.collegeId||null,replaceCollege:v.replaceCollege,acknowledgeTotals:v.acknowledgeTotals};
     const fingerprint=JSON.stringify(value);if(this.request?.fingerprint!==fingerprint)this.request={fingerprint,key:crypto.randomUUID()};
     this.setBusy(true);this.api.reviewDocumentAnalysis(this.caseId,this.documentId,value,this.request!.key).pipe(takeUntil(this.stop$)).subscribe({next:()=>{this.setBusy(false);this.saved.emit();},error:e=>{this.setBusy(false);this.problem.emit(e?.status===409?'The case or offer changed. Reload before saving.':'The offer could not be confirmed. Check dates, amounts and the selected college, then retry.');}});
   }

@@ -29,11 +29,10 @@ describe('CaseDocumentAnalysisComponent',()=>{
     c.form.controls.reason.setValue('Reviewed old file');c.save('confirmed');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
     expect(f.nativeElement.textContent).toContain('Review the latest upload');expect(f.nativeElement.querySelector('button[type="submit"]').disabled).toBeTrue();
   });
-  it('requires a note, sends corrected fields and version, and reuses the key on uncertain failure',()=>{
-    const f=setup(),c=f.componentInstance;c.open();c.save('confirmed');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
-    c.form.controls.reason.setValue('Verified original');c.form.controls.expiresOn.setValue('2036-08-06');
+  it('allows an empty note, sends corrected fields and version, and reuses the key on uncertain failure',()=>{
+    const f=setup(),c=f.componentInstance;c.open();c.form.controls.expiresOn.setValue('2036-08-06');
     api.reviewDocumentAnalysis.and.returnValue(throwError(()=>({status:503})));c.save('confirmed');const first=api.reviewDocumentAnalysis.calls.mostRecent().args;
-    expect(first[2]).toEqual(jasmine.objectContaining({expectedReviewVersion:0,resultId:'result',decision:'confirmed',corrections:jasmine.objectContaining({expiresOn:'2036-08-06',mrzExpiryMatches:null})}));
+    expect(first[2]).toEqual(jasmine.objectContaining({expectedReviewVersion:0,resultId:'result',decision:'confirmed',reason:null,corrections:jasmine.objectContaining({expiresOn:'2036-08-06',mrzExpiryMatches:null})}));
     api.reviewDocumentAnalysis.and.returnValue(of({}));c.save('confirmed');expect(api.reviewDocumentAnalysis.calls.mostRecent().args[3]).toBe(first[3]);expect(c.modal.nativeElement.open).toBeFalse();
   });
   it('guards close and duplicate save while busy and cancels late reads on scope changes',()=>{

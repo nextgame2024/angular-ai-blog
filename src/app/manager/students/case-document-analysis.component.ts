@@ -20,7 +20,7 @@ export class CaseDocumentAnalysisComponent implements OnChanges,OnDestroy {
   readonly form=new FormGroup({name:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(500)]}),
     expiresOn:new FormControl('',{nonNullable:true}),signerName:new FormControl('',{nonNullable:true}),
     expiryVerified:new FormControl(false,{nonNullable:true}),
-    reason:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(500)]})});
+    reason:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(500)]})});
   get label(){return ({checking:'Checking',passed:'Passed',needs_review:'Needs review',invalid:'Invalid',check_failed:'Check failed'} as Record<string,string>)[this.status??'']??'Not checked';}
   ngOnChanges(changes:SimpleChanges){if(!changes['caseId']&&!changes['documentId'])return;this.scope$.next();this.modal?.nativeElement.close();this.data=null;this.busy=this.loading=false;this.request=null;}
   open(){if(!this.caseId||!this.documentId||!this.canManage||this.busy)return;this.modal.nativeElement.showModal();this.load();}
@@ -38,11 +38,11 @@ export class CaseDocumentAnalysisComponent implements OnChanges,OnDestroy {
     if(decision==='confirmed'&&data.currentForType===false)return;
     this.form.markAllAsTouched();
     const fields=this.form.getRawValue();
-    if(!fields.reason.trim()||this.form.controls.reason.invalid||(decision==='confirmed'&&(this.form.controls.name.invalid||!fields.name.trim()||(data.extraction.kind==='passport'&&(!fields.expiresOn||(data.extraction.mrzExpiryMatches===false&&!fields.expiryVerified)))))) {this.message='Enter the student name, verify the expiry date when applicable, and add a review note.';return;}
+    if(this.form.controls.reason.invalid||(decision==='confirmed'&&(this.form.controls.name.invalid||!fields.name.trim()||(data.extraction.kind==='passport'&&(!fields.expiresOn||(data.extraction.mrzExpiryMatches===false&&!fields.expiryVerified)))))) {this.message='Enter the student name and verify the expiry date when applicable.';return;}
     const corrections={...data.extraction,studentName:fields.name.trim()};
     if(corrections.kind==='passport'){corrections.expiresOn=fields.expiresOn||null;if(fields.expiryVerified||fields.expiresOn!==data.extraction.expiresOn)corrections.mrzExpiryMatches=null;}
     else corrections.signerName=fields.signerName.trim()||null;
-    const value={resultId:data.resultId,expectedReviewVersion:data.reviewVersion,decision,reason:fields.reason.trim(),corrections:decision==='rejected'?null:corrections};
+    const value={resultId:data.resultId,expectedReviewVersion:data.reviewVersion,decision,reason:fields.reason.trim()||null,corrections:decision==='rejected'?null:corrections};
     this.busy=true;this.message='';this.form.disable({emitEvent:false});
     this.api.reviewDocumentAnalysis(this.caseId,this.documentId,value,this.key(value)).pipe(takeUntil(this.scope$)).subscribe({next:()=>this.success(),error:e=>this.error(e)});
   }

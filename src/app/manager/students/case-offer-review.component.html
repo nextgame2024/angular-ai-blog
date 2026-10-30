@@ -70,34 +70,38 @@
           @if(firstPaymentSummary;as payment){<h4>First scheduled payment</h4><dl><div><dt>Before the included conditional fees</dt><dd>{{form.controls.currency.value}} {{money(payment.base)}}</dd></div><div><dt>As printed, including those fees</dt><dd>{{form.controls.currency.value}} {{money(payment.total)}}</dd></div></dl>}
           <p>First-payment amounts are part of the whole offer, not additional fees. Any conditional fee is selected later when creating an invoice; it is not added again here.</p>
         </div>
-        @if(totalsDiffer){<label class="checkbox notice"><input type="checkbox" formControlName="acknowledgeTotals" />I reviewed the difference between the offer total and instalments. My review note explains it.</label>}
+        @if(totalsDiffer){<label class="checkbox notice"><input type="checkbox" formControlName="acknowledgeTotals" />I reviewed the difference between the offer total and instalments.</label>}
       </section>
       <section role="tabpanel" [id]="'offer-panel-'+documentId+'-instalments'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-instalments'" [hidden]="activeTab!=='instalments'">
-        <h3>Instalment schedule</h3><p>Keep payment terms such as “Immediately” when the offer does not give a calendar date.</p>
-        <div formArrayName="instalments" class="collection">@for(payment of form.controls.instalments.controls;track payment;let i=$index){
-          <fieldset [formGroupName]="i" class="entry payment-entry"><legend>Payment {{i+1}}</legend><div class="fields payment-fields">
-            <label>Instalment number<input formControlName="sequence" inputmode="numeric" /></label><label>Due date<input type="date" formControlName="dueOn" /></label><label>Payment term<input formControlName="dueTerm" placeholder="e.g. Immediately" /></label>
-            <label>Printed payment total<input formControlName="total" inputmode="decimal" /></label><label>Conditional fee already included<input formControlName="includedFee" inputmode="decimal" /></label>
-          </div>
-          <div formArrayName="components" class="components">@for(component of payment.controls.components.controls;track component;let j=$index){
-            <div [formGroupName]="j" class="component-fields"><label>Payment component<input formControlName="label" /></label><label>Component amount<input formControlName="amount" inputmode="decimal" /></label><button type="button" class="btn danger" (click)="remove(payment.controls.components,j)" [disabled]="busy" [attr.aria-label]="'Remove component '+(j+1)+' from payment '+(i+1)">Remove component</button></div>
-          }</div>
-          <div class="row-actions"><button type="button" class="btn" (click)="addComponent(payment)" [disabled]="busy||payment.controls.components.length>=20">+ Add payment component</button><button type="button" class="btn danger" (click)="remove(form.controls.instalments,i)" [disabled]="busy" [attr.aria-label]="'Remove payment '+(i+1)">Remove payment</button></div></fieldset>
-        }</div>
-        <button type="button" class="btn" (click)="addInstalment()" [disabled]="busy||form.controls.instalments.length>=200">+ Add instalment</button>
+        <div class="schedule-heading"><div><h3>Instalment schedule</h3><p>Keep payment terms such as “Immediately” when the offer does not give a calendar date.</p></div><button type="button" class="btn" (click)="openAddPayment()" [disabled]="busy||!form.controls.instalments.length||componentLabels.length>=20">+ Add payment</button></div>
+        <div class="instalment-table-wrap"><table class="instalment-table">
+          <thead><tr><th scope="col">Instalment</th><th scope="col">Due date</th><th scope="col">Payment term</th>@for(label of componentLabels;track label){<th scope="col">{{label}}</th>}<th scope="col">{{conditionalFeeLabel}}</th><th scope="col">Payment</th><th scope="col">Action</th></tr></thead>
+          <tbody formArrayName="instalments">@for(payment of form.controls.instalments.controls;track payment;let i=$index){
+            <tr [formGroupName]="i" class="payment-entry">
+              <td><label><span class="payment-cell-label">Instalment</span><input formControlName="sequence" inputmode="numeric" [attr.aria-label]="'Instalment '+(i+1)+' number'" /></label></td>
+              <td><label><span class="payment-cell-label">Due date</span><input type="date" formControlName="dueOn" [attr.aria-label]="'Instalment '+(i+1)+' due date'" /></label></td>
+              <td><label><span class="payment-cell-label">Payment term</span><input formControlName="dueTerm" placeholder="e.g. Immediately" [attr.aria-label]="'Instalment '+(i+1)+' payment term'" /></label></td>
+              @for(label of componentLabels;track label){<td><span class="payment-cell-label">{{label}}</span>@if(componentFor(payment,label);as component){<label [formGroup]="component"><input formControlName="amount" inputmode="decimal" [attr.aria-label]="'Instalment '+(i+1)+' '+label+' amount'" /></label>}@else{<label><input value="0.00" inputmode="decimal" (input)="setComponentAmount(payment,label,$event)" [attr.aria-label]="'Instalment '+(i+1)+' '+label+' amount'" /></label>}</td>}
+              <td><label><span class="payment-cell-label">{{conditionalFeeLabel}}</span><input formControlName="includedFee" inputmode="decimal" [attr.aria-label]="'Instalment '+(i+1)+' '+conditionalFeeLabel+' amount'" /></label></td>
+              <td><label><span class="payment-cell-label">Payment</span><input formControlName="total" inputmode="decimal" [attr.aria-label]="'Instalment '+(i+1)+' payment total'" /></label></td>
+              <td class="payment-action-cell"><span class="payment-cell-label">Action</span><button type="button" class="btn danger payment-remove" (click)="remove(form.controls.instalments,i)" [disabled]="busy" [attr.aria-label]="'Remove payment '+(i+1)" [title]="'Remove payment '+(i+1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button></td>
+            </tr>
+          }@empty{<tr><td class="empty-schedule" [attr.colspan]="componentLabels.length+6">No instalments remain in this schedule.</td></tr>}</tbody>
+        </table></div>
         <p class="totals">Printed instalment total — all payments: <strong>{{form.controls.currency.value}} {{money(paymentTotals.total)}}</strong><br />Conditional fees already included in those payments: <strong>{{form.controls.currency.value}} {{money(paymentTotals.included)}}</strong></p>
       </section>
       <section role="tabpanel" [id]="'offer-panel-'+documentId+'-review'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-review'" [hidden]="activeTab!=='review'">
         <h3>Source evidence</h3><div class="evidence" tabindex="0" aria-label="Offer source evidence">@for(e of source.evidence;track $index){<p><strong>Page {{e.page}}</strong> — {{e.quote}}</p>}@empty{<p>No readable evidence was found.</p>}</div>
         @for(issue of source.issues;track $index){<p class="notice">{{issue}}</p>}
         @if(analysis.reviewReason){<p>Previous review: {{analysis.reviewReason}}</p>}
-        <label>Review note<textarea rows="4" formControlName="reason" maxlength="500" [attr.aria-invalid]="form.controls.reason.touched&&form.controls.reason.invalid"></textarea></label>
-        <p>Explain any corrections and differences before confirming or rejecting the offer.</p>
+        <label>Review note (optional)<textarea rows="4" formControlName="reason" maxlength="500" [attr.aria-invalid]="form.controls.reason.touched&&form.controls.reason.invalid"></textarea></label>
+        <p>Add context about any corrections or differences when useful.</p>
       </section>
     </fieldset>
   </div>
   <footer class="offer-footer">
     <span>Review all sections before confirming.</span><div class="row-actions"><button type="button" class="btn danger" (click)="save('rejected')" [disabled]="busy||creating">Reject offer</button><button type="submit" class="btn primary" [disabled]="busy||creating||analysis.currentForType===false">{{busy&&!creating?'Saving…':'Confirm offer'}}</button></div>
   </footer>
-  @if(collegeError||collegeNotice){<app-manager-toast [message]="collegeError||collegeNotice" [tone]="collegeError?'error':'success'" (closed)="collegeError='';collegeNotice=''" />}
+  @if(addingPayment){<div class="payment-modal-backdrop" (click)="cancelAddPayment()" (keydown.escape)="cancelAddPayment()"><section class="payment-modal" role="dialog" aria-modal="true" aria-labelledby="new-payment-title" (click)="$event.stopPropagation()"><h3 id="new-payment-title">Add payment</h3><p>Enter the name to use for the new payment column.</p><label>Payment name<input id="new-payment-name" [formControl]="paymentName" (keydown.enter)="$event.preventDefault();addPaymentColumn()" [attr.aria-invalid]="paymentName.touched&&paymentName.invalid" /></label><div class="row-actions"><button type="button" class="btn" (click)="cancelAddPayment()">Cancel</button><button type="button" class="btn primary" (click)="addPaymentColumn()">Add payment</button></div></section></div>}
+  @if(collegeError||collegeNotice||scheduleError){<app-manager-toast [message]="scheduleError||collegeError||collegeNotice" [tone]="scheduleError||collegeError?'error':'success'" (closed)="collegeError='';collegeNotice='';scheduleError=''" />}
 </form>

@@ -32,7 +32,7 @@
           <h3>Source evidence</h3>
           <div class="evidence" tabindex="0" aria-label="Document source evidence">@for(source of extraction.evidence;track $index){<p><strong>Page {{source.page}}</strong> — {{source.quote}}</p>}@empty{<p>No readable evidence was found.</p>}</div>
           @if(item.reviewReason){<p>Previous review: {{item.reviewReason}}</p>}
-          <label>Review note<textarea rows="3" formControlName="reason" maxlength="500" [attr.aria-invalid]="form.controls.reason.touched&&form.controls.reason.invalid"></textarea></label>
+          <label>Review note (optional)<textarea rows="3" formControlName="reason" maxlength="500" [attr.aria-invalid]="form.controls.reason.touched&&form.controls.reason.invalid"></textarea></label>
           <footer><button type="button" class="btn" (click)="load()" [disabled]="busy">Reload</button><button type="button" class="btn danger" (click)="save('rejected')" [disabled]="busy">Reject document</button><button type="submit" class="btn primary" [disabled]="busy||item.currentForType===false">{{busy?'Saving…':'Confirm review'}}</button></footer>
         </fieldset>
       </form>

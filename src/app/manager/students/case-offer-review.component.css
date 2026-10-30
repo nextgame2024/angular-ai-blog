@@ -5,7 +5,7 @@
 .tab.active{border-bottom-color:#0ca88b;color:#087f73}.tab:disabled{opacity:.5;cursor:not-allowed}
 .offer-scroll{min-height:0;overflow:auto;flex:1;padding:1rem 1.25rem;scrollbar-width:thin;scrollbar-color:#91b9d1 #edf4fa;overscroll-behavior:contain}
 fieldset{min-width:0;border:0;padding:0;margin:0}section[role=tabpanel]{display:grid;gap:.85rem}section[hidden]{display:none!important}
-.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.payment-fields{grid-template-columns:repeat(5,minmax(0,1fr));align-items:end}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
 .details-fields,.course-fields{grid-template-columns:repeat(3,minmax(0,1fr));align-items:end}
 .detail-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.65rem 1rem;min-width:0;color:#172033}
 .college-heading-text{display:flex;align-items:baseline;flex-wrap:wrap;gap:.35rem .75rem;min-width:0;flex:1}
@@ -14,9 +14,8 @@ label{display:grid;gap:.3rem;min-width:0;color:#425675;font-size:.8rem;font-weig
 input,textarea{width:100%;min-width:0;min-height:44px;padding:.6rem;border:1px solid #cbd8e6;border-radius:.5rem;background:#fff;color:#172033;font:inherit;font-weight:400}
 input.ng-invalid.ng-touched,textarea.ng-invalid.ng-touched,input[aria-invalid=true],textarea[aria-invalid=true],app-manager-select[aria-invalid=true]{border:1px solid #dc3545;border-radius:.5rem}
 h3{font-size:.95rem;margin:0;font-weight:800}p{font-size:.8rem;line-height:1.5;overflow-wrap:anywhere;margin:0}
-.collection,.components{display:grid;gap:.85rem}.entry{display:grid;gap:.75rem;padding:1rem;border:1px solid #dbe5f0;border-radius:.65rem}.entry legend{padding:0 .35rem;font-size:.8rem;font-weight:700}
-.payment-entry,.course-entry{background-color:#f8fafc}
-.component-fields{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.65fr) auto;align-items:end;gap:.65rem}
+.collection{display:grid;gap:.85rem}.entry{display:grid;gap:.75rem;padding:1rem;border:1px solid #dbe5f0;border-radius:.65rem}.entry legend{padding:0 .35rem;font-size:.8rem;font-weight:700}
+.course-entry{background-color:#f8fafc}
 .checkbox{display:flex;align-items:center;gap:.5rem;min-height:44px}.checkbox input{width:20px;min-height:20px;flex:none;accent-color:#0ca88b}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:.35rem;min-height:44px;padding:.5rem .8rem;border:1px solid #c8d9ed;border-radius:.5rem;background:#fff;color:#3866d5;font:inherit;font-size:.75rem;font-weight:700;cursor:pointer;justify-self:start}
 .btn.primary{background:#0ca88b;color:#fff;border-color:#0ca88b}.btn.danger{color:#b43848}.btn:disabled{opacity:.5;cursor:not-allowed}
@@ -34,6 +33,16 @@ h3{font-size:.95rem;margin:0;font-weight:800}p{font-size:.8rem;line-height:1.5;o
 .fee-summary{display:grid;gap:.6rem}.fee-summary h4{margin:0;font-size:.85rem}.fee-summary h4:not(:first-child){margin-top:.4rem}
 .fee-summary dl{display:grid;gap:.4rem;margin:0}.fee-summary dl>div{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;font-size:.8rem;line-height:1.5}
 .fee-summary dt{min-width:0}.fee-summary dd{margin:0;text-align:right;font-weight:700;flex:none}
+.schedule-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem}.schedule-heading>div{display:grid;gap:.35rem;min-width:0}.schedule-heading>.btn{flex:none}
+.instalment-table-wrap{min-width:0;overflow:auto;border:1px solid #dbe5f0;border-radius:.65rem;overscroll-behavior:contain}
+.instalment-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:.8rem}
+.instalment-table th,.instalment-table td{min-width:0;padding:.45rem .4rem;text-align:left;vertical-align:middle;border-bottom:1px solid #dbe5f0;color:#425675}
+.instalment-table th{background:#f5f8fb;font-size:.75rem;font-weight:700;white-space:normal}.instalment-table th:first-child{width:5.25rem}.instalment-table th:nth-child(2){width:9.25rem}.instalment-table th:nth-child(3){width:10.5rem}.instalment-table th:nth-child(n+4):not(:last-child){width:7.25rem}.instalment-table th:last-child{width:4rem}
+.instalment-table tbody tr:last-child td{border-bottom:0}.instalment-table .payment-entry{background:#f8fafc}.instalment-table input{text-align:right}.instalment-table td:nth-child(-n+3) input{text-align:left}
+.payment-cell-label{display:none}
+.instalment-table .payment-action-cell{min-width:4rem;text-align:center}.payment-remove{width:44px;padding:0}.payment-remove svg{width:18px;height:18px;flex:none}.empty-schedule{text-align:center!important;color:#63738d!important;padding:1.25rem!important}
+.payment-modal-backdrop{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:1rem;background:rgba(15,23,42,.55)}
+.payment-modal{display:grid;gap:.85rem;width:min(100%,26rem);padding:1rem;border:1px solid #dbe5f0;border-radius:.75rem;background:#fff;box-shadow:0 20px 45px rgba(15,23,42,.25)}.payment-modal .row-actions{justify-content:flex-end}
 .offer-footer{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex:none;padding:.85rem 1.25rem;border-top:1px solid #dbe5f0;background:#fff}
 .offer-footer>span{font-size:.75rem;color:#63738d}.offer-footer .row-actions{justify-content:flex-end}
 .college-actions{display:flex;align-items:center;justify-content:space-between;gap:.75rem;min-width:0}.college-actions p{flex:1;min-width:0}.college-actions .row-actions{justify-content:flex-end}
@@ -46,13 +55,16 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,.evidence:focus-
 :host-context(html.dark) .offer-footer{background:#1e293b}:host-context(html.dark) .tab.active{color:#62dcbf}
 :host-context(html.dark) .btn.primary{background:#0ca88b;color:#fff}:host-context(html.dark) .btn.danger{color:#ffadb8}:host-context(html.dark) .notice{color:#f6c086}
 :host-context(html.dark) .offer-scroll{scrollbar-color:#52748e #263449}
-:host-context(html.dark) .payment-entry,:host-context(html.dark) .course-entry{background-color:#263449}
+:host-context(html.dark) .course-entry{background-color:#263449}
 :host-context(html.dark) .fee-table-wrap,:host-context(html.dark) .fees-table td,:host-context(html.dark) .fees-table th{border-color:#4a6180;color:#c1d0e6}
 :host-context(html.dark) .fees-table th{background:#263449}
-@media(max-width:720px){.form-tabs{padding:.4rem .75rem 0}.tab{flex:1 1 40%;padding:.5rem;font-size:.75rem}.offer-scroll{padding:.85rem}.fields,.payment-fields,.component-fields{grid-template-columns:minmax(0,1fr)}.entry,.college-form{padding:.75rem}.offer-footer{padding:.75rem;flex-wrap:wrap}.offer-footer>span{display:none}.offer-footer>.row-actions{width:100%}.offer-footer .btn{flex:1}}
+:host-context(html.dark) .instalment-table-wrap,:host-context(html.dark) .instalment-table td,:host-context(html.dark) .instalment-table th,:host-context(html.dark) .payment-modal{border-color:#4a6180;color:#c1d0e6}
+:host-context(html.dark) .instalment-table th,:host-context(html.dark) .instalment-table .payment-entry,:host-context(html.dark) .payment-modal{background:#263449}:host-context(html.dark) .empty-schedule{color:#a8bad2!important}
+@media(max-width:720px){.form-tabs{padding:.4rem .75rem 0}.tab{flex:1 1 40%;padding:.5rem;font-size:.75rem}.offer-scroll{padding:.85rem}.fields{grid-template-columns:minmax(0,1fr)}.entry,.college-form{padding:.75rem}.offer-footer{padding:.75rem;flex-wrap:wrap}.offer-footer>span{display:none}.offer-footer>.row-actions{width:100%}.offer-footer .btn{flex:1}}
 @media(max-width:720px){.fee-table-wrap{border:0;overflow:visible}.fees-table,.fees-table tbody,.fees-table tr,.fees-table td{display:block;width:100%}.fees-table colgroup,.fees-table thead{display:none}.fees-table tbody{display:grid;gap:.75rem}.fees-table .fee-entry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;padding:.75rem;border:1px solid #dbe5f0;border-radius:.65rem}.fees-table td{padding:0;border:0;min-width:0}.fee-name-cell{grid-column:1/-1}.fee-cell-label{display:block;font-size:.8rem;font-weight:600;text-align:left}.fee-action-cell{display:grid!important;align-content:end;justify-items:start;gap:.3rem}.fee-amount{text-align:left}:host-context(html.dark) .fees-table .fee-entry{border-color:#4a6180}}
 @media(max-width:480px){.fees-table .fee-entry{grid-template-columns:minmax(0,1fr)}.fee-name-cell{grid-column:auto}}
 @media(max-width:600px){.fee-summary dl>div{flex-wrap:wrap;gap:.1rem .5rem}.fee-summary dd{text-align:left}}
-@media(min-width:721px) and (max-width:1000px){.payment-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(min-width:721px) and (max-width:1000px){.details-fields,.course-fields{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.college-actions{flex-direction:column;align-items:stretch;gap:.5rem}.college-actions .row-actions{width:100%}}
+@media(max-width:720px){.schedule-heading{align-items:stretch;flex-direction:column}.schedule-heading>.btn{align-self:flex-end}.instalment-table-wrap{border:0;overflow:visible}.instalment-table,.instalment-table tbody,.instalment-table tr,.instalment-table td{display:block;width:100%}.instalment-table thead{display:none}.instalment-table tbody{display:grid;gap:.75rem}.instalment-table .payment-entry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem;padding:.75rem;border:1px solid #dbe5f0;border-radius:.65rem;background:#f8fafc}.instalment-table td,.instalment-table td:first-child,.instalment-table td:nth-child(2),.instalment-table td:nth-child(3),.instalment-table .payment-action-cell{min-width:0;padding:0;border:0;text-align:left}.payment-cell-label{display:block;margin-bottom:.3rem;color:#425675;font-size:.8rem;font-weight:600;text-align:left}.payment-action-cell{display:grid!important;align-content:end;justify-items:start}.empty-schedule{border:1px dashed #dbe5f0!important;border-radius:.65rem}.instalment-table input{text-align:left}:host-context(html.dark) .instalment-table .payment-entry{border-color:#4a6180;background:#263449}:host-context(html.dark) .payment-cell-label{color:#c1d0e6}}
+@media(max-width:480px){.instalment-table .payment-entry{grid-template-columns:minmax(0,1fr)}}

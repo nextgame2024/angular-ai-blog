@@ -80,13 +80,33 @@ describe('CaseOfferReviewComponent',()=>{
     expect(table.contains(add)).toBeFalse();add.click();f.detectChanges();expect(table.querySelectorAll('tbody tr').length).toBe(7);
     expect(c.form.controls.fees.getRawValue().slice(0,6).map(fee=>fee.label)).toEqual(names);expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
   });
+  it('renders instalments as a table with dynamic payment columns and accessible row removal',()=>{
+    const f=setup(),c=f.componentInstance;c.selectTab('instalments');f.detectChanges();
+    const table=f.nativeElement.querySelector('.instalment-table') as HTMLTableElement;
+    expect(Array.from(table.querySelectorAll('th')).map(th=>th.textContent!.trim())).toEqual(['Instalment','Due date','Payment term','Material','Tuition','International transfer','Payment','Action']);
+    expect(Array.from(table.querySelectorAll('th')).every(th=>th.scope==='col')).toBeTrue();expect(table.querySelectorAll('.payment-entry').length).toBe(2);
+    expect((table.querySelector('[aria-label="Instalment 1 Material amount"]') as HTMLInputElement).value).toBe('50.00');
+    const missing=table.querySelector('[aria-label="Instalment 2 Material amount"]') as HTMLInputElement;expect(missing.value).toBe('0.00');missing.value='120.00';missing.dispatchEvent(new Event('input'));f.detectChanges();expect(c.componentFor(c.form.controls.instalments.at(1),'Material')?.controls.amount.value).toBe('120.00');
+    expect((table.querySelector('[aria-label="Instalment 1 International transfer amount"]') as HTMLInputElement).value).toBe('25.00');
+    const remove=table.querySelector('[aria-label="Remove payment 1"]') as HTMLButtonElement;expect(remove.querySelector('svg')).not.toBeNull();remove.click();f.detectChanges();
+    expect(c.form.controls.instalments.length).toBe(1);expect(c.form.controls.instalments.at(0).controls.sequence.value).toBe('2');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
+  });
+  it('asks for a unique payment name and adds the new component column to every instalment',()=>{
+    const f=setup(),c=f.componentInstance;c.selectTab('instalments');f.detectChanges();
+    const add=Array.from(f.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>).find(button=>button.textContent?.trim()==='+ Add payment')!;add.click();f.detectChanges();
+    const modal=f.nativeElement.querySelector('[role="dialog"]') as HTMLElement;expect(modal.getAttribute('aria-modal')).toBe('true');
+    c.paymentName.setValue(' material ');c.addPaymentColumn();f.detectChanges();expect(c.addingPayment).toBeTrue();expect(c.scheduleError).toContain('already exists');expect(c.componentLabels).toEqual(['Material','Tuition']);
+    c.paymentName.setValue('Accommodation');c.addPaymentColumn();f.detectChanges();expect(c.addingPayment).toBeFalse();expect(c.componentLabels).toEqual(['Material','Tuition','Accommodation']);
+    for(const payment of c.form.controls.instalments.controls){const component=c.componentFor(payment,'Accommodation');expect(component?.getRawValue()).toEqual({label:'Accommodation',amount:'0.00'});}
+    expect(Array.from(f.nativeElement.querySelectorAll('.instalment-table th')).map((th:any)=>th.textContent.trim())).toContain('Accommodation');
+  });
   it('does not confirm a superseded offer',()=>{
     const f=setup({...result,currentForType:false}),c=f.componentInstance;c.form.controls.reason.setValue('Historical offer');c.save('confirmed');
     expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();expect(f.nativeElement.querySelector('button[type="submit"]').disabled).toBeTrue();
   });
-  it('requires note, selected college and acknowledged unexplained totals',()=>{
-    const f=setup(),c=f.componentInstance,notice=spyOn(c.problem,'emit');c.save('confirmed');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
-    c.form.controls.reason.setValue('Difference reviewed');c.form.controls.total.setValue('9100.00');c.save('confirmed');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();expect(notice).toHaveBeenCalledWith(jasmine.stringMatching('acknowledge'));
+  it('allows an empty review note and requires acknowledgement for unexplained totals',()=>{
+    const f=setup(),c=f.componentInstance,notice=spyOn(c.problem,'emit');c.save('confirmed');expect(api.reviewDocumentAnalysis.calls.mostRecent().args[2].reason).toBeNull();
+    api.reviewDocumentAnalysis.calls.reset();c.form.controls.total.setValue('9100.00');c.save('confirmed');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();expect(notice).toHaveBeenCalledWith(jasmine.stringMatching('acknowledge'));
     c.form.controls.acknowledgeTotals.setValue(true);c.save('confirmed');expect(api.reviewDocumentAnalysis).toHaveBeenCalled();
   });
   it('does not replace the existing case college without explicit confirmation',()=>{
@@ -134,8 +154,8 @@ describe('CaseOfferReviewComponent',()=>{
     const f=setup(),c=f.componentInstance;c.beginCollege();c.save('confirmed');c.save('rejected');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
     c.cancelCollege();expect(c.creating).toBeFalse();expect(c.collegeError).toBe('');
   });
-  it('rejects with a note even when extracted financial fields are incomplete',()=>{
-    const f=setup(),c=f.componentInstance;c.form.controls.total.setValue('');c.form.controls.reason.setValue('Wrong offer');c.save('rejected');expect(api.reviewDocumentAnalysis.calls.mostRecent().args[2].corrections).toBeNull();
+  it('rejects without a note even when extracted financial fields are incomplete',()=>{
+    const f=setup(),c=f.componentInstance;c.form.controls.total.setValue('');c.save('rejected');const value=api.reviewDocumentAnalysis.calls.mostRecent().args[2];expect(value.corrections).toBeNull();expect(value.reason).toBeNull();
   });
   it('switches accessible tabs without losing edits and keeps both actions outside the panels',()=>{
     const f=setup(),c=f.componentInstance;c.form.controls.name.setValue('Edited student');
@@ -146,9 +166,8 @@ describe('CaseOfferReviewComponent',()=>{
     tabs[0].dispatchEvent(new KeyboardEvent('keydown',{key:'End',bubbles:true}));f.detectChanges();expect(c.activeTab).toBe('review');
     tabs[3].dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));f.detectChanges();expect(c.activeTab).toBe('details');
   });
-  it('opens the relevant tab for missing notes, colleges, fees and payment errors',()=>{
-    const f=setup(),c=f.componentInstance;c.save('confirmed');expect(c.activeTab).toBe('review');
-    c.form.controls.reason.setValue('Checked');c.form.controls.collegeId.setValue('');c.save('confirmed');expect(c.activeTab).toBe('details');
+  it('opens the relevant tab for college, fee and payment errors',()=>{
+    const f=setup(),c=f.componentInstance;c.form.controls.collegeId.setValue('');c.save('confirmed');expect(c.activeTab).toBe('details');
     c.form.controls.collegeId.setValue('college');c.form.controls.total.setValue('bad');c.save('confirmed');expect(c.activeTab).toBe('fees');
     c.form.controls.total.setValue('9040.00');c.form.controls.instalments.at(0).controls.total.setValue('bad');c.save('confirmed');expect(c.activeTab).toBe('instalments');f.destroy();
   });
@@ -194,12 +213,15 @@ describe('CaseOfferReviewComponent',()=>{
           for(const payment of host.querySelectorAll('.payment-entry')){
             expect(win.getComputedStyle(payment).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(248, 250, 252)');
             expect(win.getComputedStyle(payment.querySelector('input')!).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(255, 255, 255)');
+            const remove=payment.querySelector<HTMLButtonElement>('.payment-remove')!;expect(remove.getBoundingClientRect().width).toBeGreaterThanOrEqual(44);expect(remove.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
           }
-          for(const row of host.querySelectorAll('.payment-fields')){
-            const inputs=Array.from(row.querySelectorAll('input'));expect(inputs.length).toBe(5);
-            expect(row.textContent).toContain('Conditional fee already included');expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth+1);
-            if(width===1440){const top=inputs[0].getBoundingClientRect().top;for(const input of inputs)expect(Math.abs(input.getBoundingClientRect().top-top)).toBeLessThan(2);}
-            else if(width===390){for(let i=1;i<inputs.length;i++)expect(inputs[i].getBoundingClientRect().top).toBeGreaterThan(inputs[i-1].getBoundingClientRect().bottom);}
+          const table=host.querySelector<HTMLElement>('.instalment-table')!,row=host.querySelector<HTMLElement>('.payment-entry')!;
+          expect(win.getComputedStyle(table.querySelector('thead')!).display).toBe(width===390?'none':'table-header-group');
+          expect(win.getComputedStyle(row.querySelector('.payment-cell-label')!).display).toBe(width===390?'block':'none');
+          expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth+1);
+          if(width===1440){
+            const wrap=host.querySelector<HTMLElement>('.instalment-table-wrap')!,headers=Array.from(table.querySelectorAll<HTMLElement>('th'));
+            expect(wrap.scrollWidth).toBeLessThanOrEqual(wrap.clientWidth+1);expect(headers[0].getBoundingClientRect().width).toBeLessThan(headers[3].getBoundingClientRect().width);
           }
         }
         expect(win.getComputedStyle(host.querySelector('input')!).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(255, 255, 255)');host.remove();
