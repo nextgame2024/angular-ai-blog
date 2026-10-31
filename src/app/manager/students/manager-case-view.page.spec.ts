@@ -53,6 +53,7 @@ describe('ManagerCaseViewPageComponent', () => {
     caseDocumentContent: jasmine.createSpy(),
     replaceCaseDocument:jasmine.createSpy().and.returnValue(of({documentId:'document-1',replaced:true,cleanupPending:false})),
     deleteCaseDocument:jasmine.createSpy().and.returnValue(of({deleted:true})),
+    removeCaseInvoice:jasmine.createSpy().and.returnValue(of({invoiceId:'removable',status:'DELETED'})),
   };
 
   beforeEach(async () => {
@@ -60,6 +61,7 @@ describe('ManagerCaseViewPageComponent', () => {
     params.next(convertToParamMap({ caseId: 'case-1' }));
     for (const spy of Object.values(api)) spy.calls.reset();
     api.workspace.and.returnValue(of({ role: 'chief_executive' }));
+    api.removeCaseInvoice.and.returnValue(of({invoiceId:'removable',status:'DELETED'}));
     api.caseInvoiceDrafts.and.returnValue(of({batches:[],preparation:null}));
     api.documentRequirements.and.returnValue(of({requirements:[]}));
     api.caseDetail.and.returnValue(of(detail));
@@ -92,10 +94,10 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(getComputedStyle(root.querySelector('.invoice-number')!).fontSize).toBe('12px');
   });
 
-  it('uses the same six headers and read-only detail request for imported invoices',()=>{
+  it('includes the Action column and preserves read-only details for imported invoices',()=>{
     api.caseInvoices.and.returnValue(of({invoices:[{invoiceId:'imported',connectionId:'connection',invoiceNumber:'INV-8602',type:'ACCREC',status:'PAID'}],total:1,page:1,limit:25}));
     const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const root=fixture.nativeElement as HTMLElement;
-    expect(Array.from(root.querySelectorAll('.invoice-table th')).map(header=>header.textContent?.trim())).toEqual(['Invoice','Date / Due','Status','Track','Paid','Due']);
+    expect(Array.from(root.querySelectorAll('.invoice-table th')).map(header=>header.textContent?.trim())).toEqual(['Invoice','Date / Due','Status','Track','Paid','Due','Action']);
     (root.querySelector('.invoice-number') as HTMLButtonElement).click();fixture.detectChanges();
     expect(api.caseInvoiceDetail).toHaveBeenCalledWith('case-1','connection','imported');
     expect((root.querySelector('app-case-invoice-drafts dialog') as HTMLDialogElement).open).toBeTrue();
@@ -725,6 +727,30 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(actions[1].disabled).toBeFalse();
   });
 
+  it('shows invoice removal only when eligible and requires confirmation before a request',()=>{
+    const removable={invoiceId:'removable',connectionId:'connection',invoiceNumber:'INV-REMOVE',type:'ACCREC',status:'DRAFT',date:null,dueDate:null,removalAction:'delete'};
+    api.caseInvoices.and.returnValue(of({invoices:[removable,{...removable,invoiceId:'paid',status:'PAID',removalAction:null}],total:2,page:1,limit:25}));
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const root=fixture.nativeElement as HTMLElement;
+    expect(root.querySelectorAll('.invoice-remove').length).toBe(1);
+    (root.querySelector('.invoice-remove') as HTMLButtonElement).click();fixture.detectChanges();
+    expect(api.removeCaseInvoice).not.toHaveBeenCalled();
+    const dialog=fixture.componentInstance.invoiceRemovalDialog!.nativeElement;expect(dialog.open).toBeTrue();
+    expect(dialog.textContent).toContain('Delete invoice');
+    (dialog.querySelector('.invoice-removal-confirm') as HTMLButtonElement).click();fixture.detectChanges();
+    expect(api.removeCaseInvoice).toHaveBeenCalledWith('case-1','connection','removable','delete',jasmine.any(String));
+    expect(dialog.open).toBeFalse();expect(fixture.componentInstance.documentMutationNotice).toContain('Invoice deleted');
+  });
+  it('uses a void confirmation and retains the retry key when removal fails',()=>{
+    const invoice={invoiceId:'authorised',connectionId:'connection',invoiceNumber:'INV-APPROVED',type:'ACCREC',status:'AUTHORISED',date:null,dueDate:null,removalAction:'void' as const};
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+    fixture.componentInstance.askRemoveInvoice(invoice);fixture.detectChanges();
+    const dialog=fixture.componentInstance.invoiceRemovalDialog!.nativeElement;expect(dialog.textContent).toContain('Void invoice');
+    api.removeCaseInvoice.and.returnValue(throwError(()=>({status:409})));
+    fixture.componentInstance.confirmInvoiceRemoval();const key=api.removeCaseInvoice.calls.mostRecent().args[4];
+    expect(dialog.open).toBeTrue();expect(fixture.componentInstance.invoiceRemovalBusy).toBeFalse();
+    fixture.componentInstance.confirmInvoiceRemoval();expect(api.removeCaseInvoice.calls.mostRecent().args[4]).toBe(key);
+    fixture.componentInstance.closeInvoiceRemoval();
+  });
   it('offers replacement for every document and deletion only for new Files uploads',()=>{
     api.caseDocuments.and.returnValue(of({documents:[
       {documentId:'legacy',fileName:'legacy.pdf',mimeType:'application/pdf',sizeBytes:20,sourceKind:'Contacts',lastSeenAt:'2026-10-16',documentTypeId:'passport-type',documentTypeName:'Passport',canReplaceFile:true,canDelete:false},
@@ -738,7 +764,7 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(replaceDialog.open).toBeTrue();expect(replaceDialog.textContent).toContain('Replace document');
     expect((replaceDialog.querySelector('[aria-label="Document type"]') as HTMLButtonElement).disabled).toBeTrue();
     expect(api.replaceCaseDocument).not.toHaveBeenCalled();
-    const dialog=root.querySelector('.document-mutation-dialog') as HTMLDialogElement;expect(dialog.open).toBeFalse();
+    const dialog=fixture.componentInstance.documentMutationDialog!.nativeElement;expect(dialog.open).toBeFalse();
     (replaceDialog.querySelector('button[aria-label="Close dialog"]') as HTMLButtonElement).click();fixture.detectChanges();
     (root.querySelector('button[aria-label="Delete new.pdf"]') as HTMLButtonElement).click();fixture.detectChanges();expect(dialog.open).toBeTrue();expect(dialog.textContent).toContain('cannot be undone');
     (dialog.querySelector('.mutation-confirm') as HTMLButtonElement).click();fixture.detectChanges();expect(api.deleteCaseDocument).toHaveBeenCalledWith('case-1','files',jasmine.any(String));expect(dialog.open).toBeFalse();
@@ -975,8 +1001,9 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(row.textContent).toContain('INV-REDACTED');
     expect(row.textContent).toContain('Ref: —');
     expect(row.querySelector('td:nth-child(4)')?.textContent?.trim()).toBe('—');
-    expect(row.querySelector('td:nth-last-child(2)')?.textContent?.trim()).toBe('—');
-    expect(row.querySelector('td:last-child')?.textContent?.trim()).toBe('—');
+    expect(row.querySelector('td:nth-child(5)')?.textContent?.trim()).toBe('—');
+    expect(row.querySelector('td:nth-child(6)')?.textContent?.trim()).toBe('—');
+    expect(row.querySelector('td:last-child button')).toBeNull();
   });
 
   it('shows the paid amount separately from the remaining due balance', () => {
@@ -991,7 +1018,7 @@ describe('ManagerCaseViewPageComponent', () => {
     const headings = [...table.querySelectorAll('th')].map(th => th.textContent?.trim());
     const cells = [...table.querySelectorAll('tbody td')].map(td => td.textContent?.trim());
 
-    expect(headings).toEqual(['Invoice', 'Date / Due', 'Status', 'Track', 'Paid', 'Due']);
+    expect(headings).toEqual(['Invoice', 'Date / Due', 'Status', 'Track', 'Paid', 'Due', 'Action']);
     expect(cells[0]).toContain('INV-8602');
     expect(cells[0]).toContain('Ref: ECA COLLEGE');
     expect(cells[0]).not.toContain('ACCREC');

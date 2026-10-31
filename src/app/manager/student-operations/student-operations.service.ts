@@ -233,6 +233,10 @@ export class StudentOperationsService {
       headers: this.headers(), params: new HttpParams().set('page', page).set('limit', 25),
     });
   }
+  removeCaseInvoice(caseId:string,connectionId:string,invoiceId:string,action:'delete'|'void',key:string):Observable<{invoiceId:string;status:string}>{
+    return this.http.post<{invoiceId:string;status:string}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoices/${encodeURIComponent(connectionId)}/${encodeURIComponent(invoiceId)}/remove`,{action},{headers:this.writeHeaders(key)})
+      .pipe(tap(()=>this.invalidateDashboard()));
+  }
 
   caseInvoiceDrafts(caseId:string):Observable<import('./student-operations.types').CaseInvoiceDraftData>{
     return this.http.get<import('./student-operations.types').CaseInvoiceDraftData>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts`,{headers:this.headers()});

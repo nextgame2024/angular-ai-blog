@@ -180,6 +180,7 @@ export interface StudentCaseList {
 
 export interface StudentCaseInvoices {
   invoices: Array<{
+    removalAction?:'delete'|'void'|null;
     invoiceId: string; connectionId?:string; invoiceNumber: string | null; type: string; status: string;
     draftBatchId?: string | null; draftSequence?: number | null;
     date: string | null; dueDate: string | null; reference?: string | null;

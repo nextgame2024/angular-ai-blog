@@ -32,6 +32,11 @@ import type {
 export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   @ViewChild(CaseInvoiceDraftsComponent) invoiceDrafts?:CaseInvoiceDraftsComponent;
   @ViewChild('documentMutationDialog') documentMutationDialog?:ElementRef<HTMLDialogElement>;
+  @ViewChild('invoiceRemovalDialog') invoiceRemovalDialog?:ElementRef<HTMLDialogElement>;
+  invoiceRemovalTarget:StudentCaseInvoices['invoices'][number]|null=null;
+  invoiceRemovalBusy=false;
+  invoiceRemovalError='';
+  private invoiceRemovalKey='';
   private readonly api = inject(StudentOperationsService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -570,6 +575,26 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.documentMutationDialog?.nativeElement.showModal();
   }
 
+  askRemoveInvoice(invoice:StudentCaseInvoices['invoices'][number]):void{
+    if(!this.canEditCases||!invoice.removalAction||!invoice.connectionId||this.invoiceRemovalBusy||this.editing||this.saving)return;
+    this.invoiceRemovalTarget=invoice;this.invoiceRemovalError='';this.invoiceRemovalKey=crypto.randomUUID();
+    this.invoiceRemovalDialog?.nativeElement.showModal();
+  }
+  closeInvoiceRemoval():void{
+    if(this.invoiceRemovalBusy)return;
+    this.invoiceRemovalDialog?.nativeElement.close();this.invoiceRemovalTarget=null;this.invoiceRemovalError='';this.invoiceRemovalKey='';
+  }
+  confirmInvoiceRemoval():void{
+    const target=this.invoiceRemovalTarget,id=this.currentId;
+    if(!target?.connectionId||!target.removalAction||!id||!this.invoiceRemovalKey||this.invoiceRemovalBusy||!this.canEditCases)return;
+    this.invoiceRemovalBusy=true;this.invoiceRemovalError='';
+    this.api.removeCaseInvoice(id,target.connectionId,target.invoiceId,target.removalAction,this.invoiceRemovalKey).pipe(takeUntil(this.destroy$)).subscribe({next:()=>{
+      if(id!==this.currentId)return;this.invoiceRemovalBusy=false;this.closeInvoiceRemoval();
+      this.documentMutationNotice=target.removalAction==='delete'?'Invoice deleted successfully.':'Invoice voided successfully.';
+      this.loadInvoices(this.invoices?.page??1);this.loadActivity(1);this.refreshCaseSummary();this.invoiceDrafts?.load();
+    },error:error=>{if(id===this.currentId){this.invoiceRemovalBusy=false;this.invoiceRemovalError=error?.status===409?'The invoice status changed or the request is processing. Close this dialog and check the refreshed list.':'The invoice could not be updated. Retry the same action; if it continues, contact an administrator.';if(error?.status===409)this.loadInvoices(this.invoices?.page??1);}}});
+  }
+
   closeDocumentMutation():void{
     if(this.documentMutationBusy)return;this.documentMutationDialog?.nativeElement.close();this.resetDocumentMutation();
   }
@@ -664,6 +689,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   private reset(): void {
+    this.invoiceRemovalDialog?.nativeElement.close();this.invoiceRemovalBusy=false;this.invoiceRemovalTarget=null;this.invoiceRemovalError='';this.invoiceRemovalKey='';
     this.stopDocumentPolling();
     this.documentPollCount = 0;
     this.pendingPreview?.close();

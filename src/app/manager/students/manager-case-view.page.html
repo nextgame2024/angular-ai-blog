@@ -137,7 +137,7 @@
           @if (discoveryPending || discoveryFailed) { <button type="button" class="secondary-button compact" (click)="loadDocuments(data.page)" [disabled]="loadingDocuments">Refresh document status</button> }
           @if (discoveryFailed) { <p class="notice warning" role="status">Discovery failed for {{ discoveryFailed }} source{{ discoveryFailed === 1 ? '' : 's' }}. Some files may be missing.</p> }
           @if (data.documents.length || missingDocumentRequirements.length) {
-            <div class="table-scroll record-table-scroll" role="region" aria-label="Case documents" tabindex="0"><table><thead><tr><th scope="col">File</th><th scope="col">Type</th><th scope="col">Last seen</th><th scope="col">Action</th></tr></thead><tbody>
+            <div class="table-scroll record-table-scroll" role="region" aria-label="Case documents" tabindex="0"><table class="documents-table"><thead><tr><th scope="col">File</th><th scope="col">Type</th><th scope="col">Last seen</th><th scope="col">Action</th></tr></thead><tbody>
               @for(requirement of missingDocumentRequirements;track requirement.requirementKey){
                 <tr class="required-document-row"><td><strong>{{requirement.name}}</strong><small>{{requirement.required?'Required · ':''}}Not uploaded</small></td><td>{{requirement.name}}</td><td>—</td><td>
                   <button type="button" class="secondary-button requirement-upload" (click)="documentActions.open('upload',requirement.documentTypeId!)" [disabled]="!!creationMode || !canEditCases || !requirement.available || !requirement.documentTypeId" [attr.aria-label]="'Upload '+requirement.name"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m7 9 5-5 5 5M12 4v12M4 15v5h16v-5"/></svg>Upload</button>
@@ -163,9 +163,9 @@
         @if (loadingInvoices && !invoices) { <div class="section-loading"><app-manager-list-loader label="Loading invoices…"></app-manager-list-loader></div> }
         @if (invoices; as data) {
           @if (data.invoices.length) {
-            <div class="table-scroll record-table-scroll" role="region" aria-label="Linked case invoices" tabindex="0"><table class="invoice-table"><thead><tr><th scope="col">Invoice</th><th scope="col">Date / Due</th><th scope="col">Status</th><th scope="col">Track</th><th scope="col">Paid</th><th scope="col">Due</th></tr></thead><tbody>
+            <div class="table-scroll record-table-scroll" role="region" aria-label="Linked case invoices" tabindex="0"><table class="invoice-table"><thead><tr><th scope="col">Invoice</th><th scope="col">Date / Due</th><th scope="col">Status</th><th scope="col">Track</th><th scope="col">Paid</th><th scope="col">Due</th><th scope="col">Action</th></tr></thead><tbody>
               @for (invoice of data.invoices; track invoice.invoiceId) {
-                <tr><td>@if(canEditCases){<button type="button" class="text-button invoice-number" (click)="showInvoice(invoice)" [disabled]="editing||saving"><span>{{ invoiceDisplayNumber(invoice) }}</span><small>Ref: {{ invoice.reference || '—' }}</small></button>}@else{<strong class="invoice-number">{{ invoiceDisplayNumber(invoice) }}</strong><small>Ref: {{ invoice.reference || '—' }}</small>}</td><td>{{ dateLabel(invoice.date) }}<small>Due {{ dateLabel(invoice.dueDate) }}</small></td><td><span class="invoice-status" [class.invoice-status-authorised]="invoice.status === 'AUTHORISED'" [class.invoice-status-paid]="invoice.status === 'PAID'" [class.invoice-status-submitted]="invoice.status === 'SUBMITTED'">{{ invoiceStatusLabel(invoice.status) }}</span></td><td>{{ invoice.paymentTrack || '—' }}</td><td>{{ moneyLabel(invoice.amountPaid, invoice.currency) }}</td><td>{{ moneyLabel(invoice.amountDue, invoice.currency) }}</td></tr>
+                <tr><td>@if(canEditCases){<button type="button" class="text-button invoice-number" (click)="showInvoice(invoice)" [disabled]="editing||saving"><span>{{ invoiceDisplayNumber(invoice) }}</span><small>Ref: {{ invoice.reference || '—' }}</small></button>}@else{<strong class="invoice-number">{{ invoiceDisplayNumber(invoice) }}</strong><small>Ref: {{ invoice.reference || '—' }}</small>}</td><td>{{ dateLabel(invoice.date) }}<small>Due {{ dateLabel(invoice.dueDate) }}</small></td><td><span class="invoice-status" [class.invoice-status-authorised]="invoice.status === 'AUTHORISED'" [class.invoice-status-paid]="invoice.status === 'PAID'" [class.invoice-status-submitted]="invoice.status === 'SUBMITTED'">{{ invoiceStatusLabel(invoice.status) }}</span></td><td>{{ invoice.paymentTrack || '—' }}</td><td>{{ moneyLabel(invoice.amountPaid, invoice.currency) }}</td><td>{{ moneyLabel(invoice.amountDue, invoice.currency) }}</td><td>@if(canEditCases&&invoice.removalAction&&invoice.connectionId){<button type="button" class="document-action-button danger invoice-remove" (click)="askRemoveInvoice(invoice)" [disabled]="editing||saving||invoiceRemovalBusy" [attr.aria-label]="(invoice.removalAction==='void'?'Void ':'Delete ')+invoiceDisplayNumber(invoice)" [attr.title]="invoice.removalAction==='void'?'Void invoice':'Delete invoice'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg></button>}</td></tr>
               }
             </tbody></table></div>
           } @else { <p class="empty-note">No Xero invoices are linked to this case.</p> }
@@ -213,6 +213,14 @@
         </div>
       </section>
     </div>
+    <dialog #invoiceRemovalDialog class="document-mutation-dialog" aria-labelledby="invoice-removal-heading" (cancel)="$event.preventDefault();closeInvoiceRemoval()">
+      <div class="document-mutation-panel">
+        <h2 id="invoice-removal-heading">{{invoiceRemovalTarget?.removalAction==='void'?'Void invoice':'Delete invoice'}}</h2>
+        <p>{{invoiceRemovalTarget?.removalAction==='void'?'Void':'Delete'}} <strong>{{invoiceRemovalTarget?invoiceDisplayNumber(invoiceRemovalTarget):''}}</strong>? This cannot be undone.</p>
+        @if(invoiceRemovalError){<p class="section-error" role="alert">{{invoiceRemovalError}}</p>}
+        <div class="document-mutation-actions"><button type="button" class="secondary-button" (click)="closeInvoiceRemoval()" [disabled]="invoiceRemovalBusy">Cancel</button><button type="button" class="mutation-confirm danger invoice-removal-confirm" (click)="confirmInvoiceRemoval()" [disabled]="invoiceRemovalBusy">{{invoiceRemovalBusy?'Processing…':invoiceRemovalTarget?.removalAction==='void'?'Void invoice':'Delete invoice'}}</button></div>
+      </div>
+    </dialog>
     <dialog #documentMutationDialog class="document-mutation-dialog" (cancel)="$event.preventDefault();closeDocumentMutation()">
       <div class="document-mutation-panel">
         <h2>Delete document</h2>
