@@ -94,6 +94,13 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(getComputedStyle(root.querySelector('.invoice-number')!).fontSize).toBe('12px');
   });
 
+  it('offers +Create independently of offer preparation and opens the existing blank-invoice modal',fakeAsync(()=>{
+    api.caseInvoiceDrafts.and.returnValue(of({batches:[],preparation:null,canCreateXero:true}));
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();tick();fixture.detectChanges();
+    const open=spyOn(fixture.componentInstance.invoiceDrafts!,'openManual');
+    const button=fixture.nativeElement.querySelector('.invoice-heading .create-invoice') as HTMLButtonElement;
+    expect(button.textContent).toBe('+Create');button.click();expect(open).toHaveBeenCalledTimes(1);fixture.destroy();
+  }));
   it('includes the Action column and preserves read-only details for imported invoices',()=>{
     api.caseInvoices.and.returnValue(of({invoices:[{invoiceId:'imported',connectionId:'connection',invoiceNumber:'INV-8602',type:'ACCREC',status:'PAID'}],total:1,page:1,limit:25}));
     const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const root=fixture.nativeElement as HTMLElement;

@@ -44,6 +44,7 @@ h2 { font-size:.97rem; font-weight:800 }
 .card-heading p { margin-top:.2rem; font-size:.76rem; color:#718099 }
 .card-heading p strong { color:#284f8d }
 .document-heading { flex-wrap:wrap }
+.invoice-heading-actions { display:flex; align-items:center; flex-wrap:wrap; justify-content:flex-end; gap:.5rem }
 .invoice-heading{flex-wrap:wrap}.secondary-button.prepare-invoices{min-height:44px;background:#0ca88b;border-color:#0ca88b;color:#fff}:host-context(html.dark) .secondary-button.prepare-invoices{background:#0ca88b;border-color:#0ca88b;color:#fff}
 .secondary-button.prepare-invoices:hover:not(:disabled){background:#087f73}
 .secondary-button.requirement-upload { min-height:44px; gap:.35rem }

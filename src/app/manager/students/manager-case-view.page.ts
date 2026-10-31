@@ -100,6 +100,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   });
   loadingRelated = false;
   loadingInvoices = false;
+  invoiceCreationAvailable=false;
   private invoiceRefreshPending=false;
   loadingDocuments = false;
   loadingActivity = false;
@@ -591,7 +592,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.api.removeCaseInvoice(id,target.connectionId,target.invoiceId,target.removalAction,this.invoiceRemovalKey).pipe(takeUntil(this.destroy$)).subscribe({next:()=>{
       if(id!==this.currentId)return;this.invoiceRemovalBusy=false;this.closeInvoiceRemoval();
       this.documentMutationNotice=target.removalAction==='delete'?'Invoice deleted successfully.':'Invoice voided successfully.';
-      this.loadInvoices(this.invoices?.page??1);this.loadActivity(1);this.refreshCaseSummary();this.invoiceDrafts?.load();
+      this.loadInvoices(this.invoices?.page??1);this.loadActivity(1);this.refreshCaseSummary();
     },error:error=>{if(id===this.currentId){this.invoiceRemovalBusy=false;this.invoiceRemovalError=error?.status===409?'The invoice status changed or the request is processing. Close this dialog and check the refreshed list.':'The invoice could not be updated. Retry the same action; if it continues, contact an administrator.';if(error?.status===409)this.loadInvoices(this.invoices?.page??1);}}});
   }
 
@@ -689,6 +690,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   private reset(): void {
+    this.invoiceCreationAvailable=false;
     this.invoiceRemovalDialog?.nativeElement.close();this.invoiceRemovalBusy=false;this.invoiceRemovalTarget=null;this.invoiceRemovalError='';this.invoiceRemovalKey='';
     this.stopDocumentPolling();
     this.documentPollCount = 0;

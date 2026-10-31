@@ -23,9 +23,70 @@ describe('CaseInvoiceDraftsComponent',()=>{
   beforeEach(async()=>{
     api={caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of(structuredClone(data))),prepareCaseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batchId:'batch',count:8,revision:1,updatedAt:'2026-10-26T00:00:00Z'})),createCaseXeroInvoices:jasmine.createSpy().and.callFake((_caseId:string,_batchId:string,sequences:number[])=>of({created:sequences.length,skipped:0,results:sequences.map(sequence=>({sequence,status:'created',invoiceId:`xero-${sequence}`,invoiceNumber:`XERO-${sequence}`}))})),reconcileCaseXeroInvoice:jasmine.createSpy().and.returnValue(of({created:1,skipped:0,results:[{sequence:1,status:'created',invoiceId:'xero-1',invoiceNumber:'INV-10577',message:'Confirmed against the exact invoice in Xero.'}]}))};
     api.caseInvoiceDetail=jasmine.createSpy().and.returnValue(of({invoiceId:'xero-id',invoiceNumber:'XERO-1',studentName:'Fixture Student',advisorName:'Fixture Advisor',reference:'Fixture College',status:'PAID',type:'ACCREC',date:'2026-10-26',dueDate:'2026-10-26',currency:'AUD',total:'100',amountPaid:'100',amountDue:'0',paymentTrack:'Paid out',lineItems:[]}));
+    api.manualCaseInvoiceOptions=jasmine.createSpy().and.returnValue(of({caseVersion:3,advisors:data.preparation!.advisors,student:data.preparation!.student,catalogue:data.preparation!.catalogue,
+      colleges:[{collegeId:'college',name:'Fixture College'}],brandingThemes:[{brandingThemeId:'theme',name:'Fixture Theme'}]}));
+    api.prepareManualCaseInvoice=jasmine.createSpy().and.returnValue(of({batchId:'manual-batch',count:1,revision:1}));
     await TestBed.configureTestingModule({imports:[CaseInvoiceDraftsComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(){const f=TestBed.createComponent(CaseInvoiceDraftsComponent);f.componentRef.setInput('caseId','case');f.detectChanges();return f;}
+  it('defaults to the current advisor and primary case college, with editable selections',()=>{
+    api.manualCaseInvoiceOptions.and.returnValue(of({caseVersion:3,advisors:data.preparation!.advisors,student:{name:'Student',advisorId:'advisor'},catalogue:data.preparation!.catalogue,colleges:[{collegeId:'college',name:'East Coast',isPrimary:true}],brandingThemes:[]}));
+    const c=setup().componentInstance;c.openManual();
+    expect(c.form.controls.advisorId.value).toBe('advisor');expect(c.referenceMode.value).toBe('college');expect(c.manualCollege.value).toBe('college');
+    expect(c.form.controls.advisorId.enabled).toBeTrue();expect(c.manualCollege.enabled).toBeTrue();
+    expect(c.paymentTracking([{name:'Sales Representative',option:'Advisor'},{name:'Payment Track',option:'Pending'}])).toBe('Pending');
+  });
+  it('opens a blank independent invoice when offer preparation is unavailable and returns after creation',()=>{
+    api.caseInvoiceDrafts.and.returnValue(of({batches:[],preparation:null,canCreateXero:true}));
+    const f=setup(),c=f.componentInstance;spyOn(c.changed,'emit');c.openManual();f.detectChanges();
+    expect(c.modal.nativeElement.open).toBeTrue();expect(c.form.controls.invoices.length).toBe(1);
+    const payment=c.activeInvoice,line=payment.controls.lines.at(0);
+    expect(payment.controls.issueDate.value).toBe('');expect(payment.controls.dueDate.value).toBe('');
+    expect(c.form.controls.advisorId.value).toBe('');expect(c.manualReference.value).toBe('');
+    expect(line.getRawValue()).toEqual(jasmine.objectContaining({description:'',itemId:'',quantity:'',price:''}));
+    c.createAll();expect(api.prepareManualCaseInvoice).not.toHaveBeenCalled();
+    c.manualReference.setValue('Additional service');c.manualBrandingTheme.setValue('theme');c.form.patchValue({advisorId:'advisor',confirmed:true});
+    payment.patchValue({issueDate:'2026-10-26',dueDate:'2026-11-01'});line.controls.description.setValue('Additional service');
+    line.controls.itemId.setValue('item');line.controls.quantity.setValue('1');line.controls.price.setValue('100.00');
+    c.createAll();f.detectChanges();
+    const payload=api.prepareManualCaseInvoice.calls.mostRecent().args[1];
+    expect(payload.reference).toBe('Additional service');expect(payload.invoices.length).toBe(1);expect(payload.offerId).toBeUndefined();
+    expect(api.prepareCaseInvoiceDrafts).not.toHaveBeenCalled();expect(api.createCaseXeroInvoices).toHaveBeenCalledWith('case','manual-batch',[1]);
+    expect(c.modal.nativeElement.open).toBeFalse();expect(c.changed.emit).toHaveBeenCalled();
+    c.openManual();expect(c.activeInvoice.controls.issueDate.value).toBe('');expect(c.manualReference.value).toBe('');
+  });
+  function completeManual(c:CaseInvoiceDraftsComponent){
+    c.openManual();c.manualReference.setValue('Reference text');c.manualBrandingTheme.setValue('theme');c.form.patchValue({advisorId:'advisor',confirmed:true});
+    const payment=c.activeInvoice,line=payment.controls.lines.at(0);
+    payment.patchValue({issueDate:'2029-07-29',dueDate:'2029-08-01'});
+    line.controls.itemId.setValue('item');line.patchValue({description:'Service',quantity:'1',price:'2000'});
+    return {payment,line};
+  }
+  it('clears hidden fee errors after switching to Do not apply and submits a complete form',()=>{
+    const c=setup().componentInstance,{payment}=completeManual(c);
+    payment.controls.feeApplies.setValue('yes');c.createAll();expect(api.prepareManualCaseInvoice).not.toHaveBeenCalled();
+    expect(c.message).toContain('fee amount greater than zero');
+    payment.controls.feeApplies.setValue('no');c.createAll();expect(api.prepareManualCaseInvoice).toHaveBeenCalledTimes(1);
+  });
+  it('shows a precise date error and permits correction',()=>{
+    const c=setup().componentInstance,{payment}=completeManual(c);
+    payment.controls.dueDate.setValue('2029-07-01');c.createAll();expect(c.message).toBe('Due date must be on or after the issue date.');
+    expect(api.prepareManualCaseInvoice).not.toHaveBeenCalled();payment.controls.dueDate.setValue('2029-08-01');c.createAll();expect(api.prepareManualCaseInvoice).toHaveBeenCalledTimes(1);
+  });
+  it('uses a selected college instead of requiring free text, and includes the chosen branding theme',()=>{
+    const f=setup(),c=f.componentInstance;completeManual(c);c.manualReference.reset('');c.referenceMode.setValue('college');f.detectChanges();
+    expect(f.nativeElement.querySelector('[aria-label="Invoice reference"]')).toBeNull();
+    expect(f.nativeElement.querySelector('app-manager-select [aria-label="College"]')).not.toBeNull();
+    c.createAll();expect(c.message).toBe('Select a college.');
+    c.manualCollege.setValue('college');c.createAll();
+    expect(api.prepareManualCaseInvoice.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({referenceMode:'college',collegeId:'college',brandingThemeId:'theme'}));
+  });
+  it('does not overwrite manually entered prices with item catalogue defaults',()=>{
+    const c=setup().componentInstance;c.openManual();const line=c.activeInvoice.controls.lines.at(0);
+    line.controls.itemId.setValue('item');expect(line.controls.price.value).toBe('');
+    line.controls.price.setValue('50');line.controls.itemId.setValue('item');expect(line.controls.price.value).toBe('50');
+    expect(line.controls.accountCode.value).toBe('812');expect(line.controls.taxType.value).toBe('BASEXCLUDED');
+  });
   function complete(c:CaseInvoiceDraftsComponent,confirmed=true){
     c.form.patchValue({advisorId:'advisor',confirmed});
     for(const p of c.form.controls.invoices.controls){p.patchValue({dueDate:'2026-10-26',feeApplies:'no'});p.controls.lines.at(0).controls.itemId.setValue('item');}
@@ -39,7 +100,7 @@ describe('CaseInvoiceDraftsComponent',()=>{
   it('previews eight instalments without saving and requires confirmation of missing data',()=>{
     const f=setup(),c=f.componentInstance;c.open();f.detectChanges();expect(c.form.controls.invoices.length).toBe(8);expect(api.prepareCaseInvoiceDrafts).not.toHaveBeenCalled();
     expect(f.nativeElement.querySelector('[formControlName="category"]')).toBeNull();expect(f.nativeElement.querySelector('[formControlName="location"]')).toBeNull();expect(c.form.controls.invoices.at(0).controls.feeApplies.value).toBe('');
-    c.save();expect(api.prepareCaseInvoiceDrafts).not.toHaveBeenCalled();expect(c.message).toContain('Complete');
+    c.save();expect(api.prepareCaseInvoiceDrafts).not.toHaveBeenCalled();expect(c.message).toBe('Select an advisor.');
     expect(f.nativeElement.querySelector('dialog').open).toBeTrue();
   });
   it('defaults undated payments to today and formats the editable course, campus and start-date description',()=>{

@@ -219,6 +219,10 @@ export interface CaseInvoiceDraftData {
     advisors:Array<{advisorId:string;code:string;name:string}>;student:{name:string;advisorId:string|null};today:string;catalogue?:CaseInvoiceCatalogue|null;
     savedBatch:null|{batchId:string;revision:number;advisorId:string;snapshot:CaseInvoiceDraftData['batches'][number]['snapshot'];exports:CaseInvoiceDraftData['batches'][number]['exports']}};
 }
+export type CaseManualInvoiceOptions=Pick<NonNullable<CaseInvoiceDraftData['preparation']>,'caseVersion'|'advisors'|'student'|'catalogue'>&{
+  colleges:Array<{collegeId:string;name:string;isPrimary?:boolean}>;
+  brandingThemes:Array<{brandingThemeId:string;name:string}>;
+};
 
 export interface StudentCaseDocuments {
   analysisPending?:boolean;

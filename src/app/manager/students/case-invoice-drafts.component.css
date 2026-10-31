@@ -7,3 +7,12 @@
 .review-notice{display:flex;align-items:center;justify-content:space-between;gap:.75rem;flex-wrap:wrap}.review-notice span{flex:1;min-width:min(28rem,100%)}
 .invoice-title{font-size:.9rem;font-weight:600}.draft-section .link{font-size:.75rem;font-weight:600}
 .line-description{white-space:pre-wrap}
+.invoice-meta.manual-meta{grid-template-columns:repeat(4,minmax(0,1fr));align-items:start}
+.reference-field{display:grid;gap:.3rem;min-width:0}
+.reference-options{display:flex;align-items:center;gap:.8rem;min-height:1.2rem;color:#425675}
+.reference-options label{display:flex;align-items:center;gap:.3rem;cursor:pointer}
+.reference-options input[type=radio]{width:1rem;height:1rem;min-height:1rem;margin:0;padding:0;accent-color:#0ca88b}
+.manual-currency{width:min(12rem,100%)}
+:host-context(html.dark) .reference-options{color:#c1d0e6}
+@media(max-width:1000px){.invoice-meta.manual-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.invoice-meta.manual-meta{grid-template-columns:minmax(0,1fr)}}
