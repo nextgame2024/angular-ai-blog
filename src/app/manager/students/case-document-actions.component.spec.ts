@@ -96,6 +96,10 @@ describe('CaseDocumentActionsComponent',()=>{
     expect(selectedFile.value).toBe('replacement.pdf');
     api.replaceCaseDocument.and.returnValue(throwError(()=>({status:502})));c.replace();
     const key=api.replaceCaseDocument.calls.mostRecent().args[3];expect(c.message).toContain('Retry the same file');expect(c.selectedFiles[0]).toBe(file);
+    api.replaceCaseDocument.and.returnValue(throwError(()=>({status:502,error:{errorCode:'xero_unavailable'}})));c.replace();
+    expect(c.message).toContain('Xero did not respond');expect(c.message).toContain('wait two minutes');
+    api.replaceCaseDocument.and.returnValue(throwError(()=>({status:409})));c.replace();
+    expect(c.message).toContain('still being finalized');expect(c.message).toContain('Wait two minutes');
     api.replaceCaseDocument.and.returnValue(of({documentId:'document-1',replaced:true,cleanupPending:false}));c.replace();f.detectChanges();
     expect(api.replaceCaseDocument.calls.mostRecent().args).toEqual(['case-1','document-1',file,key]);
     expect(changed).toHaveBeenCalledTimes(1);expect(c.modal.nativeElement.open).toBeFalse();expect(c.message).toContain('replaced successfully');

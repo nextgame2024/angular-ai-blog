@@ -216,7 +216,7 @@
     <dialog #documentMutationDialog class="document-mutation-dialog" (cancel)="$event.preventDefault();closeDocumentMutation()">
       <div class="document-mutation-panel">
         <h2>Delete document</h2>
-        <p>Delete <strong>{{documentMutationTarget?.fileName}}</strong> from Sophia and Xero? This cannot be undone.</p>
+        <p>Delete <strong>{{documentMutationTarget?.fileName}}</strong>? This cannot be undone.</p>
         @if(documentMutationError){<p class="section-error" role="alert">{{documentMutationError}}</p>}
         <div class="document-mutation-actions"><button type="button" class="secondary-button" (click)="closeDocumentMutation()" [disabled]="documentMutationBusy">Cancel</button><button type="button" class="mutation-confirm danger" (click)="confirmDocumentMutation()" [disabled]="documentMutationBusy">{{documentMutationBusy?'Deleting…':'Delete document'}}</button></div>
       </div>

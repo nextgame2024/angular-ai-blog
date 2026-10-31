@@ -183,6 +183,8 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
   private replacementError(error:any):string{
     if(error?.status===413)return 'The file is too large. Maximum size is 10 MB.';
     if(error?.error?.errorCode==='xero_replacement_cleanup_pending')return 'The document was replaced, but Xero is still removing the previous file. Retry the same replacement.';
+    if(error?.error?.errorCode==='xero_unavailable')return 'Xero did not respond. The replacement is safely retained; wait two minutes and retry the same file.';
+    if(error?.status===409)return 'The replacement is still being finalized. Wait two minutes, then retry the same file.';
     return 'The document could not be replaced. Retry the same file.';
   }
   private uploadError(e:any):string {

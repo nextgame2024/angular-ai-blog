@@ -430,6 +430,17 @@ describe('ManagerCaseViewPageComponent', () => {
     tick(20000);expect(api.caseDocuments).toHaveBeenCalledTimes(2);fixture.destroy();
   }));
 
+  it('recovers polling after a temporary status request failure',fakeAsync(()=>{
+    const pending={documents:[],discovery:[],discoveryRequested:false,total:0,page:1,limit:25,analysisPending:true};
+    api.caseDocuments.and.returnValue(of(pending));spyOnProperty(document,'hidden','get').and.returnValue(false);
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+    api.caseDocuments.and.returnValue(throwError(()=>new Error('temporary network failure')));tick(10000);
+    expect(api.caseDocuments).toHaveBeenCalledTimes(2);
+    api.caseDocuments.and.returnValue(of({...pending,analysisPending:false}));tick(30000);
+    expect(api.caseDocuments).toHaveBeenCalledTimes(3);expect(fixture.componentInstance.documentError).toBe('');
+    tick(60000);expect(api.caseDocuments).toHaveBeenCalledTimes(3);fixture.destroy();
+  }));
+
   it('does not report an empty completed discovery when sources failed', () => {
     api.caseDocuments.and.returnValue(of({ documents: [], discovery: [{ status: 'failed', count: 2 }], discoveryRequested: true, total: 0, page: 1, limit: 25 }));
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent); fixture.detectChanges();

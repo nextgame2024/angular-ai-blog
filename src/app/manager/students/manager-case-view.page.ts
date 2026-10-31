@@ -176,13 +176,13 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   private scheduleDocumentPoll(): void {
     this.stopDocumentPolling();
     // Poll stored metadata only, never initiate provider work. Bound requests per visit.
-    if ((!this.discoveryPending&&!this.documents?.analysisPending) || this.documentPollCount >= 30) return;
+    if ((!this.discoveryPending&&!this.documents?.analysisPending) || this.documentPollCount >= (this.documents?.analysisPending?180:30)) return;
     this.documentPollTimer = setTimeout(() => {
       this.documentPollTimer = null;
       if (document.hidden) { this.scheduleDocumentPoll(); return; }
       this.documentPollCount++;
       this.loadDocuments(this.documents?.page ?? 1);
-    }, this.documents?.analysisPending ? 10_000 : this.discoveryProcessing ? 30_000 : 120_000);
+    }, this.documentError ? 30_000 : this.documents?.analysisPending ? 10_000 : this.discoveryProcessing ? 30_000 : 120_000);
   }
 
   ngOnInit(): void {
@@ -542,7 +542,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
         if(analysisFinished||analysisChanged){this.loadActivity(1);this.refreshCaseSummary();}
         this.scheduleDocumentPoll();
       } },
-      error: () => { if (id === this.currentId && request===this.documentRequest) { this.documentError = 'Documents could not be loaded.'; this.loadingDocuments = false; } },
+      error: () => { if (id === this.currentId && request===this.documentRequest) { this.documentError = 'Documents could not be loaded.'; this.loadingDocuments = false; this.scheduleDocumentPoll(); } },
     });
   }
   loadActivity(page: number): void {
@@ -580,7 +580,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.documentMutationBusy=true;this.documentMutationError='';
     this.api.deleteCaseDocument(id,target.documentId,this.documentMutationKey).pipe(takeUntil(this.destroy$)).subscribe({next:()=>{
       if(id!==this.currentId)return;this.documentMutationBusy=false;this.documentMutationDialog?.nativeElement.close();
-      this.documentMutationNotice='Document deleted from Sophia and Xero.';
+      this.documentMutationNotice='Document deleted successfully.';
       this.resetDocumentMutation();this.loadDocuments(this.documents?.page??1,true);this.loadActivity(1);this.refreshCaseSummary();
     },error:error=>{if(id===this.currentId){this.documentMutationBusy=false;this.documentMutationError=error?.error?.message||'The document could not be deleted. Try again.';}}});
   }
