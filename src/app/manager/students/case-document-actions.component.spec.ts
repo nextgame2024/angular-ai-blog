@@ -12,7 +12,8 @@ describe('CaseDocumentActionsComponent',()=>{
       caseDocumentUploadOptions:jasmine.createSpy().and.returnValue(of({enabled:true,available:true})),
       createDocumentType:jasmine.createSpy().and.callFake((value:any)=>of({...type,...value,documentTypeId:'type-2'})),
       updateDocumentType:jasmine.createSpy().and.callFake((id:string,value:any)=>of({...type,...value,documentTypeId:id,recordVersion:2})),
-      uploadCaseDocument:jasmine.createSpy().and.returnValue(of({documentId:'document-1'}))};
+      uploadCaseDocument:jasmine.createSpy().and.returnValue(of({documentId:'document-1'})),
+      replaceCaseDocument:jasmine.createSpy().and.returnValue(of({documentId:'document-1',replaced:true,cleanupPending:false}))};
     await TestBed.configureTestingModule({imports:[CaseDocumentActionsComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(){const fixture=TestBed.createComponent(CaseDocumentActionsComponent);fixture.componentRef.setInput('caseId','case-1');fixture.componentRef.setInput('canManage',true);fixture.detectChanges();return fixture;}
@@ -45,21 +46,59 @@ describe('CaseDocumentActionsComponent',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
     const input=f.nativeElement.querySelector('input[type="file"]') as HTMLInputElement;
     const button=f.nativeElement.querySelector('.file-button') as HTMLButtonElement;
+    const uploadButton=f.nativeElement.querySelector('.upload-submit') as HTMLButtonElement;
+    expect(f.nativeElement.querySelector('.upload-table')).toBeNull();
+    expect(uploadButton.disabled).toBeTrue();
     expect(input.hidden).toBeTrue();expect(button.type).toBe('button');
     expect(input.multiple).toBeTrue();expect(button.textContent).toContain('Select');expect(button.querySelector('svg')).not.toBeNull();
     const click=spyOn(input,'click');button.click();expect(click).toHaveBeenCalledTimes(1);
-    expect(f.nativeElement.querySelector('.file-name').textContent).toContain('No files selected');
+    expect((f.nativeElement.querySelector('.file-name') as HTMLInputElement).readOnly).toBeTrue();
+    expect((f.nativeElement.querySelector('.file-name') as HTMLInputElement).value).toBe('No files selected');
     c.addFiles();f.detectChanges();expect(button.getAttribute('aria-invalid')).toBe('true');
     const files=new DataTransfer();files.items.add(new File(['pdf'],'Passport.pdf',{type:'application/pdf'}));files.items.add(new File(['pdf'],'Offer.pdf',{type:'application/pdf'}));
     input.files=files.files;input.dispatchEvent(new Event('change'));f.detectChanges();
-    expect(c.selectedFiles.map(file=>file.name)).toEqual(['Passport.pdf','Offer.pdf']);expect(f.nativeElement.querySelector('.file-name').textContent).toContain('2 files selected');
-    expect(button.getAttribute('aria-invalid')).toBe('false');
-    c.uploadForm.controls.documentTypeId.setValue('type-1');(f.nativeElement.querySelector('.add-files') as HTMLButtonElement).click();f.detectChanges();
+    expect(c.selectedFiles.map(file=>file.name)).toEqual(['Passport.pdf','Offer.pdf']);expect((f.nativeElement.querySelector('.file-name') as HTMLInputElement).value).toBe('2 files selected');
+    expect(button.getAttribute('aria-invalid')).toBe('false');expect(uploadButton.disabled).toBeTrue();
+    c.uploadForm.controls.documentTypeId.setValue('type-1');f.detectChanges();expect(uploadButton.disabled).toBeFalse();
+    (f.nativeElement.querySelector('.add-files') as HTMLButtonElement).click();f.detectChanges();
     expect(c.stagedDocuments.map(item=>item.file.name)).toEqual(['Passport.pdf','Offer.pdf']);expect(f.nativeElement.querySelectorAll('.upload-table tbody tr').length).toBe(2);
     expect(api.uploadCaseDocument).not.toHaveBeenCalled();
     for(const state of ['busy','loading','failed'] as const){c[state]=true;f.detectChanges();expect(button.disabled).toBeTrue();c[state]=false;}
-    c.close();c.open('upload');f.detectChanges();expect(f.nativeElement.querySelector('.file-name').textContent).toContain('No files selected');
+    c.close();c.open('upload');f.detectChanges();expect((f.nativeElement.querySelector('.file-name') as HTMLInputElement).value).toBe('No files selected');
     expect(api.uploadCaseDocument).not.toHaveBeenCalled();
+  });
+  it('enables Upload for a valid type and file and stages that pending selection automatically',()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
+    const input=f.nativeElement.querySelector('input[type="file"]') as HTMLInputElement;
+    const uploadButton=f.nativeElement.querySelector('.upload-submit') as HTMLButtonElement;
+    c.uploadForm.controls.documentTypeId.setValue('type-1');
+    const file=new File(['%PDF-1.7\n%%EOF'],'statement.pdf',{type:'application/pdf'}),files=new DataTransfer();files.items.add(file);
+    input.files=files.files;input.dispatchEvent(new Event('change'));f.detectChanges();
+    expect(c.stagedDocuments).toEqual([]);expect(uploadButton.disabled).toBeFalse();
+    uploadButton.click();f.detectChanges();
+    expect(api.uploadCaseDocument).toHaveBeenCalledWith('case-1',file,'type-1',jasmine.any(String));
+    expect(c.modal.nativeElement.open).toBeFalse();
+  });
+  it('opens replacement in the modal with the existing type locked and replaces only after confirmation',()=>{
+    const f=setup(),c=f.componentInstance,changed=spyOn(c.changed,'emit');
+    c.openReplacement('document-1','type-1','Passport');f.detectChanges();
+    const root=f.nativeElement as HTMLElement,input=root.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(c.modal.nativeElement.open).toBeTrue();expect(root.querySelector('h2')?.textContent).toContain('Replace document');
+    expect(c.uploadForm.controls.documentTypeId.value).toBe('type-1');expect(c.uploadForm.controls.documentTypeId.disabled).toBeTrue();
+    expect((root.querySelector('[aria-label="Document type"]') as HTMLButtonElement).disabled).toBeTrue();
+    const selectedFile=root.querySelector('.file-name') as HTMLInputElement;
+    const replacementHint=root.querySelector('.replacement-hint') as HTMLElement;
+    expect(input.hidden).toBeTrue();expect(input.multiple).toBeFalse();expect(selectedFile.readOnly).toBeTrue();expect(selectedFile.value).toBe('No files selected');
+    expect(parseFloat(getComputedStyle(replacementHint).marginTop)).toBeGreaterThan(0);expect(parseFloat(getComputedStyle(replacementHint).marginBottom)).toBeGreaterThan(0);
+    expect(api.documentTypes).not.toHaveBeenCalled();expect(api.replaceCaseDocument).not.toHaveBeenCalled();
+    const file=new File(['%PDF-1.7\n%%EOF'],'replacement.pdf',{type:'application/pdf'});
+    const files=new DataTransfer();files.items.add(file);input.files=files.files;input.dispatchEvent(new Event('change'));f.detectChanges();
+    expect(selectedFile.value).toBe('replacement.pdf');
+    api.replaceCaseDocument.and.returnValue(throwError(()=>({status:502})));c.replace();
+    const key=api.replaceCaseDocument.calls.mostRecent().args[3];expect(c.message).toContain('Retry the same file');expect(c.selectedFiles[0]).toBe(file);
+    api.replaceCaseDocument.and.returnValue(of({documentId:'document-1',replaced:true,cleanupPending:false}));c.replace();f.detectChanges();
+    expect(api.replaceCaseDocument.calls.mostRecent().args).toEqual(['case-1','document-1',file,key]);
+    expect(changed).toHaveBeenCalledTimes(1);expect(c.modal.nativeElement.open).toBeFalse();expect(c.message).toContain('replaced successfully');
   });
   it('requires a typed file and delegates storage to the server with the same key on retry',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
@@ -74,13 +113,20 @@ describe('CaseDocumentActionsComponent',()=>{
     expect(c.message).toContain('1 document uploaded');expect(c.stagedDocuments).toEqual([]);expect(c.modal.nativeElement.open).toBeFalse();expect(c.isOpen).toBeFalse();
     f.detectChanges();expect(f.nativeElement.querySelector('app-manager-toast')).not.toBeNull();
   });
+  it('does not tell the user to wait for a permanent Xero request rejection',()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
+    stage(c,new File(['%PDF-1.7\n%%EOF'],'passport.pdf',{type:'application/pdf'}));
+    api.uploadCaseDocument.and.returnValue(throwError(()=>({status:502,error:{errorCode:'xero_request_rejected'}})));
+    c.upload();
+    expect(c.message).toContain('Xero rejected the document upload');expect(c.message).not.toContain('Wait two minutes');
+  });
   it('stages unique valid files and removes a row without uploading',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
     const valid=new File(['pdf'],'passport.pdf',{lastModified:7});
     c.uploadForm.controls.documentTypeId.setValue('type-1');c.selectedFiles=[valid,valid,new File([],'empty.pdf'),new File(['svg'],'active.svg')];c.addFiles();f.detectChanges();
     expect(c.stagedDocuments.length).toBe(1);expect(c.message).toContain('3 files were not added');expect(api.uploadCaseDocument).not.toHaveBeenCalled();
     (f.nativeElement.querySelector('.upload-table .btn.danger') as HTMLButtonElement).click();f.detectChanges();
-    expect(c.stagedDocuments).toEqual([]);expect(f.nativeElement.querySelector('.upload-table .empty').textContent).toContain('No documents added');
+    expect(c.stagedDocuments).toEqual([]);expect(f.nativeElement.querySelector('.upload-table')).toBeNull();
   });
   it('uploads with bounded concurrency, refreshes once, and keeps only failed rows for retry',()=>{
     const f=setup(),c=f.componentInstance,changed=spyOn(c.changed,'emit');c.open('upload');f.detectChanges();
@@ -184,18 +230,19 @@ describe('CaseDocumentActionsComponent',()=>{
     c.busy=false;c.changePage(Number.NaN);expect(c.page).toBe(1);c.changePage(99);expect(c.page).toBe(3);
     c.setSize('-1');expect(c.pageSize).toBe(25);expect(c.page).toBe(1);
   });
-  for(const width of [390,1440]) for(const dark of [false,true]) it(`fits both modals at ${width}px in ${dark?'dark':'light'} mode`,()=>{
+  for(const width of [390,1440]) for(const dark of [false,true]) it(`fits the document modals at ${width}px in ${dark?'dark':'light'} mode`,()=>{
     const f=setup(),c=f.componentInstance;
-    for(const mode of ['types','upload'] as const){
-      c.open(mode);if(mode==='types')c.types=Array.from({length:61},(_,i)=>({...type,documentTypeId:`type-${i}`,name:`Type ${i}`}));
-      else stage(c,new File(['pdf'],`${'LongDocumentName'.repeat(16)}.pdf`));f.detectChanges();
+    for(const mode of ['types','upload','replace'] as const){
+      if(mode==='replace'){c.openReplacement('document-1','type-1','Passport');c.selectedFiles=[new File(['pdf'],`${'LongDocumentName'.repeat(16)}.pdf`)];}
+      else {c.open(mode);if(mode==='types')c.types=Array.from({length:61},(_,i)=>({...type,documentTypeId:`type-${i}`,name:`Type ${i}`}));else stage(c,new File(['pdf'],`${'LongDocumentName'.repeat(16)}.pdf`));}
+      f.detectChanges();
       const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
       try {
         const doc=frame.contentDocument!,win=frame.contentWindow!;document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';
         const host=f.nativeElement.cloneNode(true) as HTMLElement;doc.body.appendChild(host);const modal=host.querySelector('dialog')!;modal.removeAttribute('open');modal.showModal();
         expect(modal.scrollWidth).toBeLessThanOrEqual(modal.clientWidth+1);expect(modal.getBoundingClientRect().right).toBeLessThanOrEqual(width);
         expect(win.getComputedStyle(modal).backgroundColor).toBe(dark?'rgb(30, 41, 59)':'rgb(255, 255, 255)');
-        if(mode==='upload'){
+        if(mode!=='types'){
           const picker=modal.querySelector('.file-picker') as HTMLElement;
           expect(picker.scrollWidth).toBeLessThanOrEqual(picker.clientWidth+1);
           expect(win.getComputedStyle(modal.querySelector('.file-button')!).backgroundColor).toBe('rgb(12, 168, 139)');

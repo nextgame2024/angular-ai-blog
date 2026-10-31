@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
 import { Component, ElementRef, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { Observable, Subject, catchError, distinctUntilChanged, forkJoin, map, of, switchMap, takeUntil } from 'rxjs';
+import { Subject, catchError, distinctUntilChanged, forkJoin, map, of, switchMap, takeUntil } from 'rxjs';
 import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
 import { ManagerToastComponent } from '../components/shared/manager-toast/manager-toast.component';
 import { ManagerSelectComponent, type ManagerSelectOption } from '../components/shared/manager-select/manager-select.component';
@@ -70,9 +70,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   downloadError = '';
   downloadingId: string | null = null;
   viewingId: string | null = null;
-  documentMutationAction:'replace'|'delete'|null=null;
   documentMutationTarget:StudentCaseDocuments['documents'][number]|null=null;
-  documentReplacementFile:File|null=null;
   documentMutationBusy=false;
   documentMutationError='';
   documentMutationNotice='';
@@ -566,24 +564,9 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     },error:()=>{}});
   }
 
-  startDocumentReplacement(document:StudentCaseDocuments['documents'][number],input:HTMLInputElement):void{
-    if(!this.canEditCases||this.documentMutationBusy)return;
-    this.documentMutationTarget=document;this.documentMutationAction='replace';this.documentReplacementFile=null;this.documentMutationError='';this.documentMutationKey='';
-    input.value='';input.click();
-  }
-
-  chooseDocumentReplacement(event:Event):void{
-    const input=event.target as HTMLInputElement,file=input.files?.[0];
-    if(!file||!this.documentMutationTarget){this.resetDocumentMutation();return;}
-    if(file.size===0||file.size>10*1024*1024||!(/\.(pdf|png|jpe?g)$/i.test(file.name))){
-      this.documentMutationError='Choose a PDF, JPEG or PNG file up to 10 MB.';this.documentReplacementFile=null;this.documentMutationDialog?.nativeElement.showModal();return;
-    }
-    this.documentReplacementFile=file;this.documentMutationKey=crypto.randomUUID();this.documentMutationDialog?.nativeElement.showModal();
-  }
-
   askDeleteDocument(document:StudentCaseDocuments['documents'][number]):void{
     if(!this.canEditCases||!document.canDelete||this.documentMutationBusy)return;
-    this.documentMutationTarget=document;this.documentMutationAction='delete';this.documentReplacementFile=null;this.documentMutationError='';this.documentMutationKey=crypto.randomUUID();
+    this.documentMutationTarget=document;this.documentMutationError='';this.documentMutationKey=crypto.randomUUID();
     this.documentMutationDialog?.nativeElement.showModal();
   }
 
@@ -592,25 +575,18 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   confirmDocumentMutation():void{
-    const target=this.documentMutationTarget,action=this.documentMutationAction,id=this.currentId;
-    if(!target||!action||!id||!this.documentMutationKey||action==='replace'&&!this.documentReplacementFile)return;
+    const target=this.documentMutationTarget,id=this.currentId;
+    if(!target||!id||!this.documentMutationKey)return;
     this.documentMutationBusy=true;this.documentMutationError='';
-    const request:Observable<{cleanupPending?:boolean;deleted?:true}>=action==='replace'
-      ?this.api.replaceCaseDocument(id,target.documentId,this.documentReplacementFile!,this.documentMutationKey)
-      :this.api.deleteCaseDocument(id,target.documentId,this.documentMutationKey);
-    request.pipe(takeUntil(this.destroy$)).subscribe({next:result=>{
+    this.api.deleteCaseDocument(id,target.documentId,this.documentMutationKey).pipe(takeUntil(this.destroy$)).subscribe({next:()=>{
       if(id!==this.currentId)return;this.documentMutationBusy=false;this.documentMutationDialog?.nativeElement.close();
-      const cleanupPending=Boolean(result.cleanupPending);
-      this.documentMutationNotice=action==='replace'
-        ?cleanupPending?'Document replaced. Xero is still cleaning up the previous file.':'Document replaced successfully.'
-        :'Document deleted from Sophia and Xero.';
+      this.documentMutationNotice='Document deleted from Sophia and Xero.';
       this.resetDocumentMutation();this.loadDocuments(this.documents?.page??1,true);this.loadActivity(1);this.refreshCaseSummary();
-    },error:error=>{if(id===this.currentId){this.documentMutationBusy=false;this.documentMutationError=error?.error?.message||
-      (action==='replace'?'The document could not be replaced. Retry the same file.':'The document could not be deleted. Try again.');}}});
+    },error:error=>{if(id===this.currentId){this.documentMutationBusy=false;this.documentMutationError=error?.error?.message||'The document could not be deleted. Try again.';}}});
   }
 
   private resetDocumentMutation():void{
-    this.documentMutationAction=null;this.documentMutationTarget=null;this.documentReplacementFile=null;this.documentMutationError='';this.documentMutationKey='';
+    this.documentMutationTarget=null;this.documentMutationError='';this.documentMutationKey='';
   }
 
   download(document: StudentCaseDocuments['documents'][number]): void {

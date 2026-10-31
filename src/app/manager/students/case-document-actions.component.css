@@ -47,10 +47,11 @@ th { position:sticky; top:0; background:#f5f8fb; color:#485b75; z-index:1 }
 .file-label { font-size:.76rem; font-weight:700; color:#425675 }
 .file-picker { display:flex; align-items:center; gap:.75rem; min-width:0 }
 .file-button { flex:none; padding:.55rem 1rem; font-size:.85rem }
-.file-name { min-width:0; overflow-wrap:anywhere; font-size:.8rem; color:#526989 }
+.file-name { flex:1; width:auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:#f5f8fb; color:#526989; font-size:.8rem; cursor:default }
 .file-button[aria-invalid="true"] { outline:2px solid #dc3545; outline-offset:2px }
 .add-files { min-width:5rem }
 .upload-hint,.upload-fields > .empty { grid-column:1/-1; margin:0 }
+.upload-hint.replacement-hint { margin:.5rem 0 }
 .upload-table { margin-top:1rem; max-height:15rem }
 .upload-table th:last-child,.upload-table td:last-child { width:4.25rem; text-align:center }
 .staged-file-details { min-width:0 }

@@ -69,14 +69,18 @@ export class ManagerSelectComponent implements ControlValueAccessor, AfterViewCh
     if (this.disabled) return;
     this.open = !this.open;
     if (this.open) {
-      this.positionAfterRender = this.panelDirection === 'up';
+      this.positionAfterRender = true;
       this.searchTerm = '';
       const rect = this.hostRef.nativeElement.getBoundingClientRect();
       this.menuStyles = this.panelDirection === 'up' ? {
         position: 'fixed', top: 'auto', bottom: `${window.innerHeight - rect.top + 6}px`,
         left: `${rect.left}px`, right: 'auto', width: `${rect.width}px`,
         maxHeight: `${Math.max(0, Math.min(220, rect.top - 12))}px`, zIndex: '1100',
-      } : {};
+      } : {
+        position: 'fixed', top: `${rect.bottom + 6}px`, bottom: 'auto',
+        left: `${rect.left}px`, right: 'auto', width: `${rect.width}px`,
+        maxHeight: `${Math.max(0, Math.min(220, window.innerHeight - rect.bottom - 12))}px`, zIndex: '1100',
+      };
     }
     if (!this.open) this.onTouched();
   }
@@ -95,7 +99,11 @@ export class ManagerSelectComponent implements ControlValueAccessor, AfterViewCh
     menu.style.width = `${trigger.width / (scaleX || 1)}px`;
     bounds = menu.getBoundingClientRect();
     menu.style.left = `${parseFloat(menu.style.left) + (trigger.left - bounds.left) / (scaleX || 1)}px`;
-    menu.style.bottom = `${parseFloat(menu.style.bottom) + (bounds.bottom - trigger.top + 6) / (scaleY || 1)}px`;
+    if(this.panelDirection === 'up') {
+      menu.style.bottom = `${parseFloat(menu.style.bottom) + (bounds.bottom - trigger.top + 6) / (scaleY || 1)}px`;
+    } else {
+      menu.style.top = `${parseFloat(menu.style.top) + (trigger.bottom + 6 - bounds.top) / (scaleY || 1)}px`;
+    }
   }
 
   selectOption(option: ManagerSelectOption, event?: MouseEvent): void {

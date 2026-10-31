@@ -2,6 +2,26 @@ import { TestBed } from '@angular/core/testing';
 import { ManagerSelectComponent } from './manager-select.component';
 
 describe('ManagerSelectComponent pagination menu', () => {
+  it('opens downward as a viewport overlay instead of being constrained by a modal scroll area', () => {
+    const fixture=TestBed.createComponent(ManagerSelectComponent);
+    const dialog=document.createElement('dialog');
+    dialog.style.cssText='width:260px;height:70px;padding:0;overflow:auto';
+    document.body.appendChild(dialog);dialog.appendChild(fixture.nativeElement);fixture.nativeElement.style.cssText='display:block;width:220px;margin:10px';
+    fixture.componentRef.setInput('searchable',true);
+    fixture.componentRef.setInput('options',[{value:'offer',label:'Offer letter'},{value:'passport',label:'Passport'},{value:'engagement',label:'Engagement letter'}]);
+    try {
+      dialog.showModal();fixture.detectChanges();
+      (fixture.nativeElement.querySelector('.select-trigger') as HTMLButtonElement).click();fixture.detectChanges();
+      const menu=fixture.nativeElement.querySelector('.select-menu') as HTMLElement;
+      const trigger=fixture.nativeElement.querySelector('.select-trigger') as HTMLElement;
+      expect(getComputedStyle(menu).position).toBe('fixed');expect(getComputedStyle(menu).zIndex).toBe('1100');
+      expect(menu.getBoundingClientRect().top-trigger.getBoundingClientRect().bottom).toBeCloseTo(6,0);
+      expect(menu.getBoundingClientRect().bottom).toBeGreaterThan(dialog.getBoundingClientRect().bottom);
+      const menuBounds=menu.getBoundingClientRect(),dialogBounds=dialog.getBoundingClientRect();
+      const visibleBelowDialog=document.elementFromPoint(menuBounds.left+20,Math.min(menuBounds.bottom-5,dialogBounds.bottom+10));
+      expect(menu.contains(visibleBelowDialog)).toBeTrue();
+    } finally {fixture.destroy();dialog.close();dialog.remove();}
+  });
   it('stays 6px above the selector inside an offset, filtered manager shell', () => {
     const fixture = TestBed.createComponent(ManagerSelectComponent);
     const shell = document.createElement('div');

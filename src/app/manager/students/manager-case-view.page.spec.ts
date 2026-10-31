@@ -716,15 +716,19 @@ describe('ManagerCaseViewPageComponent', () => {
 
   it('offers replacement for every document and deletion only for new Files uploads',()=>{
     api.caseDocuments.and.returnValue(of({documents:[
-      {documentId:'legacy',fileName:'legacy.pdf',mimeType:'application/pdf',sizeBytes:20,sourceKind:'Contacts',lastSeenAt:'2026-10-16',canReplaceFile:true,canDelete:false},
-      {documentId:'files',fileName:'new.pdf',mimeType:'application/pdf',sizeBytes:20,sourceKind:'Contacts',lastSeenAt:'2026-10-16',canReplaceFile:true,canDelete:true},
+      {documentId:'legacy',fileName:'legacy.pdf',mimeType:'application/pdf',sizeBytes:20,sourceKind:'Contacts',lastSeenAt:'2026-10-16',documentTypeId:'passport-type',documentTypeName:'Passport',canReplaceFile:true,canDelete:false},
+      {documentId:'files',fileName:'new.pdf',mimeType:'application/pdf',sizeBytes:20,sourceKind:'Contacts',lastSeenAt:'2026-10-16',documentTypeId:'passport-type',documentTypeName:'Passport',canReplaceFile:true,canDelete:true},
     ],discovery:[],discoveryRequested:true,total:2,page:1,limit:25}));
     const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const root=fixture.nativeElement as HTMLElement;
     expect(root.querySelectorAll('button[title="Replace document"]').length).toBe(2);expect(root.querySelectorAll('button[title="Delete document"]').length).toBe(1);
-    const legacyReplace=root.querySelector('button[aria-label="Replace legacy.pdf"]') as HTMLButtonElement,input=root.querySelector('input[type="file"]') as HTMLInputElement;
-    legacyReplace.click();const file=new File(['%PDF-1.7\n%%EOF'],'replacement.pdf',{type:'application/pdf'});Object.defineProperty(input,'files',{configurable:true,value:[file]});input.dispatchEvent(new Event('change'));fixture.detectChanges();
-    const dialog=root.querySelector('.document-mutation-dialog') as HTMLDialogElement;expect(dialog.open).toBeTrue();expect(dialog.textContent).toContain('legacy.pdf');
-    (dialog.querySelector('.mutation-confirm') as HTMLButtonElement).click();fixture.detectChanges();expect(api.replaceCaseDocument).toHaveBeenCalledWith('case-1','legacy',file,jasmine.any(String));expect(dialog.open).toBeFalse();
+    expect(root.querySelector('.case-record-card > input[type="file"]')).toBeNull();
+    (root.querySelector('button[aria-label="Replace legacy.pdf"]') as HTMLButtonElement).click();fixture.detectChanges();
+    const replaceDialog=root.querySelector('app-case-document-actions dialog') as HTMLDialogElement;
+    expect(replaceDialog.open).toBeTrue();expect(replaceDialog.textContent).toContain('Replace document');
+    expect((replaceDialog.querySelector('[aria-label="Document type"]') as HTMLButtonElement).disabled).toBeTrue();
+    expect(api.replaceCaseDocument).not.toHaveBeenCalled();
+    const dialog=root.querySelector('.document-mutation-dialog') as HTMLDialogElement;expect(dialog.open).toBeFalse();
+    (replaceDialog.querySelector('button[aria-label="Close dialog"]') as HTMLButtonElement).click();fixture.detectChanges();
     (root.querySelector('button[aria-label="Delete new.pdf"]') as HTMLButtonElement).click();fixture.detectChanges();expect(dialog.open).toBeTrue();expect(dialog.textContent).toContain('cannot be undone');
     (dialog.querySelector('.mutation-confirm') as HTMLButtonElement).click();fixture.detectChanges();expect(api.deleteCaseDocument).toHaveBeenCalledWith('case-1','files',jasmine.any(String));expect(dialog.open).toBeFalse();
   });
