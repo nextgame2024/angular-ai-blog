@@ -137,6 +137,9 @@ export interface StudentRegisterResult {
 export type StudentCaseStatus = 'pre_sale' | 'on_hold' | 'in_progress' | 'awaiting_payment' | 'payment_received' | 'payment_overdue' | 'collections' | 'payment_done' | 'closed' | 'cancelled';
 
 export interface StudentCaseDetail {
+  deleting?:boolean;
+  archived?:boolean;
+  archivedAt?:string|null;
   caseId: string;
   caseNumber: string;
   userId: string;
@@ -172,7 +175,7 @@ export interface StudentCaseWorkflowOptions {
 }
 
 export interface StudentCaseList {
-  cases: Array<{ caseId: string; caseNumber: string; status: StudentCaseStatus; currentStage: string }>;
+  cases: Array<{ caseId: string; caseNumber: string; status: StudentCaseStatus; currentStage: string;deleting?:boolean;archived?:boolean;recordVersion?:number }>;
   page: number;
   limit: number;
   total: number;

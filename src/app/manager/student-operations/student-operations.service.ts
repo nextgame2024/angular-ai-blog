@@ -184,6 +184,12 @@ export class StudentOperationsService {
   caseDetail(caseId: string): Observable<StudentCaseDetail> {
     return this.http.get<StudentCaseDetail>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}`, { headers: this.headers() });
   }
+  deleteCase(caseId:string,recordVersion:number,key:string):Observable<{caseId:string;deleted:boolean}>{
+    return this.http.post<{caseId:string;deleted:boolean}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/delete`,{recordVersion,confirmed:true},{headers:this.writeHeaders(key)}).pipe(tap(()=>this.invalidateDashboard()));
+  }
+  archiveCase(caseId:string,recordVersion:number,key:string,restore=false):Observable<{caseId:string;recordVersion:number;archived:boolean}>{
+    return this.http.post<{caseId:string;recordVersion:number;archived:boolean}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/${restore?'restore':'archive'}`,{recordVersion},{headers:this.writeHeaders(key)}).pipe(tap(()=>this.invalidateDashboard()));
+  }
 
   caseEditOptions(): Observable<StudentCaseEditOptions> {
     return this.http.get<StudentCaseEditOptions>(`${this.workspaceBase}/cases/edit-options`, { headers: this.headers() });

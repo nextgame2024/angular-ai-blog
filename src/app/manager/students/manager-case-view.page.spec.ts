@@ -19,6 +19,8 @@ describe('ManagerCaseViewPageComponent', () => {
     advisors: [], colleges: [],
   };
   const api = {
+    deleteCase:jasmine.createSpy().and.returnValue(of({caseId:'case-1',deleted:true})),
+    archiveCase:jasmine.createSpy().and.returnValue(of({caseId:'case-1',recordVersion:2,archived:true})),
     caseInvoiceDetail:jasmine.createSpy().and.returnValue(of({invoiceId:'xero-1',invoiceNumber:'INV-10577',studentName:'Example Student',advisorName:'Advisor Name',reference:'Fixture College',status:'PAID',type:'ACCREC',date:'2026-10-27',dueDate:'2026-10-27',currency:'AUD',total:'100',amountPaid:'100',amountDue:'0',paymentTrack:'Paid out',lineItems:[]})),
     caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batches:[],preparation:null})),
     documentRequirements:jasmine.createSpy().and.returnValue(of({requirements:[]})),
@@ -61,6 +63,9 @@ describe('ManagerCaseViewPageComponent', () => {
     params.next(convertToParamMap({ caseId: 'case-1' }));
     for (const spy of Object.values(api)) spy.calls.reset();
     api.workspace.and.returnValue(of({ role: 'chief_executive' }));
+    api.deleteCase.and.returnValue(of({caseId:'case-1',deleted:true}));
+    api.archiveCase.and.returnValue(of({caseId:'case-1',recordVersion:2,archived:true}));
+    api.casesForStudent.and.returnValue(of({cases:[{caseId:'case-1',caseNumber:'CASE-1',status:'in_progress',currentStage:'imported_pending_review',recordVersion:1},{caseId:'case-2',caseNumber:'CASE-2',status:'closed',currentStage:'payments_complete',recordVersion:1}],total:2,page:1,limit:100}));
     api.removeCaseInvoice.and.returnValue(of({invoiceId:'removable',status:'DELETED'}));
     api.caseInvoiceDrafts.and.returnValue(of({batches:[],preparation:null}));
     api.documentRequirements.and.returnValue(of({requirements:[]}));
@@ -99,7 +104,7 @@ describe('ManagerCaseViewPageComponent', () => {
     const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();tick();fixture.detectChanges();
     const open=spyOn(fixture.componentInstance.invoiceDrafts!,'openManual');
     const button=fixture.nativeElement.querySelector('.invoice-heading .create-invoice') as HTMLButtonElement;
-    expect(button.textContent).toBe('+Create');button.click();expect(open).toHaveBeenCalledTimes(1);fixture.destroy();
+    expect(button.textContent).toBe('+ Create');button.click();expect(open).toHaveBeenCalledTimes(1);fixture.destroy();
   }));
   it('includes the Action column and preserves read-only details for imported invoices',()=>{
     api.caseInvoices.and.returnValue(of({invoices:[{invoiceId:'imported',connectionId:'connection',invoiceNumber:'INV-8602',type:'ACCREC',status:'PAID'}],total:1,page:1,limit:25}));
@@ -395,7 +400,7 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelectorAll('.related-actions .edit')).toHaveSize(2);
     expect(root.querySelectorAll('.related-actions .archive')).toHaveSize(2);
     expect([...(root.querySelectorAll('.related-actions .edit') as NodeListOf<HTMLButtonElement>)].every(button => !button.disabled)).toBeTrue();
-    expect([...(root.querySelectorAll('.related-actions .archive') as NodeListOf<HTMLButtonElement>)].every(button => button.disabled)).toBeTrue();
+    expect([...(root.querySelectorAll('.related-actions .archive') as NodeListOf<HTMLButtonElement>)].every(button => !button.disabled)).toBeTrue();
     expect(root.textContent).not.toContain('Approve');
     expect(root.querySelector('app-case-document-actions .toolbar')?.textContent).toContain('Upload');
     expect(api.caseInvoices).toHaveBeenCalledWith('case-1', 1);
@@ -734,6 +739,87 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(actions[1].disabled).toBeFalse();
   });
 
+  it('confirms archiving, preserves read access and shows Terminated only on archived cases',()=>{
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const c=fixture.componentInstance,root=fixture.nativeElement as HTMLElement;
+    const archived={...detail,archived:true,recordVersion:2,status:'closed' as const,currentStage:'terminated'};
+    (root.querySelector('.related-item.selected .archive') as HTMLButtonElement).click();fixture.detectChanges();
+    expect(api.archiveCase).not.toHaveBeenCalled();expect(c.caseArchiveDialog!.nativeElement.textContent).toContain('You can undo this action');
+    c.closeCaseArchive();expect(api.archiveCase).not.toHaveBeenCalled();
+    c.askArchiveCase(c.relatedCases[0]);api.caseDetail.and.returnValue(of(archived));api.casesForStudent.and.returnValue(of({cases:[{...archived}],page:1,limit:100,total:1}));
+    c.confirmCaseArchive();fixture.detectChanges();
+    expect(api.archiveCase).toHaveBeenCalledWith('case-1',1,jasmine.any(String),false);expect(c.canEditCases).toBeFalse();
+    const steps=root.querySelectorAll('.stage-list li');expect(steps.length).toBe(6);expect(steps[5].textContent).toContain('6Terminated');expect(steps[5].getAttribute('aria-current')).toBe('step');
+    expect(root.querySelector('.archived-notice')?.textContent).toContain('Read-only');expect((root.querySelector('.create-invoice') as HTMLButtonElement)?.disabled).not.toBeFalse();
+    expect(root.querySelector('.invoice-number')).not.toBeNull();expect(root.querySelector('.new-case-button')).not.toBeNull();
+    expect((root.querySelector('.related-item.selected .edit') as HTMLButtonElement).disabled).toBeTrue();
+    expect(root.querySelector('.related-item.selected .archive')?.getAttribute('title')).toBe('Restore case');
+    const calls=api.caseEditOptions.calls.count();c.beginEdit('case-1');expect(api.caseEditOptions.calls.count()).toBe(calls);
+  });
+  it('uses a distinct restore icon and leaves eligible invoice actions visible but disabled',()=>{
+    api.caseDetail.and.returnValue(of({...detail,archived:true,status:'closed',currentStage:'terminated'}));
+    api.casesForStudent.and.returnValue(of({cases:[{...detail,archived:true}],total:1,page:1,limit:100}));
+    api.caseInvoices.and.returnValue(of({invoices:[{invoiceId:'draft',connectionId:'connection',status:'DRAFT',canEdit:true,removalAction:'delete'}],total:1,page:1,limit:25}));
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();
+    const root=f.nativeElement as HTMLElement;
+    expect(root.querySelector('.archive.restore svg path')?.getAttribute('d')).toContain('M3 11');
+    expect((root.querySelector('.invoice-edit') as HTMLButtonElement).disabled).toBeTrue();
+    expect((root.querySelector('.invoice-remove') as HTMLButtonElement).disabled).toBeTrue();
+  });
+  it('keeps smaller case controls and permanent-delete dialog usable in light and dark mode',()=>{
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();const c=f.componentInstance,root=f.nativeElement as HTMLElement;
+    for(const dark of [false,true]){
+      document.documentElement.classList.toggle('dark',dark);f.detectChanges();
+      const button=root.querySelector('.case-icon-button') as HTMLElement;
+      expect(button.getBoundingClientRect().width).toBeLessThanOrEqual(44);
+      expect(button.querySelector('svg')!.getBoundingClientRect().width).toBe(16);
+      c.askDeleteCase(c.relatedCases[0]);f.detectChanges();
+      const dialog=c.caseDeleteDialog!.nativeElement;
+      expect(dialog.getBoundingClientRect().width).toBeLessThanOrEqual(window.innerWidth);
+      expect(dialog.textContent).not.toContain('Xero');expect(dialog.textContent).not.toContain('Sophia');
+      c.closeCaseDelete();
+    }
+    document.documentElement.classList.remove('dark');
+  });
+  it('keeps archived cases after active cases when related pages are merged',()=>{
+    api.casesForStudent.and.returnValue(of({cases:[{...detail,caseId:'old',archived:true},{...detail,caseId:'active',archived:false}],total:3,page:1,limit:2}));
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();const c=f.componentInstance;
+    expect(c.relatedCases.map(item=>item.caseId)).toEqual(['active','old']);
+    api.casesForStudent.and.returnValue(of({cases:[{...detail,caseId:'next',archived:false}],total:3,page:2,limit:2}));c.loadRelated(2);
+    expect(c.relatedCases.map(item=>item.caseId)).toEqual(['active','next','old']);
+  });
+  it('requires permanent deletion confirmation, supports cancel and navigates away after success',()=>{
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();const c=f.componentInstance;
+    c.askDeleteCase(c.relatedCases[0]);expect(c.caseDeleteDialog!.nativeElement.open).toBeTrue();
+    expect(c.caseDeleteDialog!.nativeElement.textContent).toContain('cannot be undone');expect(c.caseDeleteDialog!.nativeElement.textContent).toContain('Deleting their last case also deletes their student record');expect(c.caseDeleteDialog!.nativeElement.textContent).toContain('contact will be archived only when their last case is deleted');expect(api.deleteCase).not.toHaveBeenCalled();
+    c.closeCaseDelete();expect(api.deleteCase).not.toHaveBeenCalled();
+    c.askDeleteCase(c.relatedCases[0]);c.confirmCaseDelete();
+    expect(api.deleteCase).toHaveBeenCalledWith('case-1',1,jasmine.any(String));expect(c.caseDeleteDialog!.nativeElement.open).toBeFalse();
+  });
+  it('keeps the deletion dialog and retry key after an uncertain result',()=>{
+    api.deleteCase.and.returnValue(throwError(()=>({status:502})));
+    const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();const c=f.componentInstance;
+    c.askDeleteCase(c.relatedCases[0]);c.confirmCaseDelete();c.confirmCaseDelete();
+    expect(c.caseDeleteDialog!.nativeElement.open).toBeTrue();expect(c.deleteBusy).toBeFalse();
+    expect(api.deleteCase.calls.argsFor(0)[2]).toBe(api.deleteCase.calls.argsFor(1)[2]);
+  });
+  it('restores an archived case through confirmation and returns to its previous progress',()=>{
+    const archived={...detail,archived:true,recordVersion:2,status:'closed' as const,currentStage:'terminated'};
+    api.caseDetail.and.returnValue(of(archived));api.casesForStudent.and.returnValue(of({cases:[archived],total:1,page:1,limit:100}));
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const c=fixture.componentInstance;
+    c.askArchiveCase(c.relatedCases[0]);fixture.detectChanges();expect(c.caseArchiveDialog!.nativeElement.textContent).toContain('Restore case');
+    api.caseDetail.and.returnValue(of({...detail,currentStage:'awaiting_payment',status:'pre_sale',archived:false,recordVersion:3}));api.archiveCase.and.returnValue(of({caseId:'case-1',recordVersion:3,archived:false}));
+    c.confirmCaseArchive();fixture.detectChanges();expect(api.archiveCase).toHaveBeenCalledWith('case-1',2,jasmine.any(String),true);
+    expect(c.canEditCases).toBeTrue();expect(c.workflowStages.length).toBe(5);expect(c.workflowStages.some(s=>s.value==='terminated')).toBeFalse();
+  });
+  it('retains the archive confirmation and retry identity after a failed request',()=>{
+    api.archiveCase.and.returnValue(throwError(()=>({status:502})));const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();const c=f.componentInstance;
+    c.askArchiveCase(c.relatedCases[0]);c.confirmCaseArchive();expect(c.caseArchiveDialog!.nativeElement.open).toBeTrue();expect(c.archiveBusy).toBeFalse();
+    c.confirmCaseArchive();expect(api.archiveCase.calls.argsFor(0)[2]).toBe(api.archiveCase.calls.argsFor(1)[2]);expect(c.case?.archived).not.toBeTrue();
+  });
+  it('does not add Terminated to a case closed through the normal workflow',()=>{
+    api.caseDetail.and.returnValue(of({...detail,status:'closed',currentStage:'payments_complete',archived:false}));const f=TestBed.createComponent(ManagerCaseViewPageComponent);f.detectChanges();
+    expect(f.componentInstance.workflowStages.length).toBe(5);expect(f.nativeElement.querySelector('.stage-list').textContent).not.toContain('Terminated');
+  });
   it('shows invoice removal only when eligible and requires confirmation before a request',()=>{
     const removable={invoiceId:'removable',connectionId:'connection',invoiceNumber:'INV-REMOVE',type:'ACCREC',status:'DRAFT',date:null,dueDate:null,removalAction:'delete'};
     api.caseInvoices.and.returnValue(of({invoices:[removable,{...removable,invoiceId:'paid',status:'PAID',removalAction:null}],total:2,page:1,limit:25}));

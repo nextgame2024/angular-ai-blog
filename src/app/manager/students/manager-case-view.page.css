@@ -68,8 +68,8 @@ h2 { font-size:.97rem; font-weight:800 }
 .related-link strong { font-size:.78rem }
 .related-link span { color:#687991; font-size:.68rem; overflow-wrap:anywhere }
 .related-actions { display:flex; align-items:center; gap:.15rem; flex:none; padding-right:.35rem }
-.case-icon-button { display:grid; place-items:center; width:2.55rem; height:2.55rem; border:1px solid #c8d9ed; border-radius:.45rem; background:#fff; cursor:pointer }
-.case-icon-button svg { width:1.25rem; height:1.25rem }
+.case-icon-button { display:grid; place-items:center; width:2rem; height:2rem; border:1px solid #c8d9ed; border-radius:.45rem; background:#fff; cursor:pointer }
+.case-icon-button svg { width:1rem; height:1rem }
 .case-icon-button.edit { color:#6555dc }
 .case-icon-button.archive { color:#a76235 }
 .case-icon-button:hover:not(:disabled) { border-color:#c8d9ed; background:#fff }
@@ -265,3 +265,14 @@ td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 :host-context(html.dark) .fact-icon.advisor { background:#16453f; color:#8de4d4 }
 
 .invoice-row-actions{display:flex;flex-direction:column;align-items:center;gap:.35rem}
+
+.archived-notice{margin:.75rem 0 0;padding:.65rem .75rem;border:1px solid #dbe5f0;border-radius:.5rem;background:#f5f8fb;color:#526783;font-size:.8rem}
+:host-context(html.dark) .archived-notice{background:#263449;border-color:#4a6180;color:#c1d0e6}
+
+.case-icon-button.restore { color:#078576 }
+.case-icon-button.danger { color:#bd3142; border-color:#efc1c7 }
+:host-context(html.dark) .case-icon-button.restore { color:#5eead4 }
+:host-context(html.dark) .case-icon-button.danger { color:#fda4af; border-color:#7e4653 }
+@media (pointer:coarse) { .case-icon-button { min-width:2.75rem; min-height:2.75rem } }
+
+:host-context(html.dark) .case-icon-button { background:#263449; border-color:#4a6180 }

@@ -33,6 +33,16 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   @ViewChild(CaseInvoiceDraftsComponent) invoiceDrafts?:CaseInvoiceDraftsComponent;
   @ViewChild('documentMutationDialog') documentMutationDialog?:ElementRef<HTMLDialogElement>;
   @ViewChild('invoiceRemovalDialog') invoiceRemovalDialog?:ElementRef<HTMLDialogElement>;
+  @ViewChild('caseDeleteDialog') caseDeleteDialog?:ElementRef<HTMLDialogElement>;
+  deleteTarget:StudentCaseList['cases'][number]|null=null;
+  deleteBusy=false;
+  deleteError='';
+  private deleteKey='';
+  @ViewChild('caseArchiveDialog') caseArchiveDialog?:ElementRef<HTMLDialogElement>;
+  archiveTarget:StudentCaseList['cases'][number]|null=null;
+  archiveBusy=false;
+  archiveError='';
+  private archiveKey='';
   invoiceRemovalTarget:StudentCaseInvoices['invoices'][number]|null=null;
   invoiceRemovalBusy=false;
   invoiceRemovalError='';
@@ -131,6 +141,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     return /\d/.test(phone) ? `tel:${phone}` : null;
   }
   get workflowStages(): ReadonlyArray<{ value: string; label: string }> {
+    if(this.case?.archived)return [...CASE_WORKFLOW_STAGES,{value:'terminated',label:'Terminated'}];
     return this.case?.currentStage === IMPORTED_CASE_STAGE.value
       ? [IMPORTED_CASE_STAGE, ...CASE_WORKFLOW_STAGES] : CASE_WORKFLOW_STAGES;
   }
@@ -138,7 +149,8 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   get canShowCaseActions(): boolean {
     return this.workspace?.role === 'chief_executive' || this.workspace?.role === 'operations' || this.workspace?.role === 'advisor';
   }
-  get canEditCases(): boolean { return this.workspace?.role === 'chief_executive' || this.workspace?.role === 'operations'; }
+  get canManageCases(): boolean { return this.workspace?.role === 'chief_executive' || this.workspace?.role === 'operations'; }
+  get canEditCases(): boolean { return this.canManageCases&&!this.case?.archived&&!this.case?.deleting&&!this.deleteBusy; }
   get collegeOptions(): ManagerSelectOption[] {
     return [{ value: '', label: 'No college' }, ...(this.editOptions?.colleges.map(item => ({ value: item.collegeId, label: item.name })) ?? [])];
   }
@@ -198,7 +210,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       next: workspace => {
         this.workspace = workspace;
         if (this.creationMode) {
-          if (!this.canEditCases) { this.error = 'You do not have permission to create students or cases.'; this.loading = false; return; }
+          if (!this.canManageCases) { this.error = 'You do not have permission to create students or cases.'; this.loading = false; return; }
           if (this.creationMode === 'student') this.prepareCreation();
           else if (this.case) this.prepareCreation(this.case);
           return;
@@ -228,7 +240,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
       if (this.creationMode === 'case') {
         if (this.workspaceFailed) this.error = 'Case creation is unavailable. Check your workspace access and try again.';
         else if (!this.workspace) this.loading = true;
-        else if (this.canEditCases) this.prepareCreation(detail);
+        else if (this.canManageCases) this.prepareCreation(detail);
         else if (this.workspace) this.error = 'You do not have permission to create cases.';
         return;
       }
@@ -244,7 +256,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   private prepareCreation(source?: StudentCaseDetail): void {
-    if (!this.canEditCases || this.editLoading || this.editing) return;
+    if (!this.canManageCases || this.editLoading || this.editing) return;
     this.creationSourceCaseId = source?.caseId ?? '';
     this.currentId = '';
     this.case = {
@@ -265,7 +277,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   beginEdit(caseId: string): void {
-    if (!this.canEditCases || this.editLoading || this.saving) return;
+    if (!this.canManageCases || this.editLoading || this.saving || caseId===this.case?.caseId&&this.case?.archived) return;
     if (caseId !== this.case?.caseId) {
       void this.router.navigate(['/manager/students/cases', caseId], { queryParams: { edit: '1' } });
       return;
@@ -494,8 +506,9 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.api.casesForStudent(this.case.userId, page).pipe(takeUntil(this.destroy$)).subscribe({
       next: result => {
         if (id !== this.currentId) return;
-        const seen = new Set(this.relatedCases.map(item => item.caseId));
-        this.relatedCases = [...this.relatedCases, ...result.cases.filter(item => !seen.has(item.caseId))];
+        const rows=new Map((page===1?[]:this.relatedCases).map(item=>[item.caseId,item]));
+        for(const item of result.cases)rows.set(item.caseId,item);
+        this.relatedCases=[...rows.values()].sort((a,b)=>Number(!!a.archived)-Number(!!b.archived));
         this.relatedTotal = result.total;
         this.relatedPage = page;
         this.loadingRelated = false;
@@ -511,6 +524,53 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
   showInvoice(invoice:StudentCaseInvoices['invoices'][number]):void{
     this.invoiceDrafts?.showInvoice(invoice.connectionId??'',invoice.invoiceId);
+  }
+  askDeleteCase(target:StudentCaseList['cases'][number]):void{
+    if(!this.canManageCases||this.editing||this.saving||this.deleteBusy||this.archiveBusy||this.invoiceRemovalBusy||this.documentMutationBusy||this.invoiceDrafts?.busy)return;
+    this.deleteTarget={...target,...(target.caseId===this.case?.caseId?{recordVersion:this.case.recordVersion}:{})};
+    this.deleteKey=crypto.randomUUID();this.deleteError='';this.caseDeleteDialog?.nativeElement.showModal();
+  }
+  closeCaseDelete():void{
+    if(this.deleteBusy)return;this.caseDeleteDialog?.nativeElement.close();this.deleteTarget=null;this.deleteKey='';this.deleteError='';
+  }
+  confirmCaseDelete():void{
+    const target=this.deleteTarget,sourceId=this.currentId;
+    if(!target?.recordVersion||!this.canManageCases||!this.deleteKey||this.deleteBusy)return;
+    this.deleteBusy=true;this.deleteError='';
+    this.api.deleteCase(target.caseId,target.recordVersion,this.deleteKey).pipe(takeUntil(this.destroy$)).subscribe({
+      next:()=>{
+        if(sourceId!==this.currentId)return;this.deleteBusy=false;this.closeCaseDelete();
+        if(target.caseId===this.case?.caseId){
+          const next=this.relatedCases.find(c=>c.caseId!==target.caseId);
+          void this.router.navigate(next?['/manager/students/cases',next.caseId]:['/manager/students']);
+        }else{this.relatedCases=this.relatedCases.filter(c=>c.caseId!==target.caseId);this.loadRelated(1);this.showEditSuccess('Case deleted.');}
+      },
+      error:error=>{
+        if(sourceId!==this.currentId)return;this.deleteBusy=false;
+        this.deleteError=typeof error?.error?.message==='string'?error.error.message:'The case could not be deleted. Retry the same action.';
+        this.refreshCaseSummary();this.loadRelated(1);
+      },
+    });
+  }
+  askArchiveCase(target:StudentCaseList['cases'][number]):void{
+    if(!this.canManageCases||this.editing||this.saving||this.archiveBusy||this.deleteBusy||this.invoiceRemovalBusy||this.documentMutationBusy||this.invoiceDrafts?.busy)return;
+    this.archiveTarget={...target,...(target.caseId===this.case?.caseId?{recordVersion:this.case.recordVersion,archived:this.case.archived}:{} )};
+    this.archiveError='';this.archiveKey=crypto.randomUUID();this.caseArchiveDialog?.nativeElement.showModal();
+  }
+  closeCaseArchive():void{
+    if(this.archiveBusy)return;this.caseArchiveDialog?.nativeElement.close();this.archiveTarget=null;this.archiveError='';this.archiveKey='';
+  }
+  confirmCaseArchive():void{
+    const target=this.archiveTarget,sourceId=this.currentId;
+    if(!target?.recordVersion||!this.canManageCases||!this.archiveKey||this.archiveBusy)return;
+    this.archiveBusy=true;this.archiveError='';
+    this.api.archiveCase(target.caseId,target.recordVersion,this.archiveKey,!!target.archived).pipe(takeUntil(this.destroy$)).subscribe({next:result=>{
+      if(sourceId!==this.currentId)return;this.archiveBusy=false;this.closeCaseArchive();
+      if(!target.archived&&target.caseId===this.case?.caseId)this.case={...this.case,archived:true,currentStage:'terminated',status:'closed',recordVersion:result.recordVersion};
+      this.showEditSuccess(target.archived?'Case restored. You can edit it again.':'Case archived. It is now read-only.');
+      if(target.caseId===this.case?.caseId){this.refreshCaseSummary();this.loadActivity(1);if(target.archived){this.loadInvoices(this.invoices?.page??1);this.loadDocuments(this.documents?.page??1,true);}}
+      else this.loadRelated(1);
+    },error:error=>{if(sourceId!==this.currentId)return;this.archiveBusy=false;this.archiveError=typeof error?.error?.message==='string'?error.error.message:'The case could not be updated. Retry the same action.';if(error?.status===409){this.loadRelated(1);this.refreshCaseSummary();}}});
   }
   loadInvoices(page: number): void {
     if (!this.case || this.loadingInvoices || page < 1) return;
@@ -690,6 +750,8 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   private reset(): void {
+    this.caseDeleteDialog?.nativeElement.close();this.deleteBusy=false;this.deleteTarget=null;this.deleteError='';this.deleteKey='';
+    this.caseArchiveDialog?.nativeElement.close();this.archiveBusy=false;this.archiveTarget=null;this.archiveError='';this.archiveKey='';
     this.invoiceCreationAvailable=false;
     this.invoiceRemovalDialog?.nativeElement.close();this.invoiceRemovalBusy=false;this.invoiceRemovalTarget=null;this.invoiceRemovalError='';this.invoiceRemovalKey='';
     this.stopDocumentPolling();
