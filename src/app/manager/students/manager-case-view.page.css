@@ -263,3 +263,5 @@ td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 :host-context(html.dark) .fact-icon.college { background:#39295f; color:#c3a4ff }
 :host-context(html.dark) .fact-icon.course,:host-context(html.dark) .fact-icon.opened { background:#203f67; color:#9ec8ff }
 :host-context(html.dark) .fact-icon.advisor { background:#16453f; color:#8de4d4 }
+
+.invoice-row-actions{display:flex;flex-direction:column;align-items:center;gap:.35rem}

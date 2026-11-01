@@ -89,7 +89,7 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelectorAll('.invoice-table tbody tr').length).toBe(8);expect(root.querySelector('.draft-section table')).toBeNull();expect(root.textContent).not.toContain('No Xero invoices are linked');
     (root.querySelector('.invoice-number') as HTMLButtonElement).click();fixture.detectChanges();
     const dialog=root.querySelector('app-case-invoice-drafts dialog') as HTMLDialogElement;expect(dialog.open).toBeTrue();
-    expect(dialog.querySelector('h2')?.textContent).toBe('INV-10577');expect(dialog.querySelector('.notice')).toBeNull();expect(dialog.querySelector('input')).toBeNull();
+    expect(dialog.querySelector('h2')?.textContent).toBe('INV-10577');expect(dialog.querySelector('.notice')).toBeNull();expect(dialog.querySelector('input:not([readonly])')).toBeNull();
     expect(getComputedStyle(dialog.querySelector('h2')!).fontSize).toBe('14.4px');
     expect(getComputedStyle(root.querySelector('.invoice-number')!).fontSize).toBe('12px');
   });
@@ -746,6 +746,14 @@ describe('ManagerCaseViewPageComponent', () => {
     (dialog.querySelector('.invoice-removal-confirm') as HTMLButtonElement).click();fixture.detectChanges();
     expect(api.removeCaseInvoice).toHaveBeenCalledWith('case-1','connection','removable','delete',jasmine.any(String));
     expect(dialog.open).toBeFalse();expect(fixture.componentInstance.documentMutationNotice).toContain('Invoice deleted');
+  });
+  it('offers invoice editing only when the server marks the invoice eligible',()=>{
+    const invoice={invoiceId:'editable',connectionId:'connection',invoiceNumber:'INV-EDIT',type:'ACCREC',status:'DRAFT',date:null,dueDate:null,canEdit:true};
+    api.caseInvoices.and.returnValue(of({invoices:[invoice,{...invoice,invoiceId:'paid',status:'PAID',canEdit:false}],total:2,page:1,limit:25}));
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
+    const editor=fixture.componentInstance.invoiceDrafts!;spyOn(editor,'openEdit');
+    const actions=fixture.nativeElement.querySelectorAll('.invoice-edit');expect(actions.length).toBe(1);actions[0].click();
+    expect(editor.openEdit).toHaveBeenCalledWith('connection','editable');
   });
   it('uses a void confirmation and retains the retry key when removal fails',()=>{
     const invoice={invoiceId:'authorised',connectionId:'connection',invoiceNumber:'INV-APPROVED',type:'ACCREC',status:'AUTHORISED',date:null,dueDate:null,removalAction:'void' as const};

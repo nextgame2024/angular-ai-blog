@@ -6,7 +6,7 @@ import { ManagerSelectComponent } from '../components/shared/manager-select/mana
 import { ManagerToastComponent } from '../components/shared/manager-toast/manager-toast.component';
 import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
-import type { CaseInvoiceDraftData,CaseInvoiceDraft,CaseInvoiceDraftLine,StudentCaseInvoiceDetail } from '../student-operations/student-operations.types';
+import type { CaseInvoiceDraftData,CaseInvoiceDraft,CaseInvoiceDraftLine,StudentCaseInvoiceDetail,CaseManualInvoiceOptions } from '../student-operations/student-operations.types';
 import { offerMoneyInput } from './case-offer-review.component';
 
 const text=(value='',required=true)=>new FormControl(value,{nonNullable:true,validators:[Validators.maxLength(4000),...(required?[Validators.required]:[])]});
@@ -14,7 +14,7 @@ const amount=(value='')=>new FormControl(value,{nonNullable:true,validators:[c=>
 const decimal4=/^\d{1,8}(\.\d{1,4})?$/;
 const scaled=(value:string)=>{const [whole,fraction='']=value.split('.');return BigInt(whole)*10000n+BigInt(fraction.padEnd(4,'0'));};
 const displayDecimal=(value:string)=>{const amount=scaled(value);return amount%100n===0n?`${amount/10000n}.${String((amount%10000n)/100n).padStart(2,'0')}`:value.replace(/0+$/,'').replace(/\.$/,'');};
-const lineForm=(kind:CaseInvoiceDraftLine['kind'],label:string,value:number)=>new FormGroup({kind:text(kind),description:text(label),itemId:text('',false),itemCode:text('',false),
+const lineForm=(kind:CaseInvoiceDraftLine['kind'],label:string,value:number)=>new FormGroup({lineItemId:text('',false),kind:text(kind),description:text(label),itemId:text('',false),itemCode:text('',false),
   quantity:new FormControl('1',{nonNullable:true,validators:[Validators.required,Validators.pattern(/^\d{1,6}(\.\d{1,4})?$/),c=>Number(c.value)>0?null:{positive:true}]}),
   price:new FormControl((value/100).toFixed(2),{nonNullable:true,validators:[Validators.required,Validators.pattern(decimal4)]}),accountCode:text('',false),taxType:text('',false)});
 type DraftLineForm=ReturnType<typeof lineForm>;
@@ -34,6 +34,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   detail:StudentCaseInvoiceDetail|null=null;
   readonlyMode=false;detailLoading=false;detailFailed=false;
   manualMode=false;
+  editTarget:{connectionId:string;invoiceId:string;expectedFingerprint:string;invoiceNumber:string;status:string;paymentTrack:string;conditionalFeeLineId?:string;retryKey?:string}|null=null;
   readonly manualReference=text();
   readonly referenceMode=new FormControl<'reference'|'college'>('reference',{nonNullable:true});
   readonly manualCollege=new FormControl('',{nonNullable:true});
@@ -91,7 +92,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   taxRate(line:DraftLineForm){return this.preparation?.catalogue?.taxRates.find(t=>t.taxType===line.controls.taxType.value);}
   taxLabel(line:DraftLineForm){const tax=this.taxRate(line);return tax&&tax.rate!==null?`${tax.name} (${tax.rate}%)`:'Tax defaults missing';}
   lineTax(line:DraftLineForm){const rate=this.taxRate(line)?.rate;return rate&&decimal4.test(rate)?Number((BigInt(this.lineAmount(line))*scaled(rate)+500000n)/1000000n):0;}
-  hasUnresolvedItems(payment:ReturnType<typeof paymentForm>){return payment.controls.lines.controls.some(l=>this.lineAmount(l)>0&&(!l.controls.itemId.value||!l.controls.accountCode.value||this.taxRate(l)?.rate==null));}
+  hasUnresolvedItems(payment:ReturnType<typeof paymentForm>){return payment.controls.lines.controls.some(l=>this.lineAmount(l)>0&&(!this.editTarget&&!l.controls.itemId.value||!l.controls.accountCode.value||this.taxRate(l)?.rate==null));}
   private bindFeeChoice(payment:ReturnType<typeof paymentForm>){
     payment.controls.feeApplies.valueChanges.pipe(takeUntil(this.previewStop$),takeUntil(this.scope$)).subscribe(choice=>{
       if(!choice||this.form.controls.invoices.controls.indexOf(payment)!==0)return;
@@ -169,6 +170,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     },error:()=>{this.failed=true;this.loading=false;this.creationAvailable.emit(false);}});
   }
   open(){
+    this.editTarget=null;
     this.manualMode=false;
     const p=this.data?.preparation;if(!p||this.busy||this.disabled||this.loading)return;this.preview=structuredClone(p);this.readonlyMode=false;this.detail=null;this.activePayment=0;this.conflict=false;this.request=null;this.message='';
     const saved=p.savedBatch;
@@ -210,13 +212,20 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   }
   openManual(){
     if(this.busy||this.disabled||!this.caseId||!this.data?.canCreateXero)return;
+    this.resetManual();
+    this.api.manualCaseInvoiceOptions(this.caseId).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$)).subscribe({next:options=>this.populateManual(options),error:()=>{this.busy=false;this.message='The invoice form could not be loaded. Close it and try again.';this.tone='error';}});
+  }
+  private resetManual(){
+    this.editTarget=null;
     this.previewStop$.next();this.detailStop$.next();this.manualMode=true;this.readonlyMode=false;this.detail=null;
     this.activePayment=0;this.conflict=false;this.request=null;this.draftIdentity=null;this.preview=null;this.sessionExports={};this.message='';
     this.form.enable({emitEvent:false});this.form.reset({advisorId:'',reviewNote:'',confirmed:false});this.form.controls.invoices.clear();
     this.manualReference.reset('');this.manualCurrency.reset('AUD');this.referenceMode.reset('reference');this.manualCollege.reset('');this.manualBrandingTheme.reset('');this.collegeOptions=[];this.brandingOptions=[];
     this.busy=true;this.busyLabel='Loading invoice form…';this.modal.nativeElement.showModal();
-    this.api.manualCaseInvoiceOptions(this.caseId).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$)).subscribe({next:options=>{
-      this.preview={...options,offerId:'',offerVersion:0,today:'',savedBatch:null,
+  }
+  private populateManual(options:CaseManualInvoiceOptions){
+      const now=new Date(),today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+      this.preview={...options,offerId:'',offerVersion:0,today,savedBatch:null,
         source:{kind:'letter_of_offer',studentName:options.student.name,evidence:[],issues:[],collegeName:null,abn:null,cricosProviderCode:null,currency:'AUD',statedTotalMinor:null,courses:[],fees:[],instalments:[]}};
       this.collegeOptions=(options.colleges??[]).map(c=>({value:c.collegeId,label:c.name}));
       this.brandingOptions=(options.brandingThemes??[]).map(t=>({value:t.brandingThemeId,label:t.name}));
@@ -224,16 +233,47 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       const college=options.colleges?.find(c=>c.isPrimary);
       if(college){this.referenceMode.setValue('college');this.manualCollege.setValue(college.collegeId);}
       this.busy=false;
-      const payment=paymentForm(1,'','',0,[]);payment.controls.feeApplies.setValue('no');
+      const payment=paymentForm(1,today,today,0,[]);payment.controls.feeApplies.setValue('no');
       this.form.controls.invoices.push(payment);this.addLine(payment,'other','',0);
-      payment.controls.lines.at(0).patchValue({quantity:'',price:''},{emitEvent:false});
-    },error:()=>{this.busy=false;this.message='The invoice form could not be loaded. Close it and try again.';this.tone='error';}});
+  }
+  openEdit(connectionId:string,invoiceId:string){
+    if(this.busy||this.disabled||!this.caseId)return;
+    this.resetManual();this.busyLabel='Loading invoice…';
+    this.api.caseInvoiceEditOptions(this.caseId,connectionId,invoiceId).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$)).subscribe({next:options=>{
+      this.populateManual(options);
+      const invoice=options.invoice;
+      this.editTarget={connectionId,invoiceId,expectedFingerprint:options.expectedFingerprint,invoiceNumber:invoice.invoiceNumber||'Invoice',status:invoice.status,paymentTrack:invoice.paymentTrack||'—'};
+      this.manualCurrency.setValue(invoice.currencyCode||'AUD');this.manualBrandingTheme.setValue(invoice.brandingThemeId||'');
+      this.referenceMode.setValue('reference');this.manualReference.setValue(invoice.invoiceReference||'');
+      const college=options.colleges.find(c=>c.name===invoice.invoiceReference);
+      if(college){this.referenceMode.setValue('college');this.manualCollege.setValue(college.collegeId);}
+      const advisor=options.advisors.find(a=>`${a.code} ${a.name}`===invoice.advisorName||a.name===invoice.advisorName);
+      this.form.controls.advisorId.setValue(advisor?.advisorId??'');
+      const payment=this.activeInvoice;payment.patchValue({issueDate:invoice.invoiceDate||'',dueDate:invoice.dueDate||''});payment.controls.lines.clear();
+      const fee=invoice.lineItems.find(l=>l.description?.trim().toLowerCase()==='conditional transfer fee'&&Number(l.quantity)===1&&Number(l.taxAmount)===0&&l.taxType==='BASEXCLUDED');
+      if(fee){payment.patchValue({feeApplies:'yes',fee:Number(fee.unitAmount).toFixed(2)});this.editTarget.conditionalFeeLineId=fee.lineItemId??undefined;}
+      for(const source of invoice.lineItems){
+        if(source===fee)continue;
+        this.addLine(payment,'other',source.description||'',0);
+        const line=payment.controls.lines.at(payment.controls.lines.length-1),item=options.catalogue?.items.find(i=>i.code===source.itemCode);
+        line.patchValue({lineItemId:source.lineItemId||'',itemId:item?.itemId||'',itemCode:source.itemCode||'',description:source.description||'',quantity:String(source.quantity??1),price:Number(source.unitAmount??0).toFixed(4).replace(/00$/,''),accountCode:source.accountCode||'',taxType:source.taxType||''},{emitEvent:false});
+      }
+      if(options.pending){
+        const saved=options.pending.input;
+        Object.assign(this.editTarget,{retryKey:options.pending.key,expectedFingerprint:saved.expectedFingerprint,conditionalFeeLineId:saved.conditionalFeeLineId});
+        this.form.patchValue({advisorId:saved.advisorId,reviewNote:saved.reviewNote});this.referenceMode.setValue(saved.referenceMode);this.manualReference.setValue(saved.reference);this.manualCollege.setValue(saved.collegeId||'');this.manualBrandingTheme.setValue(saved.brandingThemeId||'');
+        payment.patchValue({issueDate:saved.issueDate,dueDate:saved.dueDate,feeApplies:saved.conditionalFeeMinor?'yes':'no',fee:(saved.conditionalFeeMinor/100).toFixed(2)});payment.controls.lines.clear();
+        for(const source of saved.lines){this.addLine(payment,'other',source.description,0);const line=payment.controls.lines.at(payment.controls.lines.length-1);line.patchValue({lineItemId:source.lineItemId||'',itemCode:source.itemCode,itemId:options.catalogue?.items.find(i=>i.code===source.itemCode)?.itemId||'',description:source.description,quantity:source.quantity,price:source.unitPrice,accountCode:source.accountCode,taxType:source.taxType},{emitEvent:false});}
+        this.message='Your earlier save needs confirmation. Review and save these same changes before making further edits.';this.tone='error';
+      }
+    },error:error=>{this.busy=false;this.message=typeof error?.error?.message==='string'?error.error.message:'The invoice could not be opened for editing. Refresh the list and try again.';this.tone='error';}});
   }
   show(batch:CaseInvoiceDraftData['batches'][number],invoice:CaseInvoiceDraft){
     const receipt=batch.exports[String(invoice.sequence)];if(receipt?.status!=='created'||!receipt.invoiceId)return;
     this.showInvoice((batch.snapshot as {catalogueConnectionId?:string}).catalogueConnectionId??this.preparation?.catalogue?.connectionId??'',receipt.invoiceId);
   }
   showInvoice(connectionId:string,invoiceId:string){
+    this.editTarget=null;
     this.manualMode=false;
     if(this.busy||this.disabled)return;this.detailStop$.next();this.readonlyMode=true;this.detail=null;this.message='';this.detailFailed=false;this.detailLoading=true;
     this.detailTarget={connectionId,invoiceId};if(!this.modal.nativeElement.open)this.modal.nativeElement.showModal();
@@ -279,7 +319,8 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       if(payment.controls.issueDate.value&&payment.controls.dueDate.value&&payment.controls.dueDate.value<payment.controls.issueDate.value)payment.controls.dueDate.setErrors({beforeIssueDate:true});
       for(const line of payment.controls.lines.controls){
         for(const control of [line.controls.itemId,line.controls.accountCode,line.controls.taxType,line.controls.itemCode]){
-          control.setValidators([Validators.maxLength(500),...(this.lineAmount(line)>0?[Validators.required,Validators.pattern(/\S/)]:[])]);control.updateValueAndValidity();
+          const required=this.lineAmount(line)>0&&(!this.editTarget||control===line.controls.accountCode||control===line.controls.taxType);
+          control.setValidators([Validators.maxLength(500),...(required?[Validators.required,Validators.pattern(/\S/)]:[])]);control.updateValueAndValidity();
         }
       }
       if(payment.controls.feeApplies.value==='yes'&&offerMoneyInput(payment.controls.fee.value)===0)payment.controls.fee.setErrors({positive:true});
@@ -289,14 +330,14 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const confirmationMissing=action!=='save'&&!this.form.controls.confirmed.value;
     this.manualReference.markAsTouched();this.manualCurrency.markAsTouched();this.manualCollege.markAsTouched();this.manualBrandingTheme.markAsTouched();
     if(this.manualMode){
-      const referenceMissing=this.referenceMode.value==='reference'?!this.manualReference.value.trim():!this.collegeOptions.some(c=>c.value===this.manualCollege.value);
-      if(referenceMissing||this.manualCurrency.invalid||this.manualBrandingTheme.invalid){
+      const referenceMissing=this.referenceMode.value==='reference'?!this.editTarget&&!this.manualReference.value.trim():!this.collegeOptions.some(c=>c.value===this.manualCollege.value);
+      if(referenceMissing||this.manualCurrency.invalid||!this.editTarget&&this.manualBrandingTheme.invalid){
         this.message=referenceMissing?(this.referenceMode.value==='college'?'Select a college.':'Enter an invoice reference.'):this.manualCurrency.invalid?'Enter a valid currency.':'Select a branding theme.';this.tone='error';return;
       }
     }
     if(this.form.invalid||invalidPayment>=0||confirmationMissing){
       if(invalidPayment>=0)this.activePayment=invalidPayment;
-      this.message=confirmationMissing?'Review every instalment and tick the confirmation checkbox before creating invoices in Xero.':'Complete the preview fields, rates, accounting details and fee choices.';
+      this.message=confirmationMissing?(this.editTarget?'Review the invoice and tick the confirmation checkbox before saving.':'Review every instalment and tick the confirmation checkbox before creating invoices in Xero.'):'Complete the preview fields, rates, accounting details and fee choices.';
       if(!confirmationMissing){
         const payment=this.form.controls.invoices.at(Math.max(0,invalidPayment));
         if(this.form.controls.advisorId.invalid)this.message='Select an advisor.';
@@ -311,6 +352,20 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       this.tone='error';return;
     }
     const v=this.form.getRawValue();
+    if(this.editTarget){
+      const target=this.editTarget,payment=this.activeInvoice.getRawValue();
+      const value={expectedFingerprint:target.expectedFingerprint,confirmed:true,advisorId:v.advisorId,referenceMode:this.referenceMode.value,reference:this.manualReference.value,
+        ...(this.referenceMode.value==='college'?{collegeId:this.manualCollege.value}:{}),...(this.manualBrandingTheme.value?{brandingThemeId:this.manualBrandingTheme.value}:{}),currency:this.manualCurrency.value,reviewNote:v.reviewNote,
+        issueDate:payment.issueDate,dueDate:payment.dueDate,conditionalFeeMinor:payment.feeApplies==='yes'?(offerMoneyInput(payment.fee)??0):0,
+        ...(target.conditionalFeeLineId?{conditionalFeeLineId:target.conditionalFeeLineId}:{}),
+        lines:payment.lines.map(line=>({...line.lineItemId?{lineItemId:line.lineItemId}:{},itemCode:line.itemCode,description:line.description,quantity:line.quantity,unitPrice:line.price,accountCode:line.accountCode,taxType:line.taxType}))};
+      const fingerprint=JSON.stringify(value);if(this.request?.fingerprint!==fingerprint)this.request={fingerprint,key:target.retryKey??crypto.randomUUID()};
+      this.busy=true;this.busyLabel='Saving invoice…';this.form.disable({emitEvent:false});this.message='';
+      this.api.updateCaseInvoice(this.caseId,target.connectionId,target.invoiceId,value,this.request!.key).pipe(takeUntil(this.scope$)).subscribe({next:()=>{
+        this.busy=false;this.enableEditor();this.modal.nativeElement.close();this.preview=null;this.editTarget=null;this.previewStop$.next();this.message='Invoice updated successfully.';this.tone='success';this.changed.emit();if(this.showCreatedInvoices)this.load();
+      },error:error=>{this.busy=false;this.enableEditor();this.message=typeof error?.error?.message==='string'?error.error.message:'The invoice update could not be confirmed. Retry the same changes.';this.tone='error';}});
+      return;
+    }
     const invoices=this.form.controls.invoices.controls.map(i=>{const invoice=i.getRawValue();return {sequence:invoice.sequence,issueDate:invoice.issueDate,dueDate:invoice.dueDate,
       conditionalFeeApplies:invoice.feeApplies==='yes',conditionalFeeMinor:invoice.feeApplies==='yes'?offerMoneyInput(invoice.fee)!:0,
       lines:i.controls.lines.controls.filter(l=>this.lineAmount(l)>0).map(l=>{const line=l.getRawValue();return {kind:line.kind,description:line.description,itemCode:line.itemCode,itemId:line.itemId,

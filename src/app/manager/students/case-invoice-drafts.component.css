@@ -8,11 +8,20 @@
 .invoice-title{font-size:.9rem;font-weight:600}.draft-section .link{font-size:.75rem;font-weight:600}
 .line-description{white-space:pre-wrap}
 .invoice-meta.manual-meta{grid-template-columns:repeat(4,minmax(0,1fr));align-items:start}
-.reference-field{display:grid;gap:.3rem;min-width:0}
+.reference-field{display:grid;gap:.3rem;min-width:0;font-size:.8rem;line-height:1.5}
 .reference-options{display:flex;align-items:center;gap:.8rem;min-height:1.2rem;color:#425675}
 .reference-options label{display:flex;align-items:center;gap:.3rem;cursor:pointer}
 .reference-options input[type=radio]{width:1rem;height:1rem;min-height:1rem;margin:0;padding:0;accent-color:#0ca88b}
-.manual-currency{width:min(12rem,100%)}
+.invoice-dates.manual-dates{grid-template-columns:repeat(4,minmax(0,1fr))}
+.detail-totals>label{grid-template-columns:minmax(0,1fr) minmax(0,12rem);align-items:center;gap:1rem}
+.detail-totals input{text-align:right;font-weight:700}
+.invoice-summary{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,28rem);align-items:start;gap:1.5rem}
+.invoice-review{display:grid;gap:1rem;min-width:0}
+.invoice-review .fee-choice{grid-template-columns:minmax(0,20rem) minmax(0,12rem)}
+.editor-totals{width:100%;padding:0}
+.editor-totals .total-row{border-top:2px solid #c8d9ed;padding-top:.75rem;font-size:1rem;font-weight:700}
+:host-context(html.dark) .editor-totals .total-row{border-color:#4a6180}
+@media(max-width:1000px){.invoice-summary{grid-template-columns:minmax(0,1fr)}.editor-totals{justify-self:stretch;width:min(28rem,100%)}}
 :host-context(html.dark) .reference-options{color:#c1d0e6}
-@media(max-width:1000px){.invoice-meta.manual-meta{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:720px){.invoice-meta.manual-meta{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:1000px){.invoice-meta.manual-meta,.invoice-dates.manual-dates{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:720px){.invoice-meta.manual-meta,.invoice-dates.manual-dates{grid-template-columns:minmax(0,1fr)}}

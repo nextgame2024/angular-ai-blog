@@ -248,6 +248,12 @@ export class StudentOperationsService {
   manualCaseInvoiceOptions(caseId:string):Observable<import('./student-operations.types').CaseManualInvoiceOptions>{
     return this.http.get<import('./student-operations.types').CaseManualInvoiceOptions>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/manual-invoice-options`,{headers:this.headers()});
   }
+  caseInvoiceEditOptions(caseId:string,connectionId:string,invoiceId:string):Observable<import('./student-operations.types').CaseInvoiceEditOptions>{
+    return this.http.get<import('./student-operations.types').CaseInvoiceEditOptions>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoices/${encodeURIComponent(connectionId)}/${encodeURIComponent(invoiceId)}/edit-options`,{headers:this.headers()});
+  }
+  updateCaseInvoice(caseId:string,connectionId:string,invoiceId:string,value:unknown,key:string):Observable<{invoiceId:string;status:string}>{
+    return this.http.put<{invoiceId:string;status:string}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoices/${encodeURIComponent(connectionId)}/${encodeURIComponent(invoiceId)}`,value,{headers:this.writeHeaders(key)}).pipe(tap(()=>this.invalidateDashboard()));
+  }
   prepareManualCaseInvoice(caseId:string,value:unknown,key:string):Observable<{batchId:string;count:number;revision:number}>{
     return this.http.post<{batchId:string;count:number;revision:number}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/manual-invoice-drafts`,value,{headers:this.writeHeaders(key)});
   }

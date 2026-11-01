@@ -180,6 +180,7 @@ export interface StudentCaseList {
 
 export interface StudentCaseInvoices {
   invoices: Array<{
+    canEdit?:boolean;
     removalAction?:'delete'|'void'|null;
     invoiceId: string; connectionId?:string; invoiceNumber: string | null; type: string; status: string;
     draftBatchId?: string | null; draftSequence?: number | null;
@@ -223,6 +224,8 @@ export type CaseManualInvoiceOptions=Pick<NonNullable<CaseInvoiceDraftData['prep
   colleges:Array<{collegeId:string;name:string;isPrimary?:boolean}>;
   brandingThemes:Array<{brandingThemeId:string;name:string}>;
 };
+export interface CaseInvoiceEditRequest{expectedFingerprint:string;confirmed:true;advisorId:string;referenceMode:'reference'|'college';reference:string;collegeId?:string;brandingThemeId?:string;currency:string;reviewNote:string;issueDate:string;dueDate:string;conditionalFeeMinor:number;conditionalFeeLineId?:string;lines:Array<{lineItemId?:string;itemCode:string;description:string;quantity:string;unitPrice:string;accountCode:string;taxType:string}>}
+export type CaseInvoiceEditOptions=CaseManualInvoiceOptions&{expectedFingerprint:string;pending?:{key:string;input:CaseInvoiceEditRequest}|null;invoice:{invoiceId:string;invoiceNumber:string|null;status:string;invoiceDate:string|null;dueDate:string|null;currencyCode:string|null;invoiceReference:string|null;brandingThemeId?:string|null;advisorName:string|null;paymentTrack:string|null;lineItems:XeroStudentInvoiceLineItem[]}};
 
 export interface StudentCaseDocuments {
   analysisPending?:boolean;

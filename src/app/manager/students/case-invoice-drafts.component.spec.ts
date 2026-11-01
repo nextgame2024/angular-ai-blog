@@ -26,9 +26,77 @@ describe('CaseInvoiceDraftsComponent',()=>{
     api.manualCaseInvoiceOptions=jasmine.createSpy().and.returnValue(of({caseVersion:3,advisors:data.preparation!.advisors,student:data.preparation!.student,catalogue:data.preparation!.catalogue,
       colleges:[{collegeId:'college',name:'Fixture College'}],brandingThemes:[{brandingThemeId:'theme',name:'Fixture Theme'}]}));
     api.prepareManualCaseInvoice=jasmine.createSpy().and.returnValue(of({batchId:'manual-batch',count:1,revision:1}));
+    api.caseInvoiceEditOptions=jasmine.createSpy().and.returnValue(of({caseVersion:3,advisors:data.preparation!.advisors,student:data.preparation!.student,catalogue:data.preparation!.catalogue,colleges:[{collegeId:'college',name:'Fixture College'}],brandingThemes:[{brandingThemeId:'theme',name:'Theme'}],expectedFingerprint:'fingerprint',invoice:{invoiceId:'existing',invoiceNumber:'INV-42',status:'SUBMITTED',invoiceDate:'2026-10-28',dueDate:'2026-11-04',currencyCode:'AUD',invoiceReference:'Fixture College',brandingThemeId:'theme',advisorName:'S15 Fixture Advisor',paymentTrack:'Pending',lineItems:[{lineItemId:'original-line',itemCode:'ELICOS ON-SHORE',description:'Existing tuition',quantity:2,unitAmount:50,accountCode:'812',taxType:'BASEXCLUDED',taxAmount:0,tracking:[]}]}}));
+    api.updateCaseInvoice=jasmine.createSpy().and.returnValue(of({invoiceId:'existing',status:'updated'}));
     await TestBed.configureTestingModule({imports:[CaseInvoiceDraftsComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(){const f=TestBed.createComponent(CaseInvoiceDraftsComponent);f.componentRef.setInput('caseId','case');f.detectChanges();return f;}
+  it('edits an existing invoice with its saved values and line identity, then returns to the refreshed list',()=>{
+    const f=setup(),c=f.componentInstance;spyOn(c.changed,'emit');c.openEdit('connection','existing');f.detectChanges();
+    expect(f.nativeElement.querySelector('dialog h2').textContent).toBe('Edit INV-42');
+    expect(c.form.controls.advisorId.value).toBe('advisor');expect(c.manualCollege.value).toBe('college');
+    expect(c.activeInvoice.controls.issueDate.value).toBe('2026-10-28');expect(c.activeInvoice.controls.dueDate.value).toBe('2026-11-04');
+    const line=c.activeInvoice.controls.lines.at(0);expect(line.getRawValue()).toEqual(jasmine.objectContaining({lineItemId:'original-line',quantity:'2',price:'50.00',description:'Existing tuition'}));
+    line.controls.price.setValue('75.00');c.form.controls.confirmed.setValue(true);c.createAll();
+    const args=api.updateCaseInvoice.calls.mostRecent().args;
+    expect(args.slice(0,3)).toEqual(['case','connection','existing']);expect(args[3]).toEqual(jasmine.objectContaining({expectedFingerprint:'fingerprint',advisorId:'advisor',collegeId:'college',confirmed:true,lines:[jasmine.objectContaining({lineItemId:'original-line',unitPrice:'75.00'})]}));
+    expect(api.prepareManualCaseInvoice).not.toHaveBeenCalled();expect(api.createCaseXeroInvoices).not.toHaveBeenCalled();
+    expect(c.modal.nativeElement.open).toBeFalse();expect(c.changed.emit).toHaveBeenCalledTimes(1);
+  });
+  it('retains changes and the same retry identity after an uncertain edit response',()=>{
+    api.updateCaseInvoice.and.returnValue(throwError(()=>({status:502})));const c=setup().componentInstance;c.openEdit('connection','existing');c.form.controls.confirmed.setValue(true);
+    c.createAll();expect(c.modal.nativeElement.open).toBeTrue();expect(c.busy).toBeFalse();expect(c.message).toContain('Retry the same changes');
+    c.createAll();expect(api.updateCaseInvoice.calls.argsFor(0)[4]).toBe(api.updateCaseInvoice.calls.argsFor(1)[4]);
+  });
+  it('restores an unconfirmed save after reopening and retains its original retry key',()=>{
+    const pending={expectedFingerprint:'earlier',confirmed:true,advisorId:'advisor',referenceMode:'reference',reference:'Pending reference',currency:'AUD',reviewNote:'Saved note',issueDate:'2026-10-28',dueDate:'2026-11-04',conditionalFeeMinor:0,lines:[{lineItemId:'original-line',itemCode:'ELICOS ON-SHORE',description:'Earlier edit',quantity:'2',unitPrice:'75.00',accountCode:'812',taxType:'BASEXCLUDED'}]};
+    api.caseInvoiceEditOptions.and.returnValue(of({caseVersion:3,advisors:data.preparation!.advisors,student:data.preparation!.student,catalogue:data.preparation!.catalogue,colleges:[],brandingThemes:[],expectedFingerprint:'latest',pending:{key:'original-save-key',input:pending},invoice:{invoiceId:'existing',invoiceNumber:'INV-42',status:'DRAFT',invoiceDate:'2026-10-28',dueDate:'2026-11-04',currencyCode:'AUD',invoiceReference:'Original',advisorName:'S15 Fixture Advisor',paymentTrack:'Pending',lineItems:[]}}));
+    const c=setup().componentInstance;c.openEdit('connection','existing');
+    expect(c.activeInvoice.controls.lines.at(0).controls.price.value).toBe('75.00');expect(c.manualReference.value).toBe('Pending reference');expect(c.form.controls.reviewNote.value).toBe('Saved note');
+    c.form.controls.confirmed.setValue(true);c.createAll();expect(api.updateCaseInvoice.calls.mostRecent().args[4]).toBe('original-save-key');
+  });
+  it('uses the local current date and editable row defaults, with currency in the date row',()=>{
+    jasmine.clock().install();
+    try{
+      jasmine.clock().mockDate(new Date(2026,10,1,0,30));
+      const f=setup(),c=f.componentInstance;c.openManual();c.referenceMode.setValue('college');f.detectChanges();
+      const payment=c.activeInvoice;
+      expect(payment.controls.issueDate.value).toBe('2026-11-01');expect(payment.controls.dueDate.value).toBe('2026-11-01');
+      expect(Array.from(f.nativeElement.querySelectorAll('.invoice-dates label')).map((el:any)=>el.textContent.trim())).toEqual(['Issue date','Due date','Payment Track','Currency']);
+      const selects=f.nativeElement.querySelectorAll('.invoice-meta .select-trigger');
+      expect(getComputedStyle(selects[1]).fontSize).toBe(getComputedStyle(selects[0]).fontSize);
+      expect(getComputedStyle(selects[1]).fontFamily).toBe(getComputedStyle(selects[0]).fontFamily);
+      payment.patchValue({issueDate:'2026-11-02',dueDate:'2026-11-03'});
+      c.addLine(payment);expect(payment.controls.lines.at(1).getRawValue()).toEqual(jasmine.objectContaining({quantity:'1',price:'0.00'}));
+      expect(payment.controls.issueDate.value).toBe('2026-11-02');expect(payment.controls.dueDate.value).toBe('2026-11-03');
+    }finally{jasmine.clock().uninstall();}
+  });
+  it('renders the synchronized subtotal, tax, paid and due as readonly inputs',()=>{
+    const f=setup(),c=f.componentInstance;c.showInvoice('connection','invoice');
+    c.detail!.lineItems=[{taxAmount:10,tracking:[]} as any];c.detail!.total='110';c.detail!.amountPaid='30';c.detail!.amountDue='80';f.detectChanges();
+    const fields=Array.from(f.nativeElement.querySelectorAll('.detail-totals input')) as HTMLInputElement[];
+    expect(fields.map(input=>input.getAttribute('aria-label'))).toEqual(['Subtotal','Tax','Paid','Due']);
+    expect(fields.every(input=>input.readOnly)).toBeTrue();
+    expect(fields.map(input=>input.value)).toEqual(['$100.00','$10.00','$30.00','$80.00']);
+  });
+  it('keeps fee and review controls beside readonly totals that update for the active invoice',()=>{
+    const f=setup(),c=f.componentInstance;completeManual(c);const payment=c.activeInvoice;
+    payment.controls.lines.at(0).controls.price.setValue('100.00');f.detectChanges();
+    const root=f.nativeElement as HTMLElement;
+    (root.querySelector('.fee-choice .select-trigger') as HTMLButtonElement).click();f.detectChanges();
+    const apply=Array.from(root.querySelectorAll('.fee-choice .select-option')).find(option=>option.textContent?.trim()==='Apply fee') as HTMLButtonElement;
+    apply.click();f.detectChanges();
+    const fee=root.querySelector('.fee-choice input') as HTMLInputElement;fee.value='25.00';fee.dispatchEvent(new Event('input'));f.detectChanges();
+    const note=root.querySelector('.invoice-review textarea') as HTMLTextAreaElement;note.value='Optional note';note.dispatchEvent(new Event('input'));
+    expect(c.form.controls.reviewNote.value).toBe('Optional note');expect(payment.controls.fee.value).toBe('25.00');
+    const totals=Array.from(root.querySelectorAll('.editor-totals input')) as HTMLInputElement[];
+    expect(totals.every(input=>input.readOnly)).toBeTrue();expect(totals.map(input=>input.value)).toEqual(['$100.00','$0.00','$25.00']);
+    expect(root.querySelector('.invoice-summary > .invoice-review .check')).not.toBeNull();
+    c.close();c.open();complete(c);c.activePayment=1;f.detectChanges();
+    expect((root.querySelector('.fee-choice app-manager-select') as any)).not.toBeNull();
+    c.activeInvoice.controls.lines.at(0).controls.price.setValue('200.00');f.detectChanges();
+    expect(root.querySelector('.editor-totals .total-row strong')?.textContent).toBe('$200.00');
+  });
   it('defaults to the current advisor and primary case college, with editable selections',()=>{
     api.manualCaseInvoiceOptions.and.returnValue(of({caseVersion:3,advisors:data.preparation!.advisors,student:{name:'Student',advisorId:'advisor'},catalogue:data.preparation!.catalogue,colleges:[{collegeId:'college',name:'East Coast',isPrimary:true}],brandingThemes:[]}));
     const c=setup().componentInstance;c.openManual();
@@ -41,9 +109,10 @@ describe('CaseInvoiceDraftsComponent',()=>{
     const f=setup(),c=f.componentInstance;spyOn(c.changed,'emit');c.openManual();f.detectChanges();
     expect(c.modal.nativeElement.open).toBeTrue();expect(c.form.controls.invoices.length).toBe(1);
     const payment=c.activeInvoice,line=payment.controls.lines.at(0);
-    expect(payment.controls.issueDate.value).toBe('');expect(payment.controls.dueDate.value).toBe('');
+    const now=new Date(),today=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    expect(payment.controls.issueDate.value).toBe(today);expect(payment.controls.dueDate.value).toBe(today);
     expect(c.form.controls.advisorId.value).toBe('');expect(c.manualReference.value).toBe('');
-    expect(line.getRawValue()).toEqual(jasmine.objectContaining({description:'',itemId:'',quantity:'',price:''}));
+    expect(line.getRawValue()).toEqual(jasmine.objectContaining({description:'',itemId:'',quantity:'1',price:'0.00'}));
     c.createAll();expect(api.prepareManualCaseInvoice).not.toHaveBeenCalled();
     c.manualReference.setValue('Additional service');c.manualBrandingTheme.setValue('theme');c.form.patchValue({advisorId:'advisor',confirmed:true});
     payment.patchValue({issueDate:'2026-10-26',dueDate:'2026-11-01'});line.controls.description.setValue('Additional service');
@@ -53,7 +122,7 @@ describe('CaseInvoiceDraftsComponent',()=>{
     expect(payload.reference).toBe('Additional service');expect(payload.invoices.length).toBe(1);expect(payload.offerId).toBeUndefined();
     expect(api.prepareCaseInvoiceDrafts).not.toHaveBeenCalled();expect(api.createCaseXeroInvoices).toHaveBeenCalledWith('case','manual-batch',[1]);
     expect(c.modal.nativeElement.open).toBeFalse();expect(c.changed.emit).toHaveBeenCalled();
-    c.openManual();expect(c.activeInvoice.controls.issueDate.value).toBe('');expect(c.manualReference.value).toBe('');
+    c.openManual();expect(c.activeInvoice.controls.issueDate.value).toBe(today);expect(c.manualReference.value).toBe('');
   });
   function completeManual(c:CaseInvoiceDraftsComponent){
     c.openManual();c.manualReference.setValue('Reference text');c.manualBrandingTheme.setValue('theme');c.form.patchValue({advisorId:'advisor',confirmed:true});
@@ -83,7 +152,7 @@ describe('CaseInvoiceDraftsComponent',()=>{
   });
   it('does not overwrite manually entered prices with item catalogue defaults',()=>{
     const c=setup().componentInstance;c.openManual();const line=c.activeInvoice.controls.lines.at(0);
-    line.controls.itemId.setValue('item');expect(line.controls.price.value).toBe('');
+    line.controls.itemId.setValue('item');expect(line.controls.price.value).toBe('0.00');
     line.controls.price.setValue('50');line.controls.itemId.setValue('item');expect(line.controls.price.value).toBe('50');
     expect(line.controls.accountCode.value).toBe('812');expect(line.controls.taxType.value).toBe('BASEXCLUDED');
   });
@@ -199,12 +268,12 @@ describe('CaseInvoiceDraftsComponent',()=>{
     expect(f.nativeElement.querySelector('.draft-section table')).toBeNull();expect(c.createdInvoice('missing')).toBeNull();
     const created=c.createdInvoice('xero-id')!;c.show(created.batch,created.invoice);f.detectChanges();
     expect(f.nativeElement.querySelector('dialog header h2').textContent).toContain('XERO-1');expect(f.nativeElement.querySelector('dialog .notice')).toBeNull();
-    expect(f.nativeElement.querySelector('dialog input')).toBeNull();
+    expect(f.nativeElement.querySelectorAll('dialog input:not([readonly])').length).toBe(0);
   });
   it('opens imported invoices without loading proposals and reads the latest cached provider status',()=>{
     const f=setup(),c=f.componentInstance;c.showInvoice('connection','imported-invoice');f.detectChanges();
     expect(api.caseInvoiceDetail).toHaveBeenCalledWith('case','connection','imported-invoice');expect(c.detail?.status).toBe('PAID');
-    expect(f.nativeElement.querySelector('dialog input')).toBeNull();expect(f.nativeElement.querySelector('dialog').textContent).toContain('Paid out');
+    expect(f.nativeElement.querySelectorAll('dialog input:not([readonly])').length).toBe(0);expect(f.nativeElement.querySelector('dialog').textContent).toContain('Paid out');
   });
   it('cancels a closed detail request and provides a retry for failed cached details',()=>{
     const pending=new Subject<any>();api.caseInvoiceDetail.and.returnValue(pending);const f=setup(),c=f.componentInstance;
