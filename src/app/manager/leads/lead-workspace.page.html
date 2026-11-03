@@ -325,7 +325,7 @@
       aria-label="Lead conversation"
       [attr.aria-busy]="detailLoading || saving"
     >
-      <div class="detail-toolbar">
+      <div class="detail-toolbar"><button class="btn" type="button" (click)="bookAppointment()" [disabled]="saving || detailLoading || !selected || selected.lead.stage==='closed'">Book appointment</button>
         <button
           class="btn"
           type="button"

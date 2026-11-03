@@ -690,3 +690,5 @@ app-manager-select.invalid {
   stroke-width: 1.8;
   vertical-align: middle;
 }
+
+.detail-toolbar {flex-wrap:wrap;}

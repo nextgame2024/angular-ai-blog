@@ -1,0 +1,680 @@
+<div class="lead-shell">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a routerLink="/manager/menu">Menu</a><span>/</span
+    ><a routerLink="/manager/scheduling">Scheduling</a><span>/</span
+    ><span>Lead appointments</span>
+  </nav>
+  <header class="page-header">
+    <div>
+      <h3>Lead appointments</h3>
+      <p>Manage advisor availability and book time with your leads.</p>
+    </div>
+    <div class="header-actions">
+      <button
+        class="btn"
+        type="button"
+        [disabled]="!context || !advisorOptions.length"
+        (click)="openAvailability()"
+      >
+        Advisor availability</button
+      ><button
+        class="btn primary"
+        type="button"
+        [disabled]="!context || !advisorOptions.length"
+        (click)="openBooking()"
+      >
+        + Book appointment
+      </button>
+    </div>
+  </header>
+  <nav class="tabs" aria-label="Scheduling views">
+    <a routerLink="/manager/scheduling">Project bookings</a
+    ><a
+      routerLink="/manager/scheduling/leads"
+      class="active"
+      aria-current="page"
+      >Lead appointments</a
+    >
+  </nav>
+  @if(contextLoading){<app-manager-list-loader
+    label="Loading scheduling workspace…"
+  />} @if(!context && loadError){
+  <div class="empty">
+    <p>{{loadError}}</p>
+    <button class="btn" type="button" (click)="loadContext()">Retry</button>
+  </div>
+  } @if(context){
+  <form
+    class="filters appointment-filters"
+    [formGroup]="range"
+    (ngSubmit)="refresh(true)"
+  >
+    <div>
+      <label for="range-start">From</label
+      ><input
+        [class.invalid]="rangeInvalidFields.has('date') || (range.controls.start.touched && range.controls.start.invalid)"
+        id="range-start"
+        type="date"
+        formControlName="start"
+        required
+      />
+    </div>
+    <div>
+      <label for="range-end">To</label
+      ><input
+        [class.invalid]="rangeInvalidFields.has('date') || (range.controls.end.touched && range.controls.end.invalid)"
+        id="range-end"
+        type="date"
+        formControlName="end"
+        required
+      />
+    </div>
+    <div>
+      <label for="view-timezone">Display timezone</label
+      ><input
+        [class.invalid]="rangeInvalidFields.has('timezone') || (range.controls.timezone.touched && range.controls.timezone.invalid)"
+        id="view-timezone"
+        formControlName="timezone"
+        maxlength="100"
+        required
+        placeholder="Australia/Brisbane"
+      />
+    </div>
+    <div>
+      <label>Advisor</label
+      ><app-manager-select
+        [options]="filterAdvisors"
+        formControlName="advisorId"
+        ariaLabel="Filter appointments by advisor"
+      />
+    </div>
+    <div>
+      <label>Status</label
+      ><app-manager-select
+        [options]="statuses"
+        formControlName="status"
+        ariaLabel="Filter appointment status"
+      />
+    </div>
+    <button class="btn" type="submit" [disabled]="loading">Apply</button>
+  </form>
+  @if(!context.advisors.length){
+  <div class="notice">
+    Add advisors to the published enquiry team in
+    <a routerLink="/manager/leads" [queryParams]="{view:'settings'}"
+      >Leads &amp; Conversations settings</a
+    >
+    before configuring appointments.
+  </div>
+  }
+  <section class="card" aria-label="Lead appointments">
+    <div class="list-title">
+      <h4>Appointments ({{total}})</h4>
+      <button
+        class="btn"
+        type="button"
+        (click)="refresh()"
+        [disabled]="loading"
+      >
+        Refresh
+      </button>
+    </div>
+    <div class="list-content" [attr.aria-busy]="loading">
+      @if(loading){<app-manager-list-loader
+        label="Loading appointments…"
+        [overlay]="!!rows.length"
+      />} @if(loadError){
+      <div class="empty">
+        <p>{{loadError}}</p>
+        <button class="btn" type="button" (click)="refresh()">Retry</button>
+      </div>
+      }@else if(!loading || rows.length){
+      <div class="desktop-table">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col" [attr.aria-sort]="sortAria('lead')">
+                <button
+                  class="sort-button"
+                  type="button"
+                  (click)="sortBy('lead')"
+                >
+                  Lead<span class="sort-indicator" aria-hidden="true"></span>
+                </button>
+              </th>
+              <th scope="col">Advisor</th>
+              <th scope="col" [attr.aria-sort]="sortAria('startsAt')">
+                <button
+                  class="sort-button"
+                  type="button"
+                  (click)="sortBy('startsAt')"
+                >
+                  Appointment time<span
+                    class="sort-indicator"
+                    aria-hidden="true"
+                  ></span>
+                </button>
+              </th>
+              <th scope="col" [attr.aria-sort]="sortAria('status')">
+                <button
+                  class="sort-button"
+                  type="button"
+                  (click)="sortBy('status')"
+                >
+                  Status<span class="sort-indicator" aria-hidden="true"></span>
+                </button>
+              </th>
+              <th scope="col">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for(row of rows;track row.id){
+            <tr>
+              <td>{{row.leadName}}</td>
+              <td>{{advisorName(row.advisorId)}}</td>
+              <td>
+                {{format(row.startsAt)}}<small
+                  >Until {{format(row.endsAt)}}</small
+                >
+              </td>
+              <td>
+                <span class="badge" [class.closed]="row.status==='cancelled'"
+                  >{{row.status==='confirmed'?'Confirmed':'Cancelled'}}</span
+                >
+              </td>
+              <td>
+                <ng-container
+                  *ngTemplateOutlet="actions;context:{$implicit:row}"
+                />
+              </td>
+            </tr>
+            }@empty{
+            <tr>
+              <td colspan="5" class="empty">
+                No appointments match these filters.
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="mobile-cards">
+        @for(row of rows;track row.id){
+        <article class="lead-card">
+          <span class="lead-card-title"
+            >{{row.leadName}}<span
+              class="badge"
+              [class.closed]="row.status==='cancelled'"
+              >{{row.status==='confirmed'?'Confirmed':'Cancelled'}}</span
+            ></span
+          ><span>{{advisorName(row.advisorId)}}</span
+          ><span>{{format(row.startsAt)}}</span
+          ><small>Until {{format(row.endsAt)}}</small
+          ><ng-container *ngTemplateOutlet="actions;context:{$implicit:row}" />
+        </article>
+        }@empty{
+        <div class="empty">No appointments match these filters.</div>
+        }
+      </div>
+      }
+    </div>
+    <footer class="pagination">
+      <span class="muted">{{total}} appointment{{total===1?'':'s'}}</span
+      ><app-manager-select
+        class="compact-select"
+        [options]="sizes"
+        [formControl]="range.controls.limit"
+        ariaLabel="Appointments per page"
+      />
+      <div class="page-buttons">
+        <button
+          class="btn page-btn"
+          type="button"
+          aria-label="First page"
+          [disabled]="page===1||loading"
+          (click)="goPage(1)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M11 6 5 12l6 6M19 6l-6 6 6 6" />
+          </svg></button
+        ><button
+          class="btn page-btn"
+          type="button"
+          aria-label="Previous page"
+          [disabled]="page===1||loading"
+          (click)="goPage(page-1)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m15 6-6 6 6 6" />
+          </svg></button
+        ><app-page-jump
+          [page]="page"
+          [totalPages]="totalPages"
+          [disabled]="loading"
+          label="Appointment page number"
+          (pageChange)="goPage($event)"
+        /><button
+          class="btn page-btn"
+          type="button"
+          aria-label="Next page"
+          [disabled]="page>=totalPages||loading"
+          (click)="goPage(page+1)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m9 6 6 6-6 6" />
+          </svg></button
+        ><button
+          class="btn page-btn"
+          type="button"
+          aria-label="Last page"
+          [disabled]="page>=totalPages||loading"
+          (click)="goPage(totalPages)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m5 6 6 6-6 6M13 6l6 6-6 6" />
+          </svg>
+        </button>
+      </div>
+    </footer>
+  </section>
+  }
+</div>
+<ng-template #actions let-row
+  ><div class="row-actions">
+    <button
+      class="btn icon-btn"
+      type="button"
+      title="Reschedule appointment"
+      aria-label="Reschedule appointment"
+      [disabled]="!canChange(row)||saving"
+      (click)="openBooking(row)"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m14 5 5 5M4 20l4-1 12-12-4-4L4 15v5Z" />
+      </svg></button
+    ><button
+      class="btn icon-btn danger"
+      type="button"
+      title="Cancel appointment"
+      aria-label="Cancel appointment"
+      [disabled]="!canChange(row)||saving"
+      (click)="openCancel(row)"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 6l12 12M18 6 6 18" />
+      </svg>
+    </button></div
+></ng-template>
+@if(mode==='book'||mode==='reschedule'){
+<div class="modal-backdrop">
+  <section
+    class="lead-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="booking-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <header>
+      <h4 id="booking-title">
+        {{editing?'Reschedule appointment':'Book appointment'}}
+      </h4>
+      <button
+        type="button"
+        class="btn icon-btn"
+        (click)="close()"
+        [disabled]="saving"
+        aria-label="Close appointment"
+      >
+        ×
+      </button>
+    </header>
+    <form [formGroup]="booking" (ngSubmit)="saveBooking()">
+      <fieldset class="form-body" [disabled]="saving">
+        <div class="form-grid">
+          @if(!editing){
+          <div class="wide">
+            <label for="lead-search">Find a lead</label
+            ><input
+              id="lead-search"
+              type="search"
+              [formControl]="search"
+              placeholder="Search by name or interest"
+              maxlength="200"
+            />@if(leadSearching){
+            <p class="muted">Searching leads…</p>
+            }
+            <p class="muted">
+              Search more specifically if the lead is not in the first 25
+              results.
+            </p>
+          </div>
+          }
+          <div>
+            <label>Lead</label
+            ><app-manager-select
+              [options]="leadOptions"
+              formControlName="leadId"
+              [disabled]="saving||!!editing"
+              ariaLabel="Appointment lead"
+              [class.invalid]="booking.controls.leadId.touched&&booking.controls.leadId.invalid"
+            />
+          </div>
+          <div>
+            <label>Advisor</label
+            ><app-manager-select
+              [options]="advisorOptions"
+              formControlName="advisorId"
+              [disabled]="saving||!!editing"
+              ariaLabel="Appointment advisor"
+              [class.invalid]="booking.controls.advisorId.touched&&booking.controls.advisorId.invalid"
+            />
+          </div>
+          <div>
+            <label for="booking-date">Date in customer timezone</label
+            ><input
+              id="booking-date"
+              type="date"
+              formControlName="date"
+              [class.invalid]="booking.controls.date.touched&&booking.controls.date.invalid"
+            />
+          </div>
+          <div>
+            <label for="booking-zone">Customer timezone</label
+            ><input
+              id="booking-zone"
+              formControlName="timezone"
+              maxlength="100"
+              placeholder="Australia/Brisbane"
+              [class.invalid]="invalidFields.has('timezone')"
+            />
+          </div>
+          <div class="wide">
+            <label>Available time</label
+            ><app-manager-select
+              [options]="slotOptions"
+              formControlName="slot"
+              [disabled]="saving||slotsLoading"
+              ariaLabel="Available appointment time"
+              panelDirection="up"
+              [class.invalid]="invalidFields.has('slot')||(booking.controls.slot.touched&&booking.controls.slot.invalid)"
+            />
+            @if(slotsLoading){<app-manager-list-loader
+              label="Finding available times…"
+            />}@else if(slotState && !slotOptions.length){
+            <p class="muted">
+              {{slotState.calendarRevision?'No available times for this day.
+              Choose another date.':'This advisor has no saved availability
+              yet.'}}
+            </p>
+            } @if(slotState){
+            <p class="muted">
+              Times shown in {{slotState.timezone}}. Advisor calendar:
+              {{slotState.advisorTimezone||'Not configured'}}. The UTC offset
+              distinguishes repeated daylight-saving times.
+            </p>
+            }
+            <button
+              type="button"
+              class="btn"
+              (click)="loadSlots()"
+              [disabled]="saving||slotsLoading"
+            >
+              Refresh times
+            </button>
+          </div>
+          <div class="wide">
+            <label for="appointment-note">Appointment note (optional)</label
+            ><textarea
+              id="appointment-note"
+              formControlName="description"
+              maxlength="1000"
+              rows="3"
+            ></textarea>
+          </div>
+        </div>
+        <p class="muted">
+          Confirm the advisor and time before saving. To change the advisor on
+          an existing appointment, cancel it and book again.
+        </p>
+      </fieldset>
+      <footer>
+        <button class="btn" type="button" (click)="close()" [disabled]="saving">
+          Cancel</button
+        ><button
+          class="btn primary"
+          type="submit"
+          [disabled]="saving||slotsLoading"
+        >
+          {{saving?'Saving…':editing?'Save new time':'Confirm booking'}}
+        </button>
+      </footer>
+    </form>
+  </section>
+</div>
+} @if(mode==='availability'){
+<div class="modal-backdrop">
+  <section
+    class="lead-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="availability-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <header>
+      <h4 id="availability-title">Advisor availability</h4>
+      <button
+        type="button"
+        class="btn icon-btn"
+        (click)="close()"
+        [disabled]="saving"
+        aria-label="Close availability"
+      >
+        ×
+      </button>
+    </header>
+    <form [formGroup]="calendarForm" (ngSubmit)="saveAvailability()">
+      <div class="form-body">
+        <label>Advisor</label
+        ><app-manager-select
+          [options]="advisorOptions"
+          formControlName="advisorId"
+          [disabled]="saving"
+          ariaLabel="Availability advisor"
+        />
+        @if(calendarLoading){<app-manager-list-loader
+          label="Loading advisor availability…"
+        />}@else{
+        <p class="muted">
+          {{canEditCalendar?'Save working intervals in the advisor’s timezone.
+          Leave a gap for breaks; omit days off. Existing appointments keep
+          their confirmed times.':'You can view this calendar. Only the advisor
+          or enquiry managers can change it.'}}
+        </p>
+        <button
+          class="btn"
+          type="button"
+          (click)="loadCalendar(calendarForm.controls.advisorId.value)"
+          [disabled]="saving"
+        >
+          Reload saved availability
+        </button>
+        <fieldset [disabled]="saving||!canEditCalendar">
+          <div class="form-grid">
+            <div>
+              <label for="advisor-zone">Advisor timezone</label
+              ><input
+                id="advisor-zone"
+                formControlName="timezone"
+                maxlength="100"
+                [class.invalid]="invalidFields.has('timezone')"
+              />
+            </div>
+            <div>
+              <label>Appointment duration</label
+              ><app-manager-select
+                [options]="durations"
+                formControlName="slotMinutes"
+                [disabled]="saving||!canEditCalendar"
+                ariaLabel="Appointment duration"
+              />
+            </div>
+            <div>
+              <label for="minimum-notice">Minimum notice (minutes)</label
+              ><input
+                id="minimum-notice"
+                type="number"
+                min="0"
+                max="10080"
+                formControlName="leadTimeMinutes"
+                [class.invalid]="calendarForm.controls.leadTimeMinutes.touched&&calendarForm.controls.leadTimeMinutes.invalid"
+              />
+            </div>
+            <div>
+              <label for="booking-window">Book up to (days ahead)</label
+              ><input
+                id="booking-window"
+                type="number"
+                min="1"
+                max="180"
+                formControlName="bookingWindowDays"
+                [class.invalid]="calendarForm.controls.bookingWindowDays.touched&&calendarForm.controls.bookingWindowDays.invalid"
+              />
+            </div>
+          </div>
+          <h5>Weekly working hours</h5>
+          <div
+            formArrayName="weeklyHours"
+            [class.invalid]="invalidFields.has('weeklyHours')"
+          >
+            @for(w of hours.controls;track w;let i=$index){
+            <div class="hours-row" [formGroupName]="i">
+              <app-manager-select
+                [options]="weekdays"
+                formControlName="day"
+                [disabled]="saving||!canEditCalendar"
+                ariaLabel="Working weekday"
+                panelDirection="up"
+              /><app-manager-select
+                [options]="times"
+                formControlName="start"
+                [disabled]="saving||!canEditCalendar"
+                ariaLabel="Working hours start"
+                panelDirection="up"
+              /><app-manager-select
+                [options]="endTimes"
+                formControlName="end"
+                [disabled]="saving||!canEditCalendar"
+                ariaLabel="Working hours end"
+                panelDirection="up"
+              /><button
+                class="btn icon-btn danger"
+                type="button"
+                [disabled]="saving||!canEditCalendar"
+                (click)="hours.removeAt(i)"
+                aria-label="Remove working interval"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7"
+                  />
+                </svg>
+              </button>
+            </div>
+            }@empty{
+            <p class="muted">
+              No working hours saved. This calendar will not offer appointments.
+            </p>
+            }
+          </div>
+          <button
+            class="btn"
+            type="button"
+            (click)="addWindow()"
+            [disabled]="hours.length>=28"
+          >
+            + Add working interval
+          </button>
+          <h5>Closed dates / days off</h5>
+          <label for="closed-date">Date in advisor timezone</label>
+          <div class="closed-date-row">
+            <input
+              id="closed-date"
+              type="date"
+              [formControl]="closedDate"
+            /><button
+              class="btn"
+              type="button"
+              (click)="addClosedDate()"
+              [disabled]="!closedDate.value||closedDates.length>=100"
+            >
+              + Add date
+            </button>
+          </div>
+          <div class="closed-dates">
+            @for(d of closedDates;track d){<button
+              class="btn"
+              type="button"
+              (click)="removeClosedDate(d)"
+              [attr.aria-label]="'Remove closed date '+d"
+            >
+              {{d}} ×</button
+            >}
+          </div>
+        </fieldset>
+        }
+      </div>
+      <footer>
+        <button class="btn" type="button" (click)="close()" [disabled]="saving">
+          Cancel</button
+        ><button
+          class="btn primary"
+          type="submit"
+          [disabled]="saving||calendarLoading||!canEditCalendar"
+        >
+          {{saving?'Saving…':'Save availability'}}
+        </button>
+      </footer>
+    </form>
+  </section>
+</div>
+} @if(cancelTarget){
+<div class="modal-backdrop confirmation">
+  <section
+    class="confirm-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="cancel-title"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <h4 id="cancel-title">Cancel appointment</h4>
+    <p>
+      Cancel {{cancelTarget.leadName}}’s appointment on
+      {{format(cancelTarget.startsAt)}}? The time will become available again.
+    </p>
+    <footer>
+      <button
+        class="btn"
+        type="button"
+        (click)="cancelTarget=null"
+        [disabled]="saving"
+      >
+        Keep appointment</button
+      ><button
+        class="btn danger"
+        type="button"
+        (click)="cancel()"
+        [disabled]="saving"
+      >
+        {{saving?'Cancelling…':'Cancel appointment'}}
+      </button>
+    </footer>
+  </section>
+</div>
+} @if(toast){<app-manager-toast
+  [message]="toast"
+  [tone]="tone"
+  (closed)="toast=''"
+/>}

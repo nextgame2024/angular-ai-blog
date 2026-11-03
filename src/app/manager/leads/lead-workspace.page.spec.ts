@@ -4,7 +4,7 @@ import {
   fakeAsync,
   tick,
 } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { LeadWorkspacePage } from './lead-workspace.page';
 import {
@@ -118,6 +118,20 @@ describe('Leads and team inbox', () => {
     }).compileComponents();
     fixture = TestBed.createComponent(LeadWorkspacePage);
     page = fixture.componentInstance;
+  });
+  it('protects unsaved notes before opening a lead appointment', () => {
+    const router = TestBed.inject(Router);
+    const navigate = spyOn(router, 'navigate').and.resolveTo(true);
+    page.selected = detail();
+    page.selectedId = 'lead-1';
+    page.note.setValue('Unsaved note');
+    page.bookAppointment();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(page.confirmingDiscard).toBeTrue();
+    page.discard();
+    expect(navigate).toHaveBeenCalledWith(['/manager/scheduling/leads'], {
+      queryParams: { leadId: 'lead-1' },
+    });
   });
   afterEach(() => {
     document.documentElement.classList.remove('dark');

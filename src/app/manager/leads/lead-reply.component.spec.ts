@@ -38,6 +38,7 @@ describe('Customer WhatsApp reply composer', () => {
       'draft',
       'detail',
       'ownership',
+      'retryVoice',
     ]);
     api.reply.and.returnValue(of(data()));
     api.draft.and.returnValue(of(data()));
@@ -159,6 +160,45 @@ describe('Customer WhatsApp reply composer', () => {
           .minHeight,
       ).toBe('44px');
     }
+  });
+  it('shows independent text and voice states and retries only voice', () => {
+    const d = data();
+    d.reply!.voiceJobs = [
+      {
+        id: 'voice',
+        kind: 'synthesize',
+        state: 'failed',
+        failureCode: 'voice_generation_failed',
+        createdAt: '',
+        canRetry: true,
+      },
+    ];
+    d.reply!.messages = [
+      {
+        id: 'text',
+        format: 'text',
+        state: 'accepted',
+        safeCode: null,
+        createdAt: '',
+      },
+      {
+        id: 'audio',
+        format: 'audio',
+        state: 'failed',
+        safeCode: null,
+        createdAt: '',
+      },
+    ];
+    fixture.componentRef.setInput('conversation', d);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Text reply: Sent');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Voice reply: Not delivered',
+    );
+    api.retryVoice.and.returnValue(of(data()));
+    page.retryVoice('voice');
+    expect(api.retryVoice).toHaveBeenCalledWith('lead', 'voice');
+    expect(api.reply).not.toHaveBeenCalled();
   });
   it('requires an explicit eligible resume action', () => {
     api.ownership.and.returnValue(of(data()));

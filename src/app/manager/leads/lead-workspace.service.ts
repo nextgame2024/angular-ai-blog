@@ -71,7 +71,16 @@ export interface ReplyState {
     sources: string[];
     createdAt: string;
   }[];
+  voiceJobs?: {
+    id: string;
+    kind: string;
+    state: string;
+    failureCode: string | null;
+    createdAt: string;
+    canRetry: boolean;
+  }[];
   messages: {
+    format?: string;
     id: string;
     state: string;
     safeCode: string | null;
@@ -92,6 +101,12 @@ export interface LeadList {
 }
 @Injectable({ providedIn: 'root' })
 export class LeadWorkspaceService {
+  retryVoice(id: string, jobId: string) {
+    return this.http.post<LeadConversation>(
+      `${this.base}/leads/${id}/voice/${jobId}/retry`,
+      {},
+    );
+  }
   private readonly http = inject(HttpClient);
   private readonly base = `${environment.apiUrl}/bm/lead-assistant`;
   context() {

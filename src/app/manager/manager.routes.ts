@@ -228,6 +228,11 @@ export const MANAGER_ROUTES: Route[] = [
         ],
         data: { title: 'Project types', fullscreen: true },
       },
+      {
+        path: 'scheduling/leads',
+        loadComponent: () => import('./components/schedule/leads/lead-scheduling.page').then(m => m.LeadSchedulingPage),
+        data: { title: 'Lead appointments', fullscreen: true },
+      },
       MANAGER_SCHEDULE_ROUTE,
       {
         path: 'leads',

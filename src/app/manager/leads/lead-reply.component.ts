@@ -96,8 +96,31 @@ import { ManagerToastComponent } from '../components/shared/manager-toast/manage
             }
           </div>
         }
+        @for (voice of reply.voiceJobs ?? []; track voice.id) {
+          <p class="delivery">
+            {{
+              voice.kind === 'transcribe'
+                ? 'Voice transcription'
+                : 'Voice preparation'
+            }}: {{ deliveryLabel(voice.state) }}
+            @if (voice.canRetry) {
+              <button
+                class="btn"
+                type="button"
+                [disabled]="busy"
+                (click)="retryVoice(voice.id)"
+              >
+                Retry voice only
+              </button>
+            }
+            @if (voice.kind === 'transcribe' && voice.state === 'failed') {
+              <br />Open WhatsApp to review the voice message with the customer.
+            }
+          </p>
+        }
         @for (message of reply.messages; track message.id) {
           <p class="delivery">
+            {{ message.format === 'audio' ? 'Voice reply' : 'Text reply' }}:
             {{ deliveryLabel(message.state) }} ·
             {{ message.createdAt | date: 'short' }}
             @if (message.state === 'unknown') {
@@ -145,9 +168,12 @@ export class LeadReplyComponent implements OnChanges, OnDestroy {
     const r = this.conversation.reply;
     if (
       r &&
-      (r.jobs.some((j) => ['queued', 'working'].includes(j.state)) ||
+      ((r.voiceJobs ?? []).some((j) =>
+        ['queued', 'working'].includes(j.state),
+      ) ||
+        r.jobs.some((j) => ['queued', 'working'].includes(j.state)) ||
         r.messages.some((m) =>
-          ['queued', 'dispatching', 'accepted'].includes(m.state),
+          ['preparing', 'queued', 'dispatching', 'accepted'].includes(m.state),
         ))
     )
       this.polling = timer(5000, 10000)
@@ -232,6 +258,20 @@ export class LeadReplyComponent implements OnChanges, OnDestroy {
         error: (e) => this.error(e),
       });
   }
+  retryVoice(jobId: string) {
+    if (this.busy) return;
+    this.busy = true;
+    this.request = this.api.retryVoice(this.id, jobId).subscribe({
+      next: (d) => {
+        this.busy = false;
+        this.conversation = d;
+        this.updated.emit(d);
+        this.tone = 'success';
+        this.notice = 'Voice reply queued. The text will not be resent.';
+      },
+      error: (e) => this.error(e),
+    });
+  }
   useDraft(answer: string) {
     if (this.body.value.trim()) return;
     this.body.setValue(answer);
@@ -240,6 +280,9 @@ export class LeadReplyComponent implements OnChanges, OnDestroy {
     return (
       (
         {
+          preparing: 'Preparing',
+          working: 'Processing',
+          ready: 'Ready',
           queued: 'Queued',
           dispatching: 'Sending',
           accepted: 'Sent',

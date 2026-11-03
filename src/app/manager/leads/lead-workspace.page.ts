@@ -371,6 +371,16 @@ export class LeadWorkspacePage implements OnInit {
       this.detailRequests.next(row.leadId);
     });
   }
+  bookAppointment(): void {
+    if (this.saving || !this.selected || this.selected.lead.stage === 'closed')
+      return;
+    const leadId = this.selected.lead.leadId;
+    this.guard(() => {
+      void this.router.navigate(['/manager/scheduling/leads'], {
+        queryParams: { leadId },
+      });
+    });
+  }
   closeLead(): void {
     if (this.saving) return;
     this.guard(() => {
@@ -610,6 +620,12 @@ export class LeadWorkspacePage implements OnInit {
     );
   }
   eventSummary(event: LeadEvent): string {
+    if (event.metadata['transcriptOf']) return 'Voice transcript';
+    if (
+      event.metadata['messageType'] === 'audio' &&
+      event.kind === 'outbound_message'
+    )
+      return 'Voice reply';
     if (event.kind === 'lead_created') return 'Manually entered enquiry.';
     if (event.kind === 'assignment_changed')
       return 'Advisor assignment changed; the conversation was paused.';

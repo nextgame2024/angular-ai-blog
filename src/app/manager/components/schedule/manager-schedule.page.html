@@ -39,6 +39,7 @@
       </div>
     </div>
 
+    @if(!isProjectScope$$()) {<nav class="scheduling-views" aria-label="Scheduling views"><a routerLink="/manager/scheduling" class="active" aria-current="page">Project bookings</a><a routerLink="/manager/scheduling/leads">Lead appointments</a></nav>}
     <div class="calendar-controls">
       <div class="calendar-nav">
         <button

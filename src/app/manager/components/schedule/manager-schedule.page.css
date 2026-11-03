@@ -1037,3 +1037,11 @@
     flex: 1 1 auto;
   }
 }
+
+.scheduling-views {display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0;border-bottom:1px solid #d6e2f3;}
+.scheduling-views a {font:inherit;font-size:.85rem;font-weight:600;text-decoration:none;color:#607496;padding:.8rem 1rem;min-height:44px;box-sizing:border-box;border-bottom:3px solid transparent;}
+.scheduling-views a.active {color:#008b7d;border-bottom-color:#0ca78e;}
+.scheduling-views a:focus-visible {outline:3px solid #8cb6ff;outline-offset:2px;}
+:host-context(html.dark) .scheduling-views {border-color:#34465f;}
+:host-context(html.dark) .scheduling-views a {color:#b0c1da;}
+:host-context(html.dark) .scheduling-views a.active {color:#9ec3ff;}
