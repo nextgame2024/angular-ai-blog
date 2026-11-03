@@ -1,0 +1,391 @@
+<div class="assistant-shell">
+  @if (!embedded) {
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a routerLink="/manager/menu">Menu</a><span>/</span
+    ><span>Leads & Conversations</span>
+  </nav>
+  <header class="page-header">
+    <div>
+      <h3>Leads & Conversations</h3>
+      <p>
+        Configure Sophia’s business details, team and human support coverage.
+      </p>
+    </div>
+    <button
+      class="btn"
+      type="button"
+      (click)="reload()"
+      [disabled]="loading || saving"
+    >
+      Reload settings
+    </button>
+  </header>
+  <nav class="tabs" aria-label="Module navigation">
+    <span class="active" aria-current="page">Settings</span>
+  </nav>
+  }
+  <div class="connection-note">
+    <strong>WhatsApp setup pending</strong>
+    <p>
+      Your existing Business App number needs coexistence verification before
+      connection. Publishing these settings does not connect the number or start
+      messages.
+    </p>
+  </div>
+  <section class="content" [attr.aria-busy]="loading || saving">
+    @if (loading) {
+    <app-manager-list-loader
+      label="Loading assistant settings…"
+      [overlay]="!!state"
+    ></app-manager-list-loader>
+    } @if (loadError) {
+    <div class="empty">
+      <p>{{loadError}}</p>
+      <button class="btn" type="button" (click)="load()">Retry</button>
+    </div>
+    } @if (state) {
+    <div class="release-bar">
+      <span class="badge"
+        >{{state.published ? 'Published settings available' : 'No published
+        settings'}}</span
+      ><span class="muted"
+        >Draft revision {{state.revision}} @if (state.published) { · Published
+        {{state.published.published_at | date:'medium'}} }</span
+      >
+    </div>
+    <form [formGroup]="form" (ngSubmit)="save()">
+      <fieldset [disabled]="saving || loading">
+        <div class="grid">
+          <section class="card">
+            <h4>Business details</h4>
+            <p class="muted">
+              Use the name and support contact customers should see.
+            </p>
+            <label for="business">Business name <span>*</span></label
+            ><input
+              id="business"
+              formControlName="businessName"
+              maxlength="160"
+              [class.invalid]="invalid('businessName')"
+              [attr.aria-invalid]="invalid('businessName')"
+            />
+            <label for="contact">Public contact name <span>*</span></label
+            ><input
+              id="contact"
+              formControlName="contactName"
+              maxlength="160"
+              [class.invalid]="invalid('contactName')"
+              [attr.aria-invalid]="invalid('contactName')"
+            />
+            <label for="support"
+              >Support email, phone or website <span>*</span></label
+            ><input
+              id="support"
+              formControlName="supportContact"
+              maxlength="320"
+              [class.invalid]="invalid('supportContact')"
+              [attr.aria-invalid]="invalid('supportContact')"
+            />
+            <label for="greeting">Greeting <span>*</span></label
+            ><textarea
+              id="greeting"
+              formControlName="greeting"
+              rows="4"
+              maxlength="2000"
+              [class.invalid]="invalid('greeting')"
+              [attr.aria-invalid]="invalid('greeting')"
+            ></textarea>
+            <label>Supported languages <span>*</span></label>
+            <div class="language-options">
+              @for (language of languages; track language.value) {
+              <button
+                class="chip"
+                [class.selected]="selectedLanguages.includes(language.value)"
+                type="button"
+                [attr.aria-pressed]="selectedLanguages.includes(language.value)"
+                (click)="toggleLanguage(language.value,!selectedLanguages.includes(language.value))"
+              >
+                {{language.label}}
+              </button>
+              }
+            </div>
+            <label for="default-language">Default language</label
+            ><app-manager-select
+              id="default-language"
+              ariaLabel="Default language"
+              [options]="defaultLanguageOptions"
+              formControlName="defaultLanguage"
+            ></app-manager-select>
+          </section>
+          <section class="card">
+            <h4>Team and ownership</h4>
+            <p class="muted">
+              Choose active team members from your company. Content ownership
+              does not grant publishing permission.
+            </p>
+            <label for="staff-search">Find a team member</label
+            ><input
+              id="staff-search"
+              type="search"
+              [formControl]="teamSearch"
+              maxlength="100"
+              placeholder="Search by name"
+              [readonly]="saving || loading"
+            />
+            @if (staffSearching) {
+            <p class="muted" role="status">Searching team…</p>
+            } @else if (hasMoreStaff) {
+            <p class="muted">
+              More team members are available. Refine the search.
+            </p>
+            } <label for="enquiry-owner">Enquiry owner <span>*</span></label
+            ><app-manager-select
+              id="enquiry-owner"
+              ariaLabel="Enquiry owner"
+              formControlName="enquiryOwnerId"
+              [options]="staffOptions"
+              [searchable]="true"
+              placeholder="Select an owner"
+              [class.invalid]="invalid('enquiryOwnerId')"
+              [attr.aria-invalid]="invalid('enquiryOwnerId')"
+            ></app-manager-select>
+            <label for="content-owner">Content owner <span>*</span></label
+            ><app-manager-select
+              id="content-owner"
+              ariaLabel="Content owner"
+              formControlName="contentOwnerId"
+              [options]="staffOptions"
+              [searchable]="true"
+              placeholder="Select a content owner"
+              [class.invalid]="invalid('contentOwnerId')"
+              [attr.aria-invalid]="invalid('contentOwnerId')"
+            ></app-manager-select>
+            <label for="fallback-owner">Fallback owner <span>*</span></label
+            ><app-manager-select
+              id="fallback-owner"
+              ariaLabel="Fallback owner"
+              formControlName="fallbackOwnerId"
+              [options]="staffOptions"
+              [searchable]="true"
+              placeholder="Select a fallback owner"
+              [class.invalid]="invalid('fallbackOwnerId')"
+              [attr.aria-invalid]="invalid('fallbackOwnerId')"
+            ></app-manager-select>
+            <label for="advisor-choice">Advisor team <span>*</span></label>
+            <div class="add-row" [class.invalid]="invalid('advisorIds')">
+              <app-manager-select
+                id="advisor-choice"
+                ariaLabel="Add advisor"
+                [formControl]="advisorChoice"
+                [options]="staffOptions"
+                [searchable]="true"
+                placeholder="Select an advisor"
+              ></app-manager-select
+              ><button
+                class="btn"
+                type="button"
+                (click)="addAdvisor()"
+                [disabled]="!advisorChoice.value || advisorIds.length >= 50"
+              >
+                + Add
+              </button>
+            </div>
+            <div class="selected-team">
+              @for (id of advisorIds; track id) {
+              <span class="member"
+                >{{staffName(id)}}<button
+                  type="button"
+                  class="remove"
+                  [attr.aria-label]="'Remove advisor ' + staffName(id)"
+                  (click)="removeAdvisor(id)"
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m6 6 12 12M18 6 6 18" />
+                  </svg></button
+              ></span>
+              } @empty {
+              <p class="muted">No advisors selected.</p>
+              }
+            </div>
+          </section>
+        </div>
+        <section
+          class="card coverage-card"
+          [class.invalid]="invalid('coverage')"
+        >
+          <h4>Human coverage</h4>
+          <p class="muted">
+            These hours describe when the team handles enquiries. Appointment
+            availability will be managed separately in Scheduling. Times use the
+            timezone below.
+          </p>
+          <div class="timezone">
+            <label for="timezone">Timezone <span>*</span></label
+            ><input
+              id="timezone"
+              formControlName="timezone"
+              placeholder="Australia/Brisbane"
+              [class.invalid]="invalid('timezone')"
+              [attr.aria-invalid]="invalid('timezone')"
+            />
+            <p class="muted">
+              Enter an IANA timezone, such as Australia/Brisbane or
+              Australia/Sydney.
+            </p>
+          </div>
+          <div formArrayName="coverage">
+            @for (window of coverage.controls; track window; let i=$index) {
+            <div class="coverage-row" [formGroupName]="i">
+              <div>
+                <label [for]="'day-'+i">Day</label
+                ><app-manager-select
+                  [id]="'day-'+i"
+                  [ariaLabel]="'Coverage day ' + (i+1)"
+                  formControlName="day"
+                  [options]="days"
+                ></app-manager-select>
+              </div>
+              <div>
+                <label [for]="'start-'+i">From</label
+                ><input
+                  type="time"
+                  [id]="'start-'+i"
+                  formControlName="start"
+                  [class.invalid]="window.controls.start.touched && window.controls.start.invalid"
+                />
+              </div>
+              <div>
+                <label [for]="'end-'+i">Until</label
+                ><input
+                  type="time"
+                  [id]="'end-'+i"
+                  formControlName="end"
+                  [class.invalid]="window.controls.end.touched && window.controls.end.invalid"
+                />
+              </div>
+              <button
+                type="button"
+                class="btn icon-btn danger"
+                [attr.aria-label]="'Remove coverage interval ' + (i+1)"
+                (click)="removeWindow(i)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 10v7M14 10v7"
+                  />
+                </svg>
+              </button>
+            </div>
+            } @empty {
+            <p class="muted">
+              No coverage configured. Add separate intervals to allow breaks.
+            </p>
+            }
+          </div>
+          <button
+            class="btn"
+            type="button"
+            (click)="addWindow()"
+            [disabled]="coverage.length >= 28"
+          >
+            + Add coverage interval
+          </button>
+          <div class="grid closed-area">
+            <div>
+              <label for="closed-date">Closed dates</label>
+              <div class="add-row">
+                <input
+                  id="closed-date"
+                  type="date"
+                  [formControl]="closedDate"
+                /><button
+                  class="btn"
+                  type="button"
+                  (click)="addClosedDate()"
+                  [disabled]="!closedDate.value || closedDates.length >= 100"
+                >
+                  + Add
+                </button>
+              </div>
+              <div class="selected-team">
+                @for (day of closedDates; track day) {
+                <span class="member"
+                  >{{day}}<button
+                    type="button"
+                    class="remove"
+                    [attr.aria-label]="'Remove closed date ' + day"
+                    (click)="removeClosedDate(day)"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m6 6 12 12M18 6 6 18" />
+                    </svg></button
+                ></span>
+                }
+              </div>
+            </div>
+            <div>
+              <label for="after-hours">After-hours message <span>*</span></label
+              ><textarea
+                id="after-hours"
+                formControlName="afterHoursMessage"
+                rows="3"
+                maxlength="1000"
+                [class.invalid]="invalid('afterHoursMessage')"
+                [attr.aria-invalid]="invalid('afterHoursMessage')"
+              ></textarea>
+            </div>
+          </div>
+        </section>
+      </fieldset>
+      <footer class="form-actions">
+        <p class="muted">
+          * Required to publish. You can save an incomplete draft.
+        </p>
+        <div>
+          <button class="btn" type="submit" [disabled]="saving || loading">
+            {{saving ? 'Saving…' : 'Save draft'}}</button
+          ><button
+            class="btn primary"
+            type="button"
+            (click)="publish()"
+            [disabled]="saving || loading || form.dirty || !state.revision"
+          >
+            Publish settings
+          </button>
+        </div>
+      </footer>
+    </form>
+    }
+  </section>
+  @if (confirmReload) {
+  <div class="confirm-backdrop">
+    <section
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      class="confirm-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="reload-title"
+    >
+      <h4 id="reload-title">Reload settings?</h4>
+      <p>
+        Your unsaved changes will be discarded and the latest saved draft will
+        be loaded.
+      </p>
+      <div class="confirm-actions">
+        <button class="btn" type="button" (click)="confirmReload=false">
+          Keep editing</button
+        ><button class="btn primary" type="button" (click)="discardAndReload()">
+          Reload latest
+        </button>
+      </div>
+    </section>
+  </div>
+  } @if (toast) {
+  <app-manager-toast
+    [message]="toast"
+    [tone]="tone"
+    (closed)="toast=''"
+  ></app-manager-toast>
+  }
+</div>

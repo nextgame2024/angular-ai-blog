@@ -104,6 +104,7 @@ export const MENU_NAVIGATION_LABEL_OPTIONS: NavigationLabelOption[] = [
   { value: 'Projects', label: 'Projects' },
   { value: 'Project types', label: 'Project types' },
   { value: 'Scheduling', label: 'Scheduling' },
+  { value: 'Leads & Conversations', label: 'Leads & Conversations' },
   { value: 'Navigation links', label: 'Navigation links' },
   { value: 'Suppliers', label: 'Suppliers' },
   { value: 'Materials', label: 'Materials' },

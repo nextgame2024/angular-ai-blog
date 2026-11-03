@@ -1,0 +1,687 @@
+<div class="lead-shell">
+  <nav class="breadcrumb" aria-label="Breadcrumb">
+    <a routerLink="/manager/menu">Menu</a><span>/</span
+    ><span>Leads & Conversations</span>
+  </nav>
+  <header class="page-header">
+    <div>
+      <h3>Leads & Conversations</h3>
+      <p>Manage enquiries, assignments and conversations with your team.</p>
+    </div>
+    @if(context && view!=='settings'){<button
+      class="btn primary"
+      type="button"
+      (click)="newLead()"
+      [disabled]="!context.canCreate || saving"
+    >
+      + Create lead</button
+    >}
+  </header>
+  @if(context){
+  <nav class="tabs" aria-label="Module navigation">
+    <button
+      type="button"
+      [class.active]="view==='inbox'"
+      [attr.aria-current]="view==='inbox'?'page':null"
+      (click)="changeView('inbox')"
+    >
+      Inbox</button
+    ><button
+      type="button"
+      [class.active]="view==='leads'"
+      [attr.aria-current]="view==='leads'?'page':null"
+      (click)="changeView('leads')"
+    >
+      Leads</button
+    >@if(context.canManageSettings){<button
+      type="button"
+      [class.active]="view==='settings'"
+      [attr.aria-current]="view==='settings'?'page':null"
+      (click)="changeView('settings')"
+    >
+      Settings</button
+    >}
+  </nav>
+  } @if(contextLoading){<app-manager-list-loader
+    label="Loading your enquiries workspace…"
+  ></app-manager-list-loader
+  >} @if(contextError){
+  <div class="empty">
+    <p>{{contextError}}</p>
+    <button class="btn" type="button" (click)="loadContext()">Retry</button>
+  </div>
+  } @if(context && !contextLoading){
+  @if(view==='settings'){<app-lead-assistant-settings
+    [embedded]="true"
+  ></app-lead-assistant-settings
+  >} @else{
+  <div class="notice">
+    <strong>WhatsApp connection pending</strong>
+    <p>
+      Use this workspace for manually entered enquiries and internal notes.
+      Customer messages will appear after the channel is connected.
+    </p>
+  </div>
+  @if(!context.settingsPublished){
+  <div class="notice">
+    <p>Publish Settings to enable lead creation and team assignment.</p>
+    @if(context.canManageSettings){<button
+      class="btn"
+      type="button"
+      (click)="changeView('settings')"
+    >
+      Open Settings</button
+    >}
+  </div>
+  }
+  <section class="filters" aria-label="Lead filters">
+    <input
+      type="search"
+      [formControl]="search"
+      placeholder="Search by name or interest"
+      aria-label="Search leads"
+      maxlength="200"
+    /><app-manager-select
+      [formControl]="stageFilter"
+      [options]="stageOptions"
+      ariaLabel="Filter by lead stage"
+    ></app-manager-select
+    ><app-manager-select
+      [formControl]="ownerFilter"
+      [options]="ownershipOptions"
+      ariaLabel="Filter by conversation ownership"
+    ></app-manager-select
+    >@if(context.canManageLeads){<app-manager-select
+      [formControl]="assignmentFilter"
+      [options]="assignmentOptions"
+      ariaLabel="Filter by advisor"
+      [searchable]="true"
+    ></app-manager-select
+    >}<button
+      class="btn"
+      type="button"
+      (click)="refreshList()"
+      [disabled]="listLoading"
+    >
+      Refresh list
+    </button>
+  </section>
+  <div
+    class="workspace"
+    [class.inbox]="view==='inbox'"
+    [class.has-selection]="!!selectedId"
+  >
+    <section
+      class="list-panel card"
+      [class.full-width]="view==='leads'"
+      aria-label="Lead records"
+    >
+      <div class="list-title">
+        <h4>
+          {{view==='inbox'?'Conversations':'Leads'}}
+          <span class="badge">{{total}}</span>
+        </h4>
+        @if(view==='inbox'){<app-manager-select
+          class="compact-select"
+          [options]="conversationSortOptions"
+          [ngModel]="sort"
+          [ngModelOptions]="{standalone:true}"
+          (ngModelChange)="sortThreads($event)"
+          ariaLabel="Sort conversations"
+        ></app-manager-select
+        >}
+      </div>
+      <div class="list-content" [attr.aria-busy]="listLoading">
+        @if(listLoading){<app-manager-list-loader
+          label="Loading leads…"
+          [overlay]="rows.length>0"
+        ></app-manager-list-loader
+        >} @if(listError){
+        <div class="empty">
+          <p>{{listError}}</p>
+          <button class="btn" type="button" (click)="refreshList()">
+            Retry
+          </button>
+        </div>
+        } @else if(!listLoading || rows.length){ @if(view==='leads'){
+        <div class="desktop-table">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col" [attr.aria-sort]="sortAria('name')">
+                  <button
+                    class="sort-button"
+                    type="button"
+                    (click)="sortBy('name')"
+                  >
+                    Lead <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col">Interest</th>
+                <th scope="col" [attr.aria-sort]="sortAria('stage')">
+                  <button
+                    class="sort-button"
+                    type="button"
+                    (click)="sortBy('stage')"
+                  >
+                    Stage
+                    <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col">Advisor</th>
+                <th scope="col">Conversation</th>
+                <th scope="col" [attr.aria-sort]="sortAria('updated')">
+                  <button
+                    class="sort-button"
+                    type="button"
+                    (click)="sortBy('updated')"
+                  >
+                    Updated
+                    <span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for(row of rows;track row.leadId){
+              <tr [class.selected-row]="selectedId===row.leadId">
+                <td>
+                  <button
+                    class="text-button"
+                    type="button"
+                    (click)="openLead(row)"
+                  >
+                    {{row.displayName}}</button
+                  ><small
+                    >{{languageLabels[row.language] || row.language}} ·
+                    {{row.source==='manual'?'Manual enquiry':'WhatsApp'}}</small
+                  >
+                </td>
+                <td>{{row.interest || 'Not provided'}}</td>
+                <td>
+                  <span class="badge" [class.closed]="row.stage==='closed'"
+                    >{{stageLabel(row.stage)}}</span
+                  >
+                </td>
+                <td>{{staffName(row.assignedTo)}}</td>
+                <td>{{ownershipLabel(row.ownership)}}</td>
+                <td>
+                  {{row.updatedAt|date:'mediumDate'}}<small
+                    >{{row.updatedAt|date:'shortTime'}}</small
+                  >
+                </td>
+                <td>
+                  <button
+                    class="btn icon-btn"
+                    type="button"
+                    [attr.aria-label]="'View lead '+row.displayName"
+                    (click)="openLead(row)"
+                  >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+              }@empty{
+              <tr>
+                <td colspan="7" class="empty">No leads match these filters.</td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        }
+        <div
+          [class.mobile-cards]="view==='leads'"
+          [class.thread-list]="view==='inbox'"
+        >
+          @for(row of rows;track row.leadId){<button
+            class="lead-card"
+            [class.selected-row]="selectedId===row.leadId"
+            type="button"
+            (click)="openLead(row)"
+          >
+            <span class="lead-card-title"
+              >{{row.displayName}}
+              <span class="badge">{{stageLabel(row.stage)}}</span></span
+            ><span>{{row.interest || 'Interest not provided'}}</span
+            ><small
+              >{{staffName(row.assignedTo)}} ·
+              {{ownershipLabel(row.ownership)}}</small
+            ><small>{{row.updatedAt|date:'short'}}</small></button
+          >}@empty{
+          <div class="empty">No leads match these filters.</div>
+          }
+        </div>
+        }
+      </div>
+      <footer class="pagination">
+        <span class="muted">{{total}} lead{{total===1?'':'s'}}</span
+        ><app-manager-select
+          class="compact-select"
+          [options]="pageSizes"
+          [formControl]="pageSize"
+          ariaLabel="Leads per page"
+        ></app-manager-select>
+        <div class="page-buttons">
+          <button
+            class="btn page-btn"
+            type="button"
+            [disabled]="page===1 || listLoading"
+            (click)="goPage(1)"
+            aria-label="First page"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M11 6 5 12l6 6M19 6l-6 6 6 6" />
+            </svg></button
+          ><button
+            class="btn page-btn"
+            type="button"
+            [disabled]="page===1 || listLoading"
+            (click)="goPage(page-1)"
+            aria-label="Previous page"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m15 6-6 6 6 6" />
+            </svg></button
+          ><app-page-jump
+            [page]="page"
+            [totalPages]="totalPages"
+            [disabled]="listLoading"
+            label="Lead page number"
+            (pageChange)="goPage($event)"
+          ></app-page-jump
+          ><button
+            class="btn page-btn"
+            type="button"
+            [disabled]="page===totalPages || listLoading"
+            (click)="goPage(page+1)"
+            aria-label="Next page"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m9 6 6 6-6 6" />
+            </svg></button
+          ><button
+            class="btn page-btn"
+            type="button"
+            [disabled]="page===totalPages || listLoading"
+            (click)="goPage(totalPages)"
+            aria-label="Last page"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m5 6 6 6-6 6M13 6l6 6-6 6" />
+            </svg>
+          </button>
+        </div>
+      </footer>
+    </section>
+    @if(selectedId){
+    <section
+      class="detail-panel card"
+      aria-label="Lead conversation"
+      [attr.aria-busy]="detailLoading || saving"
+    >
+      <div class="detail-toolbar">
+        <button
+          class="btn"
+          type="button"
+          (click)="closeLead()"
+          [disabled]="saving"
+        >
+          Back to list</button
+        ><button
+          class="btn"
+          type="button"
+          (click)="reloadLead()"
+          [disabled]="saving || detailLoading"
+        >
+          Reload lead
+        </button>
+      </div>
+      @if(detailLoading){<app-manager-list-loader
+        label="Loading conversation…"
+      ></app-manager-list-loader
+      >} @if(detailError){
+      <div class="empty">
+        <p>{{detailError}}</p>
+        <button class="btn" type="button" (click)="reloadLead()">Retry</button>
+      </div>
+      } @if(selected;as conversation){
+      <div class="detail-heading">
+        <div>
+          <h4>{{conversation.lead.displayName}}</h4>
+          <p class="muted">
+            {{conversation.lead.source==='manual'?'Manually entered
+            enquiry':'WhatsApp enquiry'}} ·
+            {{languageLabels[conversation.lead.language]}}
+          </p>
+        </div>
+        <button
+          class="btn"
+          type="button"
+          (click)="editLead()"
+          [disabled]="saving"
+        >
+          Edit lead
+        </button>
+      </div>
+      <dl class="facts">
+        <div>
+          <dt>Stage</dt>
+          <dd>
+            <span class="badge">{{stageLabel(conversation.lead.stage)}}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Advisor</dt>
+          <dd>{{staffName(conversation.lead.assignedTo)}}</dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd>{{conversation.lead.email || 'Not provided'}}</dd>
+        </div>
+        <div>
+          <dt>Phone</dt>
+          <dd>{{conversation.lead.phone || 'Not provided'}}</dd>
+        </div>
+        <div>
+          <dt>Interest</dt>
+          <dd>{{conversation.lead.interest || 'Not provided'}}</dd>
+        </div>
+        <div>
+          <dt>Location</dt>
+          <dd>{{conversation.lead.location || 'Not provided'}}</dd>
+        </div>
+        <div>
+          <dt>Timeframe</dt>
+          <dd>{{conversation.lead.timeframe || 'Not provided'}}</dd>
+        </div>
+        @if(conversation.lead.stageReason){
+        <div>
+          <dt>Stage reason</dt>
+          <dd>{{conversation.lead.stageReason}}</dd>
+        </div>
+        }
+      </dl>
+      <div class="ownership-bar">
+        <div>
+          <span class="badge"
+            >{{ownershipLabel(conversation.lead.ownership)}}</span
+          >@if(conversation.lead.humanOwner){
+          <p class="muted">
+            Handled by {{staffName(conversation.lead.humanOwner)}}
+          </p>
+          }
+        </div>
+        <div>
+          <button
+            class="btn"
+            type="button"
+            (click)="ownership('human')"
+            [disabled]="saving || conversation.lead.stage==='closed' || conversation.lead.humanOwner===context.actorId"
+          >
+            Take over</button
+          ><button
+            class="btn"
+            type="button"
+            (click)="ownership('paused')"
+            [disabled]="saving || conversation.lead.ownership==='paused'"
+          >
+            Pause
+          </button>
+        </div>
+      </div>
+      <h4 class="activity-title">Conversation & internal activity</h4>
+      <p class="muted">
+        Internal notes stay with the team. Automated replies and WhatsApp
+        sending are not connected yet.
+      </p>
+      <div class="history-controls">
+        @if(conversation.hasOlder){<button
+          class="btn"
+          type="button"
+          (click)="olderEvents()"
+          [disabled]="olderLoading || saving"
+        >
+          Older activity</button
+        >}@if(olderView){<button
+          class="btn"
+          type="button"
+          (click)="reloadLead()"
+          [disabled]="saving"
+        >
+          Latest activity</button
+        >}@if(olderLoading){<span role="status" class="muted"
+          >Loading activity…</span
+        >}
+      </div>
+      <ol class="timeline">
+        @for(event of conversation.events;track event.id){
+        <li [class.internal-note]="event.kind==='note'">
+          <div class="event-head">
+            <strong>{{eventLabel(event.kind)}}</strong
+            ><small>{{event.createdAt|date:'short'}}</small>
+          </div>
+          @if(event.body){
+          <p class="event-body">{{event.body}}</p>
+          }@if(eventSummary(event); as summary){
+          <p class="muted">{{summary}}</p>
+          }@if(event.actorId){<small>{{staffName(event.actorId)}}</small>}
+        </li>
+        }@empty{
+        <li class="muted">No conversation activity yet.</li>
+        }
+      </ol>
+      <form class="note-form" (submit)="$event.preventDefault();addNote()">
+        <label for="internal-note">Add an internal note</label
+        ><textarea
+          id="internal-note"
+          [formControl]="note"
+          rows="3"
+          maxlength="4000"
+          [readOnly]="saving"
+          [class.invalid]="note.touched && note.invalid"
+          placeholder="Visible to your team only"
+        ></textarea
+        ><button
+          class="btn primary"
+          type="submit"
+          [disabled]="saving || !note.value.trim()"
+        >
+          Add note
+        </button>
+      </form>
+      }
+    </section>
+    }@else if(view==='inbox'){
+    <section class="detail-panel card empty">
+      <h4>Select an enquiry</h4>
+      <p>
+        Open a conversation to review its details, take ownership or add an
+        internal note.
+      </p>
+    </section>
+    }
+  </div>
+  } } @if(editor){
+  <div class="modal-backdrop">
+    <section
+      class="lead-modal"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="lead-editor-title"
+    >
+      <header>
+        <h4 id="lead-editor-title">
+          {{editor==='create'?'Create lead':'Edit lead'}}
+        </h4>
+        <button
+          class="btn icon-btn"
+          type="button"
+          aria-label="Close lead form"
+          (click)="closeEditor()"
+          [disabled]="saving"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 6 12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </header>
+      <form [formGroup]="form" (ngSubmit)="saveLead()">
+        <div class="form-body">
+          <div class="form-grid">
+            <div>
+              <label for="lead-name">Name *</label
+              ><input
+                id="lead-name"
+                formControlName="displayName"
+                maxlength="160"
+                [class.invalid]="invalid('displayName')"
+                [attr.aria-invalid]="invalid('displayName')"
+              />
+            </div>
+            <div>
+              <label for="lead-language">Language</label
+              ><app-manager-select
+                id="lead-language"
+                formControlName="language"
+                [options]="languageOptions"
+                ariaLabel="Lead language"
+                [class.invalid]="invalid('language')"
+              ></app-manager-select>
+            </div>
+            <div>
+              <label for="lead-email">Email</label
+              ><input
+                id="lead-email"
+                type="email"
+                formControlName="email"
+                maxlength="320"
+                [class.invalid]="invalid('email')"
+                [attr.aria-invalid]="invalid('email')"
+              />
+            </div>
+            <div>
+              <label for="lead-phone">Phone</label
+              ><input
+                id="lead-phone"
+                type="tel"
+                formControlName="phone"
+                maxlength="40"
+                [class.invalid]="invalid('phone')"
+                [attr.aria-invalid]="invalid('phone')"
+              />
+            </div>
+            <div class="wide">
+              <label for="lead-interest">Interest</label
+              ><input
+                id="lead-interest"
+                formControlName="interest"
+                maxlength="500"
+                [class.invalid]="invalid('interest')"
+              />
+            </div>
+            <div>
+              <label for="lead-location">Country / city</label
+              ><input
+                id="lead-location"
+                formControlName="location"
+                maxlength="160"
+              />
+            </div>
+            <div>
+              <label for="lead-timeframe">Intended timeframe</label
+              ><input
+                id="lead-timeframe"
+                formControlName="timeframe"
+                maxlength="160"
+              />
+            </div>
+            <div>
+              <label for="lead-advisor">Assigned advisor</label
+              ><app-manager-select
+                id="lead-advisor"
+                formControlName="assignedTo"
+                [options]="advisorOptions"
+                [searchable]="true"
+                ariaLabel="Assigned advisor"
+                [class.invalid]="invalid('assignedTo')"
+              ></app-manager-select>
+            </div>
+            @if(editor==='edit'){
+            <div>
+              <label for="lead-stage">Stage</label
+              ><app-manager-select
+                id="lead-stage"
+                formControlName="stage"
+                [options]="stages"
+                ariaLabel="Lead stage"
+              ></app-manager-select>
+            </div>
+            <div class="wide">
+              <label for="stage-reason"
+                >Stage reason (required for Qualified or Closed)</label
+              ><textarea
+                id="stage-reason"
+                formControlName="stageReason"
+                rows="2"
+                maxlength="1000"
+                [class.invalid]="invalid('stageReason')"
+                [attr.aria-invalid]="invalid('stageReason')"
+              ></textarea>
+            </div>
+            }
+          </div>
+          <p class="muted">
+            Saving a lead does not create a student, invoice or WhatsApp
+            conversation with the contact.
+          </p>
+        </div>
+        <footer>
+          <button
+            class="btn"
+            type="button"
+            (click)="closeEditor()"
+            [disabled]="saving"
+          >
+            Cancel</button
+          ><button class="btn primary" type="submit" [disabled]="saving">
+            {{saving?'Saving…':'Save lead'}}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+  } @if(confirmingDiscard){
+  <div class="modal-backdrop confirmation">
+    <section
+      class="confirm-modal"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="discard-title"
+    >
+      <h4 id="discard-title">Discard unsaved changes?</h4>
+      <p>Your unsaved lead details or note will be lost.</p>
+      <footer>
+        <button class="btn" type="button" (click)="keepEditing()">
+          Keep editing</button
+        ><button class="btn primary" type="button" (click)="discard()">
+          Discard changes
+        </button>
+      </footer>
+    </section>
+  </div>
+  } @if(toast){<app-manager-toast
+    [message]="toast"
+    [tone]="tone"
+    (closed)="toast=''"
+  ></app-manager-toast
+  >}
+</div>

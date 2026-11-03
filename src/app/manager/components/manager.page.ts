@@ -178,6 +178,7 @@ export class ManagerPageComponent implements OnDestroy {
       icon: 'project-types',
     },
     { label: 'Scheduling', route: '/manager/scheduling', icon: 'schedule' },
+    { label: 'Leads & Conversations', route: '/manager/leads', icon: 'clients' },
     {
       label: 'Navigation links',
       route: '/manager/navigation-links',

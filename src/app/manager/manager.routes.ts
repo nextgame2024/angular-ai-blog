@@ -230,6 +230,11 @@ export const MANAGER_ROUTES: Route[] = [
       },
       MANAGER_SCHEDULE_ROUTE,
       {
+        path: 'leads',
+        loadComponent: () => import('./leads/lead-workspace.page').then(m => m.LeadWorkspacePage),
+        data: { title: 'Leads & Conversations', fullscreen: true },
+      },
+      {
         path: 'users',
         component: ManagerUsersPageComponent,
         providers: [ManagerSitesService],
