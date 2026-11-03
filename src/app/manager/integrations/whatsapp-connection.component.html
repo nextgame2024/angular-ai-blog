@@ -27,9 +27,12 @@
       }
       @if (state) {
         <p class="muted">
-          Receive only. Automated replies and sending from this inbox are not
-          enabled. Existing Business App numbers require verified coexistence
-          setup.
+          @if (state.mode === "receive_only") {
+            Receive only. Sending is not configured.
+          } @else {
+            Text replies are available when the customer reply window is open.
+          }
+          Existing Business App numbers require verified coexistence setup.
         </p>
         @for (profile of state.profiles; track profile.id) {
           <div class="profile">
@@ -85,6 +88,11 @@
             Oldest waiting message:
             {{ state.health.oldestQueuedAt | date: "medium" }}
           </p>
+        }
+        @for (profile of state.profiles; track profile.id) {
+          @if (channel(profile.id)) {
+            <app-whatsapp-response-settings [profileId]="profile.id" />
+          }
         }
         <a routerLink="/manager/leads">Open Leads & Conversations</a>
       }

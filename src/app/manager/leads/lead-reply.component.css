@@ -1,0 +1,101 @@
+:host {
+  display: block;
+}
+.reply-box {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #dbe6f3;
+  border-radius: 10px;
+  color: #172338;
+  background: #f8fbff;
+}
+h4 {
+  font: inherit;
+  font-weight: 700;
+  margin: 0 0 8px;
+}
+p,
+small,
+label {
+  font-size: 13px;
+  line-height: 1.5;
+}
+label {
+  display: block;
+  margin: 12px 0 6px;
+}
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  border: 1px solid #c7d8ee;
+  border-radius: 8px;
+  padding: 10px;
+  font: inherit;
+  color: inherit;
+  background: #fff;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.btn {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #c7d8ee;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 12px;
+  background: #fff;
+  color: #315fff;
+  cursor: pointer;
+}
+.primary {
+  background: #00a78f;
+  color: #fff;
+  border-color: #00a78f;
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.draft,
+.delivery {
+  padding-top: 12px;
+  border-top: 1px solid #dbe6f3;
+  margin-top: 12px;
+}
+.draft p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.draft small {
+  display: block;
+  margin-top: 8px;
+}
+button:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #315fff;
+  outline-offset: 3px;
+}
+:host-context(html.dark) .reply-box {
+  background: #172033;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+:host-context(html.dark) textarea,
+:host-context(html.dark) .btn {
+  background: #1e293b;
+  border-color: #475569;
+  color: #c7d2fe;
+}
+:host-context(html.dark) .primary {
+  background: #008c7d;
+  color: #fff;
+}
+:host-context(html.dark) .draft,
+:host-context(html.dark) .delivery {
+  border-color: #334155;
+}

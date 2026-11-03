@@ -58,7 +58,28 @@ export interface LeadEvent {
   metadata: Record<string, unknown>;
   createdAt: string;
 }
+export interface ReplyState {
+  canSend: boolean;
+  canResume?: boolean;
+  blockedReason: string | null;
+  windowEndsAt: string | null;
+  optedOut: boolean;
+  jobs: {
+    id: string;
+    state: string;
+    answer: string | null;
+    sources: string[];
+    createdAt: string;
+  }[];
+  messages: {
+    id: string;
+    state: string;
+    safeCode: string | null;
+    createdAt: string;
+  }[];
+}
 export interface LeadConversation {
+  reply?: ReplyState | null;
   lead: LeadDetail;
   events: LeadEvent[];
   hasOlder: boolean;
@@ -109,10 +130,21 @@ export class LeadWorkspaceService {
       body,
     });
   }
+  reply(id: string, requestKey: string, expectedVersion: number, body: string) {
+    return this.http.post<LeadConversation>(
+      `${this.base}/leads/${id}/replies`,
+      { requestKey, expectedVersion, body },
+    );
+  }
+  draft(id: string, expectedVersion: number) {
+    return this.http.post<LeadConversation>(`${this.base}/leads/${id}/draft`, {
+      expectedVersion,
+    });
+  }
   ownership(
     id: string,
     expectedVersion: number,
-    ownership: 'human' | 'paused',
+    ownership: 'human' | 'paused' | 'bot',
   ) {
     return this.http.post<LeadConversation>(
       `${this.base}/leads/${id}/ownership`,

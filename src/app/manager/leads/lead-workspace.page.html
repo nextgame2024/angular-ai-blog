@@ -59,7 +59,8 @@
     <strong>WhatsApp enquiries</strong>
     <p>
       Customer messages appear when receiving is enabled in Company settings.
-      Use Refresh to check for new messages. Sending replies is not enabled yet.
+      Use Refresh to check for new messages. Replies require an enabled sending
+      connection and an open customer reply window.
     </p>
   </div>
   @if(!context.settingsPublished){
@@ -475,6 +476,11 @@
         <li class="muted">No conversation activity yet.</li>
         }
       </ol>
+      @if(conversation.reply){<app-lead-reply
+        [conversation]="conversation"
+        [actorId]="context.actorId"
+        (updated)="replyUpdated($event)"
+      />}
       <form class="note-form" (submit)="$event.preventDefault();addNote()">
         <label for="internal-note">Add an internal note</label
         ><textarea

@@ -1,3 +1,4 @@
+import { LeadReplyComponent } from './lead-reply.component';
 import { CommonModule } from '@angular/common';
 import { A11yModule } from '@angular/cdk/a11y';
 import {
@@ -56,11 +57,16 @@ import {
     ManagerListLoaderComponent,
     PageJumpComponent,
     LeadAssistantSettingsPage,
+    LeadReplyComponent,
   ],
   templateUrl: './lead-workspace.page.html',
   styleUrls: ['./lead-workspace.page.css'],
 })
 export class LeadWorkspacePage implements OnInit {
+  @ViewChild(LeadReplyComponent) replyComposer?: LeadReplyComponent;
+  replyUpdated(value: LeadConversation) {
+    this.applyDetail(value);
+  }
   private readonly api = inject(LeadWorkspaceService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
@@ -186,7 +192,8 @@ export class LeadWorkspacePage implements OnInit {
     return (
       !!this.settingsPage?.form.dirty ||
       !!(this.editor && this.form.dirty) ||
-      !!this.note.value.trim()
+      !!this.note.value.trim() ||
+      !!this.replyComposer?.hasUnsaved
     );
   }
   get confirmingDiscard() {
@@ -659,6 +666,7 @@ export class LeadWorkspacePage implements OnInit {
     this.form.markAsPristine();
     this.note.reset('');
     this.noteKey = '';
+    this.replyComposer?.reset();
     action?.();
   }
   keepEditing(): void {
