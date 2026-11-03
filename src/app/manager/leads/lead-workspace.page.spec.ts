@@ -107,6 +107,7 @@ describe('Leads and team inbox', () => {
                   greeting: '',
                   defaultLanguage: 'es',
                   languages: ['es'],
+                  appointmentBookingEnabled: false,
                 },
                 published: null,
                 canManage: true,

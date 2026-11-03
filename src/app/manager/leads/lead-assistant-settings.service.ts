@@ -21,6 +21,7 @@ export interface AssistantSettings {
   greeting: string;
   defaultLanguage: string;
   languages: string[];
+  appointmentBookingEnabled: boolean;
 }
 export interface StaffOption {
   id: string;

@@ -250,6 +250,26 @@ app-manager-select.invalid {
 .coverage-card {
   margin-top: 1rem;
 }
+.booking-card {
+  margin-top: 1rem;
+}
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+}
+.check-row input {
+  width: 20px;
+  min-height: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  padding: 0;
+  accent-color: #0a927e;
+}
+.check-row span {
+  color: inherit;
+}
 .timezone {
   max-width: 420px;
 }

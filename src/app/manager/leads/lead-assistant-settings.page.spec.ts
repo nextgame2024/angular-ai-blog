@@ -34,6 +34,7 @@ const state = (): SettingsState => ({
     greeting: '',
     defaultLanguage: 'es',
     languages: ['es'],
+    appointmentBookingEnabled: false,
   },
   connection: {
     status: 'not_connected',
@@ -89,10 +90,26 @@ describe('Lead assistant Settings', () => {
     page.save();
     expect(api.save).toHaveBeenCalledWith(
       0,
-      jasmine.objectContaining({ businessName: '', advisorIds: [] }),
+      jasmine.objectContaining({
+        businessName: '',
+        advisorIds: [],
+        appointmentBookingEnabled: false,
+      }),
     );
     expect(fixture.nativeElement.textContent).toContain(
       'WhatsApp connection settings',
+    );
+  });
+  it('keeps customer booking opt-in and explains the separate confirmation', () => {
+    fixture.detectChanges();
+    const checkbox = fixture.nativeElement.querySelector(
+      '#appointment-booking-enabled',
+    ) as HTMLInputElement;
+    expect(checkbox.checked).toBeFalse();
+    page.form.controls.appointmentBookingEnabled.setValue(true);
+    expect(page.configuration().appointmentBookingEnabled).toBeTrue();
+    expect(fixture.nativeElement.textContent).toContain(
+      'separate confirmation code',
     );
   });
   it('retains edits and highlights failed server validation on custom controls', () => {

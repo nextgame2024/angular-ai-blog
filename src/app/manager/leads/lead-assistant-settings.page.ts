@@ -61,6 +61,7 @@ export class LeadAssistantSettingsPage implements OnInit {
     afterHoursMessage: ['', [Validators.maxLength(1000)]],
     greeting: ['', [Validators.maxLength(2000)]],
     defaultLanguage: ['es'],
+    appointmentBookingEnabled: [false],
     coverage: this.fb.array<
       ReturnType<LeadAssistantSettingsPage['windowForm']>
     >([]),
@@ -108,17 +109,15 @@ export class LeadAssistantSettingsPage implements OnInit {
       ...this.advisorIds,
     ];
     const items = new Map(this.staff.map((u) => [u.id, u]));
-    chosen
-      .filter(Boolean)
-      .forEach((id) =>
-        items.set(
+    chosen.filter(Boolean).forEach((id) =>
+      items.set(
+        id,
+        this.knownStaff.get(id) ?? {
           id,
-          this.knownStaff.get(id) ?? {
-            id,
-            name: 'Unavailable team member — select another',
-          },
-        ),
-      );
+          name: 'Unavailable team member — select another',
+        },
+      ),
+    );
     return [...items.values()].map((u) => ({ value: u.id, label: u.name }));
   }
   get defaultLanguageOptions() {
