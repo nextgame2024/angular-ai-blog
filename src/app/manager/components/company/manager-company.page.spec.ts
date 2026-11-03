@@ -1,3 +1,4 @@
+import { WhatsAppConnectionService } from '../../integrations/whatsapp-connection.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Actions } from '@ngrx/effects';
@@ -48,6 +49,7 @@ describe('ManagerCompanyPageComponent', () => {
           suggestAddresses: () => of([]), getPlaceDetails: () => of(null),
         } },
         { provide: AvatarUploadService, useValue: {} },
+        { provide: WhatsAppConnectionService, useValue: {load:()=>of({profiles:[],channels:[],health:{queued:0,failed:0,oldestQueuedAt:null},mode:'receive_only'})} },
         { provide: CompanyBrandingService, useValue: { setCompanyLogo: () => undefined } },
         { provide: StudentOperationsService, useValue: {
           workspace: () => of({ role: 'chief_executive' }),
@@ -75,4 +77,12 @@ describe('ManagerCompanyPageComponent', () => {
     expect(fixture.componentInstance.isStudentOperationsCompany).toBeTrue();
     expect(fixture.nativeElement.querySelector('app-xero-connections')).not.toBeNull();
   });
+  it('does not show the signed-in company connection inside a different company form',()=>{
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-whatsapp-connection')).not.toBeNull();
+    fixture.componentInstance.currentUser={id:'other',companyId:'different-company'} as never;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('app-whatsapp-connection')).toBeNull();
+  });
+
 });

@@ -1,0 +1,96 @@
+@if (visible) {
+  <section class="connection-card" aria-labelledby="whatsapp-heading">
+    <header>
+      <div>
+        <h3 id="whatsapp-heading">WhatsApp</h3>
+        <p>Receive enquiries in Leads & Conversations.</p>
+      </div>
+      <button
+        class="btn"
+        type="button"
+        (click)="load()"
+        [disabled]="loading || saving"
+      >
+        Refresh
+      </button>
+    </header>
+    <div class="content">
+      @if (loading) {
+        <app-manager-list-loader
+          label="Loading receiving settings…"
+          [overlay]="!!state"
+        />
+      }
+      @if (error) {
+        <p role="alert">{{ error }}</p>
+        <button class="btn" type="button" (click)="load()">Retry</button>
+      }
+      @if (state) {
+        <p class="muted">
+          Receive only. Automated replies and sending from this inbox are not
+          enabled. Existing Business App numbers require verified coexistence
+          setup.
+        </p>
+        @for (profile of state.profiles; track profile.id) {
+          <div class="profile">
+            <div>
+              <strong>{{ profile.label }}</strong>
+              <p>
+                {{
+                  channel(profile.id)?.enabled
+                    ? "Receiving enabled"
+                    : "Receiving paused"
+                }}
+                @if (!profile.ready) {
+                  · Setup required
+                }
+              </p>
+              <small
+                >Last received:
+                {{
+                  (channel(profile.id)?.lastReceivedAt | date: "medium") ||
+                    "No messages received yet"
+                }}</small
+              >
+            </div>
+            <button
+              class="btn"
+              type="button"
+              (click)="toggle(profile.id)"
+              [disabled]="
+                loading ||
+                saving ||
+                (!profile.ready && !channel(profile.id)?.enabled)
+              "
+            >
+              {{
+                channel(profile.id)?.enabled
+                  ? "Pause receiving"
+                  : "Enable receiving"
+              }}
+            </button>
+          </div>
+        } @empty {
+          <p>
+            No receiving connection is configured. Ask your administrator to
+            complete the WhatsApp setup.
+          </p>
+        }
+        <p class="muted">
+          Waiting to process: {{ state.health.queued }} · Needs attention:
+          {{ state.health.failed }}
+        </p>
+        @if (state.health.oldestQueuedAt) {
+          <p class="muted">
+            Oldest waiting message:
+            {{ state.health.oldestQueuedAt | date: "medium" }}
+          </p>
+        }
+        <a routerLink="/manager/leads">Open Leads & Conversations</a>
+      }
+    </div>
+  </section>
+}
+@if (notice) {
+  <app-manager-toast [message]="notice" [tone]="tone" (closed)="notice = ''" />
+}

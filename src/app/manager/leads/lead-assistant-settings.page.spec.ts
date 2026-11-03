@@ -92,7 +92,7 @@ describe('Lead assistant Settings', () => {
       jasmine.objectContaining({ businessName: '', advisorIds: [] }),
     );
     expect(fixture.nativeElement.textContent).toContain(
-      'WhatsApp setup pending',
+      'WhatsApp connection settings',
     );
   });
   it('retains edits and highlights failed server validation on custom controls', () => {

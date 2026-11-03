@@ -303,6 +303,9 @@
           </div>
         </form>
       </section>
+      @if (company.companyId === currentUser?.companyId) {
+        <app-whatsapp-connection></app-whatsapp-connection>
+      }
       @if (isStudentOperationsCompany) {
         <app-xero-connections></app-xero-connections>
       }

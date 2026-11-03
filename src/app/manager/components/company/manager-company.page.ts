@@ -40,11 +40,12 @@ import { selectCurrentUser } from '../../../auth/store/reducers';
 import type { CurrentUserInterface } from '../../../shared/types/currentUser.interface';
 import { AvatarUploadService } from '../../../settings/components/settings/services/avatar-upload.service';
 import { CompanyBrandingService } from '../../../shared/services/company-branding.service';
+import { WhatsAppConnectionComponent } from '../../integrations/whatsapp-connection.component';
 import { XeroConnectionsComponent } from '../../student-operations/integrations/xero-connections.component';
 
 @Component({
     selector: 'app-manager-company-page',
-    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, XeroConnectionsComponent],
+    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, XeroConnectionsComponent, WhatsAppConnectionComponent],
     templateUrl: './manager-company.page.html',
     styleUrls: ['./manager-company.page.css']
 })
