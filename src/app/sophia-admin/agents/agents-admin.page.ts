@@ -4,15 +4,20 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin, Observable, switchMap } from 'rxjs';
 
+import { ManagerListLoaderComponent } from '../../manager/components/shared/manager-list-loader/manager-list-loader.component';
+import {
+  ManagerSelectComponent,
+  type ManagerSelectOption,
+} from '../../manager/components/shared/manager-select/manager-select.component';
+import { ManagerToastComponent } from '../../manager/components/shared/manager-toast/manager-toast.component';
 import { adminErrorMessage } from '../shared/admin-operation.utils';
-import { AdminStatePanelComponent } from '../shared/admin-state-panel.component';
 import { SophiaAdminService } from '../sophia-admin.service';
 import type { AgentAuthoringDependencies, AgentDetail, AgentDraftConfiguration, AgentSummary, PublicationCheck, SophiaAdminPrincipal } from '../sophia-admin.types';
 
 @Component({
   selector: 'app-agents-admin-page', standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AdminStatePanelComponent],
-  templateUrl: './agents-admin.page.html', styleUrls: ['../shared/admin-authoring.css'],
+  imports: [CommonModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
+  templateUrl: './agents-admin.page.html', styleUrls: ['./agents-admin.page.css'],
 })
 export class AgentsAdminPage implements OnInit {
   private readonly admin = inject(SophiaAdminService);
@@ -29,6 +34,21 @@ export class AgentsAdminPage implements OnInit {
   readonly notice = signal('');
   readonly checks = signal<PublicationCheck[]>([]);
   readonly preview = signal<{ instruction: { content: string; tone?: string | null; greeting?: string | null }; platformSafetyPolicyVersion: string } | null>(null);
+  readonly instructionOptions = computed<ManagerSelectOption[]>(() => this.dependencies()?.instructionRevisions.map((item) => ({
+    value: item.instructionRevisionId,
+    label: `${item.instructionKey} · r${item.revision}`,
+  })) ?? []);
+  readonly businessProfileOptions = computed<ManagerSelectOption[]>(() => this.dependencies()?.businessProfiles.map((item) => ({
+    value: item.businessProfileVersionId,
+    label: `${item.displayName} · v${item.version}`,
+  })) ?? []);
+  readonly escalationOptions = computed<ManagerSelectOption[]>(() => [
+    { value: '', label: 'None' },
+    ...(this.dependencies()?.escalationPolicyVersions.map((item) => ({
+      value: item.escalationPolicyVersionId,
+      label: `${item.policyKey} · v${item.version}`,
+    })) ?? []),
+  ]);
   readonly selectedExperiences = computed(() => {
     const ids = new Set(this.form.controls.experienceProfileVersionIds.value);
     return this.dependencies()?.experienceProfiles.filter((item) => ids.has(item.experienceProfileVersionId)) ?? [];
@@ -48,7 +68,12 @@ export class AgentsAdminPage implements OnInit {
     escalationPolicyVersionId: [''],
   });
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void {
+    this.form.controls.businessProfileVersionId.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((profileId) => this.retainCompatibleSelections(profileId));
+    this.load();
+  }
 
   load(): void {
     this.loading.set(true); this.error.set('');
@@ -59,6 +84,7 @@ export class AgentsAdminPage implements OnInit {
       next: ({ agents, dependencies }) => {
         this.agents.set(agents.agents); this.dependencies.set(dependencies); this.loading.set(false);
         if (!this.selected() && agents.agents[0]) this.select(agents.agents[0].agent_id);
+        else if (!agents.agents.length && this.can('agents.edit')) this.startNew();
       },
       error: (error) => { this.error.set(adminErrorMessage(error, 'Agent authoring could not be loaded.')); this.loading.set(false); },
     });
@@ -88,7 +114,12 @@ export class AgentsAdminPage implements OnInit {
 
   save(): void {
     const principal = this.principal(); const selected = this.selected();
-    if (!principal || this.form.invalid || !this.can('agents.edit')) { this.form.markAllAsTouched(); return; }
+    if (!principal || this.form.invalid || (this.creating() && this.agentKey.invalid) || !this.can('agents.edit')) {
+      this.agentKey.markAsTouched();
+      this.form.markAllAsTouched();
+      this.error.set('Complete the required agent details and select at least one published experience.');
+      return;
+    }
     const configuration = this.configuration(); this.startAction();
     const request: Observable<{ agentId: string }> = this.creating()
       ? this.admin.createAgent(principal.tenantId, this.agentKey.value, configuration)
@@ -123,15 +154,42 @@ export class AgentsAdminPage implements OnInit {
 
   compatibleExperiences() { const id = this.form.controls.businessProfileVersionId.value; return this.dependencies()?.experienceProfiles.filter((item) => item.businessProfileVersionId === id) ?? []; }
   compatibleCapabilities() { const id = this.form.controls.businessProfileVersionId.value; return this.dependencies()?.capabilityBindings.filter((item) => item.businessProfileVersionId === id) ?? []; }
+  isSelected(controlName: MultiSelectionControl, id: string): boolean { return this.form.controls[controlName].value.includes(id); }
+  selectedCount(controlName: MultiSelectionControl): number { return this.form.controls[controlName].value.length; }
+  toggleSelection(controlName: MultiSelectionControl, id: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    const control = this.form.controls[controlName];
+    const values = checked ? [...new Set([...control.value, id])] : control.value.filter((value) => value !== id);
+    control.setValue(values); control.markAsTouched();
+  }
+  selectAllExperiences(): void { this.setSelection('experienceProfileVersionIds', this.compatibleExperiences().map((item) => item.experienceProfileVersionId), 20); }
+  selectAllCapabilities(): void { this.setSelection('capabilityBindingIds', this.compatibleCapabilities().map((item) => item.capabilityBindingId), 100); }
+  selectAllKnowledge(): void { this.setSelection('knowledgeRevisionIds', this.dependencies()?.knowledgeRevisions.map((item) => item.knowledgeRevisionId) ?? [], 100); }
+  selectAllWorkflows(): void { this.setSelection('workflowVersionIds', this.dependencies()?.workflowVersions.map((item) => item.workflowVersionId) ?? [], 100); }
+  clearSelection(controlName: MultiSelectionControl): void { this.setSelection(controlName, [], 100); }
   private configuration(): AgentDraftConfiguration {
     const value = this.form.getRawValue();
     return { displayName: value.displayName.trim(), defaultLocale: value.defaultLocale.trim(), allowedLocales: splitList(value.allowedLocales), instructionRevisionId: value.instructionRevisionId, businessProfileVersionId: value.businessProfileVersionId, experienceProfileVersionIds: value.experienceProfileVersionIds, capabilityBindingIds: value.capabilityBindingIds, knowledgeRevisionIds: value.knowledgeRevisionIds, workflowVersionIds: value.workflowVersionIds, ...(value.escalationPolicyVersionId ? { escalationPolicyVersionId: value.escalationPolicyVersionId } : {}) };
   }
   private patch(value: AgentDraftConfiguration): void { this.form.setValue({ ...value, allowedLocales: value.allowedLocales.join(', '), escalationPolicyVersionId: value.escalationPolicyVersionId ?? '' }); }
   private reloadAgents(selectId?: string): void { const principal = this.principal(); if (!principal) return; this.admin.listAgents(principal.tenantId).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(({ agents }) => { this.agents.set(agents); const id = selectId ?? this.selected()?.agent_id; if (id) this.select(id); }); }
+  private setSelection(controlName: MultiSelectionControl, values: string[], maximum: number): void {
+    const control = this.form.controls[controlName]; control.setValue(values.slice(0, maximum)); control.markAsTouched();
+  }
+  private retainCompatibleSelections(profileId: string): void {
+    const dependencies = this.dependencies(); if (!dependencies) return;
+    const experienceIds = new Set(dependencies.experienceProfiles.filter((item) => item.businessProfileVersionId === profileId).map((item) => item.experienceProfileVersionId));
+    const capabilityIds = new Set(dependencies.capabilityBindings.filter((item) => item.businessProfileVersionId === profileId).map((item) => item.capabilityBindingId));
+    const experiences = this.form.controls.experienceProfileVersionIds;
+    const capabilities = this.form.controls.capabilityBindingIds;
+    experiences.setValue(experiences.value.filter((id) => experienceIds.has(id)), { emitEvent: false });
+    capabilities.setValue(capabilities.value.filter((id) => capabilityIds.has(id)), { emitEvent: false });
+  }
   private startAction(): void { this.busy.set(true); this.error.set(''); this.notice.set(''); }
   private fail(error: unknown, fallback: string): void { this.error.set(adminErrorMessage(error, fallback)); this.busy.set(false); this.loading.set(false); }
 }
+
+type MultiSelectionControl = 'experienceProfileVersionIds' | 'capabilityBindingIds' | 'knowledgeRevisionIds' | 'workflowVersionIds';
 
 function splitList(value: string): string[] { return [...new Set(value.split(',').map((item) => item.trim()).filter(Boolean))]; }
 function parseVariables(value: string): Record<string, string | number | boolean> {

@@ -4,14 +4,15 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { switchMap } from 'rxjs';
 
+import { ManagerListLoaderComponent } from '../../manager/components/shared/manager-list-loader/manager-list-loader.component';
+import { ManagerToastComponent } from '../../manager/components/shared/manager-toast/manager-toast.component';
 import { adminErrorMessage } from '../shared/admin-operation.utils';
-import { AdminStatePanelComponent } from '../shared/admin-state-panel.component';
 import { SophiaAdminService } from '../sophia-admin.service';
 import type { InstructionSet, SophiaAdminPrincipal } from '../sophia-admin.types';
 
 @Component({ selector: 'app-instructions-admin-page', standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, AdminStatePanelComponent],
-  templateUrl: './instructions-admin.page.html', styleUrls: ['../shared/admin-authoring.css'],
+  imports: [CommonModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerToastComponent],
+  templateUrl: './instructions-admin.page.html', styleUrls: ['./instructions-admin.page.css'],
 })
 export class InstructionsAdminPage implements OnInit {
   private readonly admin=inject(SophiaAdminService);private readonly destroyRef=inject(DestroyRef);private readonly fb=inject(FormBuilder);
