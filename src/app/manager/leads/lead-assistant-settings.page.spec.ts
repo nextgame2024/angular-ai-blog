@@ -100,7 +100,7 @@ describe('Lead assistant Settings', () => {
       'WhatsApp connection settings',
     );
   });
-  it('keeps customer booking opt-in and explains the separate confirmation', () => {
+  it('keeps customer appointment opt-in and explains confirmed changes', () => {
     fixture.detectChanges();
     const checkbox = fixture.nativeElement.querySelector(
       '#appointment-booking-enabled',
@@ -110,6 +110,9 @@ describe('Lead assistant Settings', () => {
     expect(page.configuration().appointmentBookingEnabled).toBeTrue();
     expect(fixture.nativeElement.textContent).toContain(
       'separate confirmation code',
+    );
+    expect(fixture.nativeElement.textContent).toContain(
+      'booked, rescheduled, or cancelled',
     );
   });
   it('retains edits and highlights failed server validation on custom controls', () => {

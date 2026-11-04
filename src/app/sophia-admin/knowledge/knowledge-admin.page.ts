@@ -3,6 +3,12 @@ import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angula
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { forkJoin, from, switchMap } from 'rxjs';
+import { ManagerListLoaderComponent } from '../../manager/components/shared/manager-list-loader/manager-list-loader.component';
+import {
+  ManagerSelectComponent,
+  type ManagerSelectOption,
+} from '../../manager/components/shared/manager-select/manager-select.component';
+import { ManagerToastComponent } from '../../manager/components/shared/manager-toast/manager-toast.component';
 import { SophiaAdminService } from '../sophia-admin.service';
 import type {
   KnowledgeBinding,
@@ -17,7 +23,13 @@ import type {
 @Component({
   selector: 'app-knowledge-admin-page',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    ManagerListLoaderComponent,
+    ManagerSelectComponent,
+    ManagerToastComponent,
+  ],
   templateUrl: './knowledge-admin.page.html',
   styleUrls: ['./knowledge-admin.page.css'],
 })
@@ -43,6 +55,10 @@ export class KnowledgeAdminPage implements OnInit {
   readonly canIngest = computed(() => this.hasPermission('knowledge.ingest'));
   readonly canPublish = computed(() => this.hasPermission('knowledge.publish'));
   readonly canRetire = computed(() => this.hasPermission('knowledge.retire'));
+  readonly bindingOptions = computed<ManagerSelectOption[]>(() => this.bindings().map((binding) => ({
+    value: binding.capability_binding_id,
+    label: `${binding.display_name} · v${binding.business_profile_version} · ${binding.connector_key}`,
+  })));
 
   readonly sourceForm = new FormGroup({
     sourceKey: new FormControl('', {
@@ -55,7 +71,10 @@ export class KnowledgeAdminPage implements OnInit {
   });
 
   readonly publishForm = new FormGroup({
-    capabilityBindingId: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
+    capabilityBindingId: new FormControl({ value: '', disabled: true }, {
+      nonNullable: true,
+      validators: [Validators.required],
+    }),
   });
 
   readonly previewForm = new FormGroup({
@@ -93,8 +112,15 @@ export class KnowledgeAdminPage implements OnInit {
         this.fileIntakes.set(files.intakes);
         if (readiness.enabled) this.fileForm.controls.sourceId.enable({ emitEvent: false });
         else this.fileForm.controls.sourceId.disable({ emitEvent: false });
-        if (!this.publishForm.controls.capabilityBindingId.value && bindings.bindings[0]) {
-          this.publishForm.controls.capabilityBindingId.setValue(bindings.bindings[0].capability_binding_id);
+        const bindingControl = this.publishForm.controls.capabilityBindingId;
+        if (bindings.bindings.length) {
+          bindingControl.enable({ emitEvent: false });
+          if (!bindingControl.value) {
+            bindingControl.setValue(bindings.bindings[0].capability_binding_id);
+          }
+        } else {
+          bindingControl.reset('', { emitEvent: false });
+          bindingControl.disable({ emitEvent: false });
         }
         this.loading.set(false);
       },

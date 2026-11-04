@@ -8,8 +8,11 @@
     <button type="button" class="secondary" (click)="refresh()" [disabled]="loading() || busy()">Refresh</button>
   </header>
 
-  @if (error()) { <div class="message error" role="alert">{{ error() }}</div> }
-  @if (notice()) { <div class="message success" role="status">{{ notice() }}</div> }
+  @if (error()) {
+    <app-manager-toast [message]="error()" tone="error" (closed)="error.set('')" />
+  } @else if (notice()) {
+    <app-manager-toast [message]="notice()" tone="success" (closed)="notice.set('')" />
+  }
 
   <section class="security-gate" [class.ready]="fileReadiness()?.enabled" aria-labelledby="file-gate-title">
     <div>
@@ -82,28 +85,38 @@
     </section>
   }
 
-  <section class="panel">
+  <section class="panel publication-panel" [class.unavailable]="!bindings().length" aria-labelledby="publication-grant-title">
     <div class="section-heading">
-      <div><p class="eyebrow">Publication grant</p><h2>Knowledge capability</h2></div>
-      <span class="pill">{{ bindings().length }} available</span>
+      <div><p class="eyebrow">Publication grant</p><h2 id="publication-grant-title">Knowledge capability</h2></div>
+      <span class="pill" [class.alert]="!bindings().length">{{ bindings().length }} available</span>
     </div>
     <form [formGroup]="publishForm">
       <label>Select the capability binding used for new publications
-        <select formControlName="capabilityBindingId">
-          <option value="">Select a binding</option>
-          @for (binding of bindings(); track binding.capability_binding_id) {
-            <option [value]="binding.capability_binding_id">{{ binding.display_name }} · v{{ binding.business_profile_version }} · {{ binding.connector_key }}</option>
-          }
-        </select>
+        <app-manager-select
+          formControlName="capabilityBindingId"
+          [options]="bindingOptions()"
+          placeholder="Select a knowledge capability"
+          ariaLabel="Knowledge capability used for new publications"
+        />
       </label>
     </form>
-    @if (!bindings().length) { <p class="empty">No enabled tenant knowledge capability binding exists. Publication remains unavailable.</p> }
+    @if (bindings().length) {
+      <div class="capability-state ready" role="status">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12.5l4 4L19 7" /></svg>
+        <div><strong>Managed Knowledge is ready</strong><span>Approved sources can be published to the selected tenant-scoped capability.</span></div>
+      </div>
+    } @else if (!loading()) {
+      <div class="capability-state blocked" role="alert">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 8v5m0 3h.01M10.3 3.7L2.6 17a2 2 0 0 0 1.73 3h15.34a2 2 0 0 0 1.73-3L13.7 3.7a2 2 0 0 0-3.4 0Z" /></svg>
+        <div><strong>Knowledge publishing is not configured</strong><span>This organisation needs an enabled Managed Knowledge capability before approved sources can be published.</span></div>
+      </div>
+    }
   </section>
 
   <section class="panel">
     <div class="section-heading"><div><p class="eyebrow">Tenant sources</p><h2>Lifecycle</h2></div><span class="pill">{{ sources().length }} sources</span></div>
     @if (loading()) {
-      <p class="empty">Loading approved knowledge…</p>
+      <div class="source-loading"><app-manager-list-loader label="Loading approved knowledge…" /></div>
     } @else if (!sources().length) {
       <p class="empty">No knowledge sources have been created for this tenant.</p>
     } @else {

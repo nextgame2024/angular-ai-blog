@@ -337,11 +337,12 @@
           </div>
         </section>
         <section class="card booking-card">
-          <h4>Customer appointment booking</h4>
+          <h4>Customer appointment booking and changes</h4>
           <p class="muted">
             Availability comes from Scheduling. Sophia can offer only the
             assigned advisor’s current times, and the customer must select a
-            time and send a separate confirmation code before it is booked.
+            time and send a separate confirmation code before it is booked,
+            rescheduled, or cancelled.
           </p>
           <label class="check-row" for="appointment-booking-enabled">
             <input
@@ -349,7 +350,9 @@
               type="checkbox"
               formControlName="appointmentBookingEnabled"
             />
-            <span>Allow confirmed WhatsApp appointment booking</span>
+            <span
+              >Allow confirmed WhatsApp appointment booking and changes</span
+            >
           </label>
           <p class="muted">
             Publishing this permission does not enable the deployment switch.

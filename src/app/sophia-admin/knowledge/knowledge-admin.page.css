@@ -16,11 +16,31 @@ input, select, textarea { width: 100%; box-sizing: border-box; border: 1px solid
 input:focus, select:focus, textarea:focus { outline: 3px solid rgba(28,116,85,.14); border-color: #1c7455; }
 button { border: 0; border-radius: 999px; padding: 10px 16px; font: inherit; font-weight: 750; cursor: pointer; } button:disabled { opacity: .45; cursor: not-allowed; }
 .primary { background: #1c7455; color: #fff; }.secondary { background: #e9eeeb; color: #1d332b; }.danger { margin-top: 16px; background: #ffebe7; color: #9d2f21; }
-.message { margin-top: 16px; padding: 13px 16px; border-radius: 10px; }.error { background: #ffebe7; color: #8b291d; }.success { background: #e3f4e9; color: #175c3c; }
 .pill { display: inline-flex; border-radius: 999px; padding: 5px 10px; background: #e8efeb; color: #315146; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }.pill.alert { background: #f3e6e2; color: #8b291d; }
 .limit, .empty { color: #6a7771; font-size: .86rem; }.empty { margin: 14px 0 0; }
+.publication-panel { border-top: 3px solid #10bfa9; box-shadow: 0 12px 36px rgba(15,23,42,.07); }
+.publication-panel.unavailable { border-top-color: #d39a24; }
+.publication-panel form { margin-top: 12px; }
+.publication-panel app-manager-select { --manager-select-min-height: 44px; }
+.capability-state { display: flex; align-items: flex-start; gap: 10px; margin-top: 14px; padding: 12px 14px; border: 1px solid; border-radius: 10px; font-size: .85rem; line-height: 1.4; }
+.capability-state svg { width: 20px; height: 20px; flex: 0 0 auto; margin-top: 1px; stroke-linecap: round; stroke-linejoin: round; }
+.capability-state strong, .capability-state span { display: block; }
+.capability-state span { margin-top: 2px; font-weight: 500; }
+.capability-state.ready { border-color: #92dcc5; background: #eaf8f3; color: #08745e; }
+.capability-state.blocked { border-color: #e7c975; background: #fff8e8; color: #725715; }
+.source-loading { margin-top: 14px; overflow: hidden; border: 1px solid #e1e7e3; border-radius: 12px; }
 .source-list { display: grid; gap: 14px; }.source-card { border: 1px solid #dfe4e0; border-radius: 14px; padding: 18px; }.source-card.retired { opacity: .68; background: #f7f7f5; }
 .source-title code { color: #5e6c66; }.revision-list { margin-top: 16px; border-top: 1px solid #e5e9e6; }.revision-row { padding: 14px 0; border-bottom: 1px solid #edf0ee; align-items: flex-start; }.revision-row span { margin-left: 10px; color: #607069; font-size: .78rem; text-transform: uppercase; }.actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }.failure { display: block; margin-top: 6px; color: #9d2f21; }
 dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; } dl div { padding: 12px; border-radius: 10px; background: #f2f5f3; } dt { font-size: .72rem; text-transform: uppercase; color: #65736d; } dd { margin: 5px 0 0; overflow-wrap: anywhere; } pre { white-space: pre-wrap; max-height: 420px; overflow: auto; padding: 18px; border-radius: 12px; background: #15201c; color: #eaf4ef; line-height: 1.55; }
 .preview-form label { flex: 1; }.results { display: grid; gap: 10px; margin-top: 16px; }.results article { padding: 16px; border-left: 4px solid #1c7455; background: #f1f5f2; }.results p { white-space: pre-wrap; }
 @media (max-width: 760px) { .knowledge-admin { width: min(100% - 20px, 1180px); padding-top: 24px; }.page-header, .section-heading, .revision-row, .security-gate, .preview-form { align-items: stretch; flex-direction: column; }.source-form, .file-form { grid-template-columns: 1fr; }.wide { grid-column: auto; } dl { grid-template-columns: 1fr; }.actions { justify-content: flex-start; } }
+:host-context(html.dark) { background: #0f1725; color: #e5edf6; }
+:host-context(html.dark) .panel { border-color: #33445b; background: #182438; box-shadow: 0 12px 36px rgba(0,0,0,.2); }
+:host-context(html.dark) .publication-panel { border-top-color: #10e0c7; }
+:host-context(html.dark) .publication-panel.unavailable { border-top-color: #e0ad45; }
+:host-context(html.dark) label, :host-context(html.dark) .eyebrow { color: #b9c7d9; }
+:host-context(html.dark) .pill { background: #29394e; color: #c7d7e8; }
+:host-context(html.dark) .pill.alert { background: #542e36; color: #ffd0d8; }
+:host-context(html.dark) .capability-state.ready { border-color: #277865; background: #16453f; color: #a4f0dc; }
+:host-context(html.dark) .capability-state.blocked { border-color: #826a34; background: #44391f; color: #f5daa0; }
+:host-context(html.dark) .source-loading { border-color: #33445b; }
