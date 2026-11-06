@@ -5,7 +5,8 @@
 .college-tab-list { display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 0.75rem; }
 .college-tab-list .table-wrap, .college-tab-list .cards, .college-tab-list .users-pagination { margin: 0 0.75rem; }
 .college-tab-list .table-wrap { flex: none; max-height: min(58vh, 520px); }
-.college-tab-list .user-table { min-width: 850px; }
+.contact-source-badge { display: inline-flex; margin-left: 0.35rem; padding: 0.15rem 0.4rem; border-radius: 999px; background: #e8f5ee; color: #17643a; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+.college-tab-list .user-table { min-width: 1000px; }
 .college-tab-list .college-sites-table { min-width: 1100px; }
 .college-notice { display: flex; justify-content: space-between; padding: 10px 14px; border-radius: 8px; background: #defaf3; color: #006c60; }
 .college-notice button { border: 0; background: none; color: inherit; cursor: pointer; }
@@ -13,6 +14,29 @@
 .primary-site-summary strong { color: #17243a; }
 .college-form-card input[readonly] { background: #f4f7fb; color: #435673; cursor: default; }
 .site-primary-hint { margin: 0; color: #526681; font-size: .85rem; }
+.cricos-code { display: block; margin-top: 2px; color: #526681; font-size: .74rem; font-weight: 600; letter-spacing: .03em; }
+.cricos-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; padding: 14px; border: 1px solid #dbe4ef; border-radius: 10px; background: #f7f9fc; }
+.cricos-summary > div { display: grid; gap: 3px; min-width: 0; }
+.cricos-summary span { color: #526681; font-size: .75rem; }
+.cricos-summary strong { color: #17243a; font-size: .88rem; overflow-wrap: anywhere; }
+.cricos-summary a { color: #006fc9; }
+.course-toolbar { display: grid; grid-template-columns: minmax(260px, 1fr) minmax(190px, 240px); gap: 12px; margin: 0 .75rem; align-items: center; }
+.course-toolbar .search-field { width: 100%; }
+.college-courses-tab { position: relative; min-height: 260px; }
+.college-courses-tab .card-header { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.college-courses-tab .card-header span { color: #526681; font-size: .8rem; }
+.college-courses-table { min-width: 1120px; }
+.college-courses-tab app-manager-list-loader { display: block; min-height: 190px; margin: 0 .75rem; }
 :host-context(html.dark) .primary-site-summary, :host-context(html.dark) .primary-site-summary strong { color: #d5e1ef; }
 :host-context(html.dark) .college-form-card input[readonly] { background: #1f3045; color: #d5e1ef; }
 :host-context(html.dark) .site-primary-hint { color: #afc2d9; }
+:host-context(html.dark) .cricos-code, :host-context(html.dark) .college-courses-tab .card-header span { color: #afc2d9; }
+:host-context(html.dark) .cricos-summary { border-color: #344960; background: #1b2a3d; }
+:host-context(html.dark) .cricos-summary span { color: #afc2d9; }
+:host-context(html.dark) .cricos-summary strong { color: #e5edf6; }
+:host-context(html.dark) .cricos-summary a { color: #7ec3ff; }
+:host-context(html.dark) .contact-source-badge { background: #173f31; color: #9ce3bf; }
+@media (max-width: 700px) {
+  .cricos-summary, .course-toolbar { grid-template-columns: 1fr; }
+  .course-toolbar { margin: 0 .5rem; }
+}

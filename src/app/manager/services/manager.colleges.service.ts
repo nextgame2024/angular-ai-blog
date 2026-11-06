@@ -16,6 +16,16 @@ export interface BmCollege {
   tel: string | null;
   notes: string | null;
   status: 'active' | 'archived';
+  cricosProviderCode?: string | null;
+  tradingName?: string | null;
+  institutionType?: string | null;
+  institutionCapacity?: number | null;
+  website?: string | null;
+  postalAddress?: string | null;
+  postalCity?: string | null;
+  postalState?: string | null;
+  postalPostcode?: string | null;
+  cricosSyncedAt?: string | null;
 }
 
 export interface BmCollegeContact {
@@ -26,6 +36,12 @@ export interface BmCollegeContact {
   email: string | null;
   cel: string | null;
   tel: string | null;
+  fax: string | null;
+  source: 'manual' | 'cricos';
+  contactType: string | null;
+  sourceUrl: string | null;
+  sourceCheckedAt: string | null;
+  sourceActive: boolean;
 }
 
 export interface BmCollegeSite {
@@ -37,8 +53,43 @@ export interface BmCollegeSite {
   mobile: string | null;
   city: string | null;
   category: string | null;
+  locationName?: string | null;
+  locationType?: string | null;
+  state?: string | null;
+  postcode?: string | null;
   isPrimary: boolean;
 }
+
+export interface BmCollegeCourse {
+  courseId: string;
+  collegeId: string;
+  cricosCourseCode: string;
+  courseName: string;
+  vetNationalCode: string | null;
+  dualQualification: boolean;
+  field1Broad: string | null;
+  field1Narrow: string | null;
+  field1Detailed: string | null;
+  field2Broad: string | null;
+  field2Narrow: string | null;
+  field2Detailed: string | null;
+  courseLevel: string | null;
+  foundationStudies: boolean;
+  workComponent: boolean;
+  workComponentHoursWeek: number | null;
+  workComponentWeeks: number | null;
+  workComponentTotalHours: number | null;
+  courseLanguage: string | null;
+  durationWeeks: number | null;
+  tuitionFeeCents: number | null;
+  nonTuitionFeeCents: number | null;
+  estimatedTotalCostCents: number | null;
+  expired: boolean;
+  locationCount: number;
+  locations: string[];
+}
+
+export type BmCollegeCourseSort = 'name' | 'code' | 'level' | 'duration' | 'cost' | 'status';
 
 export type BmCollegeSort = 'name' | 'email' | 'mobile' | 'status';
 
@@ -66,4 +117,11 @@ export class ManagerCollegesService {
   createSite(id: string, value: object) { return this.http.post<{ site: BmCollegeSite }>(`${this.base}/${id}/sites`, { site: value }); }
   updateSite(id: string, siteId: string, value: object) { return this.http.put<{ site: BmCollegeSite }>(`${this.base}/${id}/sites/${siteId}`, { site: value }); }
   deleteSite(id: string, siteId: string) { return this.http.delete<void>(`${this.base}/${id}/sites/${siteId}`); }
+  courses(id: string, q = '', status: 'active' | 'expired' | 'all' = 'active', page = 1, limit = 25,
+    sort: BmCollegeCourseSort = 'name', direction: 'asc' | 'desc' = 'asc') {
+    let params = new HttpParams().set('status', status).set('page', page).set('limit', limit)
+      .set('sort', sort).set('direction', direction);
+    if (q) params = params.set('q', q);
+    return this.http.get<{ courses: BmCollegeCourse[]; total: number; page: number; limit: number }>(`${this.base}/${id}/courses`, { params });
+  }
 }

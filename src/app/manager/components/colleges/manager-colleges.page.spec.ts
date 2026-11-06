@@ -15,12 +15,13 @@ describe('ManagerCollegesPageComponent', () => {
 
   beforeEach(async () => {
     api = jasmine.createSpyObj<ManagerCollegesService>('ManagerCollegesService',
-      ['list', 'create', 'update', 'contacts', 'sites', 'createSite', 'get']);
+      ['list', 'create', 'update', 'contacts', 'sites', 'courses', 'createSite', 'get']);
     api.list.and.returnValue(of({ colleges: [], total: 0, page: 1, limit: 25 }));
     api.create.and.returnValue(of({ college }));
     api.get.and.returnValue(of({ college }));
     api.contacts.and.returnValue(of({ contacts: [] }));
     api.sites.and.returnValue(of({ sites: [] }));
+    api.courses.and.returnValue(of({ courses: [], total: 0, page: 1, limit: 25 }));
     api.createSite.and.returnValue(of({ site: {
       siteId: 'site-1', collegeId: 'college-1', city: 'Sydney', category: 'University',
       address: '2 Main Street', email: null, phone: null, mobile: null, isPrimary: true,
@@ -106,8 +107,10 @@ describe('ManagerCollegesPageComponent', () => {
 
   it('sorts and paginates the complete Contacts and Sites tab data', () => {
     api.contacts.and.returnValue(of({ contacts: [
-      { contactId: '2', collegeId: 'college-1', name: 'Zoe', roleTitle: null, email: null, cel: null, tel: null },
-      { contactId: '1', collegeId: 'college-1', name: 'Ana', roleTitle: null, email: null, cel: null, tel: null },
+      { contactId: '2', collegeId: 'college-1', name: 'Zoe', roleTitle: null, email: null, cel: null, tel: null,
+        fax: null, source: 'manual', contactType: null, sourceUrl: null, sourceCheckedAt: null, sourceActive: true },
+      { contactId: '1', collegeId: 'college-1', name: 'Ana', roleTitle: null, email: null, cel: null, tel: null,
+        fax: null, source: 'manual', contactType: null, sourceUrl: null, sourceCheckedAt: null, sourceActive: true },
     ] }));
     api.sites.and.returnValue(of({ sites: [
       { siteId: '2', collegeId: 'college-1', city: 'Sydney', category: null, address: null, email: null, phone: null, mobile: null, isPrimary: false },
@@ -156,5 +159,27 @@ describe('ManagerCollegesPageComponent', () => {
       city: 'Sydney', category: 'University', address: '2 Main Street', is_primary: true,
     }));
     expect(api.get).toHaveBeenCalledWith('college-1');
+  });
+
+  it('loads and server-paginates the CRICOS Courses tab', () => {
+    api.courses.and.returnValue(of({ courses: [{
+      courseId: 'course-1', collegeId: 'college-1', cricosCourseCode: '112441K', courseName: 'Certificate III',
+      vetNationalCode: 'CHC30121', dualQualification: false, field1Broad: 'Education', field1Narrow: null,
+      field1Detailed: null, field2Broad: null, field2Narrow: null, field2Detailed: null, courseLevel: 'Certificate III',
+      foundationStudies: false, workComponent: true, workComponentHoursWeek: 20, workComponentWeeks: 12,
+      workComponentTotalHours: 240, courseLanguage: 'English', durationWeeks: 78, tuitionFeeCents: 1200000,
+      nonTuitionFeeCents: 55000, estimatedTotalCostCents: 1255000, expired: false, locationCount: 2,
+      locations: ['Kent Street', 'Seven Hills'],
+    }], total: 51, page: 1, limit: 25 }));
+    const fixture = TestBed.createComponent(ManagerCollegesPageComponent);
+    fixture.detectChanges();
+    fixture.componentInstance.edit({ ...college, cricosProviderCode: '04100H' });
+    fixture.componentInstance.showCourses();
+    fixture.detectChanges();
+    expect(api.courses).toHaveBeenCalledWith('college-1', '', 'active', 1, 25, 'name', 'asc');
+    expect((fixture.nativeElement as HTMLElement).querySelector('table[aria-label="CRICOS courses"]')?.textContent).toContain('112441K');
+    expect((fixture.nativeElement as HTMLElement).querySelector('[aria-label="Courses pagination"]')?.textContent).toContain('Showing 1–25 of 51');
+    fixture.componentInstance.sortCoursesBy('code');
+    expect(api.courses).toHaveBeenCalledWith('college-1', '', 'active', 1, 25, 'code', 'asc');
   });
 });

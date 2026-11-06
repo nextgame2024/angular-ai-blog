@@ -33,4 +33,16 @@ describe('ManagerCollegesService', () => {
     expect(request.request.body).toEqual({ contact: { name: 'Registrar' } });
     request.flush({ contact: {} });
   });
+
+  it('loads one college course page with server-side filters', () => {
+    service.courses('college-1', 'English', 'active', 2, 50, 'code', 'desc').subscribe();
+    const request = http.expectOne((candidate) => candidate.url.endsWith('/bm/colleges/college-1/courses'));
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('q')).toBe('English');
+    expect(request.request.params.get('status')).toBe('active');
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('limit')).toBe('50');
+    expect(request.request.params.get('sort')).toBe('code');
+    request.flush({ courses: [], total: 0, page: 2, limit: 50 });
+  });
 });

@@ -7,11 +7,13 @@ import { RouterModule } from '@angular/router';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 import { ManagerAddressAutocompleteComponent } from '../shared/manager-address-autocomplete/manager-address-autocomplete.component';
-import { BmCollege, BmCollegeContact, BmCollegeSite, BmCollegeSort, ManagerCollegesService } from '../../services/manager.colleges.service';
+import { ManagerListLoaderComponent } from '../shared/manager-list-loader/manager-list-loader.component';
+import { BmCollege, BmCollegeContact, BmCollegeCourse, BmCollegeCourseSort, BmCollegeSite, BmCollegeSort, ManagerCollegesService } from '../../services/manager.colleges.service';
 
 @Component({
   selector: 'app-manager-colleges-page',
-  imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerAddressAutocompleteComponent],
+  imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent,
+    ManagerAddressAutocompleteComponent, ManagerListLoaderComponent],
   templateUrl: './manager-colleges.page.html',
   styleUrls: ['../clients/manager-clients.page.css', '../users/manager-users.page.css', './manager-colleges.page.css'],
 })
@@ -21,11 +23,15 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   private readonly destroyed = new Subject<void>();
   private readonly navigationState = inject(ListNavigationStateService);
   private listRequest = 0;
+  private courseRequest = 0;
 
   readonly search = this.fb.control('', { nonNullable: true });
   readonly pageSizeCtrl = this.fb.control('25', { nonNullable: true });
   readonly contactPageSizeCtrl = this.fb.control('25', { nonNullable: true });
   readonly sitePageSizeCtrl = this.fb.control('25', { nonNullable: true });
+  readonly coursePageSizeCtrl = this.fb.control('25', { nonNullable: true });
+  readonly courseSearch = this.fb.control('', { nonNullable: true });
+  readonly courseStatusCtrl = this.fb.control<'active' | 'expired' | 'all'>('active', { nonNullable: true });
   readonly pageSizeOptions = [{ value: '25', label: '25 per page' }, { value: '50', label: '50 per page' }, { value: '100', label: '100 per page' }];
   readonly collegeForm = this.fb.group({
     college_name: ['', [Validators.required, Validators.maxLength(200)]],
@@ -34,7 +40,8 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   });
   readonly contactForm = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(120)]],
-    role_title: [''], email: ['', Validators.email], cel: [''], tel: [''],
+    role_title: ['', Validators.maxLength(200)], email: ['', Validators.email],
+    cel: ['', Validators.maxLength(80)], tel: ['', Validators.maxLength(80)], fax: ['', Validators.maxLength(80)],
   });
   readonly statusOptions = [
     { value: 'active', label: 'active' },
@@ -43,6 +50,11 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   readonly primaryOptions = [
     { value: 'yes', label: 'Yes' },
     { value: 'no', label: 'No' },
+  ];
+  readonly courseStatusOptions = [
+    { value: 'active', label: 'Active courses' },
+    { value: 'expired', label: 'Expired courses' },
+    { value: 'all', label: 'All courses' },
   ];
   readonly siteForm = this.fb.group({
     city: ['', [Validators.required, Validators.maxLength(120)]],
@@ -57,16 +69,19 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   colleges: BmCollege[] = [];
   contacts: BmCollegeContact[] = [];
   sites: BmCollegeSite[] = [];
+  courses: BmCollegeCourse[] = [];
   selected: BmCollege | null = null;
   editingContact: BmCollegeContact | null = null;
   editingSite: BmCollegeSite | null = null;
   mode: 'list' | 'details' = 'list';
-  tab: 'details' | 'contacts' | 'sites' = 'details';
+  tab: 'details' | 'contacts' | 'sites' | 'courses' = 'details';
   contactMode: 'list' | 'form' = 'list';
   siteMode: 'list' | 'form' = 'list';
   page = 1;
   contactPage = 1;
   sitePage = 1;
+  coursePage = 1;
+  courseTotal = 0;
   total = 0;
   sort: BmCollegeSort = 'name';
   direction: 'asc' | 'desc' = 'asc';
@@ -74,10 +89,13 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   contactDirection: 'asc' | 'desc' = 'asc';
   siteSort: 'city' | 'category' | 'address' | 'email' | 'phone' | 'mobile' | 'primary' = 'city';
   siteDirection: 'asc' | 'desc' = 'asc';
+  courseSort: BmCollegeCourseSort = 'name';
+  courseDirection: 'asc' | 'desc' = 'asc';
   loading = false;
   saving = false;
   contactsLoading = false;
   sitesLoading = false;
+  coursesLoading = false;
   error = '';
   notice = '';
   warningDismissed = false;
@@ -95,6 +113,12 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     this.pageSizeCtrl.valueChanges.pipe(takeUntil(this.destroyed)).subscribe(() => this.load());
     this.contactPageSizeCtrl.valueChanges.pipe(takeUntil(this.destroyed)).subscribe(() => this.contactPage = 1);
     this.sitePageSizeCtrl.valueChanges.pipe(takeUntil(this.destroyed)).subscribe(() => this.sitePage = 1);
+    this.courseSearch.valueChanges.pipe(debounceTime(300), distinctUntilChanged(), takeUntil(this.destroyed))
+      .subscribe(() => { if (this.tab === 'courses') this.loadCourses(); });
+    this.courseStatusCtrl.valueChanges.pipe(takeUntil(this.destroyed))
+      .subscribe(() => { if (this.tab === 'courses') this.loadCourses(); });
+    this.coursePageSizeCtrl.valueChanges.pipe(takeUntil(this.destroyed))
+      .subscribe(() => { if (this.tab === 'courses') this.loadCourses(); });
   }
 
   ngOnDestroy(): void {
@@ -172,6 +196,22 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   }
   siteSortAria(column: typeof this.siteSort): string { return this.siteSort === column ? (this.siteDirection === 'asc' ? 'ascending' : 'descending') : 'none'; }
   goToSitePage(page: number): void { if (page >= 1 && page <= this.siteTotalPages) this.sitePage = page; }
+
+  get coursePageLimit(): number { return Number(this.coursePageSizeCtrl.value) || 25; }
+  get courseTotalPages(): number { return Math.max(1, Math.ceil(this.courseTotal / this.coursePageLimit)); }
+  get coursePageStart(): number { return this.courseTotal ? (this.coursePage - 1) * this.coursePageLimit + 1 : 0; }
+  get coursePageEnd(): number { return Math.min(this.coursePage * this.coursePageLimit, this.courseTotal); }
+  courseSortAria(column: BmCollegeCourseSort): string {
+    return this.courseSort === column ? (this.courseDirection === 'asc' ? 'ascending' : 'descending') : 'none';
+  }
+  sortCoursesBy(column: BmCollegeCourseSort): void {
+    this.courseDirection = this.courseSort === column && this.courseDirection === 'asc' ? 'desc' : 'asc';
+    this.courseSort = column;
+    this.loadCourses();
+  }
+  goToCoursePage(page: number): void {
+    if (page >= 1 && page <= this.courseTotalPages && page !== this.coursePage && !this.coursesLoading) this.loadCourses(page);
+  }
   private compareText(a: string | null, b: string | null, direction: 'asc' | 'desc'): number {
     if (!a) return b ? 1 : 0;
     if (!b) return -1;
@@ -187,6 +227,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     this.collegeForm.reset({ status: 'active' });
     this.contacts = [];
     this.sites = [];
+    this.courses = [];
     this.error = '';
   }
 
@@ -267,6 +308,36 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     this.tab = 'sites';
     this.siteMode = 'list';
     this.refreshSites();
+  }
+
+  showCourses(): void {
+    if (!this.selected) return;
+    this.tab = 'courses';
+    this.loadCourses(this.coursePage);
+  }
+
+  loadCourses(page = 1): void {
+    if (!this.selected) return;
+    const request = ++this.courseRequest;
+    this.coursesLoading = true;
+    this.error = '';
+    this.api.courses(this.selected.collegeId, this.courseSearch.value.trim(), this.courseStatusCtrl.value,
+      page, this.coursePageLimit, this.courseSort, this.courseDirection).pipe(takeUntil(this.destroyed)).subscribe({
+      next: (result) => {
+        if (request !== this.courseRequest) return;
+        const lastPage = Math.max(1, Math.ceil(result.total / this.coursePageLimit));
+        if (page > lastPage) { this.loadCourses(lastPage); return; }
+        this.courses = result.courses;
+        this.courseTotal = result.total;
+        this.coursePage = result.page;
+        this.coursesLoading = false;
+      },
+      error: (err) => {
+        if (request !== this.courseRequest) return;
+        this.error = err?.error?.error || 'Could not load CRICOS courses.';
+        this.coursesLoading = false;
+      },
+    });
   }
 
   refreshSites(): void {
@@ -352,10 +423,11 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   }
 
   editContact(contact: BmCollegeContact): void {
+    if (contact.source === 'cricos') return;
     this.editingContact = contact;
     this.contactForm.reset({
       name: contact.name, role_title: contact.roleTitle, email: contact.email,
-      cel: contact.cel, tel: contact.tel,
+      cel: contact.cel, tel: contact.tel, fax: contact.fax,
     });
     this.contactMode = 'form';
   }
@@ -379,7 +451,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   }
 
   deleteContact(contact: BmCollegeContact): void {
-    if (!this.selected || !confirm(`Delete ${contact.name}?`)) return;
+    if (!this.selected || contact.source === 'cricos' || !confirm(`Delete ${contact.name}?`)) return;
     this.api.deleteContact(this.selected.collegeId, contact.contactId).pipe(takeUntil(this.destroyed)).subscribe({
       next: () => { this.notice = 'Contact deleted.'; this.refreshContacts(); },
       error: (err) => { this.error = err?.error?.error || 'Could not delete contact.'; },
