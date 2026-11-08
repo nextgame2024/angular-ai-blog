@@ -1,0 +1,26 @@
+:host { display: block; min-width: 0; }
+.commission-tab { margin-top: 4px; }
+.commission-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rule-help { margin: 0; padding: 0 14px 14px; color: #526681; font-size: .85rem; }
+.commission-list { position: relative; min-height: 200px; padding-bottom: 12px; }
+.commission-list > app-manager-list-loader { display: block; min-height: 190px; }
+.table-wrap, .cards, .users-pagination { margin: 0 12px; }
+.table-wrap { max-height: min(60vh,600px); }
+.user-table { min-width: 1100px; }
+.user-table td { vertical-align: top; overflow-wrap: anywhere; }
+.user-table td:nth-child(3) { min-width: 140px; max-width: 240px; }
+.rule-details { min-width: 240px; max-width: 420px; font-size: .8rem; line-height: 1.5; }
+.rule-details p { margin: 0 0 6px; overflow-wrap: anywhere; }
+.badge { display: table; margin-top: 4px; }
+.user-card .badge { display: inline-flex; margin-top: 0; }
+.calculation-note { display: grid; gap: 4px; padding: 12px; border: 1px solid #dbe4ef; border-radius: 8px; background: #f7f9fc; font-size: .85rem; color: #435673; }
+.form small { color: #526681; }
+:host-context(html.dark) .rule-help, :host-context(html.dark) .form small { color: #afc2d9; }
+:host-context(html.dark) .calculation-note { color: #d5e1ef; background: #1b2a3d; border-color: #344960; }
+@media (max-width: 700px) {
+  .rule-details { min-width: 0; max-width: none; }
+  .user-card { min-width: 0; overflow-wrap: anywhere; }
+  .card-actions { flex-wrap: wrap; }
+  .users-pagination { flex-wrap: wrap; gap: 12px; }
+  .page-buttons { flex-wrap: wrap; }
+}

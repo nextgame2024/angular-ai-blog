@@ -34,6 +34,12 @@ describe('ManagerCollegesService', () => {
     request.flush({ contact: {} });
   });
 
+  it('archives a commission with its revision and no client company identifier',()=>{
+    service.archiveCommission('college-1',{ruleId:'rule-1',updatedAt:'2026-11-08T00:00:00Z'} as any).subscribe();
+    const request=http.expectOne(r=>r.url.endsWith('/bm/colleges/college-1/commissions/rule-1'));
+    expect(request.request.method).toBe('DELETE');expect(request.request.body).toEqual({rule:{expected_updated_at:'2026-11-08T00:00:00Z'}});request.flush(null);
+  });
+
   it('loads one college course page with server-side filters', () => {
     service.courses('college-1', 'English', 'active', 2, 50, 'code', 'desc').subscribe();
     const request = http.expectOne((candidate) => candidate.url.endsWith('/bm/colleges/college-1/courses'));

@@ -1,0 +1,75 @@
+<section class="card commission-tab" aria-label="College commission rules">
+  <div class="card-header commission-header">
+    <strong>{{ formOpen ? (editing ? 'Edit commission rule' : 'New commission rule') : 'Commissions' }}</strong>
+    @if (!formOpen) {
+      <button class="btn primary" type="button" (click)="open()" [disabled]="loading || saving || loadFailed"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Add rule</button>
+    }
+  </div>
+  <p class="rule-help">All conditions on a rule must match. Blank conditions mean “Any.” The most specific matching rule takes precedence; a general rule is the fallback.</p>
+  @if (formOpen) {
+    <form class="form" [formGroup]="form" (ngSubmit)="save()">
+      <div class="grid-2">
+        <label><span>Classification</span><app-manager-select formControlName="classification" [options]="classificationOptions" ariaLabel="Commission classification"/></label>
+        <label><span>Location</span><app-manager-select formControlName="location" [options]="locationOptions" ariaLabel="Commission location"/></label>
+      </div>
+      <label><span>Program</span><input formControlName="program" placeholder="Any program" maxlength="300"/></label>
+      <label><span>Commission (%) *</span><input type="text" inputmode="decimal" formControlName="percentage" placeholder="30.00" maxlength="6" [attr.aria-invalid]="form.controls.percentage.touched && form.controls.percentage.invalid"/><small>Between 0 and 100, with up to two decimal places.</small></label>
+      <div class="calculation-note"><strong>Calculation</strong><span>Tuition fee × commission percentage, rounded to 2 decimal places.</span></div>
+      <div class="grid-2">
+        <label><span>Cashback status</span><app-manager-select formControlName="cashback_status" [options]="benefitOptions" ariaLabel="Cashback status"/></label>
+        <label><span>Bonus status</span><app-manager-select formControlName="bonus_status" [options]="benefitOptions" ariaLabel="Bonus status"/></label>
+      </div>
+      <label><span>Cashback description{{ form.controls.cashback_status.value === 'specified' ? ' *' : '' }}</span><textarea formControlName="cashback_description" rows="2" maxlength="2000"></textarea></label>
+      <label><span>Cashback calculation</span><textarea formControlName="cashback_calculation_description" rows="2" maxlength="2000"></textarea></label>
+      <label><span>Bonus description{{ form.controls.bonus_status.value === 'specified' ? ' *' : '' }}</span><textarea formControlName="bonus_description" rows="2" maxlength="2000"></textarea></label>
+      <label><span>Application conditions</span><textarea formControlName="application_conditions" rows="3" maxlength="5000" placeholder="Explain the fees and conditions covered by this rule."></textarea></label>
+      <div class="card-actions right-actions">
+        <button class="btn" type="button" (click)="formOpen = false" [disabled]="saving">Cancel</button>
+        <button class="btn primary" type="submit" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"/></svg></span>{{ saving ? 'Saving…' : 'Save rule' }}</button>
+      </div>
+    </form>
+  } @else {
+    <div class="commission-list" [attr.aria-busy]="loading">
+      @if (loading) { <app-manager-list-loader label="Loading commission rules…" [overlay]="hasData"/> }
+      @if (loadFailed) { <div class="empty"><strong>Could not load commission rules.</strong><button class="btn" type="button" (click)="load()">Try again</button></div>
+      } @else if (!loading && !hasData) { <div class="empty list-empty" role="status"><strong>No commission rules yet</strong><span>Add a general rule or a rule for a classification, location or program.</span></div> }
+      @if (hasData && !loadFailed) {
+        <div class="table-wrap"><table class="user-table" aria-label="Commission rules"><thead><tr>
+          @for (column of columns; track column.key) { <th scope="col" [attr.aria-sort]="sortAria(column.key)"><button class="sort-button" type="button" (click)="sortBy(column.key)">{{ column.label }} <span class="sort-indicator" aria-hidden="true"></span></button></th> }
+          <th scope="col">Details</th><th scope="col">Actions</th>
+        </tr></thead><tbody>
+          @for (rule of displayedRules; track rule.ruleId) {
+            <tr><td>{{ rule.classification || 'Any' }}</td><td>{{ rule.location || 'Any' }}</td><td>{{ rule.program || 'Any' }}</td><td class="strong">{{ rate(rule) }}<span class="badge">{{ isDefault(rule) ? 'General' : 'Conditional' }}</span></td><td class="rule-details"><ng-container *ngTemplateOutlet="details; context: { $implicit: rule }"/></td><td class="row-actions"><ng-container *ngTemplateOutlet="actions; context: { $implicit: rule }"/></td></tr>
+          }
+        </tbody></table></div>
+        <div class="cards">@for (rule of displayedRules; track rule.ruleId) {
+          <article class="user-card"><div class="row"><div class="name">{{ rate(rule) }}</div><span class="badge">{{ isDefault(rule) ? 'General' : 'Conditional' }}</span></div>
+            <div class="meta"><div><span>Classification:</span> {{ rule.classification || 'Any' }}</div><div><span>Location:</span> {{ rule.location || 'Any' }}</div><div><span>Program:</span> {{ rule.program || 'Any' }}</div></div>
+            <div class="rule-details"><ng-container *ngTemplateOutlet="details; context: { $implicit: rule }"/></div>
+            <div class="card-actions"><ng-container *ngTemplateOutlet="actions; context: { $implicit: rule }"/></div>
+          </article>
+        }</div>
+        <footer class="users-pagination" aria-label="Commission rules pagination"><span>Showing {{ start }}–{{ end }} of {{ rules.length }}</span><div class="page-buttons">
+          <app-manager-select panelDirection="up" ariaLabel="Commission rules per page" class="page-size" [formControl]="pageSize" [options]="pageSizes"/>
+          <button type="button" (click)="goToPage(1)" [disabled]="page <= 1 || loading" aria-label="First commission page">«</button>
+          <button type="button" (click)="goToPage(page - 1)" [disabled]="page <= 1 || loading" aria-label="Previous commission page">‹</button>
+          <app-page-jump [page]="page" [totalPages]="totalPages" [disabled]="loading" label="Commission page number" (pageChange)="goToPage($event)"/>
+          <button type="button" (click)="goToPage(page + 1)" [disabled]="page >= totalPages || loading" aria-label="Next commission page">›</button>
+          <button type="button" (click)="goToPage(totalPages)" [disabled]="page >= totalPages || loading" aria-label="Last commission page">»</button>
+        </div></footer>
+      }
+    </div>
+  }
+</section>
+<ng-template #details let-rule>
+  <p><strong>Calculation:</strong> {{ rule.calculationDescription }}</p>
+  <p><strong>Cashback:</strong> {{ benefitLabel(rule.cashbackStatus) }} @if (rule.cashbackDescription) { — {{ rule.cashbackDescription }} }</p>
+  @if (rule.cashbackCalculationDescription) { <p><strong>Cashback calculation:</strong> {{ rule.cashbackCalculationDescription }}</p> }
+  <p><strong>Bonus:</strong> {{ benefitLabel(rule.bonusStatus) }} @if (rule.bonusDescription) { — {{ rule.bonusDescription }} }</p>
+  <p><strong>Application conditions:</strong> {{ rule.applicationConditions || 'None recorded' }}</p>
+</ng-template>
+<ng-template #actions let-rule>
+  <button class="btn small secondary" type="button" (click)="open(rule)" [disabled]="saving || loading" [attr.aria-label]="'Edit ' + rate(rule) + ' commission rule'"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4Z M13 6l4 4"/></svg></span>Edit</button>
+  <button class="btn small danger" type="button" (click)="archive(rule)" [disabled]="saving || loading" [attr.aria-label]="'Archive ' + rate(rule) + ' commission rule'"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h16M6 8v10h12V8M10 12h4M9 4h6l1 2H8l1-2Z"/></svg></span>Archive</button>
+</ng-template>
+@if (message) { <app-manager-toast [message]="message" [tone]="tone" (closed)="message = ''"/> }

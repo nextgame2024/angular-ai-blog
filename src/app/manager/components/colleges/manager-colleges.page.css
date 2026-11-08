@@ -2,6 +2,8 @@
 .colleges-shell .table-wrap { max-height: min(62vh, 560px); }
 .college-contacts-header { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
 .college-form-card { margin-top: 4px; }
+.colleges-shell .form-tabs { display: flex; flex-wrap: wrap; }
+.colleges-shell .form-tabs .tab { flex: 1 1 130px; }
 .college-tab-list { display: flex; flex-direction: column; gap: 0.75rem; padding-bottom: 0.75rem; }
 .college-tab-list .table-wrap, .college-tab-list .cards, .college-tab-list .users-pagination { margin: 0 0.75rem; }
 .college-tab-list .table-wrap { flex: none; max-height: min(58vh, 520px); }

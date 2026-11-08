@@ -13,7 +13,7 @@
     </div>
   } @else {
     <div class="form-header">
-      <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/manager/menu">Menu</a><span class="sep">/</span><a href="#" (click)="$event.preventDefault(); close()">Colleges</a><span class="sep">/</span><span>{{ tab === 'details' ? 'Details' : tab === 'contacts' ? 'Contacts' : tab === 'sites' ? 'Sites' : 'Courses' }}</span></nav>
+      <nav class="breadcrumb" aria-label="Breadcrumb"><a routerLink="/manager/menu">Menu</a><span class="sep">/</span><a href="#" (click)="$event.preventDefault(); close()">Colleges</a><span class="sep">/</span><span>{{ tab === 'details' ? 'Details' : tab === 'contacts' ? 'Contacts' : tab === 'sites' ? 'Sites' : tab === 'commissions' ? 'Commissions' : 'Courses' }}</span></nav>
       <div class="form-header-mainrow">
         <div class="header-main"><h3>College Details</h3><p class="sub">Review the college, its sites, contacts and status.</p></div>
         <div class="header-actions"><button class="btn" type="button" (click)="close()">Cancel</button>@if (tab === 'contacts' && contactMode === 'form') { <button class="btn primary" type="button" (click)="saveContact()" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"></path></svg></span>Save contact</button> } @else if (tab === 'sites' && siteMode === 'form') { <button class="btn primary" type="button" (click)="saveSite()" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"></path></svg></span>Save site</button> } @else if (tab === 'details') { <button class="btn primary" type="button" (click)="save(true)" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"></path></svg></span>Save &amp; Finish</button> }</div>
@@ -23,12 +23,12 @@
         <button class="tab" type="button" [class.active]="tab === 'contacts'" [class.disabled]="!selected" [disabled]="!selected" (click)="showContacts()"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"></circle><circle cx="17" cy="9" r="2.5"></circle><path d="M3.5 19c0-3 2.7-5.5 6-5.5S15.5 16 15.5 19"></path><path d="M14 19c0-2.1 1.8-3.8 4-3.8"></path></svg></span>Contacts</button>
         <button class="tab" type="button" [class.active]="tab === 'sites'" [class.disabled]="!selected" [disabled]="!selected" (click)="showSites()"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s7-5.3 7-11a7 7 0 1 0-14 0c0 5.7 7 11 7 11Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg></span>Sites</button>
         <button class="tab" type="button" [class.active]="tab === 'courses'" [class.disabled]="!selected" [disabled]="!selected" (click)="showCourses()"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h12a3 3 0 0 1 3 3v11H7a3 3 0 0 1-3-3V5Z"></path><path d="M7 5v14M10 9h6M10 13h6"></path></svg></span>Courses</button>
+        <button class="tab" type="button" [class.active]="tab === 'commissions'" [class.disabled]="!selected" [disabled]="!selected" (click)="tab = 'commissions'"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="3"/><circle cx="17" cy="17" r="3"/><path d="M5 19 19 5"/></svg></span>Commissions</button>
       </div>
     </div>
   }
 
-  @if (error) { <div class="error" role="alert"><span>{{ error }}</span><button class="error-dismiss" type="button" aria-label="Dismiss error" (click)="error = ''">×</button></div> }
-  @if (notice) { <div class="college-notice" role="status">{{ notice }}<button type="button" aria-label="Dismiss notice" (click)="notice = ''">×</button></div> }
+  @if (error || notice) { <app-manager-toast [message]="error || notice" [tone]="error ? 'error' : 'success'" (closed)="error = ''; notice = ''"/> }
 
   @if (mode === 'list') {
     <section class="list">
@@ -52,10 +52,11 @@
       }
     </section>
   } @else if (tab === 'details') {
-    @if (!selected && !warningDismissed) { <div class="warning-banner" role="status"><span class="warning-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4 3 20h18L12 4Z"></path><path d="M12 9v5"></path><path d="M12 17h.01"></path></svg></span>Save the college first to enable the Contacts, Sites and Courses tabs.<button type="button" class="warning-dismiss" aria-label="Dismiss notice" (click)="warningDismissed = true">x</button></div> }
+    @if (!selected && !warningDismissed) { <div class="warning-banner" role="status"><span class="warning-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4 3 20h18L12 4Z"></path><path d="M12 9v5"></path><path d="M12 17h.01"></path></svg></span>Save the college first to enable the Contacts, Sites, Courses and Commissions tabs.<button type="button" class="warning-dismiss" aria-label="Dismiss notice" (click)="warningDismissed = true">x</button></div> }
     <section class="card college-form-card"><div class="card-header"><strong>College details</strong></div>
       <form class="form" [formGroup]="collegeForm" (ngSubmit)="save()">
         <label><span>College Name *</span><input formControlName="college_name" placeholder="College name" maxlength="200" /></label>
+        <label><span>Acronym</span><input formControlName="acronym" placeholder="For example, APIC" maxlength="80" /></label>
         <div class="grid-2"><label><span>Owner Name</span><input formControlName="owner_name" placeholder="Owner name" /></label><label><span>ABN</span><input formControlName="abn" placeholder="ABN" /></label></div>
         @if (selected?.cricosProviderCode) {
           <div class="cricos-summary" aria-label="Official CRICOS details">
@@ -76,6 +77,8 @@
         <div class="card-actions right-actions"><button class="btn" type="button" (click)="close()">Cancel</button><button class="btn primary" type="submit" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"></path></svg></span>{{ saving ? 'Saving…' : 'Save' }}</button></div>
       </form>
     </section>
+  } @else if (tab === 'commissions' && selected) {
+    <app-college-commissions [collegeId]="selected.collegeId"/>
   } @else if (tab === 'contacts') {
     <section class="card college-form-card college-tab-list"><div class="card-header college-contacts-header"><strong>Contacts</strong>@if (contactMode === 'list') { <button class="btn primary" type="button" (click)="addContact()"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg></span>Add</button> }</div>
       @if (contactMode === 'form') {

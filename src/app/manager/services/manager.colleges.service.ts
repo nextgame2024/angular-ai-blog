@@ -6,6 +6,7 @@ import { environment } from 'src/environments/environment';
 export interface BmCollege {
   collegeId: string;
   collegeName: string;
+  acronym?: string | null;
   ownerName: string | null;
   abn: string | null;
   address: string | null;
@@ -93,6 +94,27 @@ export type BmCollegeCourseSort = 'name' | 'code' | 'level' | 'duration' | 'cost
 
 export type BmCollegeSort = 'name' | 'email' | 'mobile' | 'status';
 
+export interface BmCollegeCommissionRule {
+  ruleId: string;
+  collegeId: string;
+  classification: 'ELICOS' | 'VET' | 'HE' | null;
+  location: 'ON-SHORE' | 'OFF-SHORE' | null;
+  program: string | null;
+  commissionBasisPoints: number;
+  calculationMethod: 'tuition_fee_percentage';
+  calculationDescription: string;
+  roundingDecimalPlaces: number;
+  cashbackStatus: 'not_recorded' | 'not_applicable' | 'specified';
+  cashbackDescription: string | null;
+  cashbackCalculationDescription: string | null;
+  bonusStatus: 'not_recorded' | 'not_applicable' | 'specified';
+  bonusDescription: string | null;
+  applicationConditions: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 @Injectable()
 export class ManagerCollegesService {
   private readonly http = inject(HttpClient);
@@ -109,6 +131,12 @@ export class ManagerCollegesService {
   get(id: string) { return this.http.get<{ college: BmCollege }>(`${this.base}/${id}`); }
   update(id: string, value: object) { return this.http.put<{ college: BmCollege }>(`${this.base}/${id}`, { college: value }); }
   archive(id: string) { return this.http.delete<void>(`${this.base}/${id}`); }
+  commissions(id: string) { return this.http.get<{ rules: BmCollegeCommissionRule[] }>(`${this.base}/${id}/commissions`); }
+  createCommission(id: string, rule: object) { return this.http.post<{ rule: BmCollegeCommissionRule }>(`${this.base}/${id}/commissions`, { rule }); }
+  updateCommission(id: string, ruleId: string, rule: object) { return this.http.put<{ rule: BmCollegeCommissionRule }>(`${this.base}/${id}/commissions/${ruleId}`, { rule }); }
+  archiveCommission(id: string, rule: BmCollegeCommissionRule) {
+    return this.http.delete<void>(`${this.base}/${id}/commissions/${rule.ruleId}`, { body: { rule: { expected_updated_at: rule.updatedAt } } });
+  }
   contacts(id: string) { return this.http.get<{ contacts: BmCollegeContact[] }>(`${this.base}/${id}/contacts`); }
   createContact(id: string, value: object) { return this.http.post<{ contact: BmCollegeContact }>(`${this.base}/${id}/contacts`, { contact: value }); }
   updateContact(id: string, contactId: string, value: object) { return this.http.put<{ contact: BmCollegeContact }>(`${this.base}/${id}/contacts/${contactId}`, { contact: value }); }

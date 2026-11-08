@@ -74,6 +74,13 @@ describe('ManagerCollegesPageComponent', () => {
     expect(api.sites).toHaveBeenCalledWith('college-1');
   });
 
+  it('loads the acronym and keeps commissions disabled until the college is saved',()=>{
+    const fixture=TestBed.createComponent(ManagerCollegesPageComponent);fixture.detectChanges();fixture.componentInstance.create();fixture.detectChanges();
+    const tab=[...fixture.nativeElement.querySelectorAll('.form-tabs button')].find((button:any)=>button.textContent.includes('Commissions')) as HTMLButtonElement;
+    expect(tab.disabled).toBeTrue();fixture.componentInstance.edit({...college,acronym:'ATI'});fixture.detectChanges();
+    expect(tab.disabled).toBeFalse();expect(fixture.componentInstance.collegeForm.controls.acronym.value).toBe('ATI');
+  });
+
   it('uses Users-style table controls with server paging and sorting', () => {
     api.list.and.callFake((_q, page) => of({ colleges: [college], total: 51, page: page || 1, limit: 25 }));
     const fixture = TestBed.createComponent(ManagerCollegesPageComponent);

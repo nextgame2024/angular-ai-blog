@@ -8,12 +8,14 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 import { ManagerAddressAutocompleteComponent } from '../shared/manager-address-autocomplete/manager-address-autocomplete.component';
 import { ManagerListLoaderComponent } from '../shared/manager-list-loader/manager-list-loader.component';
+import { ManagerToastComponent } from '../shared/manager-toast/manager-toast.component';
+import { CollegeCommissionsComponent } from './college-commissions.component';
 import { BmCollege, BmCollegeContact, BmCollegeCourse, BmCollegeCourseSort, BmCollegeSite, BmCollegeSort, ManagerCollegesService } from '../../services/manager.colleges.service';
 
 @Component({
   selector: 'app-manager-colleges-page',
   imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent,
-    ManagerAddressAutocompleteComponent, ManagerListLoaderComponent],
+    ManagerAddressAutocompleteComponent, ManagerListLoaderComponent, ManagerToastComponent, CollegeCommissionsComponent],
   templateUrl: './manager-colleges.page.html',
   styleUrls: ['../clients/manager-clients.page.css', '../users/manager-users.page.css', './manager-colleges.page.css'],
 })
@@ -35,6 +37,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   readonly pageSizeOptions = [{ value: '25', label: '25 per page' }, { value: '50', label: '50 per page' }, { value: '100', label: '100 per page' }];
   readonly collegeForm = this.fb.group({
     college_name: ['', [Validators.required, Validators.maxLength(200)]],
+    acronym: ['', Validators.maxLength(80)],
     owner_name: [''], abn: [''], notes: [''],
     status: ['active'],
   });
@@ -74,7 +77,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   editingContact: BmCollegeContact | null = null;
   editingSite: BmCollegeSite | null = null;
   mode: 'list' | 'details' = 'list';
-  tab: 'details' | 'contacts' | 'sites' | 'courses' = 'details';
+  tab: 'details' | 'contacts' | 'sites' | 'courses' | 'commissions' = 'details';
   contactMode: 'list' | 'form' = 'list';
   siteMode: 'list' | 'form' = 'list';
   page = 1;
@@ -248,7 +251,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
     this.tab = 'details';
     this.error = '';
     this.collegeForm.reset({
-      college_name: college.collegeName, owner_name: college.ownerName,
+      college_name: college.collegeName, acronym: college.acronym ?? '', owner_name: college.ownerName,
       abn: college.abn, notes: college.notes, status: college.status,
     });
   }
@@ -268,7 +271,7 @@ export class ManagerCollegesPageComponent implements OnInit, OnDestroy {
   save(close = false): void {
     if (this.collegeForm.invalid) {
       this.collegeForm.markAllAsTouched();
-      this.error = 'Enter a college name.';
+      this.error = 'Enter a college name and an acronym of at most 80 characters.';
       return;
     }
     const value = this.collegeForm.getRawValue();
