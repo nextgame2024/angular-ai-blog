@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { BmCollege, ManagerCollegesService } from '../../services/manager.colleges.service';
@@ -36,7 +36,7 @@ describe('ManagerCollegesPageComponent', () => {
     const fixture = TestBed.createComponent(ManagerCollegesPageComponent);
     fixture.detectChanges();
     const empty = fixture.nativeElement.querySelector('[data-testid="colleges-empty"]') as HTMLElement;
-    expect(empty.classList.contains('list-empty')).toBeTrue();
+    expect(empty.tagName).toBe('APP-MANAGER-EMPTY-STATE');
     expect(empty.querySelector('strong')?.textContent).toBe('No colleges found');
     expect(empty.querySelector('span')?.textContent).toBe('No records match the current filters.');
     expect(getComputedStyle(empty).display).toBe('grid');
@@ -73,6 +73,17 @@ describe('ManagerCollegesPageComponent', () => {
     fixture.componentInstance.showSites();
     expect(api.sites).toHaveBeenCalledWith('college-1');
   });
+  it('shows trading name and acronym in the table and cards and searches/sorts via the API',fakeAsync(()=>{
+    api.list.and.returnValue(of({colleges:[{...college,tradingName:'Australian Training Institute',acronym:'ATI'}],total:1,page:1,limit:25}));
+    const fixture=TestBed.createComponent(ManagerCollegesPageComponent);fixture.detectChanges();
+    const el:HTMLElement=fixture.nativeElement;
+    expect(el.querySelector('.trading-name')?.textContent).toContain('Australian Training Institute');
+    expect(el.querySelector('.cards')?.textContent).toContain('Acronym: ATI');
+    const tradingSort=[...el.querySelectorAll<HTMLButtonElement>('.sort-button')].find(b=>b.textContent?.includes('Trading name'))!;
+    tradingSort.click();fixture.detectChanges();expect(api.list).toHaveBeenCalledWith('',1,25,'tradingName','asc');
+    fixture.componentInstance.search.setValue('ATI');tick(301);expect(api.list).toHaveBeenCalledWith('ATI',1,25,'tradingName','asc');
+    fixture.destroy();
+  }));
 
   it('loads the acronym and keeps commissions disabled until the college is saved',()=>{
     const fixture=TestBed.createComponent(ManagerCollegesPageComponent);fixture.detectChanges();fixture.componentInstance.create();fixture.detectChanges();
@@ -80,6 +91,29 @@ describe('ManagerCollegesPageComponent', () => {
     expect(tab.disabled).toBeTrue();fixture.componentInstance.edit({...college,acronym:'ATI'});fixture.detectChanges();
     expect(tab.disabled).toBeFalse();expect(fixture.componentInstance.collegeForm.controls.acronym.value).toBe('ATI');
   });
+
+  for(const width of [390,1440]) for(const dark of [false,true]) {
+    it(`keeps the college identity columns and empty state within ${width}px in ${dark?'dark':'light'} mode`,()=>{
+      api.list.and.returnValue(of({colleges:[{...college,tradingName:'Australian College of Agriculture & Horticulture; Australian College of Agriculture & Horticulture',acronym:'ACAH'}],total:1,page:1,limit:25}));
+      const fixture=TestBed.createComponent(ManagerCollegesPageComponent);fixture.detectChanges();
+      const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
+      try {
+        const doc=frame.contentDocument!,win=frame.contentWindow!;doc.documentElement.classList.toggle('dark',dark);
+        doc.body.style.cssText='margin:0;padding:.75rem;box-sizing:border-box';
+        document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));
+        doc.body.appendChild(fixture.nativeElement.cloneNode(true));
+        expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(width+1);
+        expect(win.getComputedStyle(doc.querySelector('.table-wrap')!).display).toBe(width<900?'none':'block');
+        api.list.and.returnValue(of({colleges:[],total:0,page:1,limit:25}));fixture.componentInstance.load();fixture.detectChanges();
+        // Angular injects the empty component's styles when it is first instantiated.
+        doc.head.replaceChildren();document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));
+        doc.body.replaceChildren(fixture.nativeElement.cloneNode(true));
+        const empty=doc.querySelector('app-manager-empty-state')!;expect(win.getComputedStyle(empty).minHeight).toBe('385px');
+        expect(win.getComputedStyle(empty).display).toBe('grid');expect(win.getComputedStyle(empty).textAlign).toBe('center');
+        expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(width+1);
+      } finally {frame.remove();fixture.destroy();}
+    });
+  }
 
   it('uses Users-style table controls with server paging and sorting', () => {
     api.list.and.callFake((_q, page) => of({ colleges: [college], total: 51, page: page || 1, limit: 25 }));

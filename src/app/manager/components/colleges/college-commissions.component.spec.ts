@@ -8,7 +8,7 @@ describe('CollegeCommissionsComponent',()=>{
   const rule:BmCollegeCommissionRule={ruleId:'rule-1',collegeId:'college-1',classification:null,location:null,program:null,
     commissionBasisPoints:3182,calculationMethod:'tuition_fee_percentage',calculationDescription:'Tuition fee x commission (2 decimals)',
     roundingDecimalPlaces:2,cashbackStatus:'not_recorded',cashbackDescription:'Not recorded',cashbackCalculationDescription:'No aplica',
-    bonusStatus:'not_applicable',bonusDescription:'Not applicable',applicationConditions:'Tuition only',active:true,
+    cashbackCalculation:null,bonusAmount:null,bonusStatus:'not_applicable',bonusDescription:'Not applicable',applicationConditions:'Tuition only',active:true,
     createdAt:'2026-11-08T00:00:00Z',updatedAt:'2026-11-08T00:00:00Z'};
   beforeEach(async()=>{
     api=jasmine.createSpyObj<ManagerCollegesService>('api',['commissions','createCommission','updateCommission','archiveCommission']);
@@ -34,6 +34,19 @@ describe('CollegeCommissionsComponent',()=>{
     const fixture=setup(), component=fixture.componentInstance;component.open(rule);component.save();
     expect(api.updateCommission).toHaveBeenCalledWith('college-1','rule-1',jasmine.objectContaining({expected_updated_at:rule.updatedAt}));
     expect(component.formOpen).toBeTrue();expect(component.message).toContain('changed');expect(component.saving).toBeFalse();
+  });
+  it('uses numeric two-decimal benefit fields and sends exact values including zero',()=>{
+    const fixture=setup(),c=fixture.componentInstance;c.open();fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[formControlName="cashback_calculation"]').type).toBe('number');
+    expect(fixture.nativeElement.querySelector('[formControlName="bonus_amount"]').step).toBe('0.01');
+    c.form.patchValue({percentage:'30',cashback_status:'specified',bonus_status:'specified',cashback_calculation:'12.345',bonus_amount:'0'});
+    c.save();expect(api.createCommission).not.toHaveBeenCalled();
+    c.form.patchValue({cashback_calculation:'12.30'});c.save();
+    expect(api.createCommission).toHaveBeenCalledWith('college-1',jasmine.objectContaining({cashback_calculation:'12.30',bonus_amount:'0.00'}));
+  });
+  it('round-trips numeric benefits and preserves legacy notes during edits',()=>{
+    const fixture=setup(),c=fixture.componentInstance;c.open({...rule,cashbackStatus:'specified',cashbackCalculation:'15.25',bonusStatus:'specified',bonusAmount:'30.00'});
+    c.save();expect(api.updateCommission).toHaveBeenCalledWith('college-1',rule.ruleId,jasmine.objectContaining({cashback_calculation:'15.25',bonus_amount:'30.00',cashback_calculation_description:'No aplica'}));
   });
   it('does not present a failed request as an empty rule list and supports retry',()=>{
     api.commissions.and.returnValue(throwError(()=>({})));
@@ -68,6 +81,10 @@ describe('CollegeCommissionsComponent',()=>{
         expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(width+1);
         fixture.componentInstance.open(rule);fixture.detectChanges();doc.body.replaceChildren(fixture.nativeElement.cloneNode(true));
         expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(width+1);
+        const grid=win.getComputedStyle(doc.querySelector('.commission-form-grid')!);
+        expect(grid.gridTemplateColumns.split(' ').length).toBe(width<700?1:3);
+        const form=doc.querySelector('form')!;
+        expect(form.querySelector('.calculation-note')?.previousElementSibling?.classList.contains('commission-form-grid')).toBeTrue();
         const note=win.getComputedStyle(doc.querySelector('.calculation-note')!);
         expect(note.backgroundColor).toBe(dark?'rgb(27, 42, 61)':'rgb(247, 249, 252)');
       } finally {iframe.remove();}

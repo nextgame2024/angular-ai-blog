@@ -15,9 +15,19 @@
 .user-card .badge { display: inline-flex; margin-top: 0; }
 .calculation-note { display: grid; gap: 4px; padding: 12px; border: 1px solid #dbe4ef; border-radius: 8px; background: #f7f9fc; font-size: .85rem; color: #435673; }
 .form small { color: #526681; }
+.commission-form-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 1rem; align-items: start; }
+.commission-form-grid label { min-width: 0; }
+.commission-form-grid .conditions-field { grid-column: span 2; }
+.commission-form input[readonly] { background: #f4f7fb; color: #526681; }
 :host-context(html.dark) .rule-help, :host-context(html.dark) .form small { color: #afc2d9; }
 :host-context(html.dark) .calculation-note { color: #d5e1ef; background: #1b2a3d; border-color: #344960; }
+:host-context(html.dark) .commission-form input[readonly] { background: #1f3045; color: #afc2d9; }
+@media (max-width: 1100px) {
+  .commission-form-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .commission-form-grid .conditions-field { grid-column: 1 / -1; }
+}
 @media (max-width: 700px) {
+  .commission-form-grid { grid-template-columns: minmax(0,1fr); }
   .rule-details { min-width: 0; max-width: none; }
   .user-card { min-width: 0; overflow-wrap: anywhere; }
   .card-actions { flex-wrap: wrap; }

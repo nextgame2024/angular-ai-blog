@@ -1,5 +1,8 @@
 .colleges-shell .list { padding: 0 0.75rem 1rem; }
 .colleges-shell .table-wrap { max-height: min(62vh, 560px); }
+.colleges-shell .list .user-table { min-width: 1100px; }
+.colleges-shell .trading-name { min-width: 180px; max-width: 320px; white-space: normal; overflow-wrap: anywhere; }
+.colleges-shell .user-card .meta { overflow-wrap: anywhere; }
 .college-contacts-header { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
 .college-form-card { margin-top: 4px; }
 .colleges-shell .form-tabs { display: flex; flex-wrap: wrap; }

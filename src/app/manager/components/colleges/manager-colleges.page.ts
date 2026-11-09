@@ -10,12 +10,13 @@ import { ManagerAddressAutocompleteComponent } from '../shared/manager-address-a
 import { ManagerListLoaderComponent } from '../shared/manager-list-loader/manager-list-loader.component';
 import { ManagerToastComponent } from '../shared/manager-toast/manager-toast.component';
 import { CollegeCommissionsComponent } from './college-commissions.component';
+import { ManagerEmptyStateComponent } from '../shared/manager-empty-state/manager-empty-state.component';
 import { BmCollege, BmCollegeContact, BmCollegeCourse, BmCollegeCourseSort, BmCollegeSite, BmCollegeSort, ManagerCollegesService } from '../../services/manager.colleges.service';
 
 @Component({
   selector: 'app-manager-colleges-page',
   imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent,
-    ManagerAddressAutocompleteComponent, ManagerListLoaderComponent, ManagerToastComponent, CollegeCommissionsComponent],
+    ManagerAddressAutocompleteComponent, ManagerListLoaderComponent, ManagerToastComponent, CollegeCommissionsComponent, ManagerEmptyStateComponent],
   templateUrl: './manager-colleges.page.html',
   styleUrls: ['../clients/manager-clients.page.css', '../users/manager-users.page.css', './manager-colleges.page.css'],
 })

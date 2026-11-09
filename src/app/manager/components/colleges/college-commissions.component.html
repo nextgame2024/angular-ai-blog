@@ -7,22 +7,21 @@
   </div>
   <p class="rule-help">All conditions on a rule must match. Blank conditions mean “Any.” The most specific matching rule takes precedence; a general rule is the fallback.</p>
   @if (formOpen) {
-    <form class="form" [formGroup]="form" (ngSubmit)="save()">
-      <div class="grid-2">
+    <form class="form commission-form" [formGroup]="form" (ngSubmit)="save()">
+      <div class="commission-form-grid">
         <label><span>Classification</span><app-manager-select formControlName="classification" [options]="classificationOptions" ariaLabel="Commission classification"/></label>
         <label><span>Location</span><app-manager-select formControlName="location" [options]="locationOptions" ariaLabel="Commission location"/></label>
-      </div>
-      <label><span>Program</span><input formControlName="program" placeholder="Any program" maxlength="300"/></label>
-      <label><span>Commission (%) *</span><input type="text" inputmode="decimal" formControlName="percentage" placeholder="30.00" maxlength="6" [attr.aria-invalid]="form.controls.percentage.touched && form.controls.percentage.invalid"/><small>Between 0 and 100, with up to two decimal places.</small></label>
-      <div class="calculation-note"><strong>Calculation</strong><span>Tuition fee × commission percentage, rounded to 2 decimal places.</span></div>
-      <div class="grid-2">
+        <label><span>Program</span><input formControlName="program" placeholder="Any program" maxlength="300"/></label>
+        <label><span>Commission (%) *</span><input type="text" inputmode="decimal" formControlName="percentage" placeholder="30.00" maxlength="6" [attr.aria-invalid]="form.controls.percentage.touched && form.controls.percentage.invalid"/><small>Between 0 and 100, with up to two decimal places.</small></label>
         <label><span>Cashback status</span><app-manager-select formControlName="cashback_status" [options]="benefitOptions" ariaLabel="Cashback status"/></label>
         <label><span>Bonus status</span><app-manager-select formControlName="bonus_status" [options]="benefitOptions" ariaLabel="Bonus status"/></label>
+        <label><span>Cashback calculation{{ form.controls.cashback_status.value === 'specified' ? ' *' : '' }}</span><input type="number" inputmode="decimal" min="0" max="999999999999.99" step="0.01" formControlName="cashback_calculation" placeholder="0.00" (blur)="formatBenefit('cashback_calculation')" [readOnly]="form.controls.cashback_status.value !== 'specified'" [attr.aria-invalid]="form.controls.cashback_calculation.touched && form.controls.cashback_calculation.invalid"/><small>Choose Specified to enter a value with two decimal places.</small></label>
+        <label><span>Bonus{{ form.controls.bonus_status.value === 'specified' ? ' *' : '' }}</span><input type="number" inputmode="decimal" min="0" max="999999999999.99" step="0.01" formControlName="bonus_amount" placeholder="0.00" (blur)="formatBenefit('bonus_amount')" [readOnly]="form.controls.bonus_status.value !== 'specified'" [attr.aria-invalid]="form.controls.bonus_amount.touched && form.controls.bonus_amount.invalid"/><small>Choose Specified to enter a value with two decimal places.</small></label>
+        <label><span>Cashback description</span><textarea formControlName="cashback_description" rows="2" maxlength="2000"></textarea></label>
+        <label><span>Bonus description</span><textarea formControlName="bonus_description" rows="3" maxlength="2000"></textarea></label>
+        <label class="conditions-field"><span>Application conditions</span><textarea formControlName="application_conditions" rows="3" maxlength="5000" placeholder="Explain the fees and conditions covered by this rule."></textarea></label>
       </div>
-      <label><span>Cashback description{{ form.controls.cashback_status.value === 'specified' ? ' *' : '' }}</span><textarea formControlName="cashback_description" rows="2" maxlength="2000"></textarea></label>
-      <label><span>Cashback calculation</span><textarea formControlName="cashback_calculation_description" rows="2" maxlength="2000"></textarea></label>
-      <label><span>Bonus description{{ form.controls.bonus_status.value === 'specified' ? ' *' : '' }}</span><textarea formControlName="bonus_description" rows="2" maxlength="2000"></textarea></label>
-      <label><span>Application conditions</span><textarea formControlName="application_conditions" rows="3" maxlength="5000" placeholder="Explain the fees and conditions covered by this rule."></textarea></label>
+      <div class="calculation-note"><strong>Calculation</strong><span>Tuition fee × commission percentage, rounded to 2 decimal places.</span></div>
       <div class="card-actions right-actions">
         <button class="btn" type="button" (click)="formOpen = false" [disabled]="saving">Cancel</button>
         <button class="btn primary" type="submit" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"/></svg></span>{{ saving ? 'Saving…' : 'Save rule' }}</button>
@@ -32,7 +31,7 @@
     <div class="commission-list" [attr.aria-busy]="loading">
       @if (loading) { <app-manager-list-loader label="Loading commission rules…" [overlay]="hasData"/> }
       @if (loadFailed) { <div class="empty"><strong>Could not load commission rules.</strong><button class="btn" type="button" (click)="load()">Try again</button></div>
-      } @else if (!loading && !hasData) { <div class="empty list-empty" role="status"><strong>No commission rules yet</strong><span>Add a general rule or a rule for a classification, location or program.</span></div> }
+      } @else if (!loading && !hasData) { <app-manager-empty-state title="No commission rules yet" description="Add a general rule or a rule for a classification, location or program."/> }
       @if (hasData && !loadFailed) {
         <div class="table-wrap"><table class="user-table" aria-label="Commission rules"><thead><tr>
           @for (column of columns; track column.key) { <th scope="col" [attr.aria-sort]="sortAria(column.key)"><button class="sort-button" type="button" (click)="sortBy(column.key)">{{ column.label }} <span class="sort-indicator" aria-hidden="true"></span></button></th> }
@@ -64,8 +63,9 @@
 <ng-template #details let-rule>
   <p><strong>Calculation:</strong> {{ rule.calculationDescription }}</p>
   <p><strong>Cashback:</strong> {{ benefitLabel(rule.cashbackStatus) }} @if (rule.cashbackDescription) { — {{ rule.cashbackDescription }} }</p>
-  @if (rule.cashbackCalculationDescription) { <p><strong>Cashback calculation:</strong> {{ rule.cashbackCalculationDescription }}</p> }
-  <p><strong>Bonus:</strong> {{ benefitLabel(rule.bonusStatus) }} @if (rule.bonusDescription) { — {{ rule.bonusDescription }} }</p>
+  @if (rule.cashbackCalculation !== null) { <p><strong>Cashback calculation:</strong> {{ rule.cashbackCalculation | number:'1.2-2' }}</p> }
+  @if (rule.cashbackCalculationDescription) { <p><strong>Cashback notes:</strong> {{ rule.cashbackCalculationDescription }}</p> }
+  <p><strong>Bonus:</strong> {{ benefitLabel(rule.bonusStatus) }} @if (rule.bonusAmount !== null) { — {{ rule.bonusAmount | number:'1.2-2' }} } @if (rule.bonusDescription) { — {{ rule.bonusDescription }} }</p>
   <p><strong>Application conditions:</strong> {{ rule.applicationConditions || 'None recorded' }}</p>
 </ng-template>
 <ng-template #actions let-rule>

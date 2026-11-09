@@ -92,7 +92,7 @@ export interface BmCollegeCourse {
 
 export type BmCollegeCourseSort = 'name' | 'code' | 'level' | 'duration' | 'cost' | 'status';
 
-export type BmCollegeSort = 'name' | 'email' | 'mobile' | 'status';
+export type BmCollegeSort = 'name' | 'tradingName' | 'acronym' | 'email' | 'mobile' | 'status';
 
 export interface BmCollegeCommissionRule {
   ruleId: string;
@@ -107,6 +107,8 @@ export interface BmCollegeCommissionRule {
   cashbackStatus: 'not_recorded' | 'not_applicable' | 'specified';
   cashbackDescription: string | null;
   cashbackCalculationDescription: string | null;
+  cashbackCalculation: string | null;
+  bonusAmount: string | null;
   bonusStatus: 'not_recorded' | 'not_applicable' | 'specified';
   bonusDescription: string | null;
   applicationConditions: string | null;

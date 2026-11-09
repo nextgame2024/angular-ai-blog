@@ -6,12 +6,13 @@ import { PageJumpComponent } from '../../../shared/components/page-jump/page-jum
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 import { ManagerToastComponent } from '../shared/manager-toast/manager-toast.component';
 import { ManagerListLoaderComponent } from '../shared/manager-list-loader/manager-list-loader.component';
+import { ManagerEmptyStateComponent } from '../shared/manager-empty-state/manager-empty-state.component';
 import { BmCollegeCommissionRule, ManagerCollegesService } from '../../services/manager.colleges.service';
 
 type Sort = 'classification' | 'location' | 'program' | 'commissionBasisPoints';
 @Component({
   selector: 'app-college-commissions',
-  imports: [CommonModule, ReactiveFormsModule, PageJumpComponent, ManagerSelectComponent, ManagerToastComponent, ManagerListLoaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, PageJumpComponent, ManagerSelectComponent, ManagerToastComponent, ManagerListLoaderComponent, ManagerEmptyStateComponent],
   templateUrl: './college-commissions.component.html',
   styleUrls: ['../clients/manager-clients.page.css','../users/manager-users.page.css','./college-commissions.component.css'],
 })
@@ -40,14 +41,15 @@ export class CollegeCommissionsComponent implements OnChanges, OnDestroy, OnInit
   ];
   readonly classificationOptions = [{value:'',label:'Any classification'},...['ELICOS','VET','HE'].map(value=>({value,label:value}))];
   readonly locationOptions = [{value:'',label:'Any location'},...['ON-SHORE','OFF-SHORE'].map(value=>({value,label:value}))];
-  readonly benefitOptions = [{value:'not_recorded',label:'Not recorded'},{value:'not_applicable',label:'Not applicable'},{value:'specified',label:'Specified — see description'}];
+  readonly benefitOptions = [{value:'not_recorded',label:'Not recorded'},{value:'not_applicable',label:'Not applicable'},{value:'specified',label:'Specified'}];
   readonly pageSizes = [25,50,100].map(value=>({value:String(value),label:`${value} per page`}));
   readonly pageSize = this.fb.nonNullable.control('25');
   readonly form = this.fb.nonNullable.group({
     classification: [''], location: [''], program: ['',Validators.maxLength(300)],
     percentage: ['', [Validators.required, Validators.pattern(/^(?:\d{1,2}(?:\.\d{1,2})?|100(?:\.0{1,2})?)$/)]],
     cashback_status: ['not_recorded'], cashback_description: ['',Validators.maxLength(2000)],
-    cashback_calculation_description: ['',Validators.maxLength(2000)],
+    cashback_calculation: ['',Validators.pattern(/^\d{1,12}(?:\.\d{1,2})?$/)],
+    bonus_amount: ['',Validators.pattern(/^\d{1,12}(?:\.\d{1,2})?$/)],
     bonus_status: ['not_applicable'], bonus_description: ['',Validators.maxLength(2000)],
     application_conditions: ['',Validators.maxLength(5000)],
   });
@@ -56,7 +58,15 @@ export class CollegeCommissionsComponent implements OnChanges, OnDestroy, OnInit
     this.cancelled.next(); this.requestId++; this.rules=[]; this.displayedRules=[];
     this.formOpen=false; this.saving=false; this.page=1; this.message=''; this.load();
   }
-  ngOnInit(): void {this.pageSize.valueChanges.pipe(takeUntil(this.destroyed)).subscribe(()=>this.changePageSize());}
+  ngOnInit(): void {
+    this.pageSize.valueChanges.pipe(takeUntil(this.destroyed)).subscribe(()=>this.changePageSize());
+    for (const benefit of ['cashback','bonus'] as const) {
+      const field=benefit==='cashback'?'cashback_calculation':'bonus_amount';
+      this.form.controls[`${benefit}_status`].valueChanges.pipe(takeUntil(this.destroyed)).subscribe(status=>{
+        if(status!=='specified') this.form.controls[field].setValue('');
+      });
+    }
+  }
   ngOnDestroy(): void { this.cancelled.next(); this.cancelled.complete(); this.destroyed.next(); this.destroyed.complete(); }
   get limit(): number { return Number(this.pageSize.value); }
   get totalPages(): number { return Math.max(1,Math.ceil(this.rules.length/this.limit)); }
@@ -93,20 +103,22 @@ export class CollegeCommissionsComponent implements OnChanges, OnDestroy, OnInit
     this.editing=rule;this.formOpen=true;
     this.form.reset({classification:rule?.classification||'',location:rule?.location||'',program:rule?.program||'',
       percentage:rule?(rule.commissionBasisPoints/100).toFixed(2):'',cashback_status:rule?.cashbackStatus||'not_recorded',
-      cashback_description:rule?.cashbackDescription||'',cashback_calculation_description:rule?.cashbackCalculationDescription||'',
+      cashback_description:rule?.cashbackDescription||'',cashback_calculation:rule?.cashbackCalculation??'',bonus_amount:rule?.bonusAmount??'',
       bonus_status:rule?.bonusStatus||'not_applicable',bonus_description:rule?.bonusDescription||'',application_conditions:rule?.applicationConditions||''});
   }
   save(): void {
     if(this.saving)return;
     for(const benefit of ['cashback','bonus'] as const) {
-      const control=this.form.controls[`${benefit}_description`];
-      control.setValidators([Validators.maxLength(2000),...(this.form.controls[`${benefit}_status`].value==='specified'?[Validators.required,Validators.pattern(/\S/)]:[])]);
+      const control=this.form.controls[benefit==='cashback'?'cashback_calculation':'bonus_amount'];
+      control.setValidators([Validators.pattern(/^\d{1,12}(?:\.\d{1,2})?$/),...(this.form.controls[`${benefit}_status`].value==='specified'?[Validators.required]:[])]);
       control.updateValueAndValidity();
     }
     if(this.form.invalid){this.form.markAllAsTouched();this.notify('Enter a commission from 0% to 100% with up to two decimal places and complete the highlighted fields.','error');return;}
-    const {percentage,...fields}=this.form.getRawValue();
+    const {percentage,cashback_calculation,bonus_amount,...fields}=this.form.getRawValue();
     const [whole,fraction='']=percentage.split('.');
     const value={...fields,commission_basis_points:Number(whole)*100+Number(fraction.padEnd(2,'0')),
+      cashback_calculation:this.decimalValue(cashback_calculation),bonus_amount:this.decimalValue(bonus_amount),
+      cashback_calculation_description:this.editing?.cashbackCalculationDescription??null,
       ...(this.editing?{expected_updated_at:this.editing.updatedAt}:{})};
     this.saving=true;
     const request=this.editing?this.api.updateCommission(this.collegeId,this.editing.ruleId,value):this.api.createCommission(this.collegeId,value);
@@ -114,6 +126,15 @@ export class CollegeCommissionsComponent implements OnChanges, OnDestroy, OnInit
       next:()=>{this.saving=false;this.formOpen=false;this.notify('Commission rule saved.');this.load();},
       error:err=>{this.saving=false;this.notify(err?.error?.error||'Could not save the rule. Try again.','error');},
     });
+  }
+  private decimalValue(value: string | number | null): string | null {
+    if(value===''||value==null)return null;
+    const [whole,fraction='']=String(value).split('.');
+    return `${whole}.${fraction.padEnd(2,'0')}`;
+  }
+  formatBenefit(field:'cashback_calculation'|'bonus_amount'): void {
+    const control=this.form.controls[field];
+    if(control.value!==''&&control.valid)control.setValue(this.decimalValue(control.value)!);
   }
   archive(rule:BmCollegeCommissionRule): void {
     if(this.saving||!confirm(`Archive the ${this.rate(rule)} commission rule?`))return;

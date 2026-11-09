@@ -7,7 +7,7 @@
         <div class="actions"><button class="btn primary" type="button" (click)="create()"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"></path></svg></span>Create</button></div>
       </div>
       <div class="toolbar-row"><label class="search-field"><span class="search-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg></span>
-        <input type="search" [formControl]="search" placeholder="Search by name, CRICOS code, email or mobile" aria-label="Search colleges" />
+        <input type="search" [formControl]="search" placeholder="Search by name, trading name, acronym, CRICOS code, email or mobile" aria-label="Search colleges by name, trading name, acronym, CRICOS code, email or mobile" />
         @if (search.value) { <button class="icon-btn" type="button" (click)="search.setValue('')" aria-label="Clear search">×</button> }
       </label></div>
     </div>
@@ -35,19 +35,29 @@
       @if (loading && !colleges.length) {
         <div class="list-loader" aria-live="polite" aria-busy="true"><div class="loader-content"><div class="loader-ring" aria-hidden="true"></div><div class="loader-text">Loading colleges…</div></div></div>
       } @else if (!colleges.length) {
-        <div class="empty list-empty" role="status" data-testid="colleges-empty"><strong>No colleges found</strong><span>No records match the current filters.</span></div>
+        <app-manager-empty-state data-testid="colleges-empty" title="No colleges found"/>
       } @else {
         <div class="table-wrap"><table class="user-table" aria-label="Colleges"><thead><tr>
           <th scope="col" [attr.aria-sort]="sortAria('name')"><button class="sort-button" type="button" (click)="sortBy('name')">Name <span class="sort-indicator" aria-hidden="true"></span></button></th>
+          <th scope="col" [attr.aria-sort]="sortAria('tradingName')"><button class="sort-button" type="button" (click)="sortBy('tradingName')">Trading name <span class="sort-indicator" aria-hidden="true"></span></button></th>
+          <th scope="col" [attr.aria-sort]="sortAria('acronym')"><button class="sort-button" type="button" (click)="sortBy('acronym')">Acronym <span class="sort-indicator" aria-hidden="true"></span></button></th>
           <th scope="col" [attr.aria-sort]="sortAria('email')"><button class="sort-button" type="button" (click)="sortBy('email')">Email <span class="sort-indicator" aria-hidden="true"></span></button></th>
           <th scope="col" [attr.aria-sort]="sortAria('mobile')"><button class="sort-button" type="button" (click)="sortBy('mobile')">Mobile <span class="sort-indicator" aria-hidden="true"></span></button></th>
           <th scope="col" [attr.aria-sort]="sortAria('status')"><button class="sort-button" type="button" (click)="sortBy('status')">Status <span class="sort-indicator" aria-hidden="true"></span></button></th>
           <th scope="col">Actions</th></tr></thead><tbody>
           @for (college of colleges; track college.collegeId) {
-            <tr><td class="strong">{{ college.collegeName }} @if (college.cricosProviderCode) { <span class="cricos-code">{{ college.cricosProviderCode }}</span> }</td><td>{{ college.email || '—' }}</td><td>{{ college.cel || '—' }}</td><td><span class="badge" [class.archived]="college.status === 'archived'">{{ college.status }}</span></td><td class="row-actions"><button class="btn small secondary" type="button" (click)="edit(college)"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4Z"></path><path d="M13 6l4 4"></path></svg></span>Edit</button><button class="btn small danger" type="button" (click)="archive(college)" [disabled]="college.status === 'archived'"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h16M6 8v10h12V8M10 12h4M9 4h6l1 2H8l1-2Z"></path></svg></span>Archive</button></td></tr>
+            <tr>
+              <td class="strong">{{ college.collegeName }} @if (college.cricosProviderCode) { <span class="cricos-code">{{ college.cricosProviderCode }}</span> }</td>
+              <td class="trading-name">{{ college.tradingName || '—' }}</td><td>{{ college.acronym || '—' }}</td>
+              <td>{{ college.email || '—' }}</td><td>{{ college.cel || '—' }}</td><td><span class="badge" [class.archived]="college.status === 'archived'">{{ college.status }}</span></td>
+              <td class="row-actions"><button class="btn small secondary" type="button" (click)="edit(college)"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4Z"></path><path d="M13 6l4 4"></path></svg></span>Edit</button><button class="btn small danger" type="button" (click)="archive(college)" [disabled]="college.status === 'archived'"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h16M6 8v10h12V8M10 12h4M9 4h6l1 2H8l1-2Z"></path></svg></span>Archive</button></td>
+            </tr>
           }
         </tbody></table></div>
-        <div class="cards">@for (college of colleges; track college.collegeId) { <article class="user-card"><div class="row"><div class="name">{{ college.collegeName }}</div><span class="badge" [class.archived]="college.status === 'archived'">{{ college.status }}</span></div><div class="meta">@if (college.cricosProviderCode) { <div><span>CRICOS:</span> {{ college.cricosProviderCode }}</div> }<div><span>Email:</span> {{ college.email || '—' }}</div><div><span>Mobile:</span> {{ college.cel || '—' }}</div></div><div class="card-actions"><button class="btn small secondary" type="button" (click)="edit(college)"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4Z"></path><path d="M13 6l4 4"></path></svg></span>Edit</button><button class="btn small danger" type="button" (click)="archive(college)" [disabled]="college.status === 'archived'"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h16M6 8v10h12V8M10 12h4M9 4h6l1 2H8l1-2Z"></path></svg></span>Archive</button></div></article> }</div>
+        <div class="cards">@for (college of colleges; track college.collegeId) { <article class="user-card"><div class="row"><div class="name">{{ college.collegeName }}</div><span class="badge" [class.archived]="college.status === 'archived'">{{ college.status }}</span></div>
+          <div class="meta"><div><span>Trading name:</span> {{ college.tradingName || '—' }}</div><div><span>Acronym:</span> {{ college.acronym || '—' }}</div>
+            @if (college.cricosProviderCode) { <div><span>CRICOS:</span> {{ college.cricosProviderCode }}</div> }<div><span>Email:</span> {{ college.email || '—' }}</div><div><span>Mobile:</span> {{ college.cel || '—' }}</div></div>
+          <div class="card-actions"><button class="btn small secondary" type="button" (click)="edit(college)"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20h4l10-10-4-4L4 16v4Z"></path><path d="M13 6l4 4"></path></svg></span>Edit</button><button class="btn small danger" type="button" (click)="archive(college)" [disabled]="college.status === 'archived'"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 8h16M6 8v10h12V8M10 12h4M9 4h6l1 2H8l1-2Z"></path></svg></span>Archive</button></div></article> }</div>
         <footer class="users-pagination" aria-label="Colleges pagination"><span>Showing {{ pageStart }}–{{ pageEnd }} of {{ total }}</span><div class="page-buttons"><app-manager-select panelDirection="up" ariaLabel="Records per page" class="page-size" [formControl]="pageSizeCtrl" [options]="pageSizeOptions"></app-manager-select><button type="button" (click)="goToPage(1)" [disabled]="page <= 1 || loading" aria-label="First page">«</button><button type="button" (click)="goToPage(page - 1)" [disabled]="page <= 1 || loading" aria-label="Previous page">‹</button><app-page-jump [page]="page" [totalPages]="totalPages" [disabled]="loading" label="Page number" (pageChange)="goToPage($event)"></app-page-jump><button type="button" (click)="goToPage(page + 1)" [disabled]="page >= totalPages || loading" aria-label="Next page">›</button><button type="button" (click)="goToPage(totalPages)" [disabled]="page >= totalPages || loading" aria-label="Last page">»</button></div></footer>
       }
     </section>
@@ -90,7 +100,7 @@
           <div class="card-actions right-actions"><button class="btn" type="button" (click)="contactMode = 'list'">Cancel</button><button class="btn primary" type="submit" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"></path></svg></span>{{ saving ? 'Saving…' : 'Save contact' }}</button></div>
         </form>
       } @else if (contactsLoading) { <div class="empty" aria-live="polite">Loading contacts…</div>
-      } @else if (!contacts.length) { <div class="empty">No contacts yet. Click “Add” to create one.</div>
+      } @else if (!contacts.length) { <app-manager-empty-state title="No contacts yet" description="Click “Add” to create a college contact."/>
       } @else {
         <div class="table-wrap"><table class="user-table" aria-label="College contacts"><thead><tr>
           <th scope="col" [attr.aria-sort]="contactSortAria('name')"><button class="sort-button" type="button" (click)="sortContactsBy('name')">Name <span class="sort-indicator" aria-hidden="true"></span></button></th>
@@ -115,7 +125,7 @@
           <div class="card-actions right-actions"><button class="btn" type="button" (click)="siteMode = 'list'">Cancel</button><button class="btn primary" type="submit" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"></path></svg></span>{{ saving ? 'Saving…' : 'Save site' }}</button></div>
         </form>
       } @else if (sitesLoading) { <div class="empty" aria-live="polite">Loading sites…</div>
-      } @else if (!sites.length) { <div class="empty">No sites yet. Add a site to show its details on the college.</div>
+      } @else if (!sites.length) { <app-manager-empty-state title="No sites yet" description="Add a site to show its details on the college."/>
       } @else {
         <div class="table-wrap"><table class="user-table college-sites-table" aria-label="College sites"><thead><tr>
           <th scope="col" [attr.aria-sort]="siteSortAria('city')"><button class="sort-button" type="button" (click)="sortSitesBy('city')">City <span class="sort-indicator" aria-hidden="true"></span></button></th>
@@ -145,7 +155,7 @@
         <app-manager-list-loader label="Loading CRICOS courses…" [overlay]="courses.length > 0" />
       }
       @if (!coursesLoading && !courses.length) {
-        <div class="empty list-empty" role="status"><strong>No courses found</strong><span>No CRICOS registrations match the current filters.</span></div>
+        <app-manager-empty-state title="No courses found" description="No CRICOS registrations match the current filters."/>
       } @else if (courses.length) {
         <div class="table-wrap"><table class="user-table college-courses-table" aria-label="CRICOS courses"><thead><tr>
           <th scope="col" [attr.aria-sort]="courseSortAria('name')"><button class="sort-button" type="button" (click)="sortCoursesBy('name')">Course <span class="sort-indicator" aria-hidden="true"></span></button></th>
