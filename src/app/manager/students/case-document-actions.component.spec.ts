@@ -87,8 +87,11 @@ describe('CaseDocumentActionsComponent',()=>{
     expect(c.uploadForm.controls.documentTypeId.value).toBe('type-1');expect(c.uploadForm.controls.documentTypeId.disabled).toBeTrue();
     expect((root.querySelector('[aria-label="Document type"]') as HTMLButtonElement).disabled).toBeTrue();
     const selectedFile=root.querySelector('.file-name') as HTMLInputElement;
+    const filePicker=root.querySelector('.file-picker') as HTMLElement;
+    const selectButton=root.querySelector('.file-button') as HTMLButtonElement;
     const replacementHint=root.querySelector('.replacement-hint') as HTMLElement;
     expect(input.hidden).toBeTrue();expect(input.multiple).toBeFalse();expect(selectedFile.readOnly).toBeTrue();expect(selectedFile.value).toBe('No files selected');
+    expect(filePicker.firstElementChild).toBe(selectedFile);expect(filePicker.lastElementChild).toBe(selectButton);
     expect(parseFloat(getComputedStyle(replacementHint).marginTop)).toBeGreaterThan(0);expect(parseFloat(getComputedStyle(replacementHint).marginBottom)).toBeGreaterThan(0);
     expect(api.documentTypes).not.toHaveBeenCalled();expect(api.replaceCaseDocument).not.toHaveBeenCalled();
     const file=new File(['%PDF-1.7\n%%EOF'],'replacement.pdf',{type:'application/pdf'});
