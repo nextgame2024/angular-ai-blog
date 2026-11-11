@@ -23,12 +23,15 @@ export class CollegeMatchingComponent implements OnChanges,OnDestroy {
   constructor(){this.pageSize.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(()=>this.load());this.status.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(()=>this.load());}
   readonly search=new FormControl('',{nonNullable:true});readonly college=new FormControl('',{nonNullable:true});
   data:XeroCollegeMatchResult|null=null;selected:XeroCollegeMatch|null=null;loading=false;busy=false;message='';tone:'success'|'error'='error';
-  get options(){return this.data?.colleges.map(c=>({value:c.collegeId,label:c.name}))??[];}
+  options:Array<{value:string;label:string}>=[];
   get pages(){return Math.max(1,Math.ceil((this.data?.total??0)/Number(this.pageSize.value)));}
-  ngOnChanges(){this.stop$.next();this.data=null;this.selected=null;this.college.enable({emitEvent:false});this.busy=this.loading=false;this.load();}
+  ngOnChanges(){this.stop$.next();this.data=null;this.options=[];this.selected=null;this.college.enable({emitEvent:false});this.busy=this.loading=false;this.load();}
   ngOnDestroy(){this.stop$.next();this.stop$.complete();this.destroyed$.next();this.destroyed$.complete();}
   load(page=1){if(!this.connectionId||this.busy)return;this.stop$.next();this.loading=true;
-    this.api.xeroCollegeMatches(this.connectionId,{page,limit:Number(this.pageSize.value),q:this.search.value,status:this.status.value,direction:this.direction}).pipe(takeUntil(this.stop$)).subscribe({next:data=>{this.data=data;this.loading=false;if(page>1&&!data.items.length)this.load(1);},error:()=>{this.loading=false;this.tone='error';this.message='College mappings could not be loaded. Try again.';}});}
+    this.api.xeroCollegeMatches(this.connectionId,{page,limit:Number(this.pageSize.value),q:this.search.value,status:this.status.value,direction:this.direction}).pipe(takeUntil(this.stop$)).subscribe({next:data=>{
+      this.data=data;this.options=data.colleges.map(c=>({value:c.collegeId,label:[...new Set([c.name,c.tradingName,c.acronym].filter((v):v is string=>!!v))].join(' — ')}));
+      this.loading=false;if(page>1&&!data.items.length)this.load(1);
+    },error:()=>{this.loading=false;this.tone='error';this.message='College mappings could not be loaded. Try again.';}});}
   sort(){this.direction=this.direction==='asc'?'desc':'asc';this.load();}
   review(row:XeroCollegeMatch){if(this.busy)return;this.selected=row;this.college.setValue(row.collegeId??'');}
   save(classification:'college'|'other'|'unresolved'){

@@ -26,6 +26,11 @@ describe('PTY college matching',()=>{
   it('sorts and paginates on the server',()=>{
     const c=fixture.componentInstance;c.sort();c.pageSize.setValue('50');expect(api.xeroCollegeMatches.calls.mostRecent().args).toEqual(['pty',{page:1,limit:50,q:'',status:'all',direction:'desc'}]);
   });
+  it('makes trading names and acronyms searchable while retaining the college identity',()=>{
+    api.xeroCollegeMatches.and.returnValue(of({...result,colleges:[{collegeId:'college',name:'Legal Education Holdings Pty Ltd',tradingName:'English Unlimited',acronym:'EU'}]}));
+    const c=fixture.componentInstance;c.load();const options=c.options;fixture.detectChanges();fixture.detectChanges();
+    expect(c.options).toBe(options);expect(c.options[0]).toEqual({value:'college',label:'Legal Education Holdings Pty Ltd — English Unlimited — EU'});
+  });
   for(const width of [390,1440])for(const dark of [false,true])it(`keeps contact review usable at ${width}px in ${dark?'dark':'light'} mode`,()=>{
     fixture.componentInstance.review(row);fixture.detectChanges();const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='1000px';document.body.appendChild(frame);
     try{const doc=frame.contentDocument!,win=frame.contentWindow!;document.querySelectorAll('style').forEach(s=>doc.head.appendChild(s.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';
