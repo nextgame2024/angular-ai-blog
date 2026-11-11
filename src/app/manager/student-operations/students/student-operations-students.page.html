@@ -157,7 +157,7 @@
                   <td data-label="Payment track">{{ invoice.paymentTrack || '—' }}</td>
                   <td data-label="Actions" class="invoice-actions">
                     <button type="button" class="btn small" (click)="openInvoiceDetail(invoice)">Details</button>
-                    @if (isPty) {<span class="reviewed-label">{{invoice.matchingStatus==='college'?'College linked':invoice.matchingStatus==='other'?'Other customer':'Review college below'}}</span>}
+                    @if (isPty) {@if(invoice.matchingStatus==='college'||invoice.matchingStatus==='other'){<span class="reviewed-label">{{invoice.matchingStatus==='college'?'College linked':'Other customer'}}</span>}@else{<a class="btn" routerLink="/manager/sync-colleges">Review college</a>}}
                     @else if ((!invoice.documentType || invoice.documentType === 'invoice') && invoice.reviewStatus === 'pending' && invoice.status !== 'voided' && invoice.status !== 'deleted') {
                       <button type="button" class="btn small secondary" (click)="reviewXeroInvoice(invoice)">Review student</button>
                     } @else if (invoice.reviewStatus === 'accepted') {
@@ -187,7 +187,6 @@
     </section>
   }
 
-  @if(viewMode==='list'&&isPty&&xeroConnection){<app-college-matching [connectionId]="xeroConnection.connectionId" (changed)="reloadCollegeMappings()" />}
   @if (viewMode === 'form') {
     @if (formError) { <div class="form-error" role="alert">{{ formError }}</div> }
     @if (loadingForm) {

@@ -149,6 +149,11 @@ export const MANAGER_ROUTES: Route[] = [
         data: { title: 'Case Details', fullscreen: true },
       },
       {
+        path: 'sync-colleges',
+        loadComponent: () => import('./student-operations/integrations/sync-colleges.page').then(m => m.SyncCollegesPageComponent),
+        data: { title: 'Sync colleges', fullscreen: true },
+      },
+      {
         path: 'sync-users',
         loadComponent: () => import('./sync-users/manager-sync-users.page').then(m => m.ManagerSyncUsersPageComponent),
         data: { title: 'Sync users', fullscreen: true },

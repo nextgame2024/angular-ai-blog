@@ -1,0 +1,10 @@
+<section class="sync-page">
+  <nav aria-label="Breadcrumb"><a routerLink="/manager/menu">Menu</a><span>/</span><span>Sync colleges</span></nav>
+  <header><div><h1>Sync colleges</h1><p>Link imported PTY contacts to college names and trading names. Each contact mapping applies to all its sales transactions.</p></div>
+    @if(options.length>1){<app-manager-select [formControl]="connection" [options]="options" placeholder="Select PTY organisation" ariaLabel="PTY organisation" />}
+  </header>
+  @if(error){<app-manager-toast [message]="error" tone="error" (closed)="error=''" /><button class="btn" type="button" (click)="load()">Retry</button>}
+  @if(loading){<app-manager-list-loader label="Loading college sync…" />}
+  @else if(connection.value){<app-college-matching [connectionId]="connection.value" />}
+  @else if(!error&&!options.length){<p>No PTY organisation is configured. Manage your Xero connections in <a routerLink="/manager/company">Company</a>.</p>}
+</section>

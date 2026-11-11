@@ -24,7 +24,18 @@ describe('PTY college matching',()=>{
     expect(fixture.componentInstance.data?.items).toEqual([]);
   });
   it('sorts and paginates on the server',()=>{
-    const c=fixture.componentInstance;c.sort();c.pageSize.setValue('50');expect(api.xeroCollegeMatches.calls.mostRecent().args).toEqual(['pty',{page:1,limit:50,q:'',status:'all',direction:'desc'}]);
+    const c=fixture.componentInstance;c.sort();c.pageSize.setValue('50');expect(api.xeroCollegeMatches.calls.mostRecent().args).toEqual(['pty',{page:1,limit:50,q:'',status:'unresolved',direction:'desc',scope:'sales',includeColleges:'false'}]);
+  });
+  it('defaults to pending active sales and reuses college options across pages',()=>{
+    expect(api.xeroCollegeMatches.calls.first().args[1]).toEqual(jasmine.objectContaining({status:'unresolved',scope:'sales',includeColleges:'true'}));
+    const c=fixture.componentInstance,options=c.options;api.xeroCollegeMatches.and.returnValue(of({...result,colleges:undefined}));c.load(2);
+    expect(c.options).toBe(options);expect(api.xeroCollegeMatches.calls.mostRecent().args[1].includeColleges).toBe('false');
+    c.scope.setValue('all');c.status.setValue('all');expect(api.xeroCollegeMatches.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({scope:'all',status:'all'}));
+  });
+  it('labels pending sales contacts independently of imported and archived totals',()=>{
+    api.xeroCollegeMatches.and.returnValue(of({...result,summary:{importedContacts:1678,activeContacts:1548,archivedContacts:130,pendingSalesContacts:496,salesContacts:569,salesTransactions:7342,linkedTransactions:4951}}));
+    fixture.componentInstance.load();fixture.detectChanges();const summary=fixture.nativeElement.querySelector('.summary').textContent;
+    expect(summary).toContain('496');expect(summary).toContain('1548');expect(summary).toContain('130');expect(summary).not.toContain('1678');
   });
   it('makes trading names and acronyms searchable while retaining the college identity',()=>{
     api.xeroCollegeMatches.and.returnValue(of({...result,colleges:[{collegeId:'college',name:'Legal Education Holdings Pty Ltd',tradingName:'English Unlimited',acronym:'EU'}]}));

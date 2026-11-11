@@ -1,5 +1,4 @@
 import { PageJumpComponent } from '../../../shared/components/page-jump/page-jump.component';
-import {CollegeMatchingComponent} from '../integrations/college-matching.component';
 import { ListNavigationStateService } from '../../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
 import {
@@ -33,7 +32,7 @@ import type {
 
 @Component({
   selector: 'app-student-operations-students-page',
-  imports: [CollegeMatchingComponent, PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
+  imports: [ PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
   templateUrl: './student-operations-students.page.html',
   styleUrls: ['./student-operations-students.page.css'],
 })
@@ -69,7 +68,6 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private readonly organisationStop$=new Subject<void>();
   get organisationOptions(){return this.xeroConnections.map(c=>({value:c.connectionId,label:`${c.organisationRole==='operating'?'PTY':'TRUST'} · ${c.tenantName}`}));}
   get isPty(){return this.xeroConnection?.organisationRole==='operating';}
-  reloadCollegeMappings(){this.loadXeroInvoices(this.xeroInvoices?.page??1);}
   switchOrganisation(id:string){
     const connection=this.xeroConnections.find(c=>c.connectionId===id);if(!connection||connection.connectionId===this.xeroConnection?.connectionId)return;
     if(this.xeroConnection)this.navigationState.save('payments-and-control:'+this.xeroConnection.connectionId,{

@@ -392,7 +392,7 @@ export interface XeroCollegeMatch {
   contactId:string;name:string;email:string|null;contactStatus:string|null;collegeId:string|null;collegeName:string|null;
   classification:'college'|'other'|'unresolved';revision:number;invoiceCount:number;
 }
-export interface XeroCollegeMatchResult {items:XeroCollegeMatch[];total:number;page:number;limit:number;colleges:Array<{collegeId:string;name:string;tradingName?:string|null;acronym?:string|null}>;}
+export interface XeroCollegeMatchResult {items:XeroCollegeMatch[];total:number;page:number;limit:number;colleges?:Array<{collegeId:string;name:string;tradingName?:string|null;acronym?:string|null}>;summary?:{importedContacts:number;activeContacts:number;archivedContacts:number;salesContacts:number;pendingSalesContacts:number;salesTransactions:number;linkedTransactions:number};}
 
 export interface XeroStudentInvoiceResult {
   invoices: XeroStudentInvoice[];

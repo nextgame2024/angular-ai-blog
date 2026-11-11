@@ -15,21 +15,24 @@ export class CollegeMatchingComponent implements OnChanges,OnDestroy {
   @Output() changed=new EventEmitter<void>();
   readonly pageSize=new FormControl('25',{nonNullable:true});
   readonly pageSizes=[{value:'25',label:'25 per page'},{value:'50',label:'50 per page'},{value:'100',label:'100 per page'}];
-  readonly status=new FormControl('all',{nonNullable:true});
-  readonly statuses=[{value:'all',label:'All contacts'},{value:'unresolved',label:'Unresolved'},{value:'college',label:'College linked'},{value:'other',label:'Other customer'}];
+  readonly status=new FormControl('unresolved',{nonNullable:true});
+  readonly statuses=[{value:'all',label:'All contacts'},{value:'unresolved',label:'Pending match'},{value:'college',label:'College linked'},{value:'other',label:'Other customer'}];
+  readonly scope=new FormControl('sales',{nonNullable:true});
+  readonly scopes=[{value:'sales',label:'Active contacts with sales'},{value:'active',label:'All active contacts'},{value:'all',label:'All imported contacts'}];
+  private collegesLoaded=false;
   direction:'asc'|'desc'='asc';
   private readonly api=inject(StudentOperationsService);private readonly stop$=new Subject<void>();
   private readonly destroyed$=new Subject<void>();
-  constructor(){this.pageSize.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(()=>this.load());this.status.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(()=>this.load());}
+  constructor(){this.scope.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(()=>this.load());this.pageSize.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(()=>this.load());this.status.valueChanges.pipe(takeUntil(this.destroyed$)).subscribe(()=>this.load());}
   readonly search=new FormControl('',{nonNullable:true});readonly college=new FormControl('',{nonNullable:true});
   data:XeroCollegeMatchResult|null=null;selected:XeroCollegeMatch|null=null;loading=false;busy=false;message='';tone:'success'|'error'='error';
   options:Array<{value:string;label:string}>=[];
   get pages(){return Math.max(1,Math.ceil((this.data?.total??0)/Number(this.pageSize.value)));}
-  ngOnChanges(){this.stop$.next();this.data=null;this.options=[];this.selected=null;this.college.enable({emitEvent:false});this.busy=this.loading=false;this.load();}
+  ngOnChanges(){this.stop$.next();this.data=null;this.options=[];this.collegesLoaded=false;this.selected=null;this.college.enable({emitEvent:false});this.busy=this.loading=false;this.load();}
   ngOnDestroy(){this.stop$.next();this.stop$.complete();this.destroyed$.next();this.destroyed$.complete();}
   load(page=1){if(!this.connectionId||this.busy)return;this.stop$.next();this.loading=true;
-    this.api.xeroCollegeMatches(this.connectionId,{page,limit:Number(this.pageSize.value),q:this.search.value,status:this.status.value,direction:this.direction}).pipe(takeUntil(this.stop$)).subscribe({next:data=>{
-      this.data=data;this.options=data.colleges.map(c=>({value:c.collegeId,label:[...new Set([c.name,c.tradingName,c.acronym].filter((v):v is string=>!!v))].join(' — ')}));
+    this.api.xeroCollegeMatches(this.connectionId,{page,limit:Number(this.pageSize.value),q:this.search.value,status:this.status.value,direction:this.direction,scope:this.scope.value,includeColleges:this.collegesLoaded?'false':'true'}).pipe(takeUntil(this.stop$)).subscribe({next:data=>{
+      this.data=data;if(data.colleges){this.collegesLoaded=true;this.options=data.colleges.map(c=>({value:c.collegeId,label:[...new Set([c.name,c.tradingName,c.acronym].filter((v):v is string=>!!v))].join(' — ')}));}
       this.loading=false;if(page>1&&!data.items.length)this.load(1);
     },error:()=>{this.loading=false;this.tone='error';this.message='College mappings could not be loaded. Try again.';}});}
   sort(){this.direction=this.direction==='asc'?'desc':'asc';this.load();}

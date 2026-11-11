@@ -169,6 +169,7 @@ export class ManagerPageComponent implements OnDestroy {
     },
     { label: 'Students', route: '/manager/students', icon: 'students' },
     { label: 'Sync users', route: '/manager/sync-users', icon: 'sync-users' },
+    { label: 'Sync colleges', route: '/manager/sync-colleges', icon: 'sync-users' },
     { label: 'Sites', route: '/manager/sites', icon: 'sites' },
     { label: 'Pallets', route: '/manager/pallets', icon: 'pallets' },
     { label: 'Projects', route: '/manager/projects', icon: 'projects' },
