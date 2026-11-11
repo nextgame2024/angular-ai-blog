@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component,ElementRef,EventEmitter,Input,OnChanges,OnDestroy,Output,ViewChild,inject } from '@angular/core';
 import { FormArray,FormControl,FormGroup,ReactiveFormsModule,Validators } from '@angular/forms';
-import { Subject,takeUntil } from 'rxjs';
+import { Subject,takeUntil,switchMap,of } from 'rxjs';
+import type {CommissionOptions,CommissionDraft,InvoiceExportResult} from '../student-operations/student-commission.types';
 import { ManagerSelectComponent } from '../components/shared/manager-select/manager-select.component';
 import { ManagerToastComponent } from '../components/shared/manager-toast/manager-toast.component';
 import { ManagerListLoaderComponent } from '../components/shared/manager-list-loader/manager-list-loader.component';
@@ -30,7 +31,10 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   @ViewChild('modal',{static:true}) modal!:ElementRef<HTMLDialogElement>;
   private readonly api=inject(StudentOperationsService);private readonly scope$=new Subject<void>();
   private readonly previewStop$=new Subject<void>();
-  data:CaseInvoiceDraftData|null=null;loading=false;busy=false;busyLabel='';failed=false;message='';tone:'success'|'error'='error';
+  data:CaseInvoiceDraftData|null=null;loading=false;busyLabel='';failed=false;message='';tone:'success'|'error'='error';
+  private busyValue=false;
+  get busy(){return this.busyValue;}
+  set busy(value:boolean){this.busyValue=value;for(const control of [this.manualCollege,this.ptyItem,this.includePty]){if(control){if(value)control.disable({emitEvent:false});else control.enable({emitEvent:false});}}}
   detail:StudentCaseInvoiceDetail|null=null;
   readonlyMode=false;detailLoading=false;detailFailed=false;
   manualMode=false;
@@ -45,6 +49,40 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   private readonly detailStop$=new Subject<void>();
   private detailTarget:{connectionId:string;invoiceId:string}|null=null;
   activePayment=0;
+  ptySide=false;ptyLoading=false;ptyOptions:CommissionOptions|null=null;ptyDrafts:CommissionDraft[]=[];
+  readonly includePty=new FormControl(false,{nonNullable:true});
+  readonly ptyItem=new FormControl('',{nonNullable:true});
+  private readonly ptyStop$=new Subject<void>();
+  private retainingPaired=false;
+  get ptyItemOptions(){return this.ptyOptions?.items?.map(i=>({value:i.itemId,label:`${i.code} — ${i.name}`}))??[];}
+  get ptyReceipt(){return this.ptyDrafts.find(d=>d.sequence===this.activeInvoice?.controls.sequence.value);}
+  get ptyPending(){return this.ptyOptions?.available&&this.form.controls.invoices.controls.some(i=>!['created','creating','review_required'].includes(this.ptyDrafts.find(d=>d.sequence===i.controls.sequence.value)?.status??''));}
+  get ptyCalculation(){
+    if(this.ptyReceipt?.status&&this.ptyReceipt.status!=='not_attempted')return this.ptyReceipt.snapshot.calculation;
+    const rate=this.ptyOptions?.rule?.commission_basis_points??0;
+    const base=this.activeInvoice?.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition').reduce((n,l)=>n+this.lineAmount(l),0)??0;
+    return {tuitionMinor:base,basisPoints:rate,commissionMinor:Number((BigInt(base)*BigInt(rate)+5000n)/10000n)};
+  }
+  get ptyTax(){const rate=this.ptyOptions?.tax?.rate;return this.ptyReceipt?.status&&this.ptyReceipt.status!=='not_attempted'?this.ptyReceipt.snapshot.taxMinor:rate&&decimal4.test(rate)?Number((BigInt(this.ptyCalculation.commissionMinor)*scaled(rate)+500000n)/1000000n):0;}
+  selectPayment(index:number,pty=false){this.activePayment=index;this.ptySide=pty;}
+  private loadPty(){
+    this.ptyStop$.next();this.ptyOptions=null;this.ptyDrafts=[];this.includePty.setValue(false);this.ptyItem.setValue('');this.ptySide=false;
+    const collegeId=this.manualCollege.value;if(!collegeId||this.editTarget||this.manualMode&&this.referenceMode.value!=='college')return;
+    this.ptyLoading=true;
+    this.api.commissionOptions(this.caseId,collegeId).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$),takeUntil(this.ptyStop$)).subscribe({next:o=>{
+      this.ptyLoading=false;this.ptyOptions=o;
+      if(o.available&&this.draftIdentity)this.loadPtyDrafts();
+    },error:()=>{this.ptyLoading=false;this.ptyOptions={available:true,issue:'PTY settings could not be loaded. Close and reopen the preview to retry.'};}});
+  }
+  private loadPtyDrafts(){const id=this.draftIdentity?.batchId;if(!id)return;
+    this.api.commissionDrafts(this.caseId,id).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$),takeUntil(this.ptyStop$)).subscribe({next:r=>{
+      this.ptyDrafts=r.items;const codes=[...new Set(r.items.map(i=>i.snapshot.value.lines[0]?.itemCode).filter(Boolean))];
+      if(codes.length===1&&!this.ptyItem.value)this.ptyItem.setValue(this.ptyOptions?.items?.find(i=>i.code===codes[0])?.itemId??'');
+    },error:()=>{this.message='The saved PTY invoices could not be loaded. Reopen the preview before creating commissions.';this.tone='error';this.ptyOptions={available:true,issue:this.message};}});
+  }
+  reconcilePty(){const id=this.draftIdentity?.batchId;if(!id||this.busy||!this.activeInvoice)return;this.busy=true;this.busyLabel='Checking PTY invoice status…';
+    this.api.reconcileCommission(this.caseId,id,this.activeInvoice.controls.sequence.value).pipe(takeUntil(this.scope$)).subscribe({next:r=>{this.busy=false;this.message=r.results[0]?.message??'PTY invoice status checked.';this.tone=r.results.some(i=>i.status==='review_required')?'error':'success';this.loadPtyDrafts();this.changed.emit();},error:e=>{this.busy=false;this.message=e?.error?.message??'PTY could not be checked. Try again shortly.';this.tone='error';}});
+  }
   conflict=false;
   private request:{fingerprint:string;key:string}|null=null;
   private draftIdentity:{batchId:string;revision:number}|null=null;
@@ -52,6 +90,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   private sessionExports:CaseInvoiceDraftData['batches'][number]['exports']={};
   readonly form=new FormGroup({advisorId:text(),reviewNote:text('',false),confirmed:new FormControl(false,{nonNullable:true}),invoices:new FormArray<ReturnType<typeof paymentForm>>([])});
   readonly feeOptions=[{value:'yes',label:'Apply fee'},{value:'no',label:'Do not apply'}];
+  readonly feeKindOptions=[{value:'tuition',label:'Tuition — commission base'},{value:'enrolment',label:'Enrolment'},{value:'materials',label:'Materials'},{value:'visa',label:'Visa'},{value:'oshc',label:'OSHC'},{value:'other',label:'Other fee'}];
   get preparation(){return this.preview??this.data?.preparation??null;}
   get advisors(){return this.preparation?.advisors.map(a=>({value:a.advisorId,label:`${a.code} ${a.name}`}))??[];}
   get canPrepare(){return Boolean(this.data?.preparation);}
@@ -59,7 +98,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   get activeInvoice(){return this.form.controls.invoices.at(this.activePayment);}
   get activeInvoiceNumber():number|string{return this.activeInvoice?.getRawValue().sequence??'—';}
   get activeNeedsReview(){return Boolean(this.activeInvoice&&this.isReviewSequence(this.activeInvoice.controls.sequence.value));}
-  get hasCreatableInvoices(){return this.form.controls.invoices.controls.some(payment=>!this.isFrozenSequence(payment.controls.sequence.value));}
+  get hasCreatableInvoices(){return this.form.controls.invoices.controls.some(payment=>!this.isFrozenSequence(payment.controls.sequence.value))||Boolean(this.includePty.value&&this.ptyPending);}
   get advisorLabel(){return this.advisors.find(a=>a.value===this.form.controls.advisorId.value)?.label??'Select an advisor';}
   private receipt(sequence:number){return this.sessionExports[String(sequence)]??this.preparation?.savedBatch?.exports[String(sequence)];}
   isCreatedSequence(sequence:number){return this.receipt(sequence)?.status==='created';}
@@ -80,6 +119,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   private enableEditor(){
     this.form.enable({emitEvent:false});
     for(const payment of this.form.controls.invoices.controls)if(this.isFrozenSequence(payment.controls.sequence.value))payment.disable({emitEvent:false});
+    if(this.form.controls.invoices.length&&this.form.controls.invoices.controls.every(i=>this.isFrozenSequence(i.controls.sequence.value)))this.manualCollege.disable({emitEvent:false});
     if(Object.values(this.sessionExports).some(receipt=>receipt.status!=='not_attempted'))this.form.controls.advisorId.disable({emitEvent:false});
   }
   private courseDescription(){
@@ -174,6 +214,8 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     this.manualMode=false;
     const p=this.data?.preparation;if(!p||this.busy||this.disabled||this.loading)return;this.preview=structuredClone(p);this.readonlyMode=false;this.detail=null;this.activePayment=0;this.conflict=false;this.request=null;this.message='';
     const saved=p.savedBatch;
+    this.collegeOptions=(p.colleges??[]).map(college=>({value:college.collegeId,label:college.name}));
+    this.manualCollege.reset(saved?.snapshot.collegeId??p.colleges?.find(college=>college.isPrimary)?.collegeId??'');
     this.sessionExports=structuredClone(saved?.exports??{});
     this.draftIdentity=saved?{batchId:saved.batchId,revision:saved.revision}:null;
     this.previewStop$.next();this.form.reset({advisorId:saved?.advisorId??p.student.advisorId??'',reviewNote:saved?.snapshot.reviewNote??'',confirmed:false});this.form.controls.invoices.clear();
@@ -208,16 +250,19 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const firstUnresolved=this.form.controls.invoices.controls.findIndex(payment=>!this.isCreatedSequence(payment.controls.sequence.value));
     this.activePayment=Math.max(0,firstEditable>=0?firstEditable:firstUnresolved);
     this.enableEditor();
+    this.loadPty();
+    this.manualCollege.valueChanges.pipe(takeUntil(this.previewStop$),takeUntil(this.scope$)).subscribe(()=>this.loadPty());
     this.modal.nativeElement.showModal();
   }
   openManual(){
     if(this.busy||this.disabled||!this.caseId||!this.data?.canCreateXero)return;
     this.resetManual();
-    this.api.manualCaseInvoiceOptions(this.caseId).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$)).subscribe({next:options=>this.populateManual(options),error:()=>{this.busy=false;this.message='The invoice form could not be loaded. Close it and try again.';this.tone='error';}});
+    this.api.manualCaseInvoiceOptions(this.caseId).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$)).subscribe({next:options=>{this.populateManual(options);this.bindManualPty();},error:()=>{this.busy=false;this.message='The invoice form could not be loaded. Close it and try again.';this.tone='error';}});
   }
   private resetManual(){
     this.editTarget=null;
     this.previewStop$.next();this.detailStop$.next();this.manualMode=true;this.readonlyMode=false;this.detail=null;
+    this.ptyStop$.next();this.ptyOptions=null;this.ptyDrafts=[];this.includePty.setValue(false);this.ptySide=false;
     this.activePayment=0;this.conflict=false;this.request=null;this.draftIdentity=null;this.preview=null;this.sessionExports={};this.message='';
     this.form.enable({emitEvent:false});this.form.reset({advisorId:'',reviewNote:'',confirmed:false});this.form.controls.invoices.clear();
     this.manualReference.reset('');this.manualCurrency.reset('AUD');this.referenceMode.reset('reference');this.manualCollege.reset('');this.manualBrandingTheme.reset('');this.collegeOptions=[];this.brandingOptions=[];
@@ -235,6 +280,24 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       this.busy=false;
       const payment=paymentForm(1,today,today,0,[]);payment.controls.feeApplies.setValue('no');
       this.form.controls.invoices.push(payment);this.addLine(payment,'other','',0);
+  }
+  private bindManualPty(){
+    this.loadPty();
+    this.manualCollege.valueChanges.pipe(takeUntil(this.previewStop$),takeUntil(this.scope$)).subscribe(()=>this.loadPty());
+    this.referenceMode.valueChanges.pipe(takeUntil(this.previewStop$),takeUntil(this.scope$)).subscribe(()=>this.loadPty());
+  }
+  resumeManualCommission(batch:CaseInvoiceDraftData['batches'][number]){
+    if(this.busy||this.disabled||batch.offerId)return;this.resetManual();
+    this.api.manualCaseInvoiceOptions(this.caseId).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$)).subscribe({next:options=>{
+      this.populateManual(options);const stored=batch.snapshot.invoices[0],payment=this.activeInvoice;
+      this.sessionExports=structuredClone(batch.exports);this.draftIdentity={batchId:batch.batchId,revision:batch.revision};
+      this.preview!.savedBatch={batchId:batch.batchId,revision:batch.revision,advisorId:batch.advisorId,snapshot:batch.snapshot,exports:batch.exports};
+      this.form.patchValue({advisorId:batch.advisorId,reviewNote:batch.snapshot.reviewNote});
+      this.manualCurrency.setValue(batch.snapshot.currency);this.referenceMode.setValue('college');this.manualCollege.setValue(batch.snapshot.collegeId??'',{emitEvent:false});
+      payment.patchValue({sequence:stored.sequence,issueDate:stored.issueDate,dueDate:stored.dueDate,feeApplies:stored.conditionalFeeApplies?'yes':'no',fee:(stored.conditionalFeeMinor/100).toFixed(2)});payment.controls.lines.clear();
+      for(const source of stored.lines){this.addLine(payment,source.kind,source.description,source.amountMinor);payment.controls.lines.at(payment.controls.lines.length-1).patchValue({itemId:source.itemId??'',itemCode:source.itemCode,quantity:source.quantity,price:source.unitPrice??(source.unitAmountMinor/100).toFixed(2),accountCode:source.accountCode,taxType:source.taxType},{emitEvent:false});}
+      this.bindManualPty();this.ptySide=true;this.enableEditor();
+    },error:()=>{this.busy=false;this.message='The saved manual invoice could not be reopened.';this.tone='error';}});
   }
   openEdit(connectionId:string,invoiceId:string){
     if(this.busy||this.disabled||!this.caseId)return;
@@ -308,7 +371,12 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   }
   private persist(action:'save'|'current'|'all'){
     const p=this.preview;if(!p||this.busy||this.disabled||this.detail||this.conflict)return;
-    if(action==='current'&&this.activeNeedsReview){this.message='This invoice needs review and cannot be sent again until its Xero outcome is reconciled.';this.tone='error';return;}
+    if(this.ptySide&&action==='current'&&!this.isCreatedSequence(this.activeInvoice.controls.sequence.value)){this.message='Create the corresponding TRUST invoice first.';this.tone='error';return;}
+    const wantsPty=!this.editTarget&&(this.includePty.value||this.ptySide&&action==='current');
+    if(wantsPty&&(this.ptyLoading||this.ptyOptions?.issue||!this.ptyItem.value)){
+      this.ptyItem.markAsTouched();this.message=this.ptyOptions?.issue??'Select a PTY sales item before preparing commissions.';this.tone='error';return;
+    }
+    if(action==='current'&&!this.ptySide&&this.activeNeedsReview){this.message='This invoice needs review and cannot be sent again until its Xero outcome is reconciled.';this.tone='error';return;}
     if(action==='all'&&!this.hasCreatableInvoices){this.message='No pending invoice is available to create. Review the unresolved Xero outcome first.';this.tone='error';return;}
     if(!p.catalogue){this.message='The Xero item catalogue is not ready. Wait for background import, then close and reload items.';this.tone='error';return;}
     for(const payment of this.form.controls.invoices.controls){
@@ -329,7 +397,10 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const invalidPayment=this.form.controls.invoices.controls.findIndex(i=>i.invalid||this.hasUnresolvedItems(i)||i.controls.lines.controls.some(l=>Number(l.controls.quantity.value)<=0||this.lineAmount(l)>1_000_000_000));
     const confirmationMissing=action!=='save'&&!this.form.controls.confirmed.value;
     this.manualReference.markAsTouched();this.manualCurrency.markAsTouched();this.manualCollege.markAsTouched();this.manualBrandingTheme.markAsTouched();
-    if(this.manualMode){
+    if(!this.manualMode&&!this.collegeOptions.some(college=>college.value===this.manualCollege.value)){
+      this.message='Select an available college.';this.tone='error';return;
+    }
+    if(this.manualMode&&!this.form.controls.invoices.controls.every(i=>this.isFrozenSequence(i.controls.sequence.value))){
       const referenceMissing=this.referenceMode.value==='reference'?!this.editTarget&&!this.manualReference.value.trim():!this.collegeOptions.some(c=>c.value===this.manualCollege.value);
       if(referenceMissing||this.manualCurrency.invalid||!this.editTarget&&this.manualBrandingTheme.invalid){
         this.message=referenceMissing?(this.referenceMode.value==='college'?'Select a college.':'Enter an invoice reference.'):this.manualCurrency.invalid?'Enter a valid currency.':'Select a branding theme.';this.tone='error';return;
@@ -372,11 +443,27 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
         quantity:line.quantity,unitPrice:line.price,amountMinor:this.lineAmount(l),accountCode:line.accountCode,taxType:line.taxType};})};});
     const common={caseVersion:p.caseVersion,advisorId:v.advisorId,...(this.draftIdentity?{draftBatchId:this.draftIdentity.batchId,draftRevision:this.draftIdentity.revision}:{}),catalogueConnectionId:p.catalogue.connectionId,catalogueRevision:p.catalogue.revision,reviewNote:v.reviewNote,invoices};
     const value=this.manualMode?{...common,referenceMode:this.referenceMode.value,reference:this.manualReference.value,
-      ...(this.referenceMode.value==='college'?{collegeId:this.manualCollege.value}:{}),brandingThemeId:this.manualBrandingTheme.value,currency:this.manualCurrency.value}:{...common,offerId:p.offerId,offerVersion:p.offerVersion};
+      ...(this.referenceMode.value==='college'?{collegeId:this.manualCollege.value}:{}),brandingThemeId:this.manualBrandingTheme.value,currency:this.manualCurrency.value}:{...common,offerId:p.offerId,offerVersion:p.offerVersion,collegeId:this.manualCollege.value};
     const fingerprint=JSON.stringify(value);if(this.request?.fingerprint!==fingerprint)this.request={fingerprint,key:crypto.randomUUID()};
     this.busy=true;this.busyLabel=action==='save'?'Saving invoice drafts…':action==='current'?'Creating Xero invoice…':'Creating Xero invoices…';this.form.disable({emitEvent:false});this.message='';
-    (this.manualMode?this.api.prepareManualCaseInvoice(this.caseId,value,this.request!.key):this.api.prepareCaseInvoiceDrafts(this.caseId,value,this.request!.key)).pipe(takeUntil(this.scope$)).subscribe({next:result=>{
+    const allTrustFrozen=!!this.draftIdentity&&invoices.every(i=>this.isFrozenSequence(i.sequence));
+    const saveRequest=allTrustFrozen&&wantsPty?of({...this.draftIdentity!,count:invoices.length}):this.manualMode?this.api.prepareManualCaseInvoice(this.caseId,value,this.request!.key):this.api.prepareCaseInvoiceDrafts(this.caseId,value,this.request!.key);
+    saveRequest.pipe(takeUntil(this.scope$)).subscribe({next:result=>{
       this.draftIdentity={batchId:result.batchId,revision:result.revision};
+      if(wantsPty){
+        const pending=invoices.filter(i=>{const status=this.ptyDrafts.find(d=>d.sequence===i.sequence)?.status;return !status||status==='not_attempted';});
+        const targets=action==='current'?pending.filter(i=>i.sequence===invoices[this.activePayment].sequence):pending;
+        if(!targets.length){this.busy=false;this.message='The selected PTY invoices are already created or awaiting Xero review.';this.tone='error';this.enableEditor();return;}
+        this.api.prepareCommissions(this.caseId,result.batchId,result.revision,targets.map(i=>({sequence:i.sequence,itemId:this.ptyItem.value}))).pipe(
+          switchMap(()=>action==='save'?of(null):this.api.createPairedInvoices(this.caseId,result.batchId,
+            this.ptySide&&action==='current'?[]:action==='all'?invoices.filter(i=>!this.isFrozenSequence(i.sequence)).map(i=>i.sequence):[invoices[this.activePayment].sequence],targets.map(i=>i.sequence))),takeUntil(this.scope$)
+        ).subscribe({next:r=>{if(!r){this.busy=false;this.enableEditor();this.message='TRUST and PTY drafts saved.';this.tone='success';this.loadPtyDrafts();this.changed.emit();return;}
+          this.retainingPaired=true;this.exportComplete(r.trust);this.retainingPaired=false;
+          this.loadPtyDrafts();const problems=r.pty.results.filter(i=>!['created','already_created'].includes(i.status));
+          this.message=`${r.trust.created} TRUST and ${r.pty.created} PTY draft invoices created.${problems.length?' '+(problems[0].message??'Some PTY invoices need review.'):''}`;this.tone=problems.length?'error':'success';
+        },error:e=>{this.busy=false;this.enableEditor();this.message=e?.error?.message??'TRUST drafts were saved. Reopen the preview to check PTY before retrying.';this.tone='error';this.changed.emit();}});
+        return;
+      }
       if(action==='save'){this.busy=false;this.enableEditor();this.message=`${result.count} drafts saved. You can continue reviewing and editing them here.`;this.tone='success';this.changed.emit();if(this.showCreatedInvoices)this.load();return;}
       const sequences=action==='all'?invoices.filter(i=>!this.isFrozenSequence(i.sequence)).map(i=>i.sequence):[invoices[this.activePayment].sequence];
       this.api.createCaseXeroInvoices(this.caseId,result.batchId,sequences).pipe(takeUntil(this.scope$)).subscribe({next:r=>this.exportComplete(r),error:e=>{this.busy=false;this.enableEditor();
@@ -403,8 +490,9 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const nextEditable=this.form.controls.invoices.controls.findIndex(payment=>!this.isFrozenSequence(payment.controls.sequence.value));
     const nextReview=this.form.controls.invoices.controls.findIndex(payment=>this.isReviewSequence(payment.controls.sequence.value));
     const next=nextEditable>=0?nextEditable:nextReview;
-    if(next<0){this.modal.nativeElement.close();this.preview=null;this.sessionExports={};this.previewStop$.next();}
+    if(next<0&&!this.retainingPaired&&!this.ptyOptions?.available){this.modal.nativeElement.close();this.preview=null;this.sessionExports={};this.previewStop$.next();}
+    else if(next<0){this.ptySide=true;this.form.controls.confirmed.setValue(false);}
     else{this.activePayment=next;this.form.controls.confirmed.setValue(false);}
     this.changed.emit();if(this.showCreatedInvoices)this.load();}
-  ngOnDestroy(){this.scope$.next();this.scope$.complete();this.previewStop$.next();this.previewStop$.complete();this.detailStop$.next();this.detailStop$.complete();}
+  ngOnDestroy(){this.scope$.next();this.scope$.complete();this.previewStop$.next();this.previewStop$.complete();this.detailStop$.next();this.detailStop$.complete();this.ptyStop$.next();this.ptyStop$.complete();}
 }

@@ -217,9 +217,10 @@ export interface CaseInvoiceCatalogue {
   taxRates:Array<{taxType:string;name:string;rate:string|null}>;
 }
 export interface CaseInvoiceDraftData {
-  batches:Array<{batchId:string;offerId:string;advisorId:string;revision:number;currentOffer:boolean;createdAt:string;updatedAt?:string;exports:Record<string,{status:'not_attempted'|'creating'|'created'|'review_required';invoiceId:string|null;invoiceNumber:string|null}>;snapshot:{studentName:string;advisorLabel:string;category:string|null;location:string|null;billingUnit:string|null;currency:string;collegeName:string;reviewNote:string;invoices:CaseInvoiceDraft[]}}>;
+  batches:Array<{batchId:string;offerId:string;advisorId:string;revision:number;currentOffer:boolean;createdAt:string;updatedAt?:string;exports:Record<string,{status:'not_attempted'|'creating'|'created'|'review_required';invoiceId:string|null;invoiceNumber:string|null}>;snapshot:{studentName:string;advisorLabel:string;category:string|null;location:string|null;billingUnit:string|null;currency:string;collegeId?:string;collegeName:string;reviewNote:string;invoices:CaseInvoiceDraft[]}}>;
   canCreateXero?:boolean;
   preparation:null|{offerId:string;offerVersion:number;caseVersion:number;source:StudentOfferExtraction;
+    colleges?:Array<{collegeId:string;name:string;isPrimary?:boolean}>;
     advisors:Array<{advisorId:string;code:string;name:string}>;student:{name:string;advisorId:string|null};today:string;catalogue?:CaseInvoiceCatalogue|null;
     savedBatch:null|{batchId:string;revision:number;advisorId:string;snapshot:CaseInvoiceDraftData['batches'][number]['snapshot'];exports:CaseInvoiceDraftData['batches'][number]['exports']}};
 }
@@ -339,6 +340,10 @@ export type XeroStudentInvoiceSort = 'invoiceNumber' | 'reference' | 'student' |
   | 'dueDate' | 'paid' | 'due' | 'status' | 'sent' | 'advisor' | 'paymentTrack';
 
 export interface XeroStudentInvoice {
+  organisationRole?:'trust'|'operating';
+  contactName?:string;
+  collegeId?:string|null;
+  matchingStatus?:string|null;
   xeroInvoiceId: string;
   xeroContactId: string;
   documentType?: 'invoice' | 'credit_note' | 'prepayment' | 'overpayment';
@@ -379,7 +384,15 @@ export interface XeroStudentInvoiceLineItem {
 
 export interface XeroStudentInvoiceDetail extends XeroStudentInvoice {
   lineItems: XeroStudentInvoiceLineItem[];
+  settlement?:{fullyPaidOnDate:string|null;entries:Array<{kind:string;id:string;date:string|null;amount:number}>}|null;
+  relatedInvoices?:Array<{caseId:string;sequence:number;role:'trust'|'operating';connectionId:string;invoiceId:string;invoiceNumber:string|null;status:string|null;date:string|null;dueDate:string|null;amountPaid:string|number|null;amountDue:string|number|null;indexed:boolean}>;
 }
+
+export interface XeroCollegeMatch {
+  contactId:string;name:string;email:string|null;contactStatus:string|null;collegeId:string|null;collegeName:string|null;
+  classification:'college'|'other'|'unresolved';revision:number;invoiceCount:number;
+}
+export interface XeroCollegeMatchResult {items:XeroCollegeMatch[];total:number;page:number;limit:number;colleges:Array<{collegeId:string;name:string}>;}
 
 export interface XeroStudentInvoiceResult {
   invoices: XeroStudentInvoice[];
@@ -400,6 +413,7 @@ export interface XeroStudentInvoiceResult {
 }
 
 export interface PaymentsRegisterBootstrap {
+  connections?:XeroConnectionSummary[];
   workspace: StudentOperationsWorkspace;
   connection: XeroConnectionSummary | null;
   invoices: XeroStudentInvoiceResult | null;

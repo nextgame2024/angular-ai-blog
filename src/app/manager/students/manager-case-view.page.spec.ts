@@ -22,7 +22,7 @@ describe('ManagerCaseViewPageComponent', () => {
     deleteCase:jasmine.createSpy().and.returnValue(of({caseId:'case-1',deleted:true})),
     archiveCase:jasmine.createSpy().and.returnValue(of({caseId:'case-1',recordVersion:2,archived:true})),
     caseInvoiceDetail:jasmine.createSpy().and.returnValue(of({invoiceId:'xero-1',invoiceNumber:'INV-10577',studentName:'Example Student',advisorName:'Advisor Name',reference:'Fixture College',status:'PAID',type:'ACCREC',date:'2026-10-27',dueDate:'2026-10-27',currency:'AUD',total:'100',amountPaid:'100',amountDue:'0',paymentTrack:'Paid out',lineItems:[]})),
-    caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batches:[],preparation:null})),
+    commissionOptions:jasmine.createSpy().and.returnValue(of({available:false,issue:null})),caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batches:[],preparation:null})),
     documentRequirements:jasmine.createSpy().and.returnValue(of({requirements:[]})),
     documentTypes:jasmine.createSpy().and.returnValue(of({types:[{documentTypeId:'passport-type',name:'Passport',required:true,status:'active',recordVersion:1}]})),
     caseDocumentUploadOptions:jasmine.createSpy().and.returnValue(of({available:true,enabled:true})),

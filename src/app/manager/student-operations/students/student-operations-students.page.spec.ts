@@ -89,6 +89,28 @@ describe('StudentOperationsStudentsPageComponent', () => {
 
   afterEach(() => { globalThis.IntersectionObserver = nativeIntersectionObserver; });
 
+  it('switches organisation without accepting late details from Trust or offering student review for PTY',()=>{
+    const c=fixture.componentInstance;
+    const trust={connectionId:'trust',tenantName:'Trust',organisationRole:'trust',missingStudentDiscoveryScopes:[]} as never;
+    const pty={connectionId:'pty',tenantName:'PTY',organisationRole:'operating',missingStudentDiscoveryScopes:[]} as never;
+    c.xeroConnection=trust;c.xeroConnections=[trust,pty];
+    const late=new Subject<never>();api.xeroStudentInvoice.and.returnValue(late);
+    c.openInvoiceDetail({xeroInvoiceId:'trust-invoice'} as never);c.switchOrganisation('pty');late.next({studentName:'Old Trust response'} as never);
+    expect(c.selectedXeroInvoice).toBeNull();expect(c.isPty).toBeTrue();
+    expect(api.xeroStudentInvoices.calls.mostRecent().args[0]).toBe('pty');
+    c.reviewXeroInvoice({xeroContactId:'college'} as never);expect(c.viewMode).toBe('list');
+  });
+
+  it('restores filters separately when switching back to each organisation',()=>{
+    const c=fixture.componentInstance,trust={connectionId:'trust-filters',tenantName:'Trust',organisationRole:'trust',missingStudentDiscoveryScopes:[]} as never,pty={connectionId:'pty-filters',tenantName:'PTY',organisationRole:'operating',missingStudentDiscoveryScopes:[]} as never;
+    c.xeroConnection=trust;c.xeroConnections=[trust,pty];c.search.setValue('Trust Student',{emitEvent:false});c.invoiceStatus.setValue('PAID',{emitEvent:false});c.switchOrganisation('pty-filters');
+    expect(c.search.value).toBe('');c.search.setValue('PTY College',{emitEvent:false});c.switchOrganisation('trust-filters');expect(c.search.value).toBe('Trust Student');expect(c.invoiceStatus.value).toBe('PAID');c.switchOrganisation('pty-filters');expect(c.search.value).toBe('PTY College');
+  });
+  it('opens the related invoice using its explicit organisation',()=>{
+    const c=fixture.componentInstance,trust={connectionId:'trust',tenantName:'Trust',organisationRole:'trust',missingStudentDiscoveryScopes:[]} as never,pty={connectionId:'pty',tenantName:'PTY',organisationRole:'operating',missingStudentDiscoveryScopes:[]} as never;
+    c.xeroConnection=trust;c.xeroConnections=[trust,pty];api.xeroStudentInvoice.and.returnValue(of({invoiceNumber:'PTY-42',lineItems:[]}));
+    c.openRelatedInvoice({connectionId:'pty',invoiceId:'pty-invoice',indexed:true} as never);expect(c.xeroConnection).toBe(pty);expect(api.xeroStudentInvoice).toHaveBeenCalledWith('pty','pty-invoice');
+  });
   it('renders the production empty state with a create action for operations', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
@@ -96,6 +118,12 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(text).toContain('excludes restricted identity documents');
     expect(text).toContain('Create');
     expect(text).not.toContain('synthetic');
+  });
+
+  it('does not treat a sole unassigned organisation as Trust',()=>{
+    api.workspace.and.returnValue(of({role:'chief_executive'}));
+    api.xeroStatus.and.returnValue(of({configured:true,connections:[{connectionId:'unassigned',tenantName:'PTY',status:'active',organisationRole:null,missingStudentDiscoveryScopes:[]}]}));
+    fixture.detectChanges();expect(fixture.componentInstance.xeroConnection).toBeNull();expect(api.xeroStudentInvoices).not.toHaveBeenCalled();
   });
 
   it('renders the initial Trust register from one request without waiting for secondary metadata', () => {
@@ -404,7 +432,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
     api.xeroStatus.and.returnValue(of({
       configured: true,
       connections: [{
-        connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+        connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active', organisationRole: 'trust',
         missingStudentDiscoveryScopes: [],
       }],
     }));
@@ -459,7 +487,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
     }));
     api.xeroStatus.and.returnValue(of({
       configured: true,
-      connections: [{ connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+      connections: [{ connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active', organisationRole: 'trust',
         missingStudentDiscoveryScopes: [] }],
     }));
     fixture.detectChanges();
@@ -558,7 +586,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
     api.xeroStatus.and.returnValue(of({
       configured: true,
       connections: [{
-        connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active',
+        connectionId: 'connection-1', tenantName: 'Example TRUST', status: 'active', organisationRole: 'trust',
         missingStudentDiscoveryScopes: [],
       }],
     }));

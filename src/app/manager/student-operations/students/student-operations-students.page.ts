@@ -1,4 +1,5 @@
 import { PageJumpComponent } from '../../../shared/components/page-jump/page-jump.component';
+import {CollegeMatchingComponent} from '../integrations/college-matching.component';
 import { ListNavigationStateService } from '../../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
 import {
@@ -32,7 +33,7 @@ import type {
 
 @Component({
   selector: 'app-student-operations-students-page',
-  imports: [PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
+  imports: [CollegeMatchingComponent, PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
   templateUrl: './student-operations-students.page.html',
   styleUrls: ['./student-operations-students.page.css'],
 })
@@ -63,6 +64,29 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   @ViewChild('infiniteSentinel') infiniteSentinel?: ElementRef<HTMLElement>;
 
   readonly search = new FormControl('', { nonNullable: true });
+  readonly organisation = new FormControl('',{nonNullable:true});
+  xeroConnections:XeroConnectionSummary[]=[];
+  private readonly organisationStop$=new Subject<void>();
+  get organisationOptions(){return this.xeroConnections.map(c=>({value:c.connectionId,label:`${c.organisationRole==='operating'?'PTY':'TRUST'} · ${c.tenantName}`}));}
+  get isPty(){return this.xeroConnection?.organisationRole==='operating';}
+  reloadCollegeMappings(){this.loadXeroInvoices(this.xeroInvoices?.page??1);}
+  switchOrganisation(id:string){
+    const connection=this.xeroConnections.find(c=>c.connectionId===id);if(!connection||connection.connectionId===this.xeroConnection?.connectionId)return;
+    if(this.xeroConnection)this.navigationState.save('payments-and-control:'+this.xeroConnection.connectionId,{
+      search:this.search.value,status:this.invoiceStatus.value,track:this.paymentTrack.value,from:this.appliedInvoiceDateFrom,to:this.appliedInvoiceDateTo,limit:this.invoicePageSize.value,sort:this.invoiceSort,direction:this.invoiceSortDirection,
+    });
+    this.organisationStop$.next();this.stopXeroPolling();this.invoiceRequestSubscription?.unsubscribe();this.invoiceRequestVersion++;
+    this.requestVersion++;this.students=[];this.total=0;this.loadingInitial=this.loadingMore=false;
+    this.closeInvoiceDetail();this.xeroConnection=connection;this.xeroInvoices=null;this.xeroSync=null;
+    this.paymentTrackOptions=[{value:'',label:'All payment tracks'}];
+    this.checkingXeroStatus=this.loadingXero=this.loadingInvoices=false;this.xeroError=this.xeroNotice=this.xeroPause='';
+    this.search.reset('',{emitEvent:false});this.invoiceStatus.reset('',{emitEvent:false});this.paymentTrack.reset('',{emitEvent:false});
+    this.invoiceDateRange.reset(null,{emitEvent:false});this.appliedInvoiceDateFrom=this.appliedInvoiceDateTo='';
+    this.invoiceSort='date';this.invoiceSortDirection='desc';this.invoicePageSize.setValue('25',{emitEvent:false});
+    const saved=this.navigationState.read<{search:string;status:string;track:string;from:string;to:string;limit:string;sort:XeroStudentInvoiceSort;direction:'asc'|'desc'}>('payments-and-control:'+id);
+    if(saved){this.search.setValue(saved.search,{emitEvent:false});this.invoiceStatus.setValue(saved.status,{emitEvent:false});this.paymentTrack.setValue(saved.track,{emitEvent:false});this.invoicePageSize.setValue(saved.limit,{emitEvent:false});this.invoiceSort=saved.sort;this.invoiceSortDirection=saved.direction;this.appliedInvoiceDateFrom=saved.from;this.appliedInvoiceDateTo=saved.to;if(saved.from&&saved.to)this.invoiceDateRange.setValue([new Date(saved.from+'T00:00:00'),new Date(saved.to+'T00:00:00')],{emitEvent:false});}
+    this.loadXeroSyncStatus();this.loadPaymentTracks();this.loadXeroInvoices(1);
+  }
   readonly invoiceStatus = new FormControl('', { nonNullable: true });
   readonly invoiceDateRange = new FormControl<Date[] | null>(null);
   private appliedInvoiceDateFrom = '';
@@ -207,6 +231,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
       this.privacyToastCloseTimer = setTimeout(() => { this.privacyNoteVisible = false; }, 220);
     }, 4000);
     this.loadInitial();
+    this.organisation.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(id=>this.switchOrganisation(id));
     this.search.valueChanges.pipe(
       debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$),
     ).subscribe(() => {
@@ -227,7 +252,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   ngAfterViewInit(): void { queueMicrotask(() => this.setupInfiniteScroll()); }
 
   ngOnDestroy(): void {
-    this.navigationState.save('payments-and-control', {
+    this.navigationState.save(this.isPty?'payments-and-control:'+this.xeroConnection!.connectionId:'payments-and-control', {
       page: this.xeroInvoices?.page ?? this.restoredInvoicePage, limit: this.invoicePageSize.value,
       search: this.search.value, status: this.invoiceStatus.value, track: this.paymentTrack.value,
       from: this.appliedInvoiceDateFrom, to: this.appliedInvoiceDateTo,
@@ -263,11 +288,11 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     return xeroInvoiceStatusLabel(value);
   }
 
-  formatMoney(value: number | null, currencyCode: string | null): string {
+  formatMoney(value: number | string | null, currencyCode: string | null): string {
     if (value === null) return '—';
     return new Intl.NumberFormat('en-AU', {
       style: 'currency', currency: currencyCode || 'AUD', maximumFractionDigits: 2,
-    }).format(value);
+    }).format(Number(value));
   }
 
   formatDate(value: string | null): string {
@@ -303,7 +328,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.invoiceDetailError = '';
     this.selectedXeroInvoice = null;
     this.api.xeroStudentInvoice(this.xeroConnection.connectionId, invoice.xeroInvoiceId)
-      .pipe(takeUntil(this.destroy$)).subscribe({
+      .pipe(takeUntil(this.destroy$),takeUntil(this.organisationStop$)).subscribe({
         next: (detail) => {
           this.selectedXeroInvoice = detail;
           this.loadingInvoiceDetail = false;
@@ -320,6 +345,11 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.invoiceDetailError = '';
     this.loadingInvoiceDetail = false;
   }
+  openRelatedInvoice(related:NonNullable<XeroStudentInvoiceDetail['relatedInvoices']>[number]){
+    if(!related.indexed||!this.xeroConnections.some(c=>c.connectionId===related.connectionId))return;
+    if(this.xeroConnection?.connectionId!==related.connectionId){this.organisation.setValue(related.connectionId,{emitEvent:false});this.switchOrganisation(related.connectionId);}
+    this.openInvoiceDetail({xeroInvoiceId:related.invoiceId} as XeroStudentInvoice);
+  }
 
   refreshStudentsFromXero(): void {
     if (!this.isChiefExecutive || this.loadingXero || this.checkingXeroStatus || this.xeroNeedsReconnect || !this.xeroConnection) return;
@@ -334,12 +364,12 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.xeroPause = '';
     this.xeroNotice = '';
     this.api.refreshXeroStudents(this.xeroConnection.connectionId)
-      .pipe(takeUntil(this.destroy$)).subscribe({
+      .pipe(takeUntil(this.destroy$),takeUntil(this.organisationStop$)).subscribe({
         next: (run) => {
           this.loadingXero = false;
           this.xeroSync = {
             configured: true,
-            organisationRole: 'trust',
+            organisationRole: this.xeroConnection?.organisationRole??null,
             lastSuccessfulSyncAt: this.xeroSync?.lastSuccessfulSyncAt ?? null,
             lastFullSyncAt: this.xeroSync?.lastFullSyncAt ?? null,
             lastErrorCode: null,
@@ -365,7 +395,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
 
   reviewXeroInvoice(candidate: XeroStudentInvoice): void {
-    if (!this.canManage) return;
+    if (!this.canManage||this.isPty) return;
     this.openCreate();
     this.reviewingXeroContactId = candidate.xeroContactId;
     const fallbackReference = `XERO-${candidate.xeroContactId.replaceAll('-', '').slice(0, 12).toUpperCase()}`;
@@ -510,6 +540,8 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
           this.loadingInitial = false;
           if ('legacy' in context) { this.loadXeroContext(); return; }
           this.xeroConnection = context.connection;
+          this.xeroConnections=context.connections??(context.connection?[context.connection]:[]);
+          this.organisation.setValue(context.connection?.connectionId??'',{emitEvent:false});
           this.loadingXeroContext = false;
           if (!this.xeroConnection) {
             if (context.connectionIssue === 'ambiguous') this.xeroError = 'Choose the Trust organisation in Company before refreshing student data.';
@@ -589,8 +621,9 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.api.xeroStatus().pipe(takeUntil(this.destroy$)).subscribe({
       next: (status) => {
         const active = status.connections.filter((connection) => connection.status === 'active');
-        this.xeroConnection = active.find((connection) => connection.organisationRole === 'trust')
-          ?? (active.length === 1 ? active[0]! : null);
+        this.xeroConnections=active.filter(c=>c.organisationRole==='trust'||c.organisationRole==='operating');
+        this.xeroConnection = active.find((connection) => connection.organisationRole === 'trust')??null;
+        this.organisation.setValue(this.xeroConnection?.connectionId??'',{emitEvent:false});
         if (!this.xeroConnection && active.length > 1) {
           this.xeroError = 'Choose the Trust organisation in Company before refreshing student data.';
         }
@@ -615,7 +648,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.stopXeroPolling();
     this.checkingXeroStatus = true;
     this.api.xeroStudentSyncStatus(this.xeroConnection.connectionId)
-      .pipe(takeUntil(this.destroy$)).subscribe({
+      .pipe(takeUntil(this.destroy$),takeUntil(this.organisationStop$)).subscribe({
         next: (status) => {
           this.checkingXeroStatus = false;
           const wasActive = this.xeroRunActive;
@@ -665,7 +698,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
       if (document.hidden) { this.pollXeroSync(); return; }
       this.checkingXeroStatus = true;
       this.api.xeroStudentSyncStatus(this.xeroConnection.connectionId)
-        .pipe(takeUntil(this.destroy$)).subscribe({
+        .pipe(takeUntil(this.destroy$),takeUntil(this.organisationStop$)).subscribe({
           next: (status) => {
             this.checkingXeroStatus = false;
             this.xeroSync = status;
@@ -815,7 +848,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private loadPaymentTracks(): void {
     if (!this.xeroConnection) return;
     this.api.xeroStudentInvoicePaymentTracks(this.xeroConnection.connectionId)
-      .pipe(takeUntil(this.destroy$)).subscribe({
+      .pipe(takeUntil(this.destroy$),takeUntil(this.organisationStop$)).subscribe({
         next: ({ paymentTracks }) => {
           this.paymentTrackOptions = [
             { value: '', label: 'All payment tracks' },

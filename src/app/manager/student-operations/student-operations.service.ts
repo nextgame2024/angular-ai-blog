@@ -266,6 +266,21 @@ export class StudentOperationsService {
   prepareCaseInvoiceDrafts(caseId:string,value:unknown,key:string):Observable<{batchId:string;count:number;revision:number;updatedAt:string}>{
     return this.http.post<{batchId:string;count:number;revision:number;updatedAt:string}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts`,value,{headers:this.writeHeaders(key)});
   }
+  commissionOptions(caseId:string,collegeId:string){
+    return this.http.get<import('./student-commission.types').CommissionOptions>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/commission-options`,{headers:this.headers(),params:{collegeId}});
+  }
+  commissionDrafts(caseId:string,batchId:string){
+    return this.http.get<{items:import('./student-commission.types').CommissionDraft[]}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/commissions`,{headers:this.headers()});
+  }
+  prepareCommissions(caseId:string,batchId:string,batchRevision:number,selections:Array<{sequence:number;itemId:string}>){
+    return this.http.post<{prepared:number}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/commissions`,{batchRevision,selections},{headers:this.headers()});
+  }
+  createPairedInvoices(caseId:string,batchId:string,trustSequences:number[],ptySequences:number[]){
+    return this.http.post<{trust:import('./student-commission.types').InvoiceExportResult;pty:import('./student-commission.types').InvoiceExportResult}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/paired-xero`,{trustSequences,ptySequences,confirmed:true},{headers:this.headers()});
+  }
+  reconcileCommission(caseId:string,batchId:string,sequence:number){
+    return this.http.post<import('./student-commission.types').InvoiceExportResult>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/commissions/reconcile`,{sequence},{headers:this.headers()});
+  }
   createCaseXeroInvoices(caseId:string,batchId:string,sequences:number[]):Observable<{created:number;skipped:number;results:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null;errorCode?:string;message?:string}>}>{
     return this.http.post<{created:number;skipped:number;results:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null;errorCode?:string;message?:string}>}>(
       `${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/xero`,{sequences,confirmed:true},{headers:this.headers()});
@@ -451,6 +466,18 @@ export class StudentOperationsService {
       {},
       { headers: this.headers() },
     );
+  }
+
+  configureXeroOperating(connectionId:string){
+    return this.http.post<{connectionId:string;organisationRole:'operating'}>(`${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-role/operating`,{}, {headers:this.headers()});
+  }
+
+  xeroCollegeMatches(connectionId:string,query:{page:number;limit:number;q:string;status:string;direction?:string}){
+    return this.http.get<import('./student-operations.types').XeroCollegeMatchResult>(`${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/college-matching`,{headers:this.headers(),params:query});
+  }
+
+  resolveXeroCollege(connectionId:string,contactId:string,body:{classification:'college'|'other'|'unresolved';collegeId:string|null;expectedRevision:number}){
+    return this.http.post(`${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/college-matching/${encodeURIComponent(contactId)}`,body,{headers:this.headers()});
   }
 
   private accessToken(): string | null {

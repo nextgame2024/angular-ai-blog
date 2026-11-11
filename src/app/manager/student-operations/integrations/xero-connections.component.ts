@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject, takeUntil } from 'rxjs';
+import { Observable, Subject, takeUntil } from 'rxjs';
 import { StudentOperationsService } from '../student-operations.service';
 import type { XeroConnectionStatus, XeroConnectionTest } from '../student-operations.types';
 
@@ -118,19 +118,26 @@ export class XeroConnectionsComponent implements OnInit, OnDestroy {
   }
 
   useAsTrust(connectionId: string): void {
+    this.assignOrganisation(connectionId,'trust');
+  }
+
+  useAsOperating(connectionId:string):void {this.assignOrganisation(connectionId,'operating');}
+
+  private assignOrganisation(connectionId:string,role:'trust'|'operating'):void {
     if (this.assigningTrustConnectionId) return;
     this.assigningTrustConnectionId = connectionId;
     this.error = '';
     this.notice = '';
-    this.api.configureXeroTrust(connectionId).pipe(takeUntil(this.destroy$)).subscribe({
+    const request:Observable<{connectionId:string;organisationRole:string}>=role==='trust'?this.api.configureXeroTrust(connectionId):this.api.configureXeroOperating(connectionId);
+    request.pipe(takeUntil(this.destroy$)).subscribe({
       next: () => {
         this.assigningTrustConnectionId = null;
-        this.notice = 'The TRUST organisation is now the read-only student accounting source.';
+        this.notice = role==='trust'?'The TRUST organisation is now the student accounting source.':'The PTY organisation is now the college accounting source.';
         this.loadStatus();
       },
       error: () => {
         this.assigningTrustConnectionId = null;
-        this.error = 'The TRUST organisation could not be assigned. Try again.';
+        this.error = 'The organisation could not be assigned. Check that TRUST and PTY use separate organisations.';
       },
     });
   }

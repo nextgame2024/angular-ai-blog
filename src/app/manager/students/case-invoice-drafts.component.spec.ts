@@ -5,6 +5,7 @@ import { StudentOperationsService } from '../student-operations/student-operatio
 import type { CaseInvoiceDraftData } from '../student-operations/student-operations.types';
 
 const data:CaseInvoiceDraftData={batches:[],canCreateXero:true,preparation:{offerId:'offer',offerVersion:1,caseVersion:3,today:'2026-10-26',student:{name:'Fixture Student',advisorId:null},advisors:[{advisorId:'advisor',code:'S15',name:'Fixture Advisor'}],
+  colleges:[{collegeId:'case-college',name:'Australian College of Commerce & Information Technology Pty Ltd',isPrimary:true},{collegeId:'offer-college',name:'East Coast College Pty. Ltd',isPrimary:false}],
   catalogue:{connectionId:'connection',revision:1,lastSyncedAt:'2026-10-26T00:00:00Z',errorCode:null,items:[{itemId:'item',code:'ELICOS ON-SHORE',name:'English onshore',description:'Default course description',unitPrice:'100.0000',accountCode:'812',taxType:'BASEXCLUDED'}],accounts:[{code:'812',name:'Tuition fee',taxType:'BASEXCLUDED'}],taxRates:[{taxType:'BASEXCLUDED',name:'BAS Excluded',rate:'0'}]},
   savedBatch:null,
   source:{kind:'letter_of_offer',studentName:'Fixture Student',collegeName:'Fixture College',campusAddress:'16 Cook St, MORTDALE, NSW, 2223',abn:null,cricosProviderCode:null,currency:'AUD',statedTotalMinor:80000,evidence:[],issues:[],courses:[{name:'General English',code:'FIX',startsOn:'2027-01-25',endsOn:null,duration:'48 weeks'}],fees:[{label:'Total Tuition Fee',amountMinor:480000,conditional:false,condition:null}],
@@ -22,6 +23,11 @@ describe('CaseInvoiceDraftsComponent',()=>{
   let api:any;
   beforeEach(async()=>{
     api={caseInvoiceDrafts:jasmine.createSpy().and.returnValue(of(structuredClone(data))),prepareCaseInvoiceDrafts:jasmine.createSpy().and.returnValue(of({batchId:'batch',count:8,revision:1,updatedAt:'2026-10-26T00:00:00Z'})),createCaseXeroInvoices:jasmine.createSpy().and.callFake((_caseId:string,_batchId:string,sequences:number[])=>of({created:sequences.length,skipped:0,results:sequences.map(sequence=>({sequence,status:'created',invoiceId:`xero-${sequence}`,invoiceNumber:`XERO-${sequence}`}))})),reconcileCaseXeroInvoice:jasmine.createSpy().and.returnValue(of({created:1,skipped:0,results:[{sequence:1,status:'created',invoiceId:'xero-1',invoiceNumber:'INV-10577',message:'Confirmed against the exact invoice in Xero.'}]}))};
+    api.commissionOptions=jasmine.createSpy().and.returnValue(of({available:false,issue:null}));
+    api.commissionDrafts=jasmine.createSpy().and.returnValue(of({items:[]}));
+    api.prepareCommissions=jasmine.createSpy().and.returnValue(of({prepared:8}));
+    api.createPairedInvoices=jasmine.createSpy().and.returnValue(of({trust:{created:0,skipped:0,results:[]},pty:{created:0,skipped:0,results:[]}}));
+    api.reconcileCommission=jasmine.createSpy().and.returnValue(of({created:0,skipped:0,results:[]}));
     api.caseInvoiceDetail=jasmine.createSpy().and.returnValue(of({invoiceId:'xero-id',invoiceNumber:'XERO-1',studentName:'Fixture Student',advisorName:'Fixture Advisor',reference:'Fixture College',status:'PAID',type:'ACCREC',date:'2026-10-26',dueDate:'2026-10-26',currency:'AUD',total:'100',amountPaid:'100',amountDue:'0',paymentTrack:'Paid out',lineItems:[]}));
     api.manualCaseInvoiceOptions=jasmine.createSpy().and.returnValue(of({caseVersion:3,advisors:data.preparation!.advisors,student:data.preparation!.student,catalogue:data.preparation!.catalogue,
       colleges:[{collegeId:'college',name:'Fixture College'}],brandingThemes:[{brandingThemeId:'theme',name:'Fixture Theme'}]}));
@@ -31,6 +37,35 @@ describe('CaseInvoiceDraftsComponent',()=>{
     await TestBed.configureTestingModule({imports:[CaseInvoiceDraftsComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(){const f=TestBed.createComponent(CaseInvoiceDraftsComponent);f.componentRef.setInput('caseId','case');f.detectChanges();return f;}
+  it('preselects the case college, lists all colleges and saves the operator selection for offer invoices',()=>{
+    const fixture=structuredClone(data);fixture.preparation!.source.collegeName='East Coast College Pty. Ltd';
+    api.caseInvoiceDrafts.and.returnValue(of(fixture));
+    const f=setup(),c=f.componentInstance;c.open();f.detectChanges();
+    expect(c.manualCollege.value).toBe('case-college');expect(c.collegeOptions.length).toBe(2);
+    const select=f.nativeElement.querySelector('[aria-label="Reference / College"]') as HTMLButtonElement;
+    expect(select.textContent).toContain('Australian College of Commerce');expect(select.disabled).toBeFalse();
+    select.click();f.detectChanges();
+    const options=Array.from(f.nativeElement.querySelectorAll('.select-option')) as HTMLButtonElement[];
+    expect(options.map(option=>option.textContent)).toEqual(jasmine.arrayContaining([jasmine.stringMatching('Australian College'),jasmine.stringMatching('East Coast')]));
+    options.find(option=>option.textContent?.includes('East Coast'))!.click();
+    const pending=new Subject<any>();api.prepareCaseInvoiceDrafts.and.returnValue(pending);
+    complete(c);c.save();f.detectChanges();expect(select.disabled).toBeTrue();
+    expect(api.prepareCaseInvoiceDrafts.calls.mostRecent().args[1].collegeId).toBe('offer-college');
+    pending.next({batchId:'batch',count:8,revision:1});pending.complete();f.detectChanges();expect(select.disabled).toBeFalse();
+    expect(c.preparation!.source.collegeName).toBe('East Coast College Pty. Ltd');
+  });
+  it('retains an explicitly saved invoice college and corrects legacy drafts without a selection',()=>{
+    const fixture=savedData();fixture.preparation!.savedBatch!.snapshot.collegeId='offer-college';
+    api.caseInvoiceDrafts.and.returnValue(of(fixture));const c=setup().componentInstance;c.open();
+    expect(c.manualCollege.value).toBe('offer-college');c.close();
+    api.caseInvoiceDrafts.and.returnValue(of(savedData()));c.load();c.open();expect(c.manualCollege.value).toBe('case-college');
+  });
+  it('requires an available college when the case has none and never selects the first list entry',()=>{
+    const fixture=structuredClone(data);fixture.preparation!.colleges!.forEach(college=>college.isPrimary=false);
+    api.caseInvoiceDrafts.and.returnValue(of(fixture));const c=setup().componentInstance;c.open();complete(c);c.save();
+    expect(c.manualCollege.value).toBe('');expect(api.prepareCaseInvoiceDrafts).not.toHaveBeenCalled();expect(c.message).toContain('Select an available college');
+    c.manualCollege.setValue('unavailable');c.save();expect(api.prepareCaseInvoiceDrafts).not.toHaveBeenCalled();
+  });
   it('edits an existing invoice with its saved values and line identity, then returns to the refreshed list',()=>{
     const f=setup(),c=f.componentInstance;spyOn(c.changed,'emit');c.openEdit('connection','existing');f.detectChanges();
     expect(f.nativeElement.querySelector('dialog h2').textContent).toBe('Edit INV-42');
@@ -160,6 +195,40 @@ describe('CaseInvoiceDraftsComponent',()=>{
     c.form.patchValue({advisorId:'advisor',confirmed});
     for(const p of c.form.controls.invoices.controls){p.patchValue({dueDate:'2026-10-26',feeApplies:'no'});p.controls.lines.at(0).controls.itemId.setValue('item');}
   }
+  const ptyOptions={available:true,issue:null,collegeId:'case-college',collegeName:'Fixture College',rule:{rule_id:'rule',commission_basis_points:3000,application_conditions:null},items:[{itemId:'pty-item',code:'COMMISSION',name:'Commission',description:'',unitPrice:null,accountCode:'200',taxType:'OUTPUT'}],tax:{name:'GST on Income',taxType:'OUTPUT',rate:'10'}};
+  it('alternates TRUST and PTY tabs and reuses local settings while switching',()=>{
+    api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();f.detectChanges();
+    const labels=Array.from(f.nativeElement.querySelectorAll('.payment-tabs button') as NodeListOf<HTMLButtonElement>).map(b=>b.textContent!.trim());
+    expect(labels.slice(0,4)).toEqual(['INV-1 (TRUST)','INV-1 (PTY)','INV-2 (TRUST)','INV-2 (PTY)']);
+    c.selectPayment(1,true);f.detectChanges();c.selectPayment(0,true);f.detectChanges();expect(api.commissionOptions).toHaveBeenCalledTimes(1);
+    expect(c.ptyCalculation).toEqual({tuitionMinor:10000,basisPoints:3000,commissionMinor:3000});expect(c.ptyTax).toBe(300);
+  });
+  it('saves both proposals then uses server orchestration for bulk creation',()=>{
+    api.commissionOptions.and.returnValue(of(ptyOptions));const c=setup().componentInstance;c.open();complete(c);c.includePty.setValue(true);c.ptyItem.setValue('pty-item');c.createAll();
+    expect(api.prepareCommissions).toHaveBeenCalledWith('case','batch',1,Array.from({length:8},(_,i)=>({sequence:i+1,itemId:'pty-item'})));
+    expect(api.createPairedInvoices).toHaveBeenCalledWith('case','batch',[1,2,3,4,5,6,7,8],[1,2,3,4,5,6,7,8]);expect(api.createCaseXeroInvoices).not.toHaveBeenCalled();
+  });
+  it('blocks individual PTY creation until TRUST is created',()=>{
+    api.commissionOptions.and.returnValue(of(ptyOptions));const c=setup().componentInstance;c.open();complete(c);c.ptyItem.setValue('pty-item');c.selectPayment(0,true);c.createCurrent();
+    expect(c.message).toContain('TRUST invoice first');expect(api.prepareCommissions).not.toHaveBeenCalled();expect(api.createPairedInvoices).not.toHaveBeenCalled();
+  });
+  it('keeps TRUST bulk creation available when the commission rule is blocked',()=>{
+    api.commissionOptions.and.returnValue(of({...ptyOptions,issue:'Cashback needs review'}));const c=setup().componentInstance;c.open();complete(c);c.createAll();expect(api.createCaseXeroInvoices).toHaveBeenCalled();expect(api.createPairedInvoices).not.toHaveBeenCalled();
+  });
+  it('cancels stale college-option requests after a new selection',()=>{
+    const first=new Subject<any>(),second=new Subject<any>();api.commissionOptions.and.returnValues(first,second);const c=setup().componentInstance;c.open();c.manualCollege.setValue('offer-college');
+    second.next({...ptyOptions,collegeName:'Selected College'});first.next({...ptyOptions,collegeName:'Stale College'});expect(c.ptyOptions?.collegeName).toBe('Selected College');
+  });
+  for(const width of [390,1440])for(const dark of [false,true])it(`renders PTY at ${width}px with dark=${dark}`,()=>{
+    api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();c.selectPayment(0,true);f.detectChanges();
+    const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
+    try{const doc=frame.contentDocument!;document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);
+      const host=f.nativeElement.cloneNode(true) as HTMLElement;doc.body.appendChild(host);const dialog=host.querySelector<HTMLDialogElement>('dialog')!;dialog.removeAttribute('open');dialog.showModal();
+      expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth+1);const panel=dialog.querySelector<HTMLElement>('.commission-preview')!;
+      expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth+1);expect(panel.textContent).toContain('Tuition base');expect(panel.textContent).toContain('GST on Income');
+      expect(dialog.querySelectorAll('.payment-tabs button').length).toBe(16);for(const button of dialog.querySelectorAll('footer button'))expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }finally{frame.remove();f.destroy();}
+  });
   it('renders the active invoice number safely before and after switching instalments',()=>{
     const f=setup(),c=f.componentInstance;expect(c.activeInvoiceNumber).toBe('—');
     c.open();f.detectChanges();expect(f.nativeElement.querySelector('.footer-total').textContent).toContain('INV-1');
