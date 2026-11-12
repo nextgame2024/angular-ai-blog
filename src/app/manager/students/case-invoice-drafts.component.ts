@@ -34,7 +34,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   data:CaseInvoiceDraftData|null=null;loading=false;busyLabel='';failed=false;message='';tone:'success'|'error'='error';
   private busyValue=false;
   get busy(){return this.busyValue;}
-  set busy(value:boolean){this.busyValue=value;for(const control of [this.manualCollege,this.ptyItem,this.includePty]){if(control){if(value)control.disable({emitEvent:false});else control.enable({emitEvent:false});}}}
+  set busy(value:boolean){this.busyValue=value;for(const control of [this.manualCollege]){if(control){if(value)control.disable({emitEvent:false});else control.enable({emitEvent:false});}}}
   detail:StudentCaseInvoiceDetail|null=null;
   readonlyMode=false;detailLoading=false;detailFailed=false;
   manualMode=false;
@@ -50,11 +50,34 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   private detailTarget:{connectionId:string;invoiceId:string}|null=null;
   activePayment=0;
   ptySide=false;ptyLoading=false;ptyOptions:CommissionOptions|null=null;ptyDrafts:CommissionDraft[]=[];
-  readonly includePty=new FormControl(false,{nonNullable:true});
-  readonly ptyItem=new FormControl('',{nonNullable:true});
+  private readonly ptyItemsByCode=new Map<string,NonNullable<CommissionOptions['items']>>();
   private readonly ptyStop$=new Subject<void>();
   private retainingPaired=false;
-  get ptyItemOptions(){return this.ptyOptions?.items?.map(i=>({value:i.itemId,label:`${i.code} — ${i.name}`}))??[];}
+  private ptyItemFor(payment:ReturnType<typeof paymentForm>){
+    const lines=payment.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition'&&this.lineAmount(l)>0);
+    const codes=[...new Set(lines.map(l=>l.controls.itemCode.value.trim().toLowerCase()))];
+    if(!codes.length||codes.includes(''))return {issue:'Select a tuition item on the matching TRUST invoice.'};
+    if(codes.length!==1)return {issue:'Use one tuition item per invoice before preparing its PTY commission.'};
+    const items=this.ptyItemsByCode.get(codes[0])??[];
+    if(items.length!==1)return {issue:`The TRUST tuition item “${lines[0].controls.itemCode.value}” needs one matching item with an account in PTY. Refresh the item catalogue or check its setup.`};
+    return {item:items[0],issue:null};
+  }
+  get ptyItemIssue(){return this.activeInvoice?this.ptyItemFor(this.activeInvoice).issue:null;}
+  get ptySalesItemLabel(){
+    const receipt=this.ptyReceipt;
+    if(receipt?.status&&receipt.status!=='not_attempted'){
+      const code=receipt.snapshot.value.lines[0]?.itemCode??'';
+      const item=this.ptyItemsByCode.get(code.trim().toLowerCase())?.find(i=>i.code===code);
+      return item?`${item.code} — ${item.name}`:code;
+    }
+    const selected=this.activeInvoice?this.ptyItemFor(this.activeInvoice).item:null;
+    return selected?`${selected.code} — ${selected.name}`:'';
+  }
+  get canCreateCurrentPty(){
+    return Boolean(this.activeInvoice&&this.data?.canCreateXero&&!this.ptyLoading&&this.ptyOptions?.available&&!this.ptyOptions.issue&&
+      this.isCreatedSequence(this.activeInvoice.controls.sequence.value)&&!this.ptyItemIssue&&
+      (!this.ptyReceipt?.status||this.ptyReceipt.status==='not_attempted'));
+  }
   get ptyReceipt(){return this.ptyDrafts.find(d=>d.sequence===this.activeInvoice?.controls.sequence.value);}
   get ptyPending(){return this.ptyOptions?.available&&this.form.controls.invoices.controls.some(i=>!['created','creating','review_required'].includes(this.ptyDrafts.find(d=>d.sequence===i.controls.sequence.value)?.status??''));}
   get ptyCalculation(){
@@ -66,18 +89,18 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   get ptyTax(){const rate=this.ptyOptions?.tax?.rate;return this.ptyReceipt?.status&&this.ptyReceipt.status!=='not_attempted'?this.ptyReceipt.snapshot.taxMinor:rate&&decimal4.test(rate)?Number((BigInt(this.ptyCalculation.commissionMinor)*scaled(rate)+500000n)/1000000n):0;}
   selectPayment(index:number,pty=false){this.activePayment=index;this.ptySide=pty;}
   private loadPty(){
-    this.ptyStop$.next();this.ptyOptions=null;this.ptyDrafts=[];this.includePty.setValue(false);this.ptyItem.setValue('');this.ptySide=false;
+    this.ptyStop$.next();this.ptyLoading=false;this.ptyOptions=null;this.ptyDrafts=[];this.ptyItemsByCode.clear();this.ptySide=false;
     const collegeId=this.manualCollege.value;if(!collegeId||this.editTarget||this.manualMode&&this.referenceMode.value!=='college')return;
     this.ptyLoading=true;
     this.api.commissionOptions(this.caseId,collegeId).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$),takeUntil(this.ptyStop$)).subscribe({next:o=>{
       this.ptyLoading=false;this.ptyOptions=o;
+      for(const item of o.items??[]){if(!item.accountCode)continue;const code=item.code.trim().toLowerCase();this.ptyItemsByCode.set(code,[...(this.ptyItemsByCode.get(code)??[]),item]);}
       if(o.available&&this.draftIdentity)this.loadPtyDrafts();
     },error:()=>{this.ptyLoading=false;this.ptyOptions={available:true,issue:'PTY settings could not be loaded. Close and reopen the preview to retry.'};}});
   }
   private loadPtyDrafts(){const id=this.draftIdentity?.batchId;if(!id)return;
     this.api.commissionDrafts(this.caseId,id).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$),takeUntil(this.ptyStop$)).subscribe({next:r=>{
-      this.ptyDrafts=r.items;const codes=[...new Set(r.items.map(i=>i.snapshot.value.lines[0]?.itemCode).filter(Boolean))];
-      if(codes.length===1&&!this.ptyItem.value)this.ptyItem.setValue(this.ptyOptions?.items?.find(i=>i.code===codes[0])?.itemId??'');
+      this.ptyDrafts=r.items;
     },error:()=>{this.message='The saved PTY invoices could not be loaded. Reopen the preview before creating commissions.';this.tone='error';this.ptyOptions={available:true,issue:this.message};}});
   }
   reconcilePty(){const id=this.draftIdentity?.batchId;if(!id||this.busy||!this.activeInvoice)return;this.busy=true;this.busyLabel='Checking PTY invoice status…';
@@ -98,7 +121,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   get activeInvoice(){return this.form.controls.invoices.at(this.activePayment);}
   get activeInvoiceNumber():number|string{return this.activeInvoice?.getRawValue().sequence??'—';}
   get activeNeedsReview(){return Boolean(this.activeInvoice&&this.isReviewSequence(this.activeInvoice.controls.sequence.value));}
-  get hasCreatableInvoices(){return this.form.controls.invoices.controls.some(payment=>!this.isFrozenSequence(payment.controls.sequence.value))||Boolean(this.includePty.value&&this.ptyPending);}
+  get hasCreatableInvoices(){return this.form.controls.invoices.controls.some(payment=>!this.isFrozenSequence(payment.controls.sequence.value))||Boolean(this.ptyPending);}
   get advisorLabel(){return this.advisors.find(a=>a.value===this.form.controls.advisorId.value)?.label??'Select an advisor';}
   private receipt(sequence:number){return this.sessionExports[String(sequence)]??this.preparation?.savedBatch?.exports[String(sequence)];}
   isCreatedSequence(sequence:number){return this.receipt(sequence)?.status==='created';}
@@ -193,7 +216,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       if(this.form.controls.invoices.controls.indexOf(payment)===0){
         for(const other of this.form.controls.invoices.controls.slice(1)){
           const tuition=other.controls.lines.controls.find(candidate=>candidate.controls.kind.value==='tuition');
-          if(tuition&&tuition.controls.itemId.value!==id)tuition.controls.itemId.setValue(id);
+          if(tuition&&!this.isFrozenSequence(other.controls.sequence.value)&&tuition.controls.itemId.value!==id)tuition.controls.itemId.setValue(id);
         }
       }
     }else if(item.unitPrice!==null&&decimal4.test(item.unitPrice)&&scaled(item.unitPrice)>0n&&current===0){
@@ -262,7 +285,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   private resetManual(){
     this.editTarget=null;
     this.previewStop$.next();this.detailStop$.next();this.manualMode=true;this.readonlyMode=false;this.detail=null;
-    this.ptyStop$.next();this.ptyOptions=null;this.ptyDrafts=[];this.includePty.setValue(false);this.ptySide=false;
+    this.ptyStop$.next();this.ptyLoading=false;this.ptyOptions=null;this.ptyDrafts=[];this.ptyItemsByCode.clear();this.ptySide=false;
     this.activePayment=0;this.conflict=false;this.request=null;this.draftIdentity=null;this.preview=null;this.sessionExports={};this.message='';
     this.form.enable({emitEvent:false});this.form.reset({advisorId:'',reviewNote:'',confirmed:false});this.form.controls.invoices.clear();
     this.manualReference.reset('');this.manualCurrency.reset('AUD');this.referenceMode.reset('reference');this.manualCollege.reset('');this.manualBrandingTheme.reset('');this.collegeOptions=[];this.brandingOptions=[];
@@ -372,9 +395,13 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   private persist(action:'save'|'current'|'all'){
     const p=this.preview;if(!p||this.busy||this.disabled||this.detail||this.conflict)return;
     if(this.ptySide&&action==='current'&&!this.isCreatedSequence(this.activeInvoice.controls.sequence.value)){this.message='Create the corresponding TRUST invoice first.';this.tone='error';return;}
-    const wantsPty=!this.editTarget&&(this.includePty.value||this.ptySide&&action==='current');
-    if(wantsPty&&(this.ptyLoading||this.ptyOptions?.issue||!this.ptyItem.value)){
-      this.ptyItem.markAsTouched();this.message=this.ptyOptions?.issue??'Select a PTY sales item before preparing commissions.';this.tone='error';return;
+    if(action!=='current'&&this.ptyLoading){this.message='Wait for PTY settings to finish loading.';this.tone='error';return;}
+    const wantsPty=!this.editTarget&&(this.ptySide&&action==='current'||action!=='current'&&this.ptyOptions?.available&&!this.ptyOptions.issue&&this.ptyPending);
+    if(this.ptySide&&action==='current'&&!this.canCreateCurrentPty){this.message=this.ptyOptions?.issue??this.ptyItemIssue??'This PTY invoice is already created or awaiting Xero review.';this.tone='error';return;}
+    if(wantsPty){
+      const targets=this.form.controls.invoices.controls.filter(i=>(action!=='current'||i===this.activeInvoice)&&!['created','creating','review_required'].includes(this.ptyDrafts.find(d=>d.sequence===i.controls.sequence.value)?.status??''));
+      const invalid=targets.find(i=>this.ptyItemFor(i).issue);
+      if(invalid){this.activePayment=this.form.controls.invoices.controls.indexOf(invalid);this.message=this.ptyItemFor(invalid).issue!;this.tone='error';return;}
     }
     if(action==='current'&&!this.ptySide&&this.activeNeedsReview){this.message='This invoice needs review and cannot be sent again until its Xero outcome is reconciled.';this.tone='error';return;}
     if(action==='all'&&!this.hasCreatableInvoices){this.message='No pending invoice is available to create. Review the unresolved Xero outcome first.';this.tone='error';return;}
@@ -454,7 +481,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
         const pending=invoices.filter(i=>{const status=this.ptyDrafts.find(d=>d.sequence===i.sequence)?.status;return !status||status==='not_attempted';});
         const targets=action==='current'?pending.filter(i=>i.sequence===invoices[this.activePayment].sequence):pending;
         if(!targets.length){this.busy=false;this.message='The selected PTY invoices are already created or awaiting Xero review.';this.tone='error';this.enableEditor();return;}
-        this.api.prepareCommissions(this.caseId,result.batchId,result.revision,targets.map(i=>({sequence:i.sequence,itemId:this.ptyItem.value}))).pipe(
+        this.api.prepareCommissions(this.caseId,result.batchId,result.revision,targets.map(i=>({sequence:i.sequence}))).pipe(
           switchMap(()=>action==='save'?of(null):this.api.createPairedInvoices(this.caseId,result.batchId,
             this.ptySide&&action==='current'?[]:action==='all'?invoices.filter(i=>!this.isFrozenSequence(i.sequence)).map(i=>i.sequence):[invoices[this.activePayment].sequence],targets.map(i=>i.sequence))),takeUntil(this.scope$)
         ).subscribe({next:r=>{if(!r){this.busy=false;this.enableEditor();this.message='TRUST and PTY drafts saved.';this.tone='success';this.loadPtyDrafts();this.changed.emit();return;}

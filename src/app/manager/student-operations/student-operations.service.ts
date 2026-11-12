@@ -272,7 +272,7 @@ export class StudentOperationsService {
   commissionDrafts(caseId:string,batchId:string){
     return this.http.get<{items:import('./student-commission.types').CommissionDraft[]}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/commissions`,{headers:this.headers()});
   }
-  prepareCommissions(caseId:string,batchId:string,batchRevision:number,selections:Array<{sequence:number;itemId:string}>){
+  prepareCommissions(caseId:string,batchId:string,batchRevision:number,selections:Array<{sequence:number;itemId?:string}>){
     return this.http.post<{prepared:number}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/commissions`,{batchRevision,selections},{headers:this.headers()});
   }
   createPairedInvoices(caseId:string,batchId:string,trustSequences:number[],ptySequences:number[]){

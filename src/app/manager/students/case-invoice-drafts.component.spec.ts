@@ -195,7 +195,7 @@ describe('CaseInvoiceDraftsComponent',()=>{
     c.form.patchValue({advisorId:'advisor',confirmed});
     for(const p of c.form.controls.invoices.controls){p.patchValue({dueDate:'2026-10-26',feeApplies:'no'});p.controls.lines.at(0).controls.itemId.setValue('item');}
   }
-  const ptyOptions={available:true,issue:null,collegeId:'case-college',collegeName:'Fixture College',rule:{rule_id:'rule',commission_basis_points:3000,application_conditions:null},items:[{itemId:'pty-item',code:'COMMISSION',name:'Commission',description:'',unitPrice:null,accountCode:'200',taxType:'OUTPUT'}],tax:{name:'GST on Income',taxType:'OUTPUT',rate:'10'}};
+  const ptyOptions={available:true,issue:null,collegeId:'case-college',collegeName:'Fixture College',rule:{rule_id:'rule',commission_basis_points:3000,application_conditions:null},items:[{itemId:'pty-item',code:'ELICOS ON-SHORE',name:'English onshore',description:'',unitPrice:null,accountCode:'200',taxType:'OUTPUT'}],tax:{name:'GST on Income',taxType:'OUTPUT',rate:'10'}};
   it('alternates TRUST and PTY tabs and reuses local settings while switching',()=>{
     api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();f.detectChanges();
     const labels=Array.from(f.nativeElement.querySelectorAll('.payment-tabs button') as NodeListOf<HTMLButtonElement>).map(b=>b.textContent!.trim());
@@ -204,29 +204,79 @@ describe('CaseInvoiceDraftsComponent',()=>{
     expect(c.ptyCalculation).toEqual({tuitionMinor:10000,basisPoints:3000,commissionMinor:3000});expect(c.ptyTax).toBe(300);
   });
   it('saves both proposals then uses server orchestration for bulk creation',()=>{
-    api.commissionOptions.and.returnValue(of(ptyOptions));const c=setup().componentInstance;c.open();complete(c);c.includePty.setValue(true);c.ptyItem.setValue('pty-item');c.createAll();
-    expect(api.prepareCommissions).toHaveBeenCalledWith('case','batch',1,Array.from({length:8},(_,i)=>({sequence:i+1,itemId:'pty-item'})));
+    api.commissionOptions.and.returnValue(of(ptyOptions));const c=setup().componentInstance;c.open();complete(c);c.createAll();
+    expect(api.prepareCommissions).toHaveBeenCalledWith('case','batch',1,Array.from({length:8},(_,i)=>({sequence:i+1})));
     expect(api.createPairedInvoices).toHaveBeenCalledWith('case','batch',[1,2,3,4,5,6,7,8],[1,2,3,4,5,6,7,8]);expect(api.createCaseXeroInvoices).not.toHaveBeenCalled();
   });
   it('blocks individual PTY creation until TRUST is created',()=>{
-    api.commissionOptions.and.returnValue(of(ptyOptions));const c=setup().componentInstance;c.open();complete(c);c.ptyItem.setValue('pty-item');c.selectPayment(0,true);c.createCurrent();
+    api.commissionOptions.and.returnValue(of(ptyOptions));const c=setup().componentInstance;c.open();complete(c);c.selectPayment(0,true);c.createCurrent();
     expect(c.message).toContain('TRUST invoice first');expect(api.prepareCommissions).not.toHaveBeenCalled();expect(api.createPairedInvoices).not.toHaveBeenCalled();
   });
   it('keeps TRUST bulk creation available when the commission rule is blocked',()=>{
     api.commissionOptions.and.returnValue(of({...ptyOptions,issue:'Cashback needs review'}));const c=setup().componentInstance;c.open();complete(c);c.createAll();expect(api.createCaseXeroInvoices).toHaveBeenCalled();expect(api.createPairedInvoices).not.toHaveBeenCalled();
+  });
+  it('removes the opt-in controls and shows the inherited PTY item as read only',()=>{
+    api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();complete(c);c.selectPayment(0,true);f.detectChanges();
+    expect(f.nativeElement.textContent).not.toContain('Include PTY commissions');expect(f.nativeElement.textContent).not.toContain('PTY sales item ·');
+    const item=f.nativeElement.querySelector('[aria-label="PTY invoice item"]') as HTMLInputElement;
+    expect(item.readOnly).toBeTrue();expect(item.value).toBe('ELICOS ON-SHORE — English onshore');
+    const button=f.nativeElement.querySelector('.commission-preview .btn.xero') as HTMLButtonElement;
+    expect(button.textContent?.trim()).toBe('Create Xero Invoice');expect(button.disabled).toBeTrue();
+  });
+  it('propagates the first TRUST tuition selection to matching PTY previews without sharing organisation IDs',()=>{
+    const trust=structuredClone(data);trust.preparation!.catalogue!.items.push({...trust.preparation!.catalogue!.items[0],itemId:'vet-trust',code:'VET',name:'Vocational'});
+    api.caseInvoiceDrafts.and.returnValue(of(trust));api.commissionOptions.and.returnValue(of({...ptyOptions,items:[...ptyOptions.items,{...ptyOptions.items[0],itemId:'vet-pty',code:'VET',name:'Vocational'}]}));
+    const c=setup().componentInstance;c.open();c.activeInvoice.controls.lines.at(0).controls.itemId.setValue('item');
+    expect(c.form.controls.invoices.controls.every(p=>p.controls.lines.at(0).controls.itemId.value==='item')).toBeTrue();
+    c.selectPayment(7,true);expect(c.ptySalesItemLabel).toContain('ELICOS ON-SHORE');
+    c.form.controls.invoices.at(1).controls.lines.at(0).controls.itemId.setValue('vet-trust');c.selectPayment(1,true);expect(c.ptySalesItemLabel).toBe('VET — Vocational');
+    c.selectPayment(0,true);expect(c.ptySalesItemLabel).toContain('ELICOS ON-SHORE');
+  });
+  it('enables only the PTY invoice whose matching TRUST receipt has been created',()=>{
+    api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();complete(c);c.selectPayment(1,true);f.detectChanges();
+    expect((f.nativeElement.querySelector('.commission-preview .btn.xero') as HTMLButtonElement).disabled).toBeTrue();
+    c.selectPayment(0);c.createCurrent();expect(api.createCaseXeroInvoices).toHaveBeenCalledWith('case','batch',[1]);expect(api.prepareCommissions).not.toHaveBeenCalled();
+    c.selectPayment(0,true);c.form.controls.confirmed.setValue(true);f.detectChanges();expect(c.canCreateCurrentPty).toBeTrue();
+    expect((f.nativeElement.querySelector('.commission-preview .btn.xero') as HTMLButtonElement).disabled).toBeFalse();
+    c.createCurrent();expect(api.createPairedInvoices).toHaveBeenCalledWith('case','batch',[],[1]);
+    c.selectPayment(1,true);expect(c.canCreateCurrentPty).toBeFalse();
+  });
+  it('saves TRUST drafts before preparing their commissions without creating any Xero invoices',()=>{
+    const order:string[]=[];api.commissionOptions.and.returnValue(of(ptyOptions));
+    api.prepareCaseInvoiceDrafts.and.callFake(()=>{order.push('trust saved');return of({batchId:'batch',count:8,revision:1});});
+    api.prepareCommissions.and.callFake(()=>{order.push('pty prepared');return of({prepared:8});});
+    const c=setup().componentInstance;c.open();complete(c);c.save();expect(order).toEqual(['trust saved','pty prepared']);expect(api.createPairedInvoices).not.toHaveBeenCalled();expect(api.createCaseXeroInvoices).not.toHaveBeenCalled();
+  });
+  it('keeps a missing PTY item blocked instead of choosing another sales item',()=>{
+    api.commissionOptions.and.returnValue(of({...ptyOptions,items:[{...ptyOptions.items[0],code:'DIFFERENT'}]}));
+    const c=setup().componentInstance;c.open();complete(c);c.createAll();expect(c.message).toContain('one matching item');expect(api.prepareCaseInvoiceDrafts).not.toHaveBeenCalled();expect(api.prepareCommissions).not.toHaveBeenCalled();
+    c.selectPayment(0);c.createCurrent();expect(api.createCaseXeroInvoices).toHaveBeenCalledWith('case','batch',[1]);
+    c.selectPayment(0,true);expect(c.canCreateCurrentPty).toBeFalse();
+  });
+  it('does not propagate an edited item into a frozen TRUST invoice',()=>{
+    const source=savedData({'2':{status:'created',invoiceId:'existing-2',invoiceNumber:'TRUST-2'}});
+    source.preparation!.catalogue!.items.push({...source.preparation!.catalogue!.items[0],itemId:'vet',code:'VET',name:'Vocational'});
+    api.caseInvoiceDrafts.and.returnValue(of(source));const c=setup().componentInstance;c.open();c.activeInvoice.controls.lines.at(0).controls.itemId.setValue('vet');
+    expect(c.form.controls.invoices.at(1).controls.lines.at(0).controls.itemId.value).toBe('item');expect(c.form.controls.invoices.at(2).controls.lines.at(0).controls.itemId.value).toBe('vet');
   });
   it('cancels stale college-option requests after a new selection',()=>{
     const first=new Subject<any>(),second=new Subject<any>();api.commissionOptions.and.returnValues(first,second);const c=setup().componentInstance;c.open();c.manualCollege.setValue('offer-college');
     second.next({...ptyOptions,collegeName:'Selected College'});first.next({...ptyOptions,collegeName:'Stale College'});expect(c.ptyOptions?.collegeName).toBe('Selected College');
   });
   for(const width of [390,1440])for(const dark of [false,true])it(`renders PTY at ${width}px with dark=${dark}`,()=>{
-    api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();c.selectPayment(0,true);f.detectChanges();
+    api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();complete(c);c.selectPayment(0,true);f.detectChanges();
     const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
     try{const doc=frame.contentDocument!;document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);
       const host=f.nativeElement.cloneNode(true) as HTMLElement;doc.body.appendChild(host);const dialog=host.querySelector<HTMLDialogElement>('dialog')!;dialog.removeAttribute('open');dialog.showModal();
       expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth+1);const panel=dialog.querySelector<HTMLElement>('.commission-preview')!;
       expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth+1);expect(panel.textContent).toContain('Tuition base');expect(panel.textContent).toContain('GST on Income');
-      expect(dialog.querySelectorAll('.payment-tabs button').length).toBe(16);for(const button of dialog.querySelectorAll('footer button'))expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+      expect(dialog.querySelectorAll('.payment-tabs button').length).toBe(16);
+      const ptyButton=panel.querySelector<HTMLButtonElement>('.btn.xero')!;expect(ptyButton.textContent?.trim()).toBe('Create Xero Invoice');expect(ptyButton.disabled).toBeTrue();
+      expect(Math.abs(ptyButton.getBoundingClientRect().right-panel.getBoundingClientRect().right)).toBeLessThan(2);
+      const trust=dialog.querySelector<HTMLElement>('[hidden]')!;trust.removeAttribute('hidden');
+      const trustAction=trust.querySelector<HTMLElement>('.invoice-create-action')!,trustButton=trustAction.querySelector<HTMLElement>('.btn.xero')!;
+      expect(Math.abs(trustButton.getBoundingClientRect().right-trustAction.getBoundingClientRect().right)).toBeLessThan(2);
+      for(const button of dialog.querySelectorAll('footer button'))expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     }finally{frame.remove();f.destroy();}
   });
   it('renders the active invoice number safely before and after switching instalments',()=>{
@@ -273,8 +323,8 @@ describe('CaseInvoiceDraftsComponent',()=>{
     c.save();expect(api.prepareCaseInvoiceDrafts.calls.mostRecent().args[1].invoices[1]).toEqual(jasmine.objectContaining({issueDate:'2027-02-01',dueDate:'2027-02-15'}));
   });
   it('requires review confirmation and creates either the active Xero invoice or all invoices after saving one immutable batch',()=>{
-    const f=setup(),c=f.componentInstance;c.open();f.detectChanges();expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeTrue();complete(c);f.detectChanges();
-    expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeFalse();c.activePayment=2;c.createCurrent();
+    const f=setup(),c=f.componentInstance;c.open();f.detectChanges();expect(f.nativeElement.querySelector('.invoice-create-action .xero').disabled).toBeTrue();complete(c);f.detectChanges();
+    expect(f.nativeElement.querySelector('.invoice-create-action .xero').disabled).toBeFalse();c.activePayment=2;c.createCurrent();
     expect(api.prepareCaseInvoiceDrafts).toHaveBeenCalledTimes(1);expect(api.createCaseXeroInvoices).toHaveBeenCalledWith('case','batch',[3]);expect(c.modal.nativeElement.open).toBeTrue();expect(c.activeInvoiceNumber).toBe(1);
     f.detectChanges();expect(f.nativeElement.querySelector('.payment-tabs').textContent).not.toContain('INV-3');expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-1');
     const second=setup().componentInstance;second.open();complete(second);second.createAll();expect(api.createCaseXeroInvoices).toHaveBeenCalledWith('case','batch',[1,2,3,4,5,6,7,8]);expect(second.modal.nativeElement.open).toBeFalse();
@@ -357,7 +407,7 @@ describe('CaseInvoiceDraftsComponent',()=>{
     const f=setup(),c=f.componentInstance;f.detectChanges();expect(f.nativeElement.querySelector('.draft-section table')).toBeNull();
     c.open();f.detectChanges();expect(c.activeInvoiceNumber).toBe(2);expect(f.nativeElement.querySelector('.payment-tabs').textContent).toContain('INV-1 · Review');
     const reviewButtons=Array.from(f.nativeElement.querySelectorAll('.payment-tabs button')) as HTMLButtonElement[];const reviewButton=reviewButtons.find(button=>button.textContent?.includes('INV-1'))!;reviewButton.click();f.detectChanges();
-    expect(c.activeNeedsReview).toBeTrue();expect(c.form.controls.invoices.at(0).disabled).toBeTrue();expect(f.nativeElement.querySelector('fieldset:not([hidden]) .notice').textContent).toContain('not yet been linked');expect(f.nativeElement.querySelector('fieldset:not([hidden]) .notice').textContent).not.toContain('Sophia');expect(f.nativeElement.querySelector('.review-action .xero').disabled).toBeTrue();
+    expect(c.activeNeedsReview).toBeTrue();expect(c.form.controls.invoices.at(0).disabled).toBeTrue();expect(f.nativeElement.querySelector('fieldset:not([hidden]) .notice').textContent).toContain('not yet been linked');expect(f.nativeElement.querySelector('fieldset:not([hidden]) .notice').textContent).not.toContain('Sophia');expect(f.nativeElement.querySelector('.invoice-create-action .xero').disabled).toBeTrue();
     (f.nativeElement.querySelector('.review-notice button') as HTMLButtonElement).click();f.detectChanges();
     expect(api.reconcileCaseXeroInvoice).toHaveBeenCalledWith('case','batch',1);expect(c.message).toContain('Confirmed against the exact invoice');expect(f.nativeElement.querySelector('.payment-tabs').textContent).not.toContain('INV-1');
   });

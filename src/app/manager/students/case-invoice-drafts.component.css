@@ -26,7 +26,7 @@
 @media(max-width:1000px){.invoice-meta.manual-meta,.invoice-dates.manual-dates{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:720px){.invoice-meta.manual-meta,.invoice-dates.manual-dates{grid-template-columns:minmax(0,1fr)}}
 
-.paired-settings{grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:center;margin-bottom:1rem;padding:1rem;border:1px solid #d5e2f1;border-radius:.75rem;background:#f6f9fc}
 .commission-preview{display:grid;gap:1rem;min-width:0}.commission-preview h3{margin:0;font-size:.95rem}.commission-preview dd{overflow-wrap:anywhere}
-:host-context(html.dark) .paired-settings{background:#172537;border-color:#405470}
-@media(max-width:720px){.paired-settings{grid-template-columns:minmax(0,1fr)}.commission-preview .details{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:720px){.commission-preview .details{grid-template-columns:minmax(0,1fr)}}
+
+.invoice-create-action{display:flex;justify-content:flex-end;width:100%;margin-top:1rem}.review-action .btn.xero{margin-left:auto}
