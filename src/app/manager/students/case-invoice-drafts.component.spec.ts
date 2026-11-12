@@ -195,13 +195,47 @@ describe('CaseInvoiceDraftsComponent',()=>{
     c.form.patchValue({advisorId:'advisor',confirmed});
     for(const p of c.form.controls.invoices.controls){p.patchValue({dueDate:'2026-10-26',feeApplies:'no'});p.controls.lines.at(0).controls.itemId.setValue('item');}
   }
-  const ptyOptions={available:true,issue:null,collegeId:'case-college',collegeName:'Fixture College',rule:{rule_id:'rule',commission_basis_points:3000,application_conditions:null},items:[{itemId:'pty-item',code:'ELICOS ON-SHORE',name:'English onshore',description:'',unitPrice:null,accountCode:'200',taxType:'OUTPUT'}],tax:{name:'GST on Income',taxType:'OUTPUT',rate:'10'}};
+  const ptyOptions={available:true,issue:null,collegeId:'case-college',collegeName:'Fixture College',rule:{rule_id:'rule',commission_basis_points:3000,application_conditions:null},accounts:[{code:'200',name:'Sales Commissions',taxType:'OUTPUT'}],items:[{itemId:'pty-item',code:'ELICOS ON-SHORE',name:'English onshore',description:'',unitPrice:null,accountCode:'200',taxType:'OUTPUT'}],tax:{name:'GST on Income',taxType:'OUTPUT',rate:'10'}};
   it('alternates TRUST and PTY tabs and reuses local settings while switching',()=>{
     api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();f.detectChanges();
     const labels=Array.from(f.nativeElement.querySelectorAll('.payment-tabs button') as NodeListOf<HTMLButtonElement>).map(b=>b.textContent!.trim());
     expect(labels.slice(0,4)).toEqual(['INV-1 (TRUST)','INV-1 (PTY)','INV-2 (TRUST)','INV-2 (PTY)']);
     c.selectPayment(1,true);f.detectChanges();c.selectPayment(0,true);f.detectChanges();expect(api.commissionOptions).toHaveBeenCalledTimes(1);
     expect(c.ptyCalculation).toEqual({tuitionMinor:10000,basisPoints:3000,commissionMinor:3000});expect(c.ptyTax).toBe(300);
+  });
+  it('places the same invoice/status typography immediately before Close on TRUST and PTY',()=>{
+    api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();f.detectChanges();
+    let state=f.nativeElement.querySelector('header .invoice-header-state') as HTMLElement;
+    expect(state.textContent).toBe('INV-1 (TRUST) · Draft');expect(state.nextElementSibling?.getAttribute('aria-label')).toBe('Close invoice preview');
+    const style=getComputedStyle(state);const font=[style.fontFamily,style.fontSize,style.fontWeight];
+    expect(getComputedStyle(f.nativeElement.querySelector('legend')).position).toBe('absolute');
+    c.selectPayment(1,true);f.detectChanges();state=f.nativeElement.querySelector('header .invoice-header-state');
+    expect(state.textContent).toBe('INV-2 (PTY) · Draft');expect(f.nativeElement.querySelector('.commission-preview h3')).toBeNull();
+    const other=getComputedStyle(state);expect([other.fontFamily,other.fontSize,other.fontWeight]).toEqual(font);
+  });
+  it('renders the PTY fields, line table and totals in order with 12 units at 80 dollars',()=>{
+    api.commissionOptions.and.returnValue(of({...ptyOptions,rule:{...ptyOptions.rule,commission_basis_points:2500}}));
+    const f=setup(),c=f.componentInstance;c.open();complete(c);
+    c.activeInvoice.controls.lines.at(0).patchValue({quantity:'12',price:'320.00'});c.selectPayment(0,true);f.detectChanges();
+    const panel=f.nativeElement.querySelector('.commission-preview') as HTMLElement;
+    expect((panel.querySelector('[aria-label="PTY quantity"]') as HTMLInputElement).value).toBe('12');
+    expect((panel.querySelector('[aria-label="PTY unit price"]') as HTMLInputElement).value).toBe('80.00');
+    expect(panel.querySelector('td[data-label="Amount"]')?.textContent).toContain('$960.00');
+    expect(panel.querySelector('td[data-label="Account"]')?.textContent).toContain('200 — Sales Commissions');
+    expect((panel.querySelector('[aria-label="PTY tax total"]') as HTMLInputElement).value).toBe('$96.00');
+    expect(panel.querySelector('.total-row')?.textContent).toContain('$1,056.00');
+    const fields=panel.querySelector('.invoice-meta')!,table=panel.querySelector('table')!,summary=panel.querySelector('.invoice-summary')!;
+    expect(fields.compareDocumentPosition(table)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();expect(table.compareDocumentPosition(summary)&Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for(const input of panel.querySelectorAll('table input'))expect((input as HTMLInputElement).readOnly).toBeTrue();
+  });
+  it('keeps recorded PTY quantities and prices unchanged after creation',()=>{
+    api.caseInvoiceDrafts.and.returnValue(of(savedData({'1':{status:'created',invoiceId:'trust-1',invoiceNumber:'TRUST-1'}})));
+    api.commissionOptions.and.returnValue(of(ptyOptions));
+    api.commissionDrafts.and.returnValue(of({items:[{sequence:1,status:'created',snapshot:{collegeName:'Recorded college',calculation:{tuitionMinor:384000,basisPoints:2500,commissionMinor:96000},taxMinor:9600,value:{lines:[{itemCode:'ELICOS ON-SHORE',quantity:'1',unitAmount:'960.00',description:'Recorded description',accountCode:'200'}]}}}]}));
+    const f=setup(),c=f.componentInstance;c.open();c.selectPayment(0,true);f.detectChanges();
+    expect((f.nativeElement.querySelector('[aria-label="PTY quantity"]') as HTMLInputElement).value).toBe('1');
+    expect((f.nativeElement.querySelector('[aria-label="PTY unit price"]') as HTMLInputElement).value).toBe('960.00');
+    expect((f.nativeElement.querySelector('[aria-label="PTY line description"]') as HTMLTextAreaElement).value).toBe('Recorded description');
   });
   it('saves both proposals then uses server orchestration for bulk creation',()=>{
     api.commissionOptions.and.returnValue(of(ptyOptions));const c=setup().componentInstance;c.open();complete(c);c.createAll();
@@ -268,8 +302,8 @@ describe('CaseInvoiceDraftsComponent',()=>{
     const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
     try{const doc=frame.contentDocument!;document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);
       const host=f.nativeElement.cloneNode(true) as HTMLElement;doc.body.appendChild(host);const dialog=host.querySelector<HTMLDialogElement>('dialog')!;dialog.removeAttribute('open');dialog.showModal();
-      expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth+1);const panel=dialog.querySelector<HTMLElement>('.commission-preview')!;
-      expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth+1);expect(panel.textContent).toContain('Tuition base');expect(panel.textContent).toContain('GST on Income');
+      expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth+1);const state=dialog.querySelector<HTMLElement>('.invoice-header-state')!,close=dialog.querySelector<HTMLElement>('.btn.close')!;expect(state.getBoundingClientRect().right).toBeLessThanOrEqual(close.getBoundingClientRect().left);const panel=dialog.querySelector<HTMLElement>('.commission-preview')!;
+      expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth+1);expect(frame.contentWindow!.getComputedStyle(panel.querySelector('table')!).display).toBe(width===390?'block':'table');expect(panel.textContent).toContain('Tuition base');expect(panel.textContent).toContain('GST on Income');
       expect(dialog.querySelectorAll('.payment-tabs button').length).toBe(16);
       const ptyButton=panel.querySelector<HTMLButtonElement>('.btn.xero')!;expect(ptyButton.textContent?.trim()).toBe('Create Xero Invoice');expect(ptyButton.disabled).toBeTrue();
       expect(Math.abs(ptyButton.getBoundingClientRect().right-panel.getBoundingClientRect().right)).toBeLessThan(2);

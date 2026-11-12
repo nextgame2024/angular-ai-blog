@@ -11,7 +11,7 @@
   }}}}
 </div>
 <dialog #modal (cancel)="close($event)" aria-label="Invoice preview">
-  <header><div><h2 [class.invoice-title]="readonlyMode">{{readonlyMode?(detail?.invoiceNumber||'Invoice details'):editTarget?'Edit '+editTarget.invoiceNumber:manualMode?'Create invoice':'Prepare invoices'}}</h2><p>{{readonlyMode?'Invoice details · Read only':editTarget?'Update the invoice details and review them before saving.':manualMode?'Enter the invoice details and review them before creating.':'Review and save drafts, or create unsent draft invoices in Xero.'}}</p></div><button type="button" class="btn close" (click)="close()" [disabled]="busy" aria-label="Close invoice preview">×</button></header>
+  <header><div><h2 [class.invoice-title]="readonlyMode">{{readonlyMode?(detail?.invoiceNumber||'Invoice details'):editTarget?'Edit '+editTarget.invoiceNumber:manualMode?'Create invoice':'Prepare invoices'}}</h2><p>{{readonlyMode?'Invoice details · Read only':editTarget?'Update the invoice details and review them before saving.':manualMode?'Enter the invoice details and review them before creating.':'Review and save drafts, or create unsent draft invoices in Xero.'}}</p></div><div class="invoice-header-actions">@if(!readonlyMode&&activeInvoice){<span class="invoice-header-state" aria-live="polite">{{invoiceHeaderLabel}}</span>}<button type="button" class="btn close" (click)="close()" [disabled]="busy" aria-label="Close invoice preview">×</button></div></header>
   @if(busy){<app-manager-list-loader [label]="busyLabel" [overlay]="true" />}
   @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}
   @if(readonlyMode){
@@ -36,22 +36,36 @@
         @if(ptyOptions?.available){
           @if(ptyOptions?.issue){<p class="notice" role="status">{{ptyOptions?.issue}} TRUST invoices can still be created.</p>}
         }
-        @if(ptySide){
+        @if(ptySide){@if(ptyLine;as line){
           <section class="commission-preview" aria-label="PTY commission preview">
-            <h3>INV-{{activeInvoiceNumber}} (PTY) · {{ptyReceipt?.providerStatus||ptyReceipt?.status||'Draft preview'}}</h3>
-            <dl class="details"><div><dt>To / College</dt><dd>{{ptyReceipt?.snapshot?.collegeName||ptyOptions?.collegeName}}</dd></div><div><dt>Reference / Student</dt><dd>{{preparation?.student?.name}}</dd></div><div><dt>Source TRUST invoice</dt><dd>INV-{{activeInvoiceNumber}} · {{isCreatedSequence(activeInvoice.controls.sequence.value)?'Created in Xero':'Create TRUST first'}}</dd></div><div><dt>Issue / Due</dt><dd>{{ptyReceipt?.providerDate||activeInvoice.controls.issueDate.value}} / {{ptyReceipt?.providerDueDate||activeInvoice.controls.dueDate.value}}</dd></div><div><dt>Branding</dt><dd>PTY Open for Australia Account</dd></div><div><dt>Type of Sale</dt><dd>Instalment</dd></div></dl>
-            <label>Item<input [value]="ptySalesItemLabel" readonly aria-label="PTY invoice item" placeholder="Select the item on the matching TRUST invoice" /></label>
+            <div class="invoice-meta fields"><label>To / College<input [value]="ptyReceipt?.snapshot?.collegeName||ptyOptions?.collegeName||''" readonly /></label><label>Reference / Student<input [value]="preparation?.student?.name||''" readonly /></label><label>Advisor<input [value]="advisorLabel" readonly /></label></div>
+            <div class="invoice-dates fields"><label>Issue date<input type="date" [value]="(ptyReceipt?.providerDate||activeInvoice.controls.issueDate.value)|date:'yyyy-MM-dd':'UTC'" readonly /></label><label>Due date<input type="date" [value]="(ptyReceipt?.providerDueDate||activeInvoice.controls.dueDate.value)|date:'yyyy-MM-dd':'UTC'" readonly /></label><label>Branding theme<input value="PTY Open for Australia Account" readonly /></label></div>
+            <p class="muted">Source TRUST invoice: INV-{{activeInvoiceNumber}} · {{isCreatedSequence(activeInvoice.controls.sequence.value)?'Created in Xero':'Create TRUST first'}} · Tax exclusive.</p>
             @if(ptyItemIssue&&(!ptyReceipt?.status||ptyReceipt?.status==='not_attempted')){<p class="notice" role="status">{{ptyItemIssue}}</p>}
+            @if(ptyPricingIssue&&!ptyOptions?.issue&&(!ptyReceipt?.status||ptyReceipt?.status==='not_attempted')){<p class="notice" role="status">{{ptyPricingIssue}}</p>}
             @if(ptyReceipt?.stale||ptyReceipt?.adjustmentRequired){<p class="notice" role="alert">The source TRUST invoice changed. Review the related invoices before any further action.</p>}
-            <div class="invoice-totals detail-totals"><label>Tuition base<input [value]="money(ptyCalculation.tuitionMinor)" readonly /></label><label>Commission percentage<input [value]="(ptyCalculation.basisPoints/100)+'%'" readonly /></label><label>Commission · tax exclusive<input [value]="money(ptyCalculation.commissionMinor)" readonly /></label><label>GST on Income<input [value]="money(ptyTax)" readonly /></label></div>
-            <p class="muted">Commission uses tuition only, rounded once per instalment to two decimals. Enrolment, materials and other fees are excluded.</p>
-            @if(ptyReceipt?.invoiceNumber){<p>Created as {{ptyReceipt?.invoiceNumber}}. Paid: {{invoiceMoney(ptyReceipt?.amountPaid)}} · Due: {{invoiceMoney(ptyReceipt?.amountDue)}}</p>}
-            @if(ptyReceipt?.status==='creating'||ptyReceipt?.status==='review_required'){<button type="button" class="btn" (click)="reconcilePty()" [disabled]="busy">Check PTY in Xero</button>}
-            @else if(ptyReceipt?.status!=='created'){
-              <div class="review-action"><label class="check"><input type="checkbox" formControlName="confirmed" />I reviewed the TRUST tuition base, college rule, item, tax and dates.</label><button type="button" class="btn xero" (click)="createCurrent()" [disabled]="busy||disabled||conflict||!form.controls.confirmed.value||!canCreateCurrentPty">Create Xero Invoice</button></div>
-            }
+            <div class="table-wrap editor-wrap"><table class="line-editor commission-lines"><thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Account</th><th>Tax rate</th><th>Tax amount</th><th>Type of Sale</th><th>Advisor</th><th>Amount</th></tr></thead><tbody><tr>
+              <td data-label="Item"><input [value]="ptySalesItemLabel" readonly aria-label="PTY invoice item" placeholder="Select the item on TRUST" /></td>
+              <td data-label="Description"><textarea rows="3" [value]="line.description" readonly aria-label="PTY line description"></textarea></td>
+              <td data-label="Qty"><input [value]="line.quantity" readonly aria-label="PTY quantity" /></td>
+              <td data-label="Price"><input [value]="line.unitAmount" readonly aria-label="PTY unit price" /></td>
+              <td data-label="Account">{{line.account}}</td><td data-label="Tax rate">{{line.tax}}</td><td data-label="Tax amount">{{money(ptyTax)}}</td><td data-label="Type of Sale">Instalment</td><td data-label="Advisor">{{advisorLabel}}</td><td data-label="Amount" class="amount">{{money(ptyCalculation.commissionMinor)}}</td>
+            </tr></tbody></table></div>
+            <div class="invoice-summary">
+              <div class="invoice-review">
+                <div class="fields commission-basis"><label>Tuition base<input [value]="money(ptyCalculation.tuitionMinor)" readonly /></label><label>Commission percentage<input [value]="(ptyCalculation.basisPoints/100)+'%'" readonly /></label></div>
+                <p class="muted">Commission uses tuition only, rounded once per instalment to two decimals. Enrolment, materials and other fees are excluded.</p>
+                @if(ptyReceipt?.invoiceNumber){<p>Created as {{ptyReceipt?.invoiceNumber}}. Paid: {{invoiceMoney(ptyReceipt?.amountPaid)}} · Due: {{invoiceMoney(ptyReceipt?.amountDue)}}</p>}
+                @if(!ptyReceipt?.status||ptyReceipt?.status==='not_attempted'){<label class="check"><input type="checkbox" formControlName="confirmed" />I reviewed the TRUST tuition base, college rule, item, tax and dates.</label>}
+              </div>
+              <div class="invoice-totals detail-totals editor-totals"><label>Subtotal<input [value]="money(ptyCalculation.commissionMinor)" readonly aria-label="PTY subtotal" /></label><label>GST on Income<input [value]="money(ptyTax)" readonly aria-label="PTY tax total" /></label><div class="total-row"><span>Total</span><strong>{{money(ptyCalculation.commissionMinor+ptyTax)}}</strong></div></div>
+            </div>
+            <div class="invoice-create-action">
+              @if(ptyReceipt?.status==='creating'||ptyReceipt?.status==='review_required'){<button type="button" class="btn" (click)="reconcilePty()" [disabled]="busy">Check PTY in Xero</button>}
+              @else if(ptyReceipt?.status!=='created'){<button type="button" class="btn xero" (click)="createCurrent()" [disabled]="busy||disabled||conflict||!form.controls.confirmed.value||!canCreateCurrentPty">Create Xero Invoice</button>}
+            </div>
           </section>
-        }
+        }}
         <div [hidden]="ptySide">
         <div class="invoice-meta fields" [class.manual-meta]="manualMode"><label>Student<input [value]="preparation?.student?.name??''" readonly /></label><label>Advisor<app-manager-select formControlName="advisorId" [options]="advisors" [searchable]="true" placeholder="Select an advisor" [attr.aria-invalid]="form.controls.advisorId.touched&&form.controls.advisorId.invalid" /></label>@if(manualMode){
           <div class="reference-field"><div class="reference-options" role="radiogroup" aria-label="Invoice reference type"><label><input type="radio" [formControl]="referenceMode" value="reference" />Reference</label><label><input type="radio" [formControl]="referenceMode" value="college" />College</label></div>
@@ -64,7 +78,7 @@
         @else{<p class="muted">Items and sales defaults imported {{preparation?.catalogue?.lastSyncedAt | date:'d MMM y, h:mm a'}}.@if(preparation?.catalogue?.errorCode){ Last refresh failed; the previous catalogue is shown.}</p>}
         <div formArrayName="invoices">
           @for(payment of form.controls.invoices.controls;track payment;let i=$index){
-            <fieldset [formGroupName]="i" [hidden]="activePayment!==i||isCreatedSequence(payment.controls.sequence.value)&&!ptyOptions?.available"><legend>{{editTarget?editTarget.invoiceNumber:'INV-'+payment.controls.sequence.value}} · {{editTarget?editTarget.status:isCreatedSequence(payment.controls.sequence.value)?'Created in Xero':isReviewSequence(payment.controls.sequence.value)?'Review required':'Draft'}}</legend>
+            <fieldset [formGroupName]="i" [hidden]="activePayment!==i||isCreatedSequence(payment.controls.sequence.value)&&!ptyOptions?.available"><legend class="sr-only">{{editTarget?editTarget.invoiceNumber:'INV-'+payment.controls.sequence.value}} (TRUST)</legend>
               @if(isReviewSequence(payment.controls.sequence.value)){<div class="notice review-notice"><span>The Xero request may have succeeded, but the invoice has not yet been linked. Check Xero status to match the exact invoice; do not create it again.</span><button type="button" class="btn" (click)="reconcileCurrent()" [disabled]="busy">Check Xero status</button></div>}
               <div class="invoice-dates fields" [class.manual-dates]="manualMode"><label>Issue date<input type="date" formControlName="issueDate" /></label><label>Due date<input type="date" formControlName="dueDate" /></label><label>Payment Track<input [value]="editTarget?.paymentTrack??'PENDING'" readonly /></label>@if(manualMode){<label>Currency<input [formControl]="manualCurrency" [readonly]="!!editTarget" maxlength="3" [attr.aria-invalid]="manualCurrency.touched&&manualCurrency.invalid" /></label>}</div>
               @if(!manualMode){<p class="muted">Offer: {{money(preparation?.source?.instalments?.[i]?.totalMinor??0)}} · {{preparation?.source?.instalments?.[i]?.dueTerm||'Scheduled payment'}} · Included conditional fee {{money(preparation?.source?.instalments?.[i]?.includedConditionalFeeMinor??0)}}.</p>}

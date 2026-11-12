@@ -73,9 +73,39 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const selected=this.activeInvoice?this.ptyItemFor(this.activeInvoice).item:null;
     return selected?`${selected.code} — ${selected.name}`:'';
   }
+  private ptyPricingFor(payment:ReturnType<typeof paymentForm>){
+    const lines=payment.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition'&&this.lineAmount(l)>0);
+    const quantityPattern=/^\d{1,6}(\.\d{1,4})?$/;
+    if(!lines.length||lines.some(l=>!quantityPattern.test(l.controls.quantity.value)||scaled(l.controls.quantity.value)<=0n))return {quantity:'',unitAmount:'',issue:'Confirm the TRUST tuition quantities before preparing commission.'};
+    const quantityScaled=lines.reduce((n,l)=>n+scaled(l.controls.quantity.value),0n);
+    const base=lines.reduce((n,l)=>n+BigInt(this.lineAmount(l)),0n),rate=BigInt(this.ptyOptions?.rule?.commission_basis_points??0);
+    const commissionMinor=(base*rate+5000n)/10000n;
+    const priceScaled=(commissionMinor*1_000_000n+quantityScaled/2n)/quantityScaled;
+    const format=(value:bigint,minDecimals=0)=>{const fraction=String(value%10000n).padStart(4,'0').replace(/0+$/,'').padEnd(minDecimals,'0');return `${value/10000n}${fraction?'.'+fraction:''}`;};
+    const issue=priceScaled<=0n||priceScaled>999_999_999_999n||(quantityScaled*priceScaled+500000n)/1000000n!==commissionMinor?'The commission cannot retain the TRUST quantity and exact total at four decimal places. Review this instalment.':null;
+    return {quantity:format(quantityScaled),unitAmount:format(priceScaled,2),issue};
+  }
+  get ptyPricingIssue(){return this.activeInvoice?this.ptyPricingFor(this.activeInvoice).issue:null;}
+  get ptyLine(){
+    const receipt=this.ptyReceipt,frozen=!!receipt?.status&&receipt.status!=='not_attempted',stored=frozen?receipt!.snapshot.value.lines[0]:null;
+    const item=this.activeInvoice?this.ptyItemFor(this.activeInvoice).item:null;
+    const pricing=this.activeInvoice?this.ptyPricingFor(this.activeInvoice):{quantity:'',unitAmount:''};
+    const accountCode=stored?.accountCode??item?.accountCode;
+    const account=this.ptyOptions?.accounts?.find(a=>a.code===accountCode);
+    return {quantity:frozen?stored?.quantity??'':pricing.quantity,unitAmount:frozen?stored?.unitAmount??'':pricing.unitAmount,
+      description:stored?.description??this.activeInvoice?.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition').map(l=>l.controls.description.value).join('\n')??'',
+      account:account?`${account.code} — ${account.name}`:accountCode??'Select an item on TRUST',tax:this.ptyOptions?.tax?.name??'GST on Income'};
+  }
+  get invoiceHeaderLabel(){
+    if(!this.activeInvoice)return '';
+    const statusLabel=(status:string)=>(({DRAFT:'Draft',SUBMITTED:'Awaiting approval',AUTHORISED:'Awaiting payment',PAID:'Paid',created:'Created in Xero',creating:'Creating',review_required:'Review required',not_attempted:'Draft'} as Record<string,string>)[status]??status);
+    const role=!this.editTarget&&this.ptyOptions?.available?(this.ptySide?' (PTY)':' (TRUST)'):'';
+    const status=this.ptySide?statusLabel(this.ptyReceipt?.providerStatus||this.ptyReceipt?.status||'DRAFT'):this.editTarget?statusLabel(this.editTarget.status):this.isCreatedSequence(this.activeInvoice.controls.sequence.value)?'Created in Xero':this.activeNeedsReview?'Review required':'Draft';
+    return `${this.editTarget?.invoiceNumber??'INV-'+this.activeInvoiceNumber}${role} · ${status}`;
+  }
   get canCreateCurrentPty(){
     return Boolean(this.activeInvoice&&this.data?.canCreateXero&&!this.ptyLoading&&this.ptyOptions?.available&&!this.ptyOptions.issue&&
-      this.isCreatedSequence(this.activeInvoice.controls.sequence.value)&&!this.ptyItemIssue&&
+      this.isCreatedSequence(this.activeInvoice.controls.sequence.value)&&!this.ptyItemIssue&&!this.ptyPricingIssue&&
       (!this.ptyReceipt?.status||this.ptyReceipt.status==='not_attempted'));
   }
   get ptyReceipt(){return this.ptyDrafts.find(d=>d.sequence===this.activeInvoice?.controls.sequence.value);}
@@ -397,11 +427,11 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     if(this.ptySide&&action==='current'&&!this.isCreatedSequence(this.activeInvoice.controls.sequence.value)){this.message='Create the corresponding TRUST invoice first.';this.tone='error';return;}
     if(action!=='current'&&this.ptyLoading){this.message='Wait for PTY settings to finish loading.';this.tone='error';return;}
     const wantsPty=!this.editTarget&&(this.ptySide&&action==='current'||action!=='current'&&this.ptyOptions?.available&&!this.ptyOptions.issue&&this.ptyPending);
-    if(this.ptySide&&action==='current'&&!this.canCreateCurrentPty){this.message=this.ptyOptions?.issue??this.ptyItemIssue??'This PTY invoice is already created or awaiting Xero review.';this.tone='error';return;}
+    if(this.ptySide&&action==='current'&&!this.canCreateCurrentPty){this.message=this.ptyOptions?.issue??this.ptyItemIssue??this.ptyPricingIssue??'This PTY invoice is already created or awaiting Xero review.';this.tone='error';return;}
     if(wantsPty){
       const targets=this.form.controls.invoices.controls.filter(i=>(action!=='current'||i===this.activeInvoice)&&!['created','creating','review_required'].includes(this.ptyDrafts.find(d=>d.sequence===i.controls.sequence.value)?.status??''));
-      const invalid=targets.find(i=>this.ptyItemFor(i).issue);
-      if(invalid){this.activePayment=this.form.controls.invoices.controls.indexOf(invalid);this.message=this.ptyItemFor(invalid).issue!;this.tone='error';return;}
+      const invalid=targets.find(i=>this.ptyItemFor(i).issue||this.ptyPricingFor(i).issue);
+      if(invalid){this.activePayment=this.form.controls.invoices.controls.indexOf(invalid);this.message=(this.ptyItemFor(invalid).issue??this.ptyPricingFor(invalid).issue)!;this.tone='error';return;}
     }
     if(action==='current'&&!this.ptySide&&this.activeNeedsReview){this.message='This invoice needs review and cannot be sent again until its Xero outcome is reconciled.';this.tone='error';return;}
     if(action==='all'&&!this.hasCreatableInvoices){this.message='No pending invoice is available to create. Review the unresolved Xero outcome first.';this.tone='error';return;}
