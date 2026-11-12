@@ -109,6 +109,9 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     currentStage: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
   loadingRelated = false;
+  readonly invoiceOrganisation = new FormControl<'both'|'trust'|'pty'>('both', {nonNullable:true});
+  readonly invoiceOrganisationOptions: ManagerSelectOption[] = [{value:'both',label:'Both'},{value:'trust',label:'TRUST'},{value:'pty',label:'PTY'}];
+  private readonly invoiceStop$ = new Subject<void>();
   loadingInvoices = false;
   invoiceCreationAvailable=false;
   private invoiceRefreshPending=false;
@@ -204,6 +207,9 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.invoiceOrganisation.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(()=>{
+      this.invoiceStop$.next();this.loadingInvoices=false;this.invoiceRefreshPending=false;this.invoices=null;this.loadInvoices(1);
+    });
     const createdMode=this.router.getCurrentNavigation()?.extras.state?.['createdCaseMode'];
     this.editForm.controls.status.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => this.onStatusChange());
     this.api.workspace().pipe(takeUntil(this.destroy$)).subscribe({
@@ -425,7 +431,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     this.pendingPreview = null;
     this.documentMutationDialog?.nativeElement.close();
     this.destroy$.next();
-    this.destroy$.complete();
+    this.destroy$.complete();this.invoiceStop$.complete();
   }
 
   private showEditError(message: string): void {
@@ -577,7 +583,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
     const id = this.currentId;
     this.loadingInvoices = true;
     this.invoiceError = '';
-    this.api.caseInvoices(id, page).pipe(takeUntil(this.destroy$)).subscribe({
+    this.api.caseInvoices(id, page, this.invoiceOrganisation.value).pipe(takeUntil(this.invoiceStop$),takeUntil(this.destroy$)).subscribe({
       next: result => { if (id === this.currentId) {
         this.loadingInvoices = false;
         const last = Math.max(1, Math.ceil(result.total / result.limit));
@@ -752,6 +758,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   private reset(): void {
     this.caseDeleteDialog?.nativeElement.close();this.deleteBusy=false;this.deleteTarget=null;this.deleteError='';this.deleteKey='';
     this.caseArchiveDialog?.nativeElement.close();this.archiveBusy=false;this.archiveTarget=null;this.archiveError='';this.archiveKey='';
+    this.invoiceStop$.next();this.invoiceOrganisation.setValue('both',{emitEvent:false});
     this.invoiceCreationAvailable=false;
     this.invoiceRemovalDialog?.nativeElement.close();this.invoiceRemovalBusy=false;this.invoiceRemovalTarget=null;this.invoiceRemovalError='';this.invoiceRemovalKey='';
     this.stopDocumentPolling();

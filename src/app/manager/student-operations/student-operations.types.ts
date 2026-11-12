@@ -183,6 +183,7 @@ export interface StudentCaseList {
 
 export interface StudentCaseInvoices {
   invoices: Array<{
+    organisation?:'TRUST'|'PTY';
     canEdit?:boolean;
     removalAction?:'delete'|'void'|null;
     invoiceId: string; connectionId?:string; invoiceNumber: string | null; type: string; status: string;

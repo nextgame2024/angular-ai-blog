@@ -141,6 +141,18 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(api.caseInvoices).toHaveBeenCalledTimes(2);expect(component.invoices?.total).toBe(8);
   });
 
+  it('defaults to Both and cancels stale invoice requests when changing organisation',()=>{
+    const initial=new Subject<unknown>();api.caseInvoices.and.returnValue(initial);
+    const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();const component=fixture.componentInstance;
+    expect(component.invoiceOrganisation.value).toBe('both');
+    expect(api.caseInvoices.calls.mostRecent().args[2]).toBe('both');
+    api.caseInvoices.and.returnValue(of({invoices:[],total:8,page:1,limit:25}));component.invoiceOrganisation.setValue('pty');
+    expect(api.caseInvoices.calls.mostRecent().args.slice(1)).toEqual([1,'pty']);
+    initial.next({invoices:[],total:16,page:2,limit:25});initial.complete();
+    expect(component.invoices?.total).toBe(8);expect(component.invoices?.page).toBe(1);
+    component.invoiceOrganisation.setValue('trust');expect(api.caseInvoices.calls.mostRecent().args.slice(1)).toEqual([1,'trust']);
+  });
+
   it('refreshes the stage, related case and checklist after invoice creation without changing Pre-sale status',()=>{
     const fixture=TestBed.createComponent(ManagerCaseViewPageComponent);fixture.detectChanges();
     const c=fixture.componentInstance,before=c.checklistRefresh;
@@ -403,7 +415,7 @@ describe('ManagerCaseViewPageComponent', () => {
     expect([...(root.querySelectorAll('.related-actions .archive') as NodeListOf<HTMLButtonElement>)].every(button => !button.disabled)).toBeTrue();
     expect(root.textContent).not.toContain('Approve');
     expect(root.querySelector('app-case-document-actions .toolbar')?.textContent).toContain('Upload');
-    expect(api.caseInvoices).toHaveBeenCalledWith('case-1', 1);
+    expect(api.caseInvoices).toHaveBeenCalledWith('case-1', 1, 'both');
     expect(api.caseDocuments).toHaveBeenCalledWith('case-1', 1);
     expect(root.querySelector('.related-cases')?.closest('aside')).not.toBeNull();
     expect(root.querySelector('.progress-card')?.closest('.workspace-main')).not.toBeNull();

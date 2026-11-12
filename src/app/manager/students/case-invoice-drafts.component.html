@@ -30,10 +30,10 @@
     <footer><strong class="grand-total">Total {{invoiceMoney(detail?.total)}}</strong><div class="footer-actions"><button type="button" class="btn" (click)="close()">Close</button></div></footer>
   }@else{
     <form [formGroup]="form" (ngSubmit)="save()">
-      <nav class="payment-tabs" aria-label="Invoice instalments">@for(payment of form.controls.invoices.controls;track payment;let i=$index){@if(!isCreatedSequence(payment.controls.sequence.value)||ptyOptions?.available){<button type="button" class="btn" [class.review]="isReviewSequence(payment.controls.sequence.value)" [attr.aria-current]="activePayment===i&&!ptySide?'step':null" [disabled]="busy" (click)="selectPayment(i)">{{editTarget?editTarget.invoiceNumber:'INV-'+payment.controls.sequence.value}}{{ptyOptions?.available?' (TRUST)':''}}{{isReviewSequence(payment.controls.sequence.value)?' · Review':''}}</button>}@if(ptyOptions?.available){<button type="button" class="btn" [attr.aria-current]="activePayment===i&&ptySide?'step':null" [disabled]="busy" (click)="selectPayment(i,true)">INV-{{payment.controls.sequence.value}} (PTY)</button>}}</nav>
+      <nav class="payment-tabs" aria-label="Invoice instalments">@for(payment of form.controls.invoices.controls;track payment;let i=$index){@if(!isCreatedSequence(payment.controls.sequence.value)||ptyOptions?.available){<button type="button" class="btn" [class.review]="isReviewSequence(payment.controls.sequence.value)" [attr.aria-current]="activePayment===i&&!ptySide?'step':null" [disabled]="busy" (click)="selectPayment(i)">{{editTarget?editTarget.invoiceNumber:'INV-'+payment.controls.sequence.value}}{{editTarget?'':' (TRUST)'}}{{isReviewSequence(payment.controls.sequence.value)?' · Review':''}}</button>}@if(ptyOptions?.available){<button type="button" class="btn" [attr.aria-current]="activePayment===i&&ptySide?'step':null" [disabled]="busy" (click)="selectPayment(i,true)">INV-{{payment.controls.sequence.value}} (PTY)</button>}}</nav>
       <div class="scroll">
         @if(ptyLoading){<p class="muted" role="status">Loading PTY settings…</p>}
-        @if(ptyOptions?.available){
+        @if(ptyOptions?.available&&!ptySide){
           @if(ptyOptions?.issue){<p class="notice" role="status">{{ptyOptions?.issue}} TRUST invoices can still be created.</p>}
         }
         @if(ptySide){@if(ptyLine;as line){
@@ -41,15 +41,13 @@
             <div class="invoice-meta fields"><label>To / College<input [value]="ptyReceipt?.snapshot?.collegeName||ptyOptions?.collegeName||''" readonly /></label><label>Reference / Student<input [value]="preparation?.student?.name||''" readonly /></label><label>Advisor<input [value]="advisorLabel" readonly /></label></div>
             <div class="invoice-dates fields"><label>Issue date<input type="date" [value]="(ptyReceipt?.providerDate||activeInvoice.controls.issueDate.value)|date:'yyyy-MM-dd':'UTC'" readonly /></label><label>Due date<input type="date" [value]="(ptyReceipt?.providerDueDate||activeInvoice.controls.dueDate.value)|date:'yyyy-MM-dd':'UTC'" readonly /></label><label>Branding theme<input value="PTY Open for Australia Account" readonly /></label></div>
             <p class="muted">Source TRUST invoice: INV-{{activeInvoiceNumber}} · {{isCreatedSequence(activeInvoice.controls.sequence.value)?'Created in Xero':'Create TRUST first'}} · Tax exclusive.</p>
-            @if(ptyItemIssue&&(!ptyReceipt?.status||ptyReceipt?.status==='not_attempted')){<p class="notice" role="status">{{ptyItemIssue}}</p>}
-            @if(ptyPricingIssue&&!ptyOptions?.issue&&(!ptyReceipt?.status||ptyReceipt?.status==='not_attempted')){<p class="notice" role="status">{{ptyPricingIssue}}</p>}
-            @if(ptyReceipt?.stale||ptyReceipt?.adjustmentRequired){<p class="notice" role="alert">The source TRUST invoice changed. Review the related invoices before any further action.</p>}
+            @if(ptyPreparationNotice;as notice){<p class="notice" [attr.role]="ptyReceipt?.stale||ptyReceipt?.adjustmentRequired?'alert':'status'">{{notice}}</p>}
             <div class="table-wrap editor-wrap"><table class="line-editor commission-lines"><thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Account</th><th>Tax rate</th><th>Tax amount</th><th>Type of Sale</th><th>Advisor</th><th>Amount</th></tr></thead><tbody><tr>
               <td data-label="Item"><input [value]="ptySalesItemLabel" readonly aria-label="PTY invoice item" placeholder="Select the item on TRUST" /></td>
               <td data-label="Description"><textarea rows="3" [value]="line.description" readonly aria-label="PTY line description"></textarea></td>
               <td data-label="Qty"><input [value]="line.quantity" readonly aria-label="PTY quantity" /></td>
               <td data-label="Price"><input [value]="line.unitAmount" readonly aria-label="PTY unit price" /></td>
-              <td data-label="Account">{{line.account}}</td><td data-label="Tax rate">{{line.tax}}</td><td data-label="Tax amount">{{money(ptyTax)}}</td><td data-label="Type of Sale">Instalment</td><td data-label="Advisor">{{advisorLabel}}</td><td data-label="Amount" class="amount">{{money(ptyCalculation.commissionMinor)}}</td>
+              <td data-label="Account">{{line.account}}</td><td data-label="Tax rate">{{line.tax}}</td><td data-label="Tax amount">{{money(ptyTax)}}</td><td data-label="Type of Sale"><app-manager-select [formControl]="activePtyTypeOfSale" [options]="activePtyTypeOfSaleOptions" [placeholder]="activePtyTypeOfSaleOptions.length?'Select Type of Sale':'Options pending'" ariaLabel="PTY Type of Sale" panelDirection="up" [attr.aria-invalid]="activePtyTypeOfSale.touched&&!!activePtySaleTypeIssue" /></td><td data-label="Advisor">{{advisorLabel}}</td><td data-label="Amount" class="amount">{{money(ptyCalculation.commissionMinor)}}</td>
             </tr></tbody></table></div>
             <div class="invoice-summary">
               <div class="invoice-review">

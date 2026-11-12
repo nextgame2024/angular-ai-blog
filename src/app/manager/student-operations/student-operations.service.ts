@@ -234,9 +234,9 @@ export class StudentOperationsService {
     });
   }
 
-  caseInvoices(caseId: string, page = 1): Observable<StudentCaseInvoices> {
+  caseInvoices(caseId: string, page = 1, organisation: 'both'|'trust'|'pty' = 'both'): Observable<StudentCaseInvoices> {
     return this.http.get<StudentCaseInvoices>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoices`, {
-      headers: this.headers(), params: new HttpParams().set('page', page).set('limit', 25),
+      headers: this.headers(), params: new HttpParams().set('page', page).set('limit', 25).set('organisation', organisation),
     });
   }
   removeCaseInvoice(caseId:string,connectionId:string,invoiceId:string,action:'delete'|'void',key:string):Observable<{invoiceId:string;status:string}>{
@@ -272,7 +272,7 @@ export class StudentOperationsService {
   commissionDrafts(caseId:string,batchId:string){
     return this.http.get<{items:import('./student-commission.types').CommissionDraft[]}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/commissions`,{headers:this.headers()});
   }
-  prepareCommissions(caseId:string,batchId:string,batchRevision:number,selections:Array<{sequence:number;itemId?:string}>){
+  prepareCommissions(caseId:string,batchId:string,batchRevision:number,selections:Array<{sequence:number;itemId?:string;typeOfSaleOptionId?:string}>){
     return this.http.post<{prepared:number}>(`${this.workspaceBase}/cases/${encodeURIComponent(caseId)}/invoice-drafts/${encodeURIComponent(batchId)}/commissions`,{batchRevision,selections},{headers:this.headers()});
   }
   createPairedInvoices(caseId:string,batchId:string,trustSequences:number[],ptySequences:number[]){

@@ -276,3 +276,6 @@ td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 @media (pointer:coarse) { .case-icon-button { min-width:2.75rem; min-height:2.75rem } }
 
 :host-context(html.dark) .case-icon-button { background:#263449; border-color:#4a6180 }
+
+.invoice-organisation-filter{display:block;min-width:110px;max-width:150px}.invoice-organisation{font-size:.7rem;font-weight:600;color:var(--text-muted,#52678a)}
+:host-context(html.dark) .invoice-organisation{color:#bac9df}

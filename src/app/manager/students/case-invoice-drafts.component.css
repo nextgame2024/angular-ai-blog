@@ -32,3 +32,7 @@
 .invoice-create-action{display:flex;justify-content:flex-end;width:100%;margin-top:1rem}.review-action .btn.xero{margin-left:auto}
 
 header>div:first-child{min-width:0}.invoice-header-actions{display:flex;align-items:center;gap:.75rem;margin-left:auto;min-width:0;flex-shrink:0}.invoice-header-state{font-family:inherit;font-size:.85rem;font-weight:700;line-height:1.5;text-align:right;overflow-wrap:anywhere}.commission-lines th:last-child{width:9%}.commission-basis{grid-template-columns:repeat(2,minmax(0,1fr))}.commission-preview .invoice-create-action{margin-top:0}@media(max-width:720px){.invoice-header-actions{gap:.5rem;flex-shrink:1}.invoice-header-state{max-width:9rem}.commission-basis{grid-template-columns:minmax(0,1fr)}}
+
+.payment-tabs{gap:.4rem}.payment-tabs .btn{font-size:.75rem;padding:.3rem .55rem;min-height:44px}.payment-tabs .btn[aria-current=step]{background:#e5f7ef;border-color:#0ca88b;color:#087f73}:host-context(html.dark) .payment-tabs .btn[aria-current=step]{background:#164e3f;border-color:#35cba2;color:#c2f5e2}
+
+.commission-lines th:nth-child(8){width:12%}
