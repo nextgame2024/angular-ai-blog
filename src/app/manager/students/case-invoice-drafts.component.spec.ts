@@ -37,6 +37,19 @@ describe('CaseInvoiceDraftsComponent',()=>{
     await TestBed.configureTestingModule({imports:[CaseInvoiceDraftsComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(){const f=TestBed.createComponent(CaseInvoiceDraftsComponent);f.componentRef.setInput('caseId','case');f.detectChanges();return f;}
+  it('opens the affected TRUST instalment when the server requires a review note',()=>{
+    api.prepareCaseInvoiceDrafts.and.returnValue(throwError(()=>({status:400,error:{errorCode:'invoice_review_note_required',sequence:2,message:'INV-2 (TRUST): Explain the difference.'}})));
+    const c=setup().componentInstance;c.open();complete(c);c.save();
+    expect(c.activePayment).toBe(1);expect(c.ptySide).toBeFalse();
+    expect(c.message).toContain('INV-2 (TRUST)');expect(c.form.controls.reviewNote.touched).toBeTrue();
+    expect(api.createCaseXeroInvoices).not.toHaveBeenCalled();
+  });
+  it('defaults an additional conditional transfer fee from the approved fee list',()=>{
+    const fixture=structuredClone(data);fixture.preparation!.source.fees.push({label:'Transfer fee',amountMinor:2500,conditional:true,condition:'When applicable'});
+    fixture.preparation!.source.instalments.forEach(i=>i.includedConditionalFeeMinor=0);
+    api.caseInvoiceDrafts.and.returnValue(of(fixture));const c=setup().componentInstance;c.open();
+    expect(c.form.controls.invoices.at(1).controls.fee.value).toBe('25.00');
+  });
   it('preselects the case college, lists all colleges and saves the operator selection for offer invoices',()=>{
     const fixture=structuredClone(data);fixture.preparation!.source.collegeName='East Coast College Pty. Ltd';
     api.caseInvoiceDrafts.and.returnValue(of(fixture));

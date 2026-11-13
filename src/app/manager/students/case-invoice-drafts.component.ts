@@ -332,7 +332,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       // Keep each offer instalment's schedule; only undated payments start today.
       // Saved/operator-selected dates above always take precedence on reopening.
       const scheduledDate=source.dueOn??p.today;
-      const payment=paymentForm(source.sequence,scheduledDate,scheduledDate,source.includedConditionalFeeMinor,[]);
+      const payment=paymentForm(source.sequence,scheduledDate,scheduledDate,Math.max(source.includedConditionalFeeMinor,...p.source.fees.filter(f=>f.conditional&&/transfer/i.test(f.label)).map(f=>f.amountMinor)),[]);
       this.form.controls.invoices.push(payment);this.bindFeeChoice(payment);this.addLine(payment,'tuition',course||'Tuition Fee',tuition);
       if(enrolment>0)this.addLine(payment,'enrolment','Enrolment Fee',enrolment);
       if(material>0)this.addLine(payment,'materials','Materials fee',material);
@@ -571,7 +571,14 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
         const known:Record<string,string>={student_contact_name_conflict:'Another student or Xero contact has this exact name. Review the existing record before continuing.',student_invoice_contact_unavailable:'The student needs an active linked Xero Contact. Ask an administrator to review the contact.',xero_contact_read_scope_missing:'An administrator must authorize Xero contact access in company integrations.'};
         this.message=(e?.status===409&&Object.prototype.hasOwnProperty.call(known,e?.error?.errorCode)&&known[e.error.errorCode])||'The drafts were saved, but Xero creation could not be confirmed. Reload the drafts before trying again.';
         this.tone='error';this.changed.emit();if(this.showCreatedInvoices)this.load();}});
-    },error:e=>{this.busy=false;this.enableEditor();this.conflict=e?.status===409;this.message=this.conflict?'The case, offer, or a read-only Xero invoice changed. Close this preview and reopen it before editing again.':e?.status===400?'Check quantities, prices and dates. Explain any changes from the offer in the review note.':'Draft saving could not be confirmed. Retry the same preview.';this.tone='error';}});
+    },error:e=>{this.busy=false;this.enableEditor();
+      if(e?.status===400&&e?.error?.errorCode==='invoice_review_note_required'){
+        const index=this.form.controls.invoices.controls.findIndex(invoice=>invoice.controls.sequence.value===e.error.sequence);
+        if(index>=0)this.selectPayment(index,false);
+        this.message=typeof e.error.message==='string'?e.error.message:'Explain the invoice difference in the review note, or correct the invoice/offer details.';
+        this.form.controls.reviewNote.markAsTouched();this.tone='error';return;
+      }
+      this.conflict=e?.status===409;this.message=this.conflict?'The case, offer, or a read-only Xero invoice changed. Close this preview and reopen it before editing again.':e?.status===400?'Check quantities, prices and dates. Explain any changes from the offer in the review note.':'Draft saving could not be confirmed. Retry the same preview.';this.tone='error';}});
   }
   private exportComplete(result:{created:number;skipped:number;results?:Array<{sequence:number;status:string;invoiceId?:string;invoiceNumber?:string|null;errorCode?:string;message?:string}>}){this.busy=false;
     for(const item of result.results??[]){
