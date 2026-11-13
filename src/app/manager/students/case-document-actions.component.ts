@@ -189,7 +189,8 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
   }
   private uploadError(e:any):string {
     const code=e?.error?.errorCode;
-    if(code==='student_document_storage_pending')return 'Additional document storage is being prepared. Wait two minutes, then retry this same file.';
+    if(code==='student_contact_name_conflict')return 'Another student or Xero contact has this exact name. Review the existing record before continuing.';
+    if(code==='student_document_storage_pending')return 'Document storage is still being prepared. Retry this same file shortly.';
     if(code==='student_document_storage_review_required')return 'This document needs administrator review before it can be uploaded again.';
     if(code==='student_document_storage_full')return 'Document storage is full. Contact your administrator before uploading more files.';
     if(e?.status===413)return 'The file is too large. Maximum size is 10 MB.';

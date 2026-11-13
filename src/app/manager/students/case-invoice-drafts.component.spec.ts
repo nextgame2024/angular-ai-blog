@@ -78,6 +78,18 @@ describe('CaseInvoiceDraftsComponent',()=>{
     expect(api.prepareManualCaseInvoice).not.toHaveBeenCalled();expect(api.createCaseXeroInvoices).not.toHaveBeenCalled();
     expect(c.modal.nativeElement.open).toBeFalse();expect(c.changed.emit).toHaveBeenCalledTimes(1);
   });
+  it('edits PTY using its college recipient and student reference without TRUST payment tracking',()=>{
+    const options=api.caseInvoiceEditOptions('case','pty','existing') as any;
+    let fixture:any;options.subscribe((v:any)=>fixture=structuredClone(v));api.caseInvoiceEditOptions.calls.reset();
+    fixture.organisation='PTY';fixture.contactName='Fixture College - 2';fixture.invoice.invoiceReference='Student Reference';fixture.invoice.lineItems[0].tracking=[{name:'Type of Sale',option:'Instalment'}];
+    api.caseInvoiceEditOptions.and.returnValue(of(fixture));
+    const f=setup(),c=f.componentInstance;c.openEdit('pty','existing');f.detectChanges();
+    expect(c.editingPty).toBeTrue();expect(f.nativeElement.querySelector('.reference-options')).toBeNull();expect(f.nativeElement.querySelector('.fee-choice')).toBeNull();expect(c.referenceMode.value).toBe('reference');expect(c.manualReference.value).toBe('Student Reference');
+    expect(c.invoiceHeaderLabel).toContain('(PTY)');expect(f.nativeElement.querySelector('.invoice-meta input').value).toBe('Fixture College - 2');
+    expect(f.nativeElement.querySelector('.line-editor').textContent).toContain('Type of Sale');expect(f.nativeElement.querySelector('.line-editor').textContent).toContain('Instalment');
+    c.form.controls.confirmed.setValue(true);c.createAll();expect(api.updateCaseInvoice.calls.mostRecent().args.slice(0,3)).toEqual(['case','pty','existing']);
+    expect(api.updateCaseInvoice.calls.mostRecent().args[3].reference).toBe('Student Reference');
+  });
   it('retains changes and the same retry identity after an uncertain edit response',()=>{
     api.updateCaseInvoice.and.returnValue(throwError(()=>({status:502})));const c=setup().componentInstance;c.openEdit('connection','existing');c.form.controls.confirmed.setValue(true);
     c.createAll();expect(c.modal.nativeElement.open).toBeTrue();expect(c.busy).toBeFalse();expect(c.message).toContain('Retry the same changes');

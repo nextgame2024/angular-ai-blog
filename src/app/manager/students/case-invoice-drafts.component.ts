@@ -38,8 +38,10 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   detail:StudentCaseInvoiceDetail|null=null;
   readonlyMode=false;detailLoading=false;detailFailed=false;
   manualMode=false;
-  editTarget:{connectionId:string;invoiceId:string;expectedFingerprint:string;invoiceNumber:string;status:string;paymentTrack:string;conditionalFeeLineId?:string;retryKey?:string}|null=null;
+  editTarget:{organisation?:'TRUST'|'PTY';contactName?:string|null;connectionId:string;invoiceId:string;expectedFingerprint:string;invoiceNumber:string;status:string;paymentTrack:string;conditionalFeeLineId?:string;retryKey?:string}|null=null;
   readonly manualReference=text();
+  readonly editSaleTypes=new Map<string,string>();
+  get editingPty(){return this.editTarget?.organisation==='PTY';}
   readonly referenceMode=new FormControl<'reference'|'college'>('reference',{nonNullable:true});
   readonly manualCollege=new FormControl('',{nonNullable:true});
   readonly manualBrandingTheme=new FormControl('',{nonNullable:true,validators:[Validators.required]});
@@ -120,7 +122,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   get invoiceHeaderLabel(){
     if(!this.activeInvoice)return '';
     const statusLabel=(status:string)=>(({DRAFT:'Draft',SUBMITTED:'Awaiting approval',AUTHORISED:'Awaiting payment',PAID:'Paid',created:'Created in Xero',creating:'Creating',review_required:'Review required',not_attempted:'Draft'} as Record<string,string>)[status]??status);
-    const role=!this.editTarget?(this.ptySide?' (PTY)':' (TRUST)'):'';
+    const role=this.editTarget?` (${this.editTarget.organisation??'TRUST'})`:(this.ptySide?' (PTY)':' (TRUST)');
     const status=this.ptySide?statusLabel(this.ptyReceipt?.providerStatus||this.ptyReceipt?.status||'DRAFT'):this.editTarget?statusLabel(this.editTarget.status):this.isCreatedSequence(this.activeInvoice.controls.sequence.value)?'Created in Xero':this.activeNeedsReview?'Review required':'Draft';
     return `${this.editTarget?.invoiceNumber??'INV-'+this.activeInvoiceNumber}${role} · ${status}`;
   }
@@ -394,11 +396,13 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     this.api.caseInvoiceEditOptions(this.caseId,connectionId,invoiceId).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$)).subscribe({next:options=>{
       this.populateManual(options);
       const invoice=options.invoice;
-      this.editTarget={connectionId,invoiceId,expectedFingerprint:options.expectedFingerprint,invoiceNumber:invoice.invoiceNumber||'Invoice',status:invoice.status,paymentTrack:invoice.paymentTrack||'—'};
+      this.editSaleTypes.clear();
+      for(const line of invoice.lineItems)this.editSaleTypes.set(line.lineItemId??'',line.tracking?.find(t=>/^type\s*of\s*sale$/i.test(t.name))?.option??'—');
+      this.editTarget={organisation:options.organisation??'TRUST',contactName:options.contactName,connectionId,invoiceId,expectedFingerprint:options.expectedFingerprint,invoiceNumber:invoice.invoiceNumber||'Invoice',status:invoice.status,paymentTrack:invoice.paymentTrack||'—'};
       this.manualCurrency.setValue(invoice.currencyCode||'AUD');this.manualBrandingTheme.setValue(invoice.brandingThemeId||'');
       this.referenceMode.setValue('reference');this.manualReference.setValue(invoice.invoiceReference||'');
       const college=options.colleges.find(c=>c.name===invoice.invoiceReference);
-      if(college){this.referenceMode.setValue('college');this.manualCollege.setValue(college.collegeId);}
+      if(college&&options.organisation!=='PTY'){this.referenceMode.setValue('college');this.manualCollege.setValue(college.collegeId);}
       const advisor=options.advisors.find(a=>`${a.code} ${a.name}`===invoice.advisorName||a.name===invoice.advisorName);
       this.form.controls.advisorId.setValue(advisor?.advisorId??'');
       const payment=this.activeInvoice;payment.patchValue({issueDate:invoice.invoiceDate||'',dueDate:invoice.dueDate||''});payment.controls.lines.clear();
@@ -564,7 +568,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       if(action==='save'){this.busy=false;this.enableEditor();this.message=`${result.count} drafts saved. You can continue reviewing and editing them here.`;this.tone='success';this.changed.emit();if(this.showCreatedInvoices)this.load();return;}
       const sequences=action==='all'?invoices.filter(i=>!this.isFrozenSequence(i.sequence)).map(i=>i.sequence):[invoices[this.activePayment].sequence];
       this.api.createCaseXeroInvoices(this.caseId,result.batchId,sequences).pipe(takeUntil(this.scope$)).subscribe({next:r=>this.exportComplete(r),error:e=>{this.busy=false;this.enableEditor();
-        const known:Record<string,string>={student_invoice_contact_unavailable:'The student needs an active linked Xero Contact. Ask an administrator to review the contact.',xero_contact_read_scope_missing:'An administrator must authorize Xero contact access in company integrations.'};
+        const known:Record<string,string>={student_contact_name_conflict:'Another student or Xero contact has this exact name. Review the existing record before continuing.',student_invoice_contact_unavailable:'The student needs an active linked Xero Contact. Ask an administrator to review the contact.',xero_contact_read_scope_missing:'An administrator must authorize Xero contact access in company integrations.'};
         this.message=(e?.status===409&&Object.prototype.hasOwnProperty.call(known,e?.error?.errorCode)&&known[e.error.errorCode])||'The drafts were saved, but Xero creation could not be confirmed. Reload the drafts before trying again.';
         this.tone='error';this.changed.emit();if(this.showCreatedInvoices)this.load();}});
     },error:e=>{this.busy=false;this.enableEditor();this.conflict=e?.status===409;this.message=this.conflict?'The case, offer, or a read-only Xero invoice changed. Close this preview and reopen it before editing again.':e?.status===400?'Check quantities, prices and dates. Explain any changes from the offer in the review note.':'Draft saving could not be confirmed. Retry the same preview.';this.tone='error';}});

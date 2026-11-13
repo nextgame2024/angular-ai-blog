@@ -189,12 +189,17 @@ describe('CaseDocumentActionsComponent',()=>{
     c.upload();expect(c.message).toBe('Document storage is full. Contact your administrator before uploading more files.');
     expect(c.stagedDocuments[0].file.name).toBe('test.pdf');expect(c.busy).toBeFalse();
   });
+  it('shows duplicate student names as a review issue instead of asking for an upload retry',()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();stage(c,new File(['pdf'],'test.pdf'));
+    api.uploadCaseDocument.and.returnValue(throwError(()=>({status:409,error:{errorCode:'student_contact_name_conflict'}})));
+    c.upload();expect(c.message).toContain('exact name');expect(c.message).not.toContain('two minutes');expect(c.stagedDocuments.length).toBe(1);
+  });
   it('preserves the file and request identity while overflow storage is prepared automatically',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
     stage(c,new File(['pdf'],'test.pdf'));
     api.uploadCaseDocument.and.returnValue(throwError(()=>({status:409,error:{errorCode:'student_document_storage_pending'}})));
     c.upload();const key=api.uploadCaseDocument.calls.mostRecent().args[3];
-    expect(c.message).toContain('storage is being prepared');expect(c.message).not.toContain('Contact');
+    expect(c.message).toContain('storage is still being prepared');expect(c.message).not.toContain('Additional');expect(c.message).not.toContain('Contact');
     expect(c.stagedDocuments[0].file.name).toBe('test.pdf');c.upload();expect(api.uploadCaseDocument.calls.mostRecent().args[3]).toBe(key);
   });
   it('keeps the server error safe and allows a failed options request to be retried',()=>{

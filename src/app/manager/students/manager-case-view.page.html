@@ -220,7 +220,7 @@
       <div class="document-mutation-panel">
         <h2 id="case-delete-heading">Delete case permanently</h2>
         <p>Delete <strong>{{deleteTarget?.caseNumber}}</strong> and its documents, reviews and case records? Linked invoices will be deleted or voided where allowed. Paid or credited invoices prevent deletion.</p>
-        <p>The student’s contact will be archived only when their last case is deleted. The student account remains while they have other cases. Deleting their last case also deletes their student record. This action cannot be undone.</p>
+        <p>Both TRUST and PTY invoices are checked before deletion. A college contact is archived only if no other cases or accounting transactions use it. The student’s contact will be archived only when their last case is deleted. The student account remains while they have other cases. Deleting their last case also deletes their student record. This action cannot be undone.</p>
         @if(deleteError){<p class="section-error" role="alert">{{deleteError}}</p>}
         <div class="document-mutation-actions"><button type="button" class="secondary-button" (click)="closeCaseDelete()" [disabled]="deleteBusy">Cancel</button><button type="button" class="mutation-confirm danger case-delete-confirm" (click)="confirmCaseDelete()" [disabled]="deleteBusy||!deleteTarget?.recordVersion">{{deleteBusy?'Deleting…':'Delete case permanently'}}</button></div>
       </div>
