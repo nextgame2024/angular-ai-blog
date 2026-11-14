@@ -8,7 +8,7 @@
       <h3>Leads & Conversations</h3>
       <p>Manage enquiries, assignments and conversations with your team.</p>
     </div>
-    @if(context && view!=='settings'){<button
+    @if(context && view!=='settings' && view!=='forms'){<button
       class="btn primary"
       type="button"
       (click)="newLead()"
@@ -33,6 +33,13 @@
       (click)="changeView('leads')"
     >
       Leads</button
+    ><button
+      type="button"
+      [class.active]="view==='forms'"
+      [attr.aria-current]="view==='forms'?'page':null"
+      (click)="changeView('forms')"
+    >
+      Forms</button
     >@if(context.canManageSettings){<button
       type="button"
       [class.active]="view==='settings'"
@@ -54,6 +61,9 @@
   @if(view==='settings'){<app-lead-assistant-settings
     [embedded]="true"
   ></app-lead-assistant-settings
+  >} @else if(view==='forms'){<app-lead-forms
+    [canManage]="context.canManageLeads"
+  ></app-lead-forms
   >} @else{
   <div class="notice">
     <strong>WhatsApp enquiries</strong>
@@ -674,7 +684,7 @@
       aria-labelledby="discard-title"
     >
       <h4 id="discard-title">Discard unsaved changes?</h4>
-      <p>Your unsaved lead details or note will be lost.</p>
+      <p>Your unsaved changes will be lost.</p>
       <footer>
         <button class="btn" type="button" (click)="keepEditing()">
           Keep editing</button

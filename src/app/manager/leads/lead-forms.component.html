@@ -1,0 +1,616 @@
+<ng-template #rowActions let-row>
+  <div class="actions">
+    <button
+      class="btn icon-btn"
+      type="button"
+      (click)="open(row, true)"
+      [disabled]="busy"
+      [attr.aria-label]="'Preview ' + row.name"
+      title="Preview"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" />
+        <circle cx="12" cy="12" r="3" />
+      </svg>
+    </button>
+    @if (canManage) {
+      <button
+        class="btn icon-btn"
+        type="button"
+        (click)="open(row)"
+        [disabled]="busy"
+        [attr.aria-label]="'Edit ' + row.name"
+        title="Edit"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m15 5 4 4M4 20l4-1L20 7l-4-4L4 15v5Z" />
+        </svg>
+      </button>
+      <button
+        class="btn icon-btn danger"
+        type="button"
+        (click)="delete(row)"
+        [disabled]="busy"
+        [attr.aria-label]="'Delete ' + row.name"
+        title="Delete"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
+        </svg>
+      </button>
+    }
+  </div>
+</ng-template>
+@if (!editor) {
+  <header class="page-header">
+    <div>
+      <h3>Forms</h3>
+      <p>Build and organise forms for your leads.</p>
+    </div>
+    @if (canManage) {
+      <div class="actions">
+        <button
+          class="btn"
+          type="button"
+          (click)="typesOpen = true; loadTypes()"
+          [disabled]="busy"
+        >
+          Create type</button
+        ><button
+          class="btn primary"
+          type="button"
+          (click)="create()"
+          [disabled]="busy"
+        >
+          + Create form
+        </button>
+      </div>
+    }
+  </header>
+  <div class="form-filters">
+    <input
+      type="search"
+      [(ngModel)]="q"
+      (ngModelChange)="search()"
+      maxlength="200"
+      placeholder="Search forms"
+      aria-label="Search forms"
+    />
+    <app-manager-select
+      [(ngModel)]="typeId"
+      (ngModelChange)="refresh(true)"
+      [options]="filterOptions"
+      ariaLabel="Filter by type"
+    ></app-manager-select>
+    <button
+      type="button"
+      class="btn"
+      (click)="refresh(); loadTypes()"
+      [disabled]="loading"
+    >
+      Refresh list
+    </button>
+  </div>
+  <section
+    class="card list-content"
+    aria-label="Forms"
+    [attr.aria-busy]="loading"
+  >
+    @if (loading) {
+      <app-manager-list-loader
+        [overlay]="rows.length > 0"
+        label="Loading forms…"
+      ></app-manager-list-loader>
+    }
+    @if (error) {
+      <div class="empty">
+        <p>{{ error }}</p>
+        <button class="btn" type="button" (click)="refresh()">Retry</button>
+      </div>
+    } @else if (!loading && !rows.length) {
+      <div class="empty">
+        <h4>No forms found</h4>
+        <p>
+          {{
+            q || typeId
+              ? "Try different filters."
+              : "Create your first form to get started."
+          }}
+        </p>
+      </div>
+    } @else if (rows.length) {
+      <div class="desktop-table">
+        <table>
+          <thead>
+            <tr>
+              @for (
+                col of [
+                  { key: "name", label: "Form name" },
+                  { key: "type", label: "Type" },
+                  { key: "updated", label: "Updated" },
+                ];
+                track col.key
+              ) {
+                <th [attr.aria-sort]="sortAria(col.key)">
+                  <button
+                    type="button"
+                    class="sort-button"
+                    (click)="sortBy(col.key)"
+                  >
+                    {{ col.label
+                    }}<span class="sort-indicator" aria-hidden="true"></span>
+                  </button>
+                </th>
+              }
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row.id) {
+              <tr>
+                <td>
+                  <strong>{{ row.name }}</strong>
+                </td>
+                <td>
+                  <span class="badge">{{ row.typeName }}</span>
+                </td>
+                <td>{{ row.updatedAt | date: "mediumDate" }}</td>
+                <td>
+                  <ng-container
+                    *ngTemplateOutlet="rowActions; context: { $implicit: row }"
+                  ></ng-container>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="mobile-cards">
+        @for (row of rows; track row.id) {
+          <article class="lead-card">
+            <span class="lead-card-title"
+              >{{ row.name }}<span class="badge">{{ row.typeName }}</span></span
+            ><small>Updated {{ row.updatedAt | date: "mediumDate" }}</small
+            ><ng-container
+              *ngTemplateOutlet="rowActions; context: { $implicit: row }"
+            ></ng-container>
+          </article>
+        }
+      </div>
+    }
+    <footer class="pagination">
+      <span class="muted">{{ total }} forms</span
+      ><app-manager-select
+        class="compact-select"
+        [ngModel]="'' + limit"
+        (ngModelChange)="limit = +$event; refresh(true)"
+        [options]="pageSizes"
+        ariaLabel="Forms per page"
+      ></app-manager-select>
+      <div class="page-buttons">
+        <button
+          class="btn page-btn"
+          type="button"
+          (click)="goPage(1)"
+          [disabled]="loading || page === 1"
+          aria-label="First page"
+        >
+          <svg viewBox="0 0 24 24"><path d="m13 6-6 6 6 6m7-12-6 6 6 6" /></svg>
+        </button>
+        <button
+          class="btn page-btn"
+          type="button"
+          (click)="goPage(page - 1)"
+          [disabled]="loading || page === 1"
+          aria-label="Previous page"
+        >
+          <svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6" /></svg>
+        </button>
+        <app-page-jump
+          [page]="page"
+          [totalPages]="totalPages"
+          [disabled]="loading"
+          (pageChange)="goPage($event)"
+        ></app-page-jump>
+        <button
+          class="btn page-btn"
+          type="button"
+          (click)="goPage(page + 1)"
+          [disabled]="loading || page === totalPages"
+          aria-label="Next page"
+        >
+          <svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></svg>
+        </button>
+        <button
+          class="btn page-btn"
+          type="button"
+          (click)="goPage(totalPages)"
+          [disabled]="loading || page === totalPages"
+          aria-label="Last page"
+        >
+          <svg viewBox="0 0 24 24"><path d="m4 6 6 6-6 6m7-12 6 6-6 6" /></svg>
+        </button>
+      </div>
+    </footer>
+  </section>
+} @else {
+  <header class="page-header">
+    <div>
+      <h3>
+        {{
+          preview
+            ? "Form preview"
+            : editor.version
+              ? "Edit form"
+              : "Create form"
+        }}
+      </h3>
+      <p>
+        {{
+          preview
+            ? "Try the fields below. Preview answers are not saved."
+            : "Add blocks in the order they should appear."
+        }}
+      </p>
+    </div>
+    <div class="actions">
+      <button
+        class="btn"
+        type="button"
+        (click)="closeEditor()"
+        [disabled]="busy"
+      >
+        {{ dirty ? "Cancel" : "Back to forms" }}
+      </button>
+      @if (canManage) {
+        <button
+          class="btn"
+          type="button"
+          (click)="preview = !preview"
+          [disabled]="busy"
+        >
+          {{ preview ? "Edit" : "Preview" }}</button
+        ><button
+          class="btn primary"
+          type="button"
+          (click)="save()"
+          [disabled]="busy"
+        >
+          {{ busy ? "Saving…" : "Save form" }}
+        </button>
+      }
+    </div>
+  </header>
+  @if (!preview) {
+    <fieldset class="builder-fields" [disabled]="busy">
+      <section class="card form-body form-grid">
+        <div>
+          <label for="form-name">Form name *</label
+          ><input
+            id="form-name"
+            [(ngModel)]="editor.name"
+            (ngModelChange)="dirty = true"
+            maxlength="160"
+            [class.invalid]="attempted && !editor.name.trim()"
+            [attr.aria-invalid]="attempted && !editor.name.trim()"
+          />
+        </div>
+        <div>
+          <label for="form-type">Type *</label
+          ><app-manager-select
+            id="form-type"
+            [(ngModel)]="editor.typeId"
+            (ngModelChange)="dirty = true"
+            [options]="typeOptions"
+            [disabled]="busy"
+            placeholder="Select a type"
+            ariaLabel="Form type"
+            [class.invalid]="attempted && !editor.typeId"
+          ></app-manager-select>
+        </div>
+        <div class="wide actions">
+          <button
+            class="btn"
+            type="button"
+            (click)="typesOpen = true; loadTypes()"
+            [disabled]="busy"
+          >
+            Create type
+          </button>
+          @if (!typesReady) {
+            <button class="btn" type="button" (click)="loadTypes()">
+              Retry loading types
+            </button>
+          }
+        </div>
+      </section>
+      <div class="block-toolbar">
+        @for (button of blockButtons; track button.kind) {
+          <button
+            class="btn"
+            type="button"
+            (click)="add(button.kind)"
+            [disabled]="busy || editor.blocks.length >= 100"
+          >
+            {{ button.label }}
+          </button>
+        }
+      </div>
+      <p class="muted">
+        Place an input, list or checkboxes immediately after a question. Up to
+        100 blocks and 50 options per field.
+      </p>
+      @if (!editor.blocks.length) {
+        <div class="card empty" [class.invalid]="attempted">
+          Use the buttons above to add your first block.
+        </div>
+      }
+      @for (block of editor.blocks; track block.id; let i = $index) {
+        <section class="card block" [class.invalid]="blockInvalid(block, i)">
+          <header class="block-header">
+            <strong>{{ i + 1 }}. {{ block.kind | titlecase }}</strong>
+            <div class="actions">
+              <button
+                class="btn icon-btn"
+                type="button"
+                (click)="move(i, -1)"
+                [disabled]="busy || i === 0"
+                aria-label="Move block up"
+              >
+                <svg viewBox="0 0 24 24"><path d="m6 14 6-6 6 6" /></svg>
+              </button>
+              <button
+                class="btn icon-btn"
+                type="button"
+                (click)="move(i, 1)"
+                [disabled]="busy || i === editor.blocks.length - 1"
+                aria-label="Move block down"
+              >
+                <svg viewBox="0 0 24 24"><path d="m6 10 6 6 6-6" /></svg>
+              </button>
+              <button class="btn" type="button" (click)="remove(i)">
+                Remove
+              </button>
+            </div>
+          </header>
+          @if (block.kind === "description") {
+            <label [attr.for]="block.id">Description</label
+            ><app-manager-rich-text-editor
+              [id]="block.id"
+              [(ngModel)]="block.text"
+              (ngModelChange)="dirty = true"
+              [disabled]="busy"
+              placeholder="Add a description or confirmation message…"
+            ></app-manager-rich-text-editor>
+          } @else if (block.kind === "checkboxes" || block.kind === "list") {
+            @for (option of block.options; track $index; let j = $index) {
+              <div class="option-row">
+                @if (block.kind === "checkboxes") {
+                  <input
+                    type="checkbox"
+                    disabled
+                    aria-label="Checkbox option preview"
+                  />
+                }
+                <input
+                  [ngModel]="option"
+                  (ngModelChange)="block.options[j] = $event; dirty = true"
+                  maxlength="200"
+                  [attr.aria-label]="'Option ' + (j + 1) + ' label'"
+                  placeholder="Option label"
+                />
+                <button
+                  class="btn"
+                  type="button"
+                  (click)="block.options.splice(j, 1); dirty = true"
+                  [disabled]="block.options.length === 1"
+                >
+                  Remove
+                </button>
+              </div>
+            }
+            <button
+              class="btn"
+              type="button"
+              (click)="block.options.push(''); dirty = true"
+              [disabled]="block.options.length >= 50"
+            >
+              Add option
+            </button>
+          } @else {
+            <label [attr.for]="block.id">{{
+              block.kind === "input"
+                ? "Input placeholder (optional)"
+                : (block.kind | titlecase) + " text *"
+            }}</label
+            ><input
+              [id]="block.id"
+              [(ngModel)]="block.text"
+              (ngModelChange)="dirty = true"
+              maxlength="1000"
+            />
+            @if (block.kind === "question") {
+              <fieldset class="required-options">
+                <legend>Is this question required?</legend>
+                <label
+                  ><input
+                    type="radio"
+                    [name]="block.id + '-required'"
+                    [(ngModel)]="block.required"
+                    (ngModelChange)="dirty = true"
+                    [value]="true"
+                  />
+                  Required</label
+                ><label
+                  ><input
+                    type="radio"
+                    [name]="block.id + '-required'"
+                    [(ngModel)]="block.required"
+                    (ngModelChange)="dirty = true"
+                    [value]="false"
+                  />
+                  Optional</label
+                >
+              </fieldset>
+            }
+          }
+        </section>
+      }
+    </fieldset>
+  } @else {
+    <section class="card form-preview" aria-label="Form preview">
+      @if (!editor.blocks.length) {
+        <p class="muted">Add blocks to preview your form.</p>
+      }
+      @for (block of editor.blocks; track block.id; let i = $index) {
+        @switch (block.kind) {
+          @case ("title") {
+            <h1>{{ block.text }}</h1>
+          }
+          @case ("subtitle") {
+            <h2>{{ block.text }}</h2>
+          }
+          @case ("description") {
+            <div class="rich-description" [innerHTML]="block.text"></div>
+          }
+          @case ("question") {
+            <label
+              [id]="'question-' + block.id"
+              [attr.for]="'answer-' + editor.blocks[i + 1]?.id"
+              >{{ block.text }}
+              @if (block.required) {
+                <span class="required-mark">Required</span>
+              }
+            </label>
+          }
+          @case ("input") {
+            <input
+              [id]="'answer-' + block.id"
+              [placeholder]="block.text"
+              [attr.aria-label]="
+                question(i)?.text || block.text || 'Your answer'
+              "
+              [required]="question(i)?.required ?? false"
+            />
+          }
+          @case ("list") {
+            <app-manager-select
+              [id]="'answer-' + block.id"
+              [options]="options(block)"
+              [ariaLabel]="question(i)?.text || 'Select an option'"
+              placeholder="Select an option"
+              [attr.aria-required]="question(i)?.required || null"
+            ></app-manager-select>
+          }
+          @case ("checkboxes") {
+            <fieldset
+              class="preview-checks"
+              [attr.aria-labelledby]="
+                question(i) ? 'question-' + question(i)!.id : null
+              "
+            >
+              <legend class="sr-only">
+                {{ question(i)?.text || "Choose options" }}
+              </legend>
+              @for (option of block.options; track $index) {
+                <label><input type="checkbox" />{{ option }}</label>
+              }
+            </fieldset>
+          }
+        }
+      }
+    </section>
+  }
+}
+@if (typesOpen) {
+  <div class="modal-backdrop">
+    <section
+      class="lead-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="types-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <header>
+        <h4 id="types-title">Form types</h4>
+        <button
+          class="btn"
+          type="button"
+          (click)="closeTypes()"
+          [disabled]="busy"
+        >
+          Close
+        </button>
+      </header>
+      <div class="form-body">
+        <form (ngSubmit)="createType()">
+          <label for="new-type">New type name *</label>
+          <div class="option-row">
+            <input
+              id="new-type"
+              name="newType"
+              [(ngModel)]="typeName"
+              maxlength="80"
+              [disabled]="busy"
+              [class.invalid]="typeAttempted && !typeName.trim()"
+            /><button class="btn primary" type="submit" [disabled]="busy">
+              Create type
+            </button>
+          </div>
+        </form>
+        <p class="muted">Types used by saved forms cannot be deleted.</p>
+        @if (!typesReady) {
+          <button class="btn" type="button" (click)="loadTypes()">
+            Retry loading types
+          </button>
+        }
+        @for (type of types; track type.id) {
+          <div class="type-row">
+            <span
+              >{{ type.name }}
+              <small class="muted">({{ type.formCount }} forms)</small></span
+            ><button
+              class="btn danger"
+              type="button"
+              (click)="deleteType(type)"
+              [disabled]="busy || type.formCount > 0"
+              [attr.aria-label]="'Delete ' + type.name"
+            >
+              Delete
+            </button>
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+}
+@if (confirmation) {
+  <div class="modal-backdrop confirmation">
+    <section
+      class="confirm-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="form-confirm-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
+    >
+      <h4 id="form-confirm-title">Confirm action</h4>
+      <p>{{ confirmation.message }}</p>
+      <footer>
+        <button class="btn" type="button" (click)="confirmation = null">
+          Cancel</button
+        ><button class="btn primary" type="button" (click)="confirm()">
+          Confirm
+        </button>
+      </footer>
+    </section>
+  </div>
+}
+@if (toast) {
+  <app-manager-toast
+    [message]="toast"
+    [tone]="tone"
+    (closed)="toast = ''"
+  ></app-manager-toast>
+}

@@ -1,3 +1,4 @@
+import { LeadFormsComponent } from './lead-forms.component';
 import { LeadReplyComponent } from './lead-reply.component';
 import { CommonModule } from '@angular/common';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -58,11 +59,13 @@ import {
     PageJumpComponent,
     LeadAssistantSettingsPage,
     LeadReplyComponent,
+    LeadFormsComponent,
   ],
   templateUrl: './lead-workspace.page.html',
   styleUrls: ['./lead-workspace.page.css'],
 })
 export class LeadWorkspacePage implements OnInit {
+  @ViewChild(LeadFormsComponent) formsPage?: LeadFormsComponent;
   @ViewChild(LeadReplyComponent) replyComposer?: LeadReplyComponent;
   replyUpdated(value: LeadConversation) {
     this.applyDetail(value);
@@ -81,7 +84,7 @@ export class LeadWorkspacePage implements OnInit {
   context: LeadContext | null = null;
   contextLoading = false;
   contextError = '';
-  view: 'inbox' | 'leads' | 'settings' = 'inbox';
+  view: 'inbox' | 'leads' | 'settings' | 'forms' = 'inbox';
   rows: LeadRow[] = [];
   total = 0;
   page = 1;
@@ -190,6 +193,7 @@ export class LeadWorkspacePage implements OnInit {
   }
   get hasUnsaved() {
     return (
+      !!this.formsPage?.hasUnsaved ||
       !!this.settingsPage?.form.dirty ||
       !!(this.editor && this.form.dirty) ||
       !!this.note.value.trim() ||
@@ -282,11 +286,15 @@ export class LeadWorkspacePage implements OnInit {
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((params) => {
         const view = params.get('view');
-        this.view = view === 'leads' || view === 'settings' ? view : 'inbox';
+        this.view =
+          view === 'leads' || view === 'settings' || view === 'forms'
+            ? view
+            : 'inbox';
         if (this.context) {
           if (this.view === 'settings' && !this.context.canManageSettings)
             this.view = 'inbox';
-          if (this.view !== 'settings') this.refreshList();
+          if (this.view !== 'settings' && this.view !== 'forms')
+            this.refreshList();
         }
       });
     this.loadContext();
@@ -304,7 +312,8 @@ export class LeadWorkspacePage implements OnInit {
           this.contextLoading = false;
           if (this.view === 'settings' && !value.canManageSettings)
             this.view = 'inbox';
-          if (this.view !== 'settings') this.refreshList();
+          if (this.view !== 'settings' && this.view !== 'forms')
+            this.refreshList();
         },
         error: (e) => {
           this.contextLoading = false;
@@ -316,8 +325,8 @@ export class LeadWorkspacePage implements OnInit {
         },
       });
   }
-  changeView(view: 'inbox' | 'leads' | 'settings'): void {
-    if (this.saving || view === this.view) return;
+  changeView(view: 'inbox' | 'leads' | 'settings' | 'forms'): void {
+    if (this.saving || this.formsPage?.busy || view === this.view) return;
     this.guard(() => {
       this.editor = null;
       this.note.reset('');
@@ -332,7 +341,12 @@ export class LeadWorkspacePage implements OnInit {
     });
   }
   refreshList(reset = false): void {
-    if (!this.context || this.contextLoading || this.view === 'settings')
+    if (
+      !this.context ||
+      this.contextLoading ||
+      this.view === 'settings' ||
+      this.view === 'forms'
+    )
       return;
     if (reset) this.page = 1;
     this.listRequests.next();
@@ -683,6 +697,7 @@ export class LeadWorkspacePage implements OnInit {
     this.note.reset('');
     this.noteKey = '';
     this.replyComposer?.reset();
+    this.formsPage?.reset();
     action?.();
   }
   keepEditing(): void {
