@@ -50,7 +50,7 @@
         <label>Type<app-manager-select formControlName="documentTypeId" [options]="typeOptions" [searchable]="true" ariaLabel="Document type" placeholder="Select a type" [attr.aria-invalid]="uploadForm.controls.documentTypeId.invalid && uploadForm.controls.documentTypeId.touched"></app-manager-select></label>
         <div class="file-field">
           <span class="file-label">File</span>
-          <input #fileInput type="file" hidden [multiple]="mode==='upload'" aria-label="Document files" accept=".pdf,.jpg,.jpeg,.png" (change)="selectFiles($event)" />
+          <input #fileInput type="file" hidden [multiple]="mode==='upload'" aria-label="Document files" accept=".pdf,.jpg,.jpeg,.png" (change)="selectFiles($event)" (cancel)="$event.stopPropagation()" />
           <div class="file-picker">
             <input id="document-file-name" class="file-name" type="text" [value]="selectedFilesLabel" readonly aria-live="polite" aria-label="Selected document files" [title]="selectedFilesLabel" />
             <button type="button" class="btn primary file-button" (click)="fileInput.click()"

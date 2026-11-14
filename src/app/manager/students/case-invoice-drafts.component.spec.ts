@@ -544,13 +544,20 @@ describe('CaseInvoiceDraftsComponent',()=>{
     const pending=new Subject<any>();api.prepareCaseInvoiceDrafts.and.returnValue(pending);c.save();expect(api.prepareCaseInvoiceDrafts.calls.mostRecent().args[2]).toBe(key);c.close();expect(c.modal.nativeElement.open).toBeTrue();c.save();expect(api.prepareCaseInvoiceDrafts).toHaveBeenCalledTimes(2);
     pending.next({batchId:'batch',count:8,revision:1,updatedAt:'2026-10-26T00:00:00Z'});pending.complete();expect(c.modal.nativeElement.open).toBeTrue();
   });
-  it('discounts TRUST tuition without reducing quantity or the PTY commission base',()=>{
+  it('keeps full TRUST tuition and adds a separate discount without reducing the PTY commission base',()=>{
     const fixtureData=structuredClone(data);fixtureData.preparation!.source.fees[0].amountMinor=864000;
     fixtureData.preparation!.source.instalments[0].components=[{label:'Tuition',amountMinor:72000}];fixtureData.preparation!.source.instalments[0].agencyDiscountMinor=12000;
+    fixtureData.preparation!.catalogue!.items.push({itemId:'discount',code:'Agency discount',name:'Agency-funded discount to the student',description:'Agency-funded discount to the student',unitPrice:'0',accountCode:'812',taxType:'BASEXCLUDED'});
     api.caseInvoiceDrafts.and.returnValue(of(fixtureData));const c=setup().componentInstance;c.open();
     const line=c.activeInvoice.controls.lines.at(0);line.controls.itemId.setValue('item');
-    expect(line.controls.quantity.value).toBe('4.00');expect(c.lineAmount(line)).toBe(60000);
+    expect(line.controls.quantity.value).toBe('4.00');expect(c.lineAmount(line)).toBe(72000);
+    const discount=c.activeInvoice.controls.lines.controls.find(l=>l.controls.kind.value==='agency_discount')!;
+    expect(c.lineAmount(discount)).toBe(-12000);expect(discount.controls.price.valid).toBeTrue();
     expect(c.ptyCalculation.tuitionMinor).toBe(72000);
+    expect(discount.controls.itemId.value).toBe('discount');
+    complete(c);c.save();expect(api.prepareCaseInvoiceDrafts).toHaveBeenCalled();
+    const payload=api.prepareCaseInvoiceDrafts.calls.mostRecent().args[1];
+    expect(payload.invoices[0].lines.find((l:any)=>l.kind==='agency_discount')).toEqual(jasmine.objectContaining({itemCode:'Agency discount',amountMinor:-12000,unitPrice:'-120.00'}));
   });
   it('applies the first tuition item to every draft and prices ELICOS from total tuition per week',()=>{
     const fixtureData=structuredClone(data);fixtureData.preparation!.catalogue!.items.push({itemId:'other',code:'OTHER',name:'Manual override',description:'',unitPrice:'180.0000',accountCode:'812',taxType:'BASEXCLUDED'});

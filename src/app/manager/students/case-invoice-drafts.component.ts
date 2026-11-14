@@ -13,11 +13,13 @@ import { offerMoneyInput } from './case-offer-review.component';
 const text=(value='',required=true)=>new FormControl(value,{nonNullable:true,validators:[Validators.maxLength(4000),...(required?[Validators.required]:[])]});
 const amount=(value='')=>new FormControl(value,{nonNullable:true,validators:[c=>offerMoneyInput(c.value)===null?{money:true}:null]});
 const decimal4=/^\d{1,8}(\.\d{1,4})?$/;
-const scaled=(value:string)=>{const [whole,fraction='']=value.split('.');return BigInt(whole)*10000n+BigInt(fraction.padEnd(4,'0'));};
+const signedDecimal4=/^-?\d{1,8}(\.\d{1,4})?$/;
+const scaled=(value:string)=>{const [whole,fraction='']=value.replace(/^-/,'').split('.');return (value.startsWith('-')?-1n:1n)*(BigInt(whole)*10000n+BigInt(fraction.padEnd(4,'0')));};
+const roundedMinor=(value:bigint)=>Number((value<0n?-1n:1n)*((value<0n?-value:value)+500000n)/1000000n);
 const displayDecimal=(value:string)=>{const amount=scaled(value);return amount%100n===0n?`${amount/10000n}.${String((amount%10000n)/100n).padStart(2,'0')}`:value.replace(/0+$/,'').replace(/\.$/,'');};
 const lineForm=(kind:CaseInvoiceDraftLine['kind'],label:string,value:number)=>new FormGroup({lineItemId:text('',false),kind:text(kind),description:text(label),itemId:text('',false),itemCode:text('',false),
   quantity:new FormControl('1',{nonNullable:true,validators:[Validators.required,Validators.pattern(/^\d{1,6}(\.\d{1,4})?$/),c=>Number(c.value)>0?null:{positive:true}]}),
-  price:new FormControl((value/100).toFixed(2),{nonNullable:true,validators:[Validators.required,Validators.pattern(decimal4)]}),accountCode:text('',false),taxType:text('',false)});
+  price:new FormControl((value/100).toFixed(2),{nonNullable:true,validators:[Validators.required,Validators.pattern(signedDecimal4)]}),accountCode:text('',false),taxType:text('',false)});
 type DraftLineForm=ReturnType<typeof lineForm>;
 const paymentForm=(sequence:number,date:string,dueDate:string,fee:number,lines:DraftLineForm[])=>new FormGroup({sequence:new FormControl(sequence,{nonNullable:true}),issueDate:text(date),dueDate:text(dueDate),
   feeApplies:text(),fee:amount((fee/100).toFixed(2)),lines:new FormArray(lines)});
@@ -227,8 +229,8 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   accountLabel(line:DraftLineForm){const account=this.preparation?.catalogue?.accounts.find(a=>a.code===line.controls.accountCode.value);return account?`${account.code} — ${account.name}`:'Select an item';}
   taxRate(line:DraftLineForm){return this.preparation?.catalogue?.taxRates.find(t=>t.taxType===line.controls.taxType.value);}
   taxLabel(line:DraftLineForm){const tax=this.taxRate(line);return tax&&tax.rate!==null?`${tax.name} (${tax.rate}%)`:'Tax defaults missing';}
-  lineTax(line:DraftLineForm){const rate=this.taxRate(line)?.rate;return rate&&decimal4.test(rate)?Number((BigInt(this.lineAmount(line))*scaled(rate)+500000n)/1000000n):0;}
-  hasUnresolvedItems(payment:ReturnType<typeof paymentForm>){return payment.controls.lines.controls.some(l=>this.lineAmount(l)>0&&(!this.editTarget&&!l.controls.itemId.value||!l.controls.accountCode.value||this.taxRate(l)?.rate==null));}
+  lineTax(line:DraftLineForm){const rate=this.taxRate(line)?.rate;return rate&&decimal4.test(rate)?roundedMinor(BigInt(this.lineAmount(line))*scaled(rate)):0;}
+  hasUnresolvedItems(payment:ReturnType<typeof paymentForm>){return payment.controls.lines.controls.some(l=>this.lineAmount(l)!==0&&(!this.editTarget&&!l.controls.itemId.value||!l.controls.accountCode.value||this.taxRate(l)?.rate==null));}
   private bindFeeChoice(payment:ReturnType<typeof paymentForm>){
     payment.controls.feeApplies.valueChanges.pipe(takeUntil(this.previewStop$),takeUntil(this.scope$)).subscribe(choice=>{
       if(!choice||this.form.controls.invoices.controls.indexOf(payment)!==0)return;
@@ -245,7 +247,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const matches=this.preparation?.catalogue?.items.filter(i=>[i.code,i.name].some(s=>s.trim().toLowerCase()===description.trim().toLowerCase()))??[];
     if(kind!=='tuition'&&matches.length===1)line.controls.itemId.setValue(matches[0].itemId);
   }
-  removeLine(payment:ReturnType<typeof paymentForm>,index:number){if(!this.busy&&payment.controls.lines.at(index).controls.kind.value!=='tuition')payment.controls.lines.removeAt(index);}
+  removeLine(payment:ReturnType<typeof paymentForm>,index:number){if(!this.busy&&!['tuition','agency_discount'].includes(payment.controls.lines.at(index).controls.kind.value))payment.controls.lines.removeAt(index);}
   private tuitionUnitPrice(item:{code:string;name:string},current:number){
     const source=this.preparation?.source;if(!source||source.courses.length!==1||current<=0)return null;
     const identity=`${item.code} ${item.name}`.toLocaleLowerCase('en-AU');
@@ -279,15 +281,13 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       return; // Manual invoice amounts are entered by the user, not the catalogue.
     }
     if(line.controls.kind.value==='tuition'){
-      const discount=this.preparation?.source.instalments.find(i=>i.sequence===payment.controls.sequence.value)?.agencyDiscountMinor??0;
-      const sourcePricing=this.tuitionUnitPrice(item,current+discount);
+      const sourcePricing=this.tuitionUnitPrice(item,current);
       if(sourcePricing){line.controls.price.setValue(sourcePricing.price);line.controls.quantity.setValue(sourcePricing.quantity);}
       else if(item.unitPrice!==null&&decimal4.test(item.unitPrice)&&scaled(item.unitPrice)>0n){
-        const divisor=scaled(item.unitPrice),units=BigInt(current+discount)*1000000n;
+        const divisor=scaled(item.unitPrice),units=BigInt(current)*1000000n;
         line.controls.price.setValue(displayDecimal(item.unitPrice));
-        if(current+discount>0&&units%divisor===0n){const q=units/divisor;line.controls.quantity.setValue(displayDecimal(`${q/10000n}.${String(q%10000n).padStart(4,'0')}`));}else line.controls.quantity.setValue('');
+        if(current>0&&units%divisor===0n){const q=units/divisor;line.controls.quantity.setValue(displayDecimal(`${q/10000n}.${String(q%10000n).padStart(4,'0')}`));}else line.controls.quantity.setValue('');
       }
-      if(discount>0&&decimal4.test(line.controls.quantity.value)&&scaled(line.controls.quantity.value)>0n){const q=scaled(line.controls.quantity.value),price=(BigInt(current)*1_000_000n+q/2n)/q;line.controls.price.setValue(`${price/10000n}.${String(price%10000n).padStart(4,'0')}`);}
       if(this.form.controls.invoices.controls.indexOf(payment)===0){
         for(const other of this.form.controls.invoices.controls.slice(1)){
           const tuition=other.controls.lines.controls.find(candidate=>candidate.controls.kind.value==='tuition');
@@ -330,9 +330,15 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
           line.patchValue({description:savedLine.description,itemId,itemCode:savedLine.itemCode,quantity:savedLine.quantity,
             price:savedLine.unitPrice??(savedLine.unitAmountMinor/100).toFixed(2),accountCode:savedLine.accountCode,taxType:savedLine.taxType},{emitEvent:false});
         }
+        // Upgrade editable legacy drafts that netted the discount into tuition.
+        if(source.agencyDiscountMinor&&!this.isFrozenSequence(source.sequence)&&!stored.lines.some(l=>l.kind==='agency_discount')){
+          const tuition=payment.controls.lines.controls.find(l=>l.controls.kind.value==='tuition');
+          if(tuition){const gross=this.lineAmount(tuition)+source.agencyDiscountMinor;tuition.patchValue({quantity:'1',price:(gross/100).toFixed(2)},{emitEvent:false});if(tuition.controls.itemId.value)this.selectItem(payment,tuition,tuition.controls.itemId.value);}
+          this.addLine(payment,'agency_discount','Agency discount',-source.agencyDiscountMinor);
+        }
         continue;
       }
-      const tuition=Math.max(0,(source.components??[]).filter(c=>/tuition/i.test(c.label)).reduce((n,c)=>n+c.amountMinor,0)-(source.agencyDiscountMinor??0));
+      const tuition=(source.components??[]).filter(c=>/tuition/i.test(c.label)).reduce((n,c)=>n+c.amountMinor,0);
       const material=source.components?.find(c=>/material/i.test(c.label))?.amountMinor??0;
       const enrolment=source.sequence===first?p.source.fees.find(f=>!f.conditional&&/enrol/i.test(f.label))?.amountMinor??0:0;
       const course=this.courseDescription();
@@ -343,6 +349,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       this.form.controls.invoices.push(payment);this.bindFeeChoice(payment);this.addLine(payment,'tuition',course||'Tuition Fee',tuition);
       if(enrolment>0)this.addLine(payment,'enrolment','Enrolment Fee',enrolment);
       if(material>0)this.addLine(payment,'materials','Materials fee',material);
+      if(source.agencyDiscountMinor)this.addLine(payment,'agency_discount','Agency discount',-source.agencyDiscountMinor);
     }
     const firstEditable=this.form.controls.invoices.controls.findIndex(payment=>!this.isFrozenSequence(payment.controls.sequence.value));
     const firstUnresolved=this.form.controls.invoices.controls.findIndex(payment=>!this.isCreatedSequence(payment.controls.sequence.value));
@@ -452,8 +459,8 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   close(event?:Event){if(this.busy){event?.preventDefault();return;}this.detailStop$.next();this.detailLoading=false;this.modal.nativeElement.close();this.preview=null;this.sessionExports={};this.previewStop$.next();if(this.conflict){this.conflict=false;this.load();}}
   reloadItems(){this.close();this.load();}
   lineAmount(line:DraftLineForm){
-    const q=line.controls.quantity.value,price=line.controls.price.value;if(!/^\d{1,6}(\.\d{1,4})?$/.test(q)||!decimal4.test(price))return 0;
-    return Number((scaled(q)*scaled(price)+500000n)/1000000n);
+    const q=line.controls.quantity.value,price=line.controls.price.value;if(!/^\d{1,6}(\.\d{1,4})?$/.test(q)||!signedDecimal4.test(price))return 0;
+    return roundedMinor(scaled(q)*scaled(price));
   }
   subtotal(payment:ReturnType<typeof paymentForm>){return payment.controls.lines.controls.reduce((n,l)=>n+this.lineAmount(l),0);}
   taxTotal(payment:ReturnType<typeof paymentForm>){return payment.controls.lines.controls.reduce((n,l)=>n+this.lineTax(l),0);}
@@ -491,7 +498,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       if(payment.controls.issueDate.value&&payment.controls.dueDate.value&&payment.controls.dueDate.value<payment.controls.issueDate.value)payment.controls.dueDate.setErrors({beforeIssueDate:true});
       for(const line of payment.controls.lines.controls){
         for(const control of [line.controls.itemId,line.controls.accountCode,line.controls.taxType,line.controls.itemCode]){
-          const required=this.lineAmount(line)>0&&(!this.editTarget||control===line.controls.accountCode||control===line.controls.taxType);
+          const required=this.lineAmount(line)!==0&&(!this.editTarget||control===line.controls.accountCode||control===line.controls.taxType);
           control.setValidators([Validators.maxLength(500),...(required?[Validators.required,Validators.pattern(/\S/)]:[])]);control.updateValueAndValidity();
         }
       }
@@ -522,6 +529,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
         else if(payment?.controls.lines.controls.some(l=>l.controls.quantity.invalid))this.message='Enter a quantity greater than zero for each invoice item.';
         else if(payment?.controls.lines.controls.some(l=>l.controls.price.invalid))this.message='Enter a valid price for each invoice item.';
         else if(payment?.controls.feeApplies.value==='yes'&&payment.controls.fee.invalid)this.message='Enter a fee amount greater than zero or choose Do not apply.';
+        else if(payment?.controls.lines.controls.some(l=>l.controls.kind.value==='agency_discount'&&!l.controls.itemId.value))this.message='The Agency discount item has not been imported from Xero yet. Refresh the Xero catalogue and reopen this preview.';
         else if(payment&&this.hasUnresolvedItems(payment))this.message='Select items with valid account and tax defaults.';
       }
       this.tone='error';return;
@@ -543,7 +551,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     }
     const invoices=this.form.controls.invoices.controls.map(i=>{const invoice=i.getRawValue();return {sequence:invoice.sequence,issueDate:invoice.issueDate,dueDate:invoice.dueDate,
       conditionalFeeApplies:invoice.feeApplies==='yes',conditionalFeeMinor:invoice.feeApplies==='yes'?offerMoneyInput(invoice.fee)!:0,
-      lines:i.controls.lines.controls.filter(l=>this.lineAmount(l)>0).map(l=>{const line=l.getRawValue();return {kind:line.kind,description:line.description,itemCode:line.itemCode,itemId:line.itemId,
+      lines:i.controls.lines.controls.filter(l=>this.lineAmount(l)!==0).map(l=>{const line=l.getRawValue();return {kind:line.kind,description:line.description,itemCode:line.itemCode,itemId:line.itemId,
         quantity:line.quantity,unitPrice:line.price,amountMinor:this.lineAmount(l),accountCode:line.accountCode,taxType:line.taxType};})};});
     const common={caseVersion:p.caseVersion,advisorId:v.advisorId,...(this.draftIdentity?{draftBatchId:this.draftIdentity.batchId,draftRevision:this.draftIdentity.revision}:{}),catalogueConnectionId:p.catalogue.connectionId,catalogueRevision:p.catalogue.revision,reviewNote:v.reviewNote,invoices};
     const value=this.manualMode?{...common,referenceMode:this.referenceMode.value,reference:this.manualReference.value,

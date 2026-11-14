@@ -14,6 +14,7 @@ import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 export interface ManagerSelectOption {
   value: string;
   label: string;
+  searchText?: string;
 }
 
 @Component({
@@ -50,7 +51,7 @@ export class ManagerSelectComponent implements ControlValueAccessor, AfterViewCh
 
   get filteredOptions(): ManagerSelectOption[] {
     const query = this.searchTerm.trim().toLocaleLowerCase();
-    return query ? this.options.filter(option => option.label.toLocaleLowerCase().includes(query)) : this.options;
+    return query ? this.options.filter(option => `${option.label} ${option.searchText ?? ''}`.toLocaleLowerCase().includes(query)) : this.options;
   }
 
   private onChange: (value: string | null) => void = () => {};

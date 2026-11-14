@@ -160,12 +160,12 @@ export interface StudentCaseDetail {
   updatedAt: string;
   recordVersion: number;
   advisors: Array<{ userId: string; name: string | null; isPrimary: boolean }>;
-  colleges: Array<{ collegeId: string; name: string; isPrimary: boolean }>;
+  colleges: Array<{ collegeId: string; tradingName?: string | null; acronym?: string | null; name: string; isPrimary: boolean }>;
 }
 
 export interface StudentCaseEditOptions {
   advisors: Array<{ advisorId: string; code: string; name: string; xeroLabel: string }>;
-  colleges: Array<{ collegeId: string; name: string }>;
+  colleges: Array<{ collegeId: string; tradingName?: string | null; acronym?: string | null; name: string }>;
 }
 
 export interface StudentCaseWorkflowOptions {
@@ -198,7 +198,7 @@ export interface StudentCaseInvoices {
 }
 
 export interface CaseInvoiceDraftLine {
-  kind:'tuition'|'enrolment'|'materials'|'visa'|'oshc'|'other';description:string;itemCode:string;
+  kind:'tuition'|'enrolment'|'materials'|'visa'|'oshc'|'other'|'agency_discount';description:string;itemCode:string;
   quantity:string;unitAmountMinor:number;unitPrice?:string;itemId?:string;taxAmountMinor?:number;amountMinor:number;accountCode:string;taxType:string;
 }
 
@@ -221,12 +221,12 @@ export interface CaseInvoiceDraftData {
   batches:Array<{batchId:string;offerId:string;advisorId:string;revision:number;currentOffer:boolean;createdAt:string;updatedAt?:string;exports:Record<string,{status:'not_attempted'|'creating'|'created'|'review_required';invoiceId:string|null;invoiceNumber:string|null}>;snapshot:{studentName:string;advisorLabel:string;category:string|null;location:string|null;billingUnit:string|null;currency:string;collegeId?:string;collegeName:string;reviewNote:string;invoices:CaseInvoiceDraft[]}}>;
   canCreateXero?:boolean;
   preparation:null|{offerId:string;offerVersion:number;caseVersion:number;source:StudentOfferExtraction;
-    colleges?:Array<{collegeId:string;name:string;isPrimary?:boolean}>;
+    colleges?:Array<{collegeId:string;tradingName?:string|null;acronym?:string|null;name:string;isPrimary?:boolean}>;
     advisors:Array<{advisorId:string;code:string;name:string}>;student:{name:string;advisorId:string|null};today:string;catalogue?:CaseInvoiceCatalogue|null;
     savedBatch:null|{batchId:string;revision:number;advisorId:string;snapshot:CaseInvoiceDraftData['batches'][number]['snapshot'];exports:CaseInvoiceDraftData['batches'][number]['exports']}};
 }
 export type CaseManualInvoiceOptions=Pick<NonNullable<CaseInvoiceDraftData['preparation']>,'caseVersion'|'advisors'|'student'|'catalogue'>&{
-  colleges:Array<{collegeId:string;name:string;isPrimary?:boolean}>;
+  colleges:Array<{collegeId:string;tradingName?:string|null;acronym?:string|null;name:string;isPrimary?:boolean}>;
   brandingThemes:Array<{brandingThemeId:string;name:string}>;
 };
 export interface CaseInvoiceEditRequest{expectedFingerprint:string;confirmed:true;advisorId:string;referenceMode:'reference'|'college';reference:string;collegeId?:string;brandingThemeId?:string;currency:string;reviewNote:string;issueDate:string;dueDate:string;conditionalFeeMinor:number;conditionalFeeLineId?:string;lines:Array<{lineItemId?:string;itemCode:string;description:string;quantity:string;unitPrice:string;accountCode:string;taxType:string}>}
@@ -256,8 +256,8 @@ export interface StudentDocumentAnalysis {
     evidence:Array<{page:number;quote:string}>;issues:string[];expiresOn?:string|null;
     mrzExpiryMatches?:boolean|null;signerName?:string|null;status?:string;signedAt?:string|null;
     completed?:boolean;documentIdMatches?:boolean|null}|StudentOfferExtraction)|null;
-  offer?:{resolution:string;exactCollegeId:string|null;candidates:Array<{collegeId:string;name:string;abn:string|null}>;
-    colleges:Array<{collegeId:string;name:string;abn:string|null}>;currentCollegeId:string|null;selectedCollegeId:string|null;
+  offer?:{currentStudentName?:string;resolution:string;exactCollegeId:string|null;candidates:Array<{collegeId:string;tradingName?:string|null;acronym?:string|null;name:string;abn:string|null}>;
+    colleges:Array<{collegeId:string;tradingName?:string|null;acronym?:string|null;name:string;abn:string|null}>;currentCollegeId:string|null;selectedCollegeId:string|null;
     typeOfSaleOptions?:Array<{value:string;label:string}>;defaultTypeOfSaleOptionId?:string|null;
     caseRecordVersion:number;offerId:string|null;isCurrent:boolean;problems:string[];
     totals:{statedTotalMinor:number|null;instalmentTotalMinor:number;includedConditionalFeesMinor:number;baseInstalmentTotalMinor:number;unexplainedDifference:boolean}}|null;
@@ -394,7 +394,7 @@ export interface XeroCollegeMatch {
   contactId:string;name:string;email:string|null;contactStatus:string|null;collegeId:string|null;collegeName:string|null;
   classification:'college'|'other'|'unresolved';revision:number;invoiceCount:number;
 }
-export interface XeroCollegeMatchResult {items:XeroCollegeMatch[];total:number;page:number;limit:number;colleges?:Array<{collegeId:string;name:string;tradingName?:string|null;acronym?:string|null}>;summary?:{importedContacts:number;activeContacts:number;archivedContacts:number;salesContacts:number;pendingSalesContacts:number;salesTransactions:number;linkedTransactions:number};}
+export interface XeroCollegeMatchResult {items:XeroCollegeMatch[];total:number;page:number;limit:number;colleges?:Array<{collegeId:string;tradingName?:string|null;acronym?:string|null;name:string}>;summary?:{importedContacts:number;activeContacts:number;archivedContacts:number;salesContacts:number;pendingSalesContacts:number;salesTransactions:number;linkedTransactions:number};}
 
 export interface XeroStudentInvoiceResult {
   invoices: XeroStudentInvoice[];

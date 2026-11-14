@@ -42,6 +42,12 @@ describe('CaseDocumentActionsComponent',()=>{
     c.archive(c.types[0]);expect(api.updateDocumentType.calls.mostRecent().args[1]).toEqual({status:'archived',recordVersion:2});expect(c.types).toEqual([]);
     expect(api.uploadCaseDocument).not.toHaveBeenCalled();
   });
+  it('keeps the upload dialog and staged files when the file picker is cancelled',()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload');stage(c,new File(['x'],'passport.pdf',{type:'application/pdf'}));f.detectChanges();
+    f.nativeElement.querySelector('input[type=file]').dispatchEvent(new Event('cancel',{bubbles:true}));
+    expect(c.modal.nativeElement.open).toBeTrue();expect(c.isOpen).toBeTrue();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
+    c.close();expect(c.modal.nativeElement.open).toBeFalse();
+  });
   it('stages selected files immediately without uploading or requiring Add',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');c.uploadForm.controls.documentTypeId.setValue('type-1');f.detectChanges();
     const input=f.nativeElement.querySelector('input[type="file"]') as HTMLInputElement,files=new DataTransfer();files.items.add(new File(['pdf'],'Immediate.pdf',{type:'application/pdf'}));

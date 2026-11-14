@@ -110,7 +110,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   });
   loadingRelated = false;
   readonly invoiceOrganisation = new FormControl<'both'|'trust'|'pty'>('both', {nonNullable:true});
-  readonly invoiceOrganisationOptions: ManagerSelectOption[] = [{value:'both',label:'Both'},{value:'trust',label:'TRUST'},{value:'pty',label:'PTY'}];
+  readonly invoiceOrganisationOptions: ManagerSelectOption[] = [{value:'both',label:'All'},{value:'trust',label:'TRUST'},{value:'pty',label:'PTY'}];
   private readonly invoiceStop$ = new Subject<void>();
   loadingInvoices = false;
   invoiceCreationAvailable=false;
@@ -127,6 +127,10 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   }
   get primaryCollege(): string | null {
     return this.case?.colleges.find(item => item.isPrimary)?.name || null;
+  }
+  get collegeTradingName(): string {
+    const college = this.editing ? this.editOptions?.colleges.find(item => item.collegeId === this.editForm.controls.collegeId.value) : this.case?.colleges.find(item => item.isPrimary);
+    return [college?.acronym?.trim(), college?.tradingName?.trim()].filter(Boolean).join(' - ') || 'Not recorded';
   }
   get studentName(): string {
     if (this.creationMode === 'student') return this.case?.studentName ?? '';
@@ -155,7 +159,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
   get canManageCases(): boolean { return this.workspace?.role === 'chief_executive' || this.workspace?.role === 'operations'; }
   get canEditCases(): boolean { return this.canManageCases&&!this.case?.archived&&!this.case?.deleting&&!this.deleteBusy; }
   get collegeOptions(): ManagerSelectOption[] {
-    return [{ value: '', label: 'No college' }, ...(this.editOptions?.colleges.map(item => ({ value: item.collegeId, label: item.name })) ?? [])];
+    return [{ value: '', label: 'No college' }, ...(this.editOptions?.colleges.map(item => ({ value: item.collegeId, searchText: [item.acronym,item.tradingName].filter(Boolean).join(' '), label: item.name })) ?? [])];
   }
   get advisorOptions(): ManagerSelectOption[] {
     return [{ value: '', label: 'No advisor' }, ...(this.editOptions?.advisors.map(item => ({ value: item.advisorId, label: `${item.code} ${item.name}` })) ?? [])];
@@ -373,7 +377,7 @@ export class ManagerCaseViewPageComponent implements OnInit, OnDestroy {
           status: value.status as StudentCaseStatus, currentStage: value.currentStage,
           advisorName: advisor?.name ?? null,
           advisorId: advisor?.advisorId ?? null,
-          colleges: college ? [{ collegeId: college.collegeId, name: college.name, isPrimary: true }] : [],
+          colleges: college ? [{ collegeId: college.collegeId, name: college.name, tradingName: college.tradingName, acronym: college.acronym, isPrimary: true }] : [],
           recordVersion: result.recordVersion, updatedAt: new Date().toISOString(),
         };
         this.case = detail;

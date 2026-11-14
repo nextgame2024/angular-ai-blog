@@ -531,7 +531,8 @@ describe('ManagerCaseViewPageComponent', () => {
     expect(root.querySelector('.student-overview input[formControlName="courseName"]')).not.toBeNull();
     expect(root.querySelectorAll('.student-overview.editing .overview-facts > div')).toHaveSize(4);
     expect(root.querySelectorAll('.student-overview.editing .overview-facts dt .fact-icon')).toHaveSize(4);
-    expect(root.querySelector('.student-overview.editing .inline-readonly-value')?.textContent).toContain('16 Oct 2026');
+    expect(root.querySelector('.student-overview.editing .inline-readonly-value')).toBeNull();
+    expect(root.querySelector<HTMLTextAreaElement>('textarea[aria-label="College trading name"]')?.readOnly).toBeTrue();
     expect(root.querySelector('.progress-heading-row.editing h2')?.textContent).toBe('Case Progress');
     expect(root.querySelector('.progress-heading-row.editing app-manager-select[formControlName="currentStage"]')).not.toBeNull();
     expect(root.querySelector('.student-overview app-manager-select[formControlName="collegeId"]')).not.toBeNull();
@@ -620,9 +621,9 @@ describe('ManagerCaseViewPageComponent', () => {
           expect(name.top).toBe(email.top);
           expect(mobile.top).toBe(phone.top);
           expect(mobile.top).toBeGreaterThan(name.bottom);
-          expect(factBoxes[0].top).toBe(factBoxes[1].top);
-          expect(factBoxes[2].top).toBe(factBoxes[3].top);
-          expect(factBoxes[2].top).toBeGreaterThan(factBoxes[0].bottom);
+          expect(factBoxes[0].top).toBe(factBoxes[2].top);
+          expect(factBoxes[1].top).toBe(factBoxes[3].top);
+          expect(factBoxes[1].top).toBeGreaterThan(factBoxes[0].bottom);
         } else {
           expect(email.top).toBeGreaterThan(name.bottom);
           expect(mobile.top).toBeGreaterThan(email.bottom);
@@ -897,7 +898,7 @@ describe('ManagerCaseViewPageComponent', () => {
     const fixture = TestBed.createComponent(ManagerCaseViewPageComponent);
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
-    expect(root.querySelectorAll('.overview-facts .fact-icon svg').length).toBe(4);
+    expect(root.querySelectorAll('.overview-facts .fact-icon svg').length).toBe(5);
     expect(root.querySelector('.student-identifiers a[href="mailto:student@example.com"]')).not.toBeNull();
     expect(root.querySelector('.student-identifiers a[href="tel:0412345678"]')?.textContent).toContain('0412 345 678');
   });

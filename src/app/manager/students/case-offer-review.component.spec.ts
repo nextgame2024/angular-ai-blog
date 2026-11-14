@@ -20,6 +20,17 @@ describe('CaseOfferReviewComponent',()=>{
     await TestBed.configureTestingModule({imports:[CaseOfferReviewComponent],providers:[{provide:StudentOperationsService,useValue:api},{provide:TownPlannerV2Service,useValue:{suggestAddresses:()=>of([]),getPlaceDetails:()=>of(null)}}]}).overrideComponent(CaseOfferReviewComponent,{set:{providers:[{provide:ManagerCollegesService,useValue:colleges}]}}).compileComponents();
   });
   function setup(input=result){const f=TestBed.createComponent(CaseOfferReviewComponent);f.componentRef.setInput('analysis',structuredClone(input));f.componentRef.setInput('caseId','case');f.componentRef.setInput('documentId','doc');f.detectChanges();return f;}
+  it('replaces a differing student name only with explicit confirmation',()=>{
+    const f=setup(),c=f.componentInstance;c.analysis={...result,offer:{...result.offer!,currentStudentName:'Example StudenP'}};f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Replace the current student name');
+    expect(c.form.controls.replaceStudentName.value).toBeFalse();c.save('confirmed');
+    expect(api.reviewDocumentAnalysis.calls.mostRecent().args[2].replaceStudentName).toBeUndefined();
+    c.form.controls.replaceStudentName.setValue(true);c.save('confirmed');
+    expect(api.reviewDocumentAnalysis.calls.mostRecent().args[2]).toEqual(jasmine.objectContaining({replaceStudentName:true,expectedStudentName:'Example StudenP'}));
+    c.save('rejected');expect(api.reviewDocumentAnalysis.calls.mostRecent().args[2].replaceStudentName).toBeUndefined();
+    c.form.controls.name.setValue('EXAMPLE STUDENT');c.analysis={...result,offer:{...result.offer!,currentStudentName:'Example Student'}};
+    expect(c.replacingStudentName).toBeFalse();
+  });
   it('defaults each instalment to Instalment and persists a changed Type of Sale',()=>{
     const input=structuredClone(result);input.offer!.typeOfSaleOptions=[{value:'instalment-id',label:'Instalment'},{value:'marketing-id',label:'Marketing'}];input.offer!.defaultTypeOfSaleOptionId='instalment-id';
     const f=setup(input),c=f.componentInstance;c.activeTab='instalments';f.detectChanges();

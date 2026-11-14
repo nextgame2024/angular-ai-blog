@@ -45,10 +45,10 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   }
   busy=false;creating=false;createdCollegeId:string|null=null;
   collegeError='';collegeNotice='';scheduleError='';addingPayment=false;
-  directory:Array<{collegeId:string;name:string;abn:string|null}>=[];
+  directory:Array<{collegeId:string;name:string;abn:string|null;tradingName?:string|null;acronym?:string|null}>=[];
   readonly form=new FormGroup({name:control('',true),collegeName:control('',true),campusAddress:control(''),abn:control(''),cricos:control(''),currency:control('AUD',true),total:amountControl(''),
     studentSigned:new FormControl(false,{nonNullable:true}),studentSignerName:control(''),studentSignedOn:control(''),
-    collegeId:control('',true),reason:control(''),replaceCollege:new FormControl(false,{nonNullable:true}),acknowledgeTotals:new FormControl(false,{nonNullable:true}),
+    collegeId:control('',true),reason:control(''),replaceStudentName:new FormControl(false,{nonNullable:true}),replaceCollege:new FormControl(false,{nonNullable:true}),acknowledgeTotals:new FormControl(false,{nonNullable:true}),
     courses:new FormArray<CourseForm>([]),fees:new FormArray<FeeForm>([]),instalments:new FormArray<InstalmentForm>([])});
   readonly paymentName=control('',true);
   readonly collegeForm=new FormGroup({college_name:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(200),c=>c.value.trim()?null:{required:true}]}),
@@ -58,8 +58,9 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   private symbolCurrency='';private symbol='$';
   get currencySymbol(){const currency=this.form.controls.currency.value;if(currency!==this.symbolCurrency){this.symbolCurrency=currency;try{this.symbol=new Intl.NumberFormat('en-AU',{style:'currency',currency,currencyDisplay:'narrowSymbol'}).formatToParts(0).find(p=>p.type==='currency')?.value??currency;}catch{this.symbol=currency;}}return this.symbol;}
   get source(){return this.analysis.extraction as StudentOfferExtraction;}
-  get collegeOptions(){return this.directory.map(c=>({value:c.collegeId,label:c.abn?`${c.name} · ABN ${c.abn}`:c.name}));}
+  get collegeOptions(){return this.directory.map(c=>({value:c.collegeId,searchText:[c.acronym,c.tradingName].filter(Boolean).join(' '),label:c.abn?`${c.name} · ABN ${c.abn}`:c.name}));}
   get currentCollegeName(){return this.directory.find(c=>c.collegeId===this.analysis.offer?.currentCollegeId)?.name??'Not assigned';}
+  get replacingStudentName(){const normalize=(name:string)=>name.trim().replace(/\s+/g,' ').toLocaleLowerCase();return Boolean(this.analysis.offer?.currentStudentName&&normalize(this.form.controls.name.value)&&normalize(this.form.controls.name.value)!==normalize(this.analysis.offer.currentStudentName));}
   get replacingCollege(){return Boolean(this.analysis.offer?.currentCollegeId&&this.form.controls.collegeId.value!==this.analysis.offer.currentCollegeId);}
   money(value:number|null){return value===null?'':`${Math.floor(value/100)}.${String(value%100).padStart(2,'0')}`;}
   ngOnInit(){
@@ -169,7 +170,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
         instalments:rows.map(r=>({...((offerMoneyInput(r.agencyDiscount)??0)>0?{agencyDiscountMinor:offerMoneyInput(r.agencyDiscount)!}:{}),...(r.typeOfSaleOptionId?{typeOfSaleOptionId:r.typeOfSaleOptionId}:{}),sequence:Number(r.sequence),dueTerm:r.dueTerm.trim()||null,dueOn:r.dueOn||null,totalMinor:offerMoneyInput(r.total)!,includedConditionalFeeMinor:offerMoneyInput(r.includedFee)!,components:r.components.map(c=>({label:c.label.trim(),amountMinor:offerMoneyInput(c.amount)!}))}))};
     }
     const value={resultId:this.analysis.resultId,expectedReviewVersion:this.analysis.reviewVersion,expectedCaseVersion:this.analysis.offer?.caseRecordVersion,
-      decision,reason:v.reason.trim()||null,corrections,collegeId:v.collegeId||null,replaceCollege:v.replaceCollege,acknowledgeTotals:v.acknowledgeTotals};
+      decision,reason:v.reason.trim()||null,corrections,...(decision==='confirmed'&&this.replacingStudentName&&v.replaceStudentName?{replaceStudentName:true,expectedStudentName:this.analysis.offer?.currentStudentName}:{}),collegeId:v.collegeId||null,replaceCollege:v.replaceCollege,acknowledgeTotals:v.acknowledgeTotals};
     const fingerprint=JSON.stringify(value);if(this.request?.fingerprint!==fingerprint)this.request={fingerprint,key:crypto.randomUUID()};
     this.setBusy(true);this.api.reviewDocumentAnalysis(this.caseId,this.documentId,value,this.request!.key).pipe(takeUntil(this.stop$)).subscribe({next:()=>{this.setBusy(false);this.saved.emit();},error:e=>{this.setBusy(false);this.problem.emit(e?.status===409?'The case or offer changed. Reload before saving.':'The offer could not be confirmed. Check dates, amounts and the selected college, then retry.');}});
   }

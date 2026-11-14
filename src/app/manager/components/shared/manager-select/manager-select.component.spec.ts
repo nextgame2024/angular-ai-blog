@@ -2,6 +2,14 @@ import { TestBed } from '@angular/core/testing';
 import { ManagerSelectComponent } from './manager-select.component';
 
 describe('ManagerSelectComponent pagination menu', () => {
+  it('searches legal name, acronym and trading aliases and retains all matches',()=>{
+    const f=TestBed.createComponent(ManagerSelectComponent),c=f.componentInstance;
+    c.options=[{value:'1',label:'Australian College',searchText:'ACCIT Commerce Training'},{value:'2',label:'Other College',searchText:'ACCIT Other Trading'}];
+    c.searchTerm='accit';expect(c.filteredOptions.map(o=>o.value)).toEqual(['1','2']);
+    c.searchTerm='commerce';expect(c.filteredOptions.map(o=>o.value)).toEqual(['1']);
+    c.searchTerm='Australian';expect(c.filteredOptions.map(o=>o.value)).toEqual(['1']);
+    c.searchTerm='unknown';expect(c.filteredOptions).toEqual([]);
+  });
   it('opens downward as a viewport overlay instead of being constrained by a modal scroll area', () => {
     const fixture=TestBed.createComponent(ManagerSelectComponent);
     const dialog=document.createElement('dialog');
