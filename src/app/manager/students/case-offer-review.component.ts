@@ -19,7 +19,7 @@ type TextControls<K extends string>={[P in K]:FormControl<string>};
 type CourseForm=FormGroup<TextControls<'name'|'code'|'startsOn'|'endsOn'|'duration'>>;
 type FeeForm=FormGroup<TextControls<'label'|'amount'|'condition'>&{conditional:FormControl<boolean>}>;
 type ComponentForm=FormGroup<TextControls<'label'|'amount'>>;
-type InstalmentForm=FormGroup<TextControls<'sequence'|'dueTerm'|'dueOn'|'total'|'includedFee'>&{components:FormArray<ComponentForm>}>;
+type InstalmentForm=FormGroup<TextControls<'sequence'|'dueTerm'|'dueOn'|'total'|'includedFee'|'agencyDiscount'|'typeOfSaleOptionId'>&{components:FormArray<ComponentForm>}>;
 @Component({selector:'app-case-offer-review',imports:[ReactiveFormsModule,ManagerSelectComponent,ManagerToastComponent,ManagerAddressAutocompleteComponent],providers:[ManagerCollegesService],
   templateUrl:'./case-offer-review.component.html',styleUrls:['./case-offer-review.component.css']})
 export class CaseOfferReviewComponent implements OnInit,OnDestroy {
@@ -54,12 +54,16 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   readonly collegeForm=new FormGroup({college_name:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(200),c=>c.value.trim()?null:{required:true}]}),
     owner_name:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(200)]}),abn:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(80)]}),
     notes:new FormControl('',{nonNullable:true,validators:[Validators.maxLength(5000)]})});
+  saleTypeOptions:Array<{value:string;label:string}>=[];
+  private symbolCurrency='';private symbol='$';
+  get currencySymbol(){const currency=this.form.controls.currency.value;if(currency!==this.symbolCurrency){this.symbolCurrency=currency;try{this.symbol=new Intl.NumberFormat('en-AU',{style:'currency',currency,currencyDisplay:'narrowSymbol'}).formatToParts(0).find(p=>p.type==='currency')?.value??currency;}catch{this.symbol=currency;}}return this.symbol;}
   get source(){return this.analysis.extraction as StudentOfferExtraction;}
   get collegeOptions(){return this.directory.map(c=>({value:c.collegeId,label:c.abn?`${c.name} · ABN ${c.abn}`:c.name}));}
   get currentCollegeName(){return this.directory.find(c=>c.collegeId===this.analysis.offer?.currentCollegeId)?.name??'Not assigned';}
   get replacingCollege(){return Boolean(this.analysis.offer?.currentCollegeId&&this.form.controls.collegeId.value!==this.analysis.offer.currentCollegeId);}
   money(value:number|null){return value===null?'':`${Math.floor(value/100)}.${String(value%100).padStart(2,'0')}`;}
   ngOnInit(){
+    this.saleTypeOptions=this.analysis.offer?.typeOfSaleOptions??[];
     const source=this.source;this.directory=this.analysis.offer?.colleges??[];
     this.form.patchValue({name:source.studentName??'',collegeName:source.collegeName??'',campusAddress:source.campusAddress??'',abn:source.abn??'',cricos:source.cricosProviderCode??'',studentSigned:source.studentSigned===true,studentSignerName:source.studentSignerName??'',studentSignedOn:source.studentSignedOn??'',currency:source.currency,total:this.money(source.statedTotalMinor),collegeId:this.analysis.offer?.selectedCollegeId??''});
     for(const course of source.courses)this.addCourse(course);
@@ -68,7 +72,18 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   }
   addCourse(v?:StudentOfferExtraction['courses'][number]){if(this.busy||this.form.controls.courses.length>=30)return;this.form.controls.courses.push(new FormGroup({name:control(v?.name??'',true),code:control(v?.code??''),startsOn:control(v?.startsOn??''),endsOn:control(v?.endsOn??''),duration:control(v?.duration??'')}));}
   addFee(v?:StudentOfferExtraction['fees'][number]){if(this.busy||this.form.controls.fees.length>=100)return;this.form.controls.fees.push(new FormGroup({label:control(v?.label??'',true),amount:amountControl(this.money(v?.amountMinor??null)),conditional:new FormControl(v?.conditional??false,{nonNullable:true}),condition:control(v?.condition??'')}));}
-  addInstalment(v?:StudentOfferExtraction['instalments'][number]){if(this.busy||this.form.controls.instalments.length>=200)return;this.form.controls.instalments.push(new FormGroup({sequence:control(String(v?.sequence??this.form.controls.instalments.length+1),true),dueTerm:control(v?.dueTerm??''),dueOn:control(v?.dueOn??''),total:amountControl(this.money(v?.totalMinor??null)),includedFee:amountControl(this.money(v?.includedConditionalFeeMinor??0)),components:new FormArray<ComponentForm>((v?.components??[]).map(c=>new FormGroup({label:control(c.label,true),amount:amountControl(this.money(c.amountMinor))})))}));}
+  addInstalment(v?:StudentOfferExtraction['instalments'][number]){
+    if(this.busy||this.form.controls.instalments.length>=200)return;
+    const payment:InstalmentForm=new FormGroup({sequence:control(String(v?.sequence??this.form.controls.instalments.length+1),true),typeOfSaleOptionId:control(v?.typeOfSaleOptionId??this.analysis.offer?.defaultTypeOfSaleOptionId??''),dueTerm:control(v?.dueTerm??''),dueOn:control(v?.dueOn??''),total:amountControl(this.money(v?.totalMinor??null)),includedFee:amountControl(this.money(v?.includedConditionalFeeMinor??0)),agencyDiscount:amountControl(this.money(v?.agencyDiscountMinor??0)),components:new FormArray<ComponentForm>((v?.components??[]).map(c=>new FormGroup({label:control(c.label,true),amount:amountControl(this.money(c.amountMinor))})))});
+    this.form.controls.instalments.push(payment);
+    // Preserve unitemised source amounts on legacy offers until their breakdown is reviewed.
+    const unitemised=Math.max(0,(v?.totalMinor??0)-(v?.includedConditionalFeeMinor??0)-(v?.components??[]).reduce((n,c)=>n+c.amountMinor,0));
+    const recalculate=()=>{const r=payment.getRawValue(),amounts=r.components.map(c=>offerMoneyInput(c.amount)),fee=offerMoneyInput(r.includedFee);if(fee!==null&&amounts.every(a=>a!==null))payment.controls.total.setValue(this.money(unitemised+fee+amounts.reduce((n,a)=>n+(a??0),0)),{emitEvent:false});};
+    payment.controls.components.valueChanges.pipe(takeUntil(this.stop$)).subscribe(recalculate);
+    payment.controls.includedFee.valueChanges.pipe(takeUntil(this.stop$)).subscribe(recalculate);
+  }
+  isTuition(label:string){return /tuition/i.test(label);}
+  trustPayment(payment:InstalmentForm){return this.money(Math.max(0,(offerMoneyInput(payment.controls.total.value)??0)-(offerMoneyInput(payment.controls.agencyDiscount.value)??0)));}
   get componentLabels(){
     const labels:string[]=[];
     for(const payment of this.form.controls.instalments.controls)for(const component of payment.controls.components.controls){const label=component.controls.label.value.trim();if(label&&!labels.some(value=>value.toLocaleLowerCase()===label.toLocaleLowerCase()))labels.push(label);}
@@ -144,13 +159,14 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
       if(this.replacingCollege&&!v.replaceCollege){this.showProblem('Confirm replacing the existing case college.','details');return;}
       if(!v.studentSigned||!v.studentSignerName.trim()){this.showProblem('Confirm that the student signed the Letter of Offer and enter the signer name.','details');return;}
       if(new Set(rows.map(r=>Number(r.sequence))).size!==rows.length){this.showProblem('Each instalment needs a unique number.','instalments');return;}
+      if(rows.some(r=>(offerMoneyInput(r.agencyDiscount)??0)>r.components.filter(c=>this.isTuition(c.label)).reduce((n,c)=>n+(offerMoneyInput(c.amount)??0),0))){this.showProblem('Agency discount cannot exceed tuition.','instalments');return;}
       if(rows.some(r=>offerMoneyInput(r.includedFee)!>offerMoneyInput(r.total)!)){this.showProblem('An included conditional fee cannot exceed its payment.','instalments');return;}
       if(courses.some(c=>c.startsOn&&c.endsOn&&c.endsOn<c.startsOn)){this.showProblem('Course end dates must follow their start dates.','details');return;}
       if(this.totalsDiffer&&!v.acknowledgeTotals){this.showProblem('Review and acknowledge the difference between the total and instalments.','fees');return;}
       corrections={...this.source,studentName:v.name.trim(),collegeName:v.collegeName.trim(),campusAddress:v.campusAddress.trim()||null,abn:v.abn.trim()||null,cricosProviderCode:v.cricos.trim()||null,studentSigned:v.studentSigned,studentSignerName:v.studentSignerName.trim()||null,studentSignedOn:v.studentSignedOn||null,currency:v.currency,statedTotalMinor:offerMoneyInput(v.total),
         courses:courses.map(c=>({name:c.name.trim(),code:c.code.trim()||null,startsOn:c.startsOn||null,endsOn:c.endsOn||null,duration:c.duration.trim()||null})),
         fees:fees.map(f=>({label:f.label.trim(),amountMinor:offerMoneyInput(f.amount)!,conditional:f.conditional,condition:f.condition.trim()||null})),
-        instalments:rows.map(r=>({sequence:Number(r.sequence),dueTerm:r.dueTerm.trim()||null,dueOn:r.dueOn||null,totalMinor:offerMoneyInput(r.total)!,includedConditionalFeeMinor:offerMoneyInput(r.includedFee)!,components:r.components.map(c=>({label:c.label.trim(),amountMinor:offerMoneyInput(c.amount)!}))}))};
+        instalments:rows.map(r=>({...((offerMoneyInput(r.agencyDiscount)??0)>0?{agencyDiscountMinor:offerMoneyInput(r.agencyDiscount)!}:{}),...(r.typeOfSaleOptionId?{typeOfSaleOptionId:r.typeOfSaleOptionId}:{}),sequence:Number(r.sequence),dueTerm:r.dueTerm.trim()||null,dueOn:r.dueOn||null,totalMinor:offerMoneyInput(r.total)!,includedConditionalFeeMinor:offerMoneyInput(r.includedFee)!,components:r.components.map(c=>({label:c.label.trim(),amountMinor:offerMoneyInput(c.amount)!}))}))};
     }
     const value={resultId:this.analysis.resultId,expectedReviewVersion:this.analysis.reviewVersion,expectedCaseVersion:this.analysis.offer?.caseRecordVersion,
       decision,reason:v.reason.trim()||null,corrections,collegeId:v.collegeId||null,replaceCollege:v.replaceCollege,acknowledgeTotals:v.acknowledgeTotals};

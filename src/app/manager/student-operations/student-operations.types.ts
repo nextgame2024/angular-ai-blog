@@ -258,6 +258,7 @@ export interface StudentDocumentAnalysis {
     completed?:boolean;documentIdMatches?:boolean|null}|StudentOfferExtraction)|null;
   offer?:{resolution:string;exactCollegeId:string|null;candidates:Array<{collegeId:string;name:string;abn:string|null}>;
     colleges:Array<{collegeId:string;name:string;abn:string|null}>;currentCollegeId:string|null;selectedCollegeId:string|null;
+    typeOfSaleOptions?:Array<{value:string;label:string}>;defaultTypeOfSaleOptionId?:string|null;
     caseRecordVersion:number;offerId:string|null;isCurrent:boolean;problems:string[];
     totals:{statedTotalMinor:number|null;instalmentTotalMinor:number;includedConditionalFeesMinor:number;baseInstalmentTotalMinor:number;unexplainedDifference:boolean}}|null;
   reasons:string[];reviewReason:string|null;decision:string|null;enabled:boolean;
@@ -269,7 +270,7 @@ export interface StudentOfferExtraction {
   studentSigned?:boolean;studentSignerName?:string|null;studentSignedOn?:string|null;collegeSigned?:boolean|null;
   courses:Array<{name:string;code:string|null;startsOn:string|null;endsOn:string|null;duration:string|null}>;
   fees:Array<{label:string;amountMinor:number;conditional:boolean;condition:string|null}>;
-  instalments:Array<{sequence:number;dueTerm:string|null;dueOn:string|null;totalMinor:number;includedConditionalFeeMinor:number;components?:Array<{label:string;amountMinor:number}>}>;
+  instalments:Array<{sequence:number;dueTerm:string|null;dueOn:string|null;totalMinor:number;includedConditionalFeeMinor:number;typeOfSaleOptionId?:string;agencyDiscountMinor?:number;components?:Array<{label:string;amountMinor:number}>}>;
 }
 
 export interface StudentDocumentRequirement {

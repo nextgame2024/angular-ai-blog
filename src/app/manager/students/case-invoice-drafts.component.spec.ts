@@ -276,6 +276,13 @@ describe('CaseInvoiceDraftsComponent',()=>{
     expect((f.nativeElement.querySelector('[aria-label="PTY unit price"]') as HTMLInputElement).value).toBe('960.00');
     expect((f.nativeElement.querySelector('[aria-label="PTY line description"]') as HTMLTextAreaElement).value).toBe('Recorded description');
   });
+  it('loads the reviewed instalment Type of Sale as the editable PTY default',()=>{
+    const fixture=structuredClone(data);fixture.preparation!.source.instalments[0].typeOfSaleOptionId=marketingOptionId;
+    api.caseInvoiceDrafts.and.returnValue(of(fixture));api.commissionOptions.and.returnValue(of(ptyOptions));
+    const c=setup().componentInstance;c.open();complete(c);c.selectPayment(0,true);
+    expect(c.activePtyTypeOfSale.value).toBe(marketingOptionId);c.activePtyTypeOfSale.setValue(instalmentOptionId);
+    expect(c.activePtyTypeOfSale.value).toBe(instalmentOptionId);
+  });
   it('uses Xero Type of Sale options with Instalment default and keeps choices per invoice',()=>{
     api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();complete(c);c.selectPayment(0,true);f.detectChanges();
     const select=f.nativeElement.querySelector('[aria-label="PTY Type of Sale"]') as HTMLButtonElement;
@@ -536,6 +543,14 @@ describe('CaseInvoiceDraftsComponent',()=>{
     const f=setup(),c=f.componentInstance;c.open();complete(c);api.prepareCaseInvoiceDrafts.and.returnValue(throwError(()=>({status:0})));c.save();const key=api.prepareCaseInvoiceDrafts.calls.mostRecent().args[2];
     const pending=new Subject<any>();api.prepareCaseInvoiceDrafts.and.returnValue(pending);c.save();expect(api.prepareCaseInvoiceDrafts.calls.mostRecent().args[2]).toBe(key);c.close();expect(c.modal.nativeElement.open).toBeTrue();c.save();expect(api.prepareCaseInvoiceDrafts).toHaveBeenCalledTimes(2);
     pending.next({batchId:'batch',count:8,revision:1,updatedAt:'2026-10-26T00:00:00Z'});pending.complete();expect(c.modal.nativeElement.open).toBeTrue();
+  });
+  it('discounts TRUST tuition without reducing quantity or the PTY commission base',()=>{
+    const fixtureData=structuredClone(data);fixtureData.preparation!.source.fees[0].amountMinor=864000;
+    fixtureData.preparation!.source.instalments[0].components=[{label:'Tuition',amountMinor:72000}];fixtureData.preparation!.source.instalments[0].agencyDiscountMinor=12000;
+    api.caseInvoiceDrafts.and.returnValue(of(fixtureData));const c=setup().componentInstance;c.open();
+    const line=c.activeInvoice.controls.lines.at(0);line.controls.itemId.setValue('item');
+    expect(line.controls.quantity.value).toBe('4.00');expect(c.lineAmount(line)).toBe(60000);
+    expect(c.ptyCalculation.tuitionMinor).toBe(72000);
   });
   it('applies the first tuition item to every draft and prices ELICOS from total tuition per week',()=>{
     const fixtureData=structuredClone(data);fixtureData.preparation!.catalogue!.items.push({itemId:'other',code:'OTHER',name:'Manual override',description:'',unitPrice:'180.0000',accountCode:'812',taxType:'BASEXCLUDED'});

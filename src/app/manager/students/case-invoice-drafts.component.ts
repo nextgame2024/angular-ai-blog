@@ -71,7 +71,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   private readonly ptyStop$=new Subject<void>();
   private retainingPaired=false;
   private ptyItemFor(payment:ReturnType<typeof paymentForm>){
-    const lines=payment.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition'&&this.lineAmount(l)>0);
+    const lines=payment.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition'&&(this.lineAmount(l)>0||this.commissionBase(payment)>0));
     const codes=[...new Set(lines.map(l=>l.controls.itemCode.value.trim().toLowerCase()))];
     if(!codes.length||codes.includes(''))return {issue:'Select a tuition item on the matching TRUST invoice.'};
     if(codes.length!==1)return {issue:'Use one tuition item per invoice before preparing its PTY commission.'};
@@ -90,12 +90,17 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const selected=this.activeInvoice?this.ptyItemFor(this.activeInvoice).item:null;
     return selected?`${selected.code} — ${selected.name}`:'';
   }
+  private commissionBase(payment:ReturnType<typeof paymentForm>){
+    const source=this.preparation?.source.instalments.find(i=>i.sequence===payment.controls.sequence.value);
+    if((source?.agencyDiscountMinor??0)>0)return (source?.components??[]).filter(c=>/tuition/i.test(c.label)).reduce((n,c)=>n+c.amountMinor,0);
+    return payment.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition').reduce((n,l)=>n+this.lineAmount(l),0);
+  }
   private ptyPricingFor(payment:ReturnType<typeof paymentForm>){
-    const lines=payment.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition'&&this.lineAmount(l)>0);
+    const lines=payment.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition'&&(this.lineAmount(l)>0||this.commissionBase(payment)>0));
     const quantityPattern=/^\d{1,6}(\.\d{1,4})?$/;
     if(!lines.length||lines.some(l=>!quantityPattern.test(l.controls.quantity.value)||scaled(l.controls.quantity.value)<=0n))return {quantity:'',unitAmount:'',issue:'Confirm the TRUST tuition quantities before preparing commission.'};
     const quantityScaled=lines.reduce((n,l)=>n+scaled(l.controls.quantity.value),0n);
-    const base=lines.reduce((n,l)=>n+BigInt(this.lineAmount(l)),0n),rate=BigInt(this.ptyOptions?.rule?.commission_basis_points??0);
+    const base=BigInt(this.commissionBase(payment)),rate=BigInt(this.ptyOptions?.rule?.commission_basis_points??0);
     const commissionMinor=(base*rate+5000n)/10000n;
     const priceScaled=(commissionMinor*1_000_000n+quantityScaled/2n)/quantityScaled;
     const format=(value:bigint,minDecimals=0)=>{const fraction=String(value%10000n).padStart(4,'0').replace(/0+$/,'').padEnd(minDecimals,'0');return `${value/10000n}${fraction?'.'+fraction:''}`;};
@@ -136,7 +141,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   get ptyCalculation(){
     if(this.ptyReceipt?.status&&this.ptyReceipt.status!=='not_attempted')return this.ptyReceipt.snapshot.calculation;
     const rate=this.ptyOptions?.rule?.commission_basis_points??0;
-    const base=this.activeInvoice?.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition').reduce((n,l)=>n+this.lineAmount(l),0)??0;
+    const base=this.activeInvoice?this.commissionBase(this.activeInvoice):0;
     return {tuitionMinor:base,basisPoints:rate,commissionMinor:Number((BigInt(base)*BigInt(rate)+5000n)/10000n)};
   }
   get ptyTax(){const rate=this.ptyOptions?.tax?.rate;return this.ptyReceipt?.status&&this.ptyReceipt.status!=='not_attempted'?this.ptyReceipt.snapshot.taxMinor:rate&&decimal4.test(rate)?Number((BigInt(this.ptyCalculation.commissionMinor)*scaled(rate)+500000n)/1000000n):0;}
@@ -148,7 +153,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     this.api.commissionOptions(this.caseId,collegeId).pipe(takeUntil(this.scope$),takeUntil(this.previewStop$),takeUntil(this.ptyStop$)).subscribe({next:o=>{
       this.ptyLoading=false;this.ptyOptions=o;
       this.ptyTypeOfSaleOptions.push(...(o.typeOfSaleOptions??[]));
-      for(const payment of this.form.controls.invoices.controls){const sequence=payment.controls.sequence.value,control=new FormControl(o.defaultTypeOfSaleOptionId??'',{nonNullable:true});
+      for(const payment of this.form.controls.invoices.controls){const sequence=payment.controls.sequence.value,control=new FormControl(this.preparation?.source.instalments.find(i=>i.sequence===sequence)?.typeOfSaleOptionId??o.defaultTypeOfSaleOptionId??'',{nonNullable:true});
         this.ptySaleTypes.set(sequence,control);this.ptySaleOptions.set(sequence,this.ptyTypeOfSaleOptions);
         control.valueChanges.pipe(takeUntil(this.scope$),takeUntil(this.previewStop$),takeUntil(this.ptyStop$)).subscribe(()=>{control.markAsDirty();this.form.controls.confirmed.setValue(false,{emitEvent:false});});
       }
@@ -274,13 +279,15 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       return; // Manual invoice amounts are entered by the user, not the catalogue.
     }
     if(line.controls.kind.value==='tuition'){
-      const sourcePricing=this.tuitionUnitPrice(item,current);
+      const discount=this.preparation?.source.instalments.find(i=>i.sequence===payment.controls.sequence.value)?.agencyDiscountMinor??0;
+      const sourcePricing=this.tuitionUnitPrice(item,current+discount);
       if(sourcePricing){line.controls.price.setValue(sourcePricing.price);line.controls.quantity.setValue(sourcePricing.quantity);}
       else if(item.unitPrice!==null&&decimal4.test(item.unitPrice)&&scaled(item.unitPrice)>0n){
-        const divisor=scaled(item.unitPrice),units=BigInt(current)*1000000n;
+        const divisor=scaled(item.unitPrice),units=BigInt(current+discount)*1000000n;
         line.controls.price.setValue(displayDecimal(item.unitPrice));
-        if(current>0&&units%divisor===0n){const q=units/divisor;line.controls.quantity.setValue(displayDecimal(`${q/10000n}.${String(q%10000n).padStart(4,'0')}`));}else line.controls.quantity.setValue('');
+        if(current+discount>0&&units%divisor===0n){const q=units/divisor;line.controls.quantity.setValue(displayDecimal(`${q/10000n}.${String(q%10000n).padStart(4,'0')}`));}else line.controls.quantity.setValue('');
       }
+      if(discount>0&&decimal4.test(line.controls.quantity.value)&&scaled(line.controls.quantity.value)>0n){const q=scaled(line.controls.quantity.value),price=(BigInt(current)*1_000_000n+q/2n)/q;line.controls.price.setValue(`${price/10000n}.${String(price%10000n).padStart(4,'0')}`);}
       if(this.form.controls.invoices.controls.indexOf(payment)===0){
         for(const other of this.form.controls.invoices.controls.slice(1)){
           const tuition=other.controls.lines.controls.find(candidate=>candidate.controls.kind.value==='tuition');
@@ -325,7 +332,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
         }
         continue;
       }
-      const tuition=source.components?.find(c=>/tuition/i.test(c.label))?.amountMinor??0;
+      const tuition=Math.max(0,(source.components??[]).filter(c=>/tuition/i.test(c.label)).reduce((n,c)=>n+c.amountMinor,0)-(source.agencyDiscountMinor??0));
       const material=source.components?.find(c=>/material/i.test(c.label))?.amountMinor??0;
       const enrolment=source.sequence===first?p.source.fees.find(f=>!f.conditional&&/enrol/i.test(f.label))?.amountMinor??0:0;
       const course=this.courseDescription();

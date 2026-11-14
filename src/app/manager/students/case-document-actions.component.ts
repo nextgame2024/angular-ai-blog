@@ -1,4 +1,5 @@
 import { Component,ElementRef,EventEmitter,Input,Output,ViewChild,OnDestroy,OnChanges,inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormControl,FormGroup,FormsModule,ReactiveFormsModule,Validators } from '@angular/forms';
 import { Subject,takeUntil,forkJoin,of,from,mergeMap,map,catchError,toArray,tap } from 'rxjs';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
@@ -58,6 +59,11 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
   private stopUploadTimer(){if(this.uploadTimer)clearInterval(this.uploadTimer);this.uploadTimer=null;}
   readonly typeForm=new FormGroup({name:new FormControl('',{nonNullable:true,validators:[Validators.required,Validators.maxLength(120)]}),required:new FormControl('no',{nonNullable:true})});
   readonly uploadForm=new FormGroup({documentTypeId:new FormControl('',{nonNullable:true,validators:[Validators.required]})});
+  constructor(){
+    this.uploadForm.controls.documentTypeId.valueChanges.pipe(takeUntilDestroyed()).subscribe(()=>{
+      if(this.mode==='upload'&&this.selectedFiles.length&&this.uploadForm.controls.documentTypeId.valid)this.addFiles();
+    });
+  }
   readonly yesNo=[{value:'no',label:'No'},{value:'yes',label:'Yes'}];
   readonly sizes=[{value:'25',label:'25 per page'},{value:'50',label:'50 per page'},{value:'100',label:'100 per page'}];
   get typeOptions(){
@@ -118,7 +124,9 @@ export class CaseDocumentActionsComponent implements OnChanges,OnDestroy {
   }
   selectFiles(event:Event){
     const files=Array.from((event.target as HTMLInputElement).files??[]);
+    if(this.busy||this.loading||this.failed||!files.length)return;
     this.selectedFiles=this.mode==='replace'?files.slice(0,1):files;this.fileTouched=true;
+    if(this.mode==='upload')this.addFiles();
   }
   addFiles(){
     if(!this.canManage || this.busy || this.loading || this.failed)return;

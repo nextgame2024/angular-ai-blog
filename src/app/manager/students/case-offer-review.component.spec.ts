@@ -20,6 +20,29 @@ describe('CaseOfferReviewComponent',()=>{
     await TestBed.configureTestingModule({imports:[CaseOfferReviewComponent],providers:[{provide:StudentOperationsService,useValue:api},{provide:TownPlannerV2Service,useValue:{suggestAddresses:()=>of([]),getPlaceDetails:()=>of(null)}}]}).overrideComponent(CaseOfferReviewComponent,{set:{providers:[{provide:ManagerCollegesService,useValue:colleges}]}}).compileComponents();
   });
   function setup(input=result){const f=TestBed.createComponent(CaseOfferReviewComponent);f.componentRef.setInput('analysis',structuredClone(input));f.componentRef.setInput('caseId','case');f.componentRef.setInput('documentId','doc');f.detectChanges();return f;}
+  it('defaults each instalment to Instalment and persists a changed Type of Sale',()=>{
+    const input=structuredClone(result);input.offer!.typeOfSaleOptions=[{value:'instalment-id',label:'Instalment'},{value:'marketing-id',label:'Marketing'}];input.offer!.defaultTypeOfSaleOptionId='instalment-id';
+    const f=setup(input),c=f.componentInstance;c.activeTab='instalments';f.detectChanges();
+    expect(c.form.controls.instalments.controls.map(p=>p.controls.typeOfSaleOptionId.value)).toEqual(['instalment-id','instalment-id']);
+    expect(f.nativeElement.querySelectorAll('.instalment-table app-manager-select').length).toBe(2);
+    c.form.controls.instalments.at(1).controls.typeOfSaleOptionId.setValue('marketing-id');c.save('confirmed');
+    expect(api.reviewDocumentAnalysis.calls.mostRecent().args[2].corrections.instalments.map((p:any)=>p.typeOfSaleOptionId)).toEqual(['instalment-id','marketing-id']);
+  });
+  it('keeps full tuition and recalculates TRUST alone for an agency discount',()=>{
+    const f=setup(),c=f.componentInstance,p=c.form.controls.instalments.at(0);
+    expect(p.controls.agencyDiscount.value).toBe('0.00');p.controls.agencyDiscount.setValue('100.00');
+    expect(c.trustPayment(p)).toBe('895.00');expect(p.controls.total.value).toBe('995.00');
+    c.componentFor(p,'Tuition')!.controls.amount.setValue('800.00');
+    expect(p.controls.total.value).toBe('1075.00');expect(c.trustPayment(p)).toBe('975.00');
+    p.controls.includedFee.setValue('0.00');expect(c.trustPayment(p)).toBe('950.00');
+    c.form.controls.acknowledgeTotals.setValue(true);c.save('confirmed');
+    expect(api.reviewDocumentAnalysis.calls.mostRecent().args[2].corrections.instalments[0]).toEqual(jasmine.objectContaining({agencyDiscountMinor:10000,totalMinor:105000}));
+    p.controls.agencyDiscount.setValue('800.01');c.save('confirmed');expect(api.reviewDocumentAnalysis).toHaveBeenCalledTimes(1);
+  });
+  it('prefixes monetary inputs without changing their numeric values',()=>{
+    const f=setup();const inputs=f.nativeElement.querySelectorAll('input[inputmode="decimal"]');
+    expect(inputs.length).toBeGreaterThan(5);for(const input of inputs){expect(input.parentElement.classList.contains('currency-input')).toBeTrue();expect(input.previousElementSibling.textContent.trim()).toBe('$');expect(input.value).not.toContain('$');}
+  });
   it('keeps both totals and conditional fee without an applicability decision',()=>{
     const f=setup(),c=f.componentInstance;expect(c.paymentTotals).toEqual({total:906500,included:2500});expect(c.totalsDiffer).toBeFalse();
     expect(c.form.controls.campusAddress.value).toBe('16 Cook St, MORTDALE, NSW, 2223');c.form.controls.campusAddress.setValue('Corrected campus');
@@ -61,14 +84,14 @@ describe('CaseOfferReviewComponent',()=>{
     const summary=f.nativeElement.querySelector('.fee-summary').textContent;
     for(const value of ['Whole-offer totals','First scheduled payment','AUD 9040.00','AUD 9065.00','AUD 25.00','AUD 970.00','AUD 995.00'])expect(summary).toContain(value);
     expect(c.form.controls.instalments.getRawValue().map(r=>r.sequence)).toEqual(['2','1']);
-    c.form.controls.instalments.at(1).controls.includedFee.setValue('1000.00');expect(c.firstPaymentSummary).toBeNull();
+    c.form.controls.instalments.at(1).controls.includedFee.setValue('1000.00');expect(c.firstPaymentSummary).toEqual({total:197000,base:97000});
     expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
   });
   it('uses an accessible remove icon for each fee and only removes the chosen draft row',()=>{
     const f=setup(),c=f.componentInstance;c.selectTab('fees');f.detectChanges();
     const rows=f.nativeElement.querySelectorAll('.fee-entry');expect(rows.length).toBe(2);
     const first=rows[0].querySelector('[aria-label="Remove fee 1"]') as HTMLButtonElement;expect(first.querySelector('svg')).not.toBeNull();
-    expect(Array.from(rows[0].querySelectorAll('label')).map((l:any)=>l.textContent.trim())).toEqual(['Fee','Amount','When it applies','Conditional fee']);
+    expect(Array.from(rows[0].querySelectorAll('.fee-cell-label')).map((l:any)=>l.textContent.trim())).toEqual(['Fee','Amount','When it applies','Conditional fee','Action']);
     c.busy=true;f.detectChanges();expect(first.disabled).toBeTrue();first.click();expect(c.form.controls.fees.length).toBe(2);
     c.busy=false;f.detectChanges();first.click();f.detectChanges();expect(c.form.controls.fees.length).toBe(1);expect(c.form.controls.fees.at(0).controls.label.value).toBe('International transfer');expect(api.reviewDocumentAnalysis).not.toHaveBeenCalled();
   });
@@ -91,7 +114,7 @@ describe('CaseOfferReviewComponent',()=>{
   it('renders instalments as a table with dynamic payment columns and accessible row removal',()=>{
     const f=setup(),c=f.componentInstance;c.selectTab('instalments');f.detectChanges();
     const table=f.nativeElement.querySelector('.instalment-table') as HTMLTableElement;
-    expect(Array.from(table.querySelectorAll('th')).map(th=>th.textContent!.trim())).toEqual(['Instalment','Due date','Payment term','Material','Tuition','International transfer','Payment','Action']);
+    expect(Array.from(table.querySelectorAll('th')).map(th=>th.textContent!.trim())).toEqual(['Instalment','Due date','Payment term','Material','Agency discount','Tuition','International transfer','Payment TRUST','Payment PTY','Type of Sale','Action']);
     expect(Array.from(table.querySelectorAll('th')).every(th=>th.scope==='col')).toBeTrue();expect(table.querySelectorAll('.payment-entry').length).toBe(2);
     expect((table.querySelector('[aria-label="Instalment 1 Material amount"]') as HTMLInputElement).value).toBe('50.00');
     const missing=table.querySelector('[aria-label="Instalment 2 Material amount"]') as HTMLInputElement;expect(missing.value).toBe('0.00');missing.value='120.00';missing.dispatchEvent(new Event('input'));f.detectChanges();expect(c.componentFor(c.form.controls.instalments.at(1),'Material')?.controls.amount.value).toBe('120.00');
@@ -183,7 +206,7 @@ describe('CaseOfferReviewComponent',()=>{
     const f=setup();const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
     try{const doc=frame.contentDocument!,win=frame.contentWindow!;document.querySelectorAll('style').forEach(s=>doc.head.appendChild(s.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';
       for(const tab of f.componentInstance.tabs){f.componentInstance.activeTab=tab.key;f.detectChanges();
-        const host=f.nativeElement.cloneNode(true) as HTMLElement;host.style.display='flex';host.style.flexDirection='column';host.style.height='650px';host.style.width=`${Math.min(width-32,1180)}px`;doc.body.appendChild(host);
+        const host=f.nativeElement.cloneNode(true) as HTMLElement;host.style.display='flex';host.style.flexDirection='column';host.style.height='650px';host.style.width=`${Math.min(width-32,1792)}px`;doc.body.appendChild(host);
         expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth+1);for(const b of host.querySelectorAll<HTMLButtonElement>('button'))if(b.getBoundingClientRect().height)expect(b.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
         const scroll=host.querySelector('.offer-scroll')!;scroll.scrollTop=scroll.scrollHeight;
         const footer=host.querySelector('.offer-footer')!;expect(footer.getBoundingClientRect().bottom).toBeLessThanOrEqual(host.getBoundingClientRect().bottom+1);expect(footer.getBoundingClientRect().top).toBeGreaterThanOrEqual(host.getBoundingClientRect().top);
@@ -235,7 +258,7 @@ describe('CaseOfferReviewComponent',()=>{
         expect(win.getComputedStyle(host.querySelector('input')!).backgroundColor).toBe(dark?'rgb(38, 52, 73)':'rgb(255, 255, 255)');host.remove();
       }
       f.componentInstance.beginCollege();f.detectChanges();
-      const host=f.nativeElement.cloneNode(true) as HTMLElement;host.style.height='650px';host.style.width=`${Math.min(width-32,1180)}px`;doc.body.appendChild(host);
+      const host=f.nativeElement.cloneNode(true) as HTMLElement;host.style.height='650px';host.style.width=`${Math.min(width-32,1792)}px`;doc.body.appendChild(host);
       const footer=host.querySelector<HTMLElement>('.offer-footer')!;
       expect(host.scrollWidth).toBeLessThanOrEqual(host.clientWidth+1);
       for(const b of footer.querySelectorAll<HTMLButtonElement>('button')){

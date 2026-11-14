@@ -42,6 +42,14 @@ describe('CaseDocumentActionsComponent',()=>{
     c.archive(c.types[0]);expect(api.updateDocumentType.calls.mostRecent().args[1]).toEqual({status:'archived',recordVersion:2});expect(c.types).toEqual([]);
     expect(api.uploadCaseDocument).not.toHaveBeenCalled();
   });
+  it('stages selected files immediately without uploading or requiring Add',()=>{
+    const f=setup(),c=f.componentInstance;c.open('upload');c.uploadForm.controls.documentTypeId.setValue('type-1');f.detectChanges();
+    const input=f.nativeElement.querySelector('input[type="file"]') as HTMLInputElement,files=new DataTransfer();files.items.add(new File(['pdf'],'Immediate.pdf',{type:'application/pdf'}));
+    input.files=files.files;input.dispatchEvent(new Event('change'));f.detectChanges();
+    expect(c.stagedDocuments.map(d=>d.file.name)).toEqual(['Immediate.pdf']);expect(c.selectedFiles).toEqual([]);
+    expect(f.nativeElement.querySelector('.add-files')).toBeNull();expect(api.uploadCaseDocument).not.toHaveBeenCalled();
+    c.selectFiles({target:{files:[]}} as unknown as Event);expect(c.stagedDocuments.length).toBe(1);
+  });
   it('opens the hidden file picker from the custom Upload button and announces the selection',()=>{
     const f=setup(),c=f.componentInstance;c.open('upload');f.detectChanges();
     const input=f.nativeElement.querySelector('input[type="file"]') as HTMLInputElement;
@@ -60,7 +68,7 @@ describe('CaseDocumentActionsComponent',()=>{
     expect(c.selectedFiles.map(file=>file.name)).toEqual(['Passport.pdf','Offer.pdf']);expect((f.nativeElement.querySelector('.file-name') as HTMLInputElement).value).toBe('2 files selected');
     expect(button.getAttribute('aria-invalid')).toBe('false');expect(uploadButton.disabled).toBeTrue();
     c.uploadForm.controls.documentTypeId.setValue('type-1');f.detectChanges();expect(uploadButton.disabled).toBeFalse();
-    (f.nativeElement.querySelector('.add-files') as HTMLButtonElement).click();f.detectChanges();
+    expect(f.nativeElement.querySelector('.add-files')).toBeNull();f.detectChanges();
     expect(c.stagedDocuments.map(item=>item.file.name)).toEqual(['Passport.pdf','Offer.pdf']);expect(f.nativeElement.querySelectorAll('.upload-table tbody tr').length).toBe(2);
     expect(api.uploadCaseDocument).not.toHaveBeenCalled();
     for(const state of ['busy','loading','failed'] as const){c[state]=true;f.detectChanges();expect(button.disabled).toBeTrue();c[state]=false;}
@@ -74,7 +82,7 @@ describe('CaseDocumentActionsComponent',()=>{
     c.uploadForm.controls.documentTypeId.setValue('type-1');
     const file=new File(['%PDF-1.7\n%%EOF'],'statement.pdf',{type:'application/pdf'}),files=new DataTransfer();files.items.add(file);
     input.files=files.files;input.dispatchEvent(new Event('change'));f.detectChanges();
-    expect(c.stagedDocuments).toEqual([]);expect(uploadButton.disabled).toBeFalse();
+    expect(c.stagedDocuments.map(d=>d.file)).toEqual([file]);expect(api.uploadCaseDocument).not.toHaveBeenCalled();expect(uploadButton.disabled).toBeFalse();
     uploadButton.click();f.detectChanges();
     expect(api.uploadCaseDocument).toHaveBeenCalledWith('case-1',file,'type-1',jasmine.any(String));
     expect(c.modal.nativeElement.open).toBeFalse();

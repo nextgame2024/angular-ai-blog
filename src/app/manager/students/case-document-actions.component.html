@@ -45,7 +45,7 @@
       </footer>
     }
   } @else {
-    <form [formGroup]="uploadForm" (ngSubmit)="mode==='replace'?replace():addFiles()">
+    <form [formGroup]="uploadForm" (ngSubmit)="mode==='replace'?replace():upload()">
       <fieldset [disabled]="busy || loading || failed" class="upload-fields">
         <label>Type<app-manager-select formControlName="documentTypeId" [options]="typeOptions" [searchable]="true" ariaLabel="Document type" placeholder="Select a type" [attr.aria-invalid]="uploadForm.controls.documentTypeId.invalid && uploadForm.controls.documentTypeId.touched"></app-manager-select></label>
         <div class="file-field">
@@ -60,7 +60,6 @@
             </button>
           </div>
         </div>
-        @if(mode==='upload'){<button type="submit" class="btn add-files" [disabled]="!types.length || !selectedFiles.length">+ Add</button>}
         <p id="document-file-hint" class="hint upload-hint" [class.replacement-hint]="mode==='replace'">PDF, JPEG or PNG · Maximum 10 MB per file. {{mode==='replace'?'The existing document is unchanged until you confirm replacement.':'Selecting files does not upload them.'}}</p>
         @if(mode==='upload'&&!loading&&!failed&&!types.length){<p class="empty">Add an active type using Manage types before uploading.</p>}
         @if(mode==='upload'&&!loading&&!failed&&(!storageAvailable || !uploadEnabled)){<p class="empty">An administrator must enable document storage in company integrations before you can upload files.</p>}
