@@ -59,39 +59,7 @@ interface PublishedForm {
           <p class="muted">{{ form?.businessName }}</p>
         </section>
       } @else if (form) {
-        <header>
-          <p class="business-name">{{ form.businessName }}</p>
-          <h1>{{ form.name }}</h1>
-        </header>
         <section class="card form-body">
-          <fieldset [disabled]="saving" class="contact">
-            <legend>Your contact details</legend>
-            <label for="contact-name">Name *</label
-            ><input
-              id="contact-name"
-              [(ngModel)]="contact.name"
-              maxlength="160"
-              autocomplete="name"
-              [class.invalid]="invalid.has('name')"
-            />
-            <label for="contact-email">Email *</label
-            ><input
-              id="contact-email"
-              type="email"
-              [(ngModel)]="contact.email"
-              maxlength="320"
-              autocomplete="email"
-              [class.invalid]="invalid.has('email')"
-            />
-            <label for="contact-phone">Phone (optional)</label
-            ><input
-              id="contact-phone"
-              type="tel"
-              [(ngModel)]="contact.phone"
-              maxlength="40"
-              autocomplete="tel"
-            />
-          </fieldset>
           <div class="honeypot" aria-hidden="true">
             <label for="website">Website</label
             ><input
@@ -164,25 +132,33 @@ interface PublishedForm {
                 @case ('checkboxes') {
                   <fieldset
                     class="checks"
+                    [attr.aria-label]="question(i)?.text || 'Choose options'"
                     [disabled]="saving"
                     [class.invalid]="invalid.has(block.id)"
                   >
-                    <legend>{{ question(i)?.text || 'Choose options' }}</legend>
-                    @for (option of block.options; track option) {
-                      <label
-                        ><input
-                          type="checkbox"
-                          [checked]="checked(block.id, option)"
-                          (change)="
-                            toggle(
-                              block.id,
-                              option,
-                              $any($event.target).checked
-                            )
-                          "
-                        />{{ option }}</label
-                      >
+                    @if (!question(i)) {
+                      <legend>Choose options</legend>
                     }
+                    <div
+                      class="check-options"
+                      [class.single-option]="block.options.length === 1"
+                    >
+                      @for (option of block.options; track option) {
+                        <label
+                          ><input
+                            type="checkbox"
+                            [checked]="checked(block.id, option)"
+                            (change)="
+                              toggle(
+                                block.id,
+                                option,
+                                $any($event.target).checked
+                              )
+                            "
+                          />{{ option }}</label
+                        >
+                      }
+                    </div>
                   </fieldset>
                 }
                 @case ('calendar') {
@@ -198,10 +174,6 @@ interface PublishedForm {
               }
             }
           </div>
-          <p class="muted">
-            Your answers and contact details will be sent to
-            {{ form.businessName || 'this business' }}.
-          </p>
           <button
             class="btn primary submit"
             type="button"
@@ -209,14 +181,6 @@ interface PublishedForm {
             [disabled]="saving"
           >
             {{ saving ? 'Sending…' : 'Send' }}
-          </button>
-          <button
-            class="btn"
-            type="button"
-            (click)="cancel()"
-            [disabled]="saving"
-          >
-            Cancel
           </button>
         </section>
       }
@@ -252,18 +216,6 @@ interface PublishedForm {
         font-weight: 600;
         color: #607496;
       }
-      .contact {
-        border: 0;
-        padding: 0;
-        margin: 0 0 1.5rem;
-      }
-      .contact legend {
-        font-weight: 700;
-        margin-bottom: 1rem;
-      }
-      .contact input {
-        margin-bottom: 0.8rem;
-      }
       .form-preview > label {
         margin-top: 1.2rem;
       }
@@ -281,11 +233,21 @@ interface PublishedForm {
         border: 0;
         padding: 0.5rem 0;
       }
+      .check-options {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.125rem 1.25rem;
+      }
+      .check-options.single-option {
+        grid-template-columns: minmax(0, 1fr);
+      }
       .checks label {
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        min-height: 44px;
+        min-height: 32px;
+        margin: 0;
+        overflow-wrap: anywhere;
       }
       .checks input {
         width: 18px;
@@ -311,6 +273,15 @@ interface PublishedForm {
         display: block;
       }
       @media (max-width: 600px) {
+        .check-options {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .check-options.single-option {
+          grid-template-columns: minmax(0, 1fr);
+        }
+        .checks label {
+          min-height: 44px;
+        }
         .public-shell {
           margin: 0.5rem auto;
           padding: 0.5rem;
@@ -331,7 +302,6 @@ export class PublicFormPage implements OnInit {
   toast = '';
   saving = false;
   result: any = null;
-  contact = { name: '', email: '', phone: '' };
   website = '';
   answers: Record<string, string | string[] | undefined> = {};
   appointment: FormAppointment | null = null;
@@ -400,32 +370,16 @@ export class PublicFormPage implements OnInit {
       .replace(/[\u200b-\u200d\ufeff]/g, '')
       .trim();
   }
-  cancel() {
-    if (this.saving) return;
-    if (!window.confirm('Discard your answers and start again?')) return;
-    this.answers = {};
-    this.contact = { name: '', email: '', phone: '' };
-    this.appointment = null;
-    this.invalid.clear();
-    this.toast = 'Your answers have been cleared.';
-    this.key = crypto.randomUUID();
-    this.form = this.form
-      ? { ...this.form, blocks: structuredClone(this.form.blocks) }
-      : null;
-  }
   submit() {
     if (!this.form || this.saving || this.result) return;
     this.invalid.clear();
-    if (!this.contact.name.trim()) this.invalid.add('name');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.contact.email.trim()))
-      this.invalid.add('email');
     this.form.blocks.forEach((b, i) => {
       if (this.question(i)?.required && this.answerEmpty(b))
         this.invalid.add(b.id);
       if (b.kind === 'calendar' && !this.appointment) this.invalid.add(b.id);
     });
     if (this.invalid.size) {
-      this.toast = 'Complete your contact details and the highlighted fields.';
+      this.toast = 'Complete the highlighted fields.';
       return;
     }
     this.saving = true;
@@ -433,7 +387,6 @@ export class PublicFormPage implements OnInit {
       .post(`${environment.apiUrl}/public/forms/${this.token}/submissions`, {
         requestKey: this.key,
         formVersion: this.form.version,
-        contact: this.contact,
         answers: this.answers,
         appointment: this.appointment,
         website: this.website,
@@ -475,7 +428,7 @@ export class PublicFormPage implements OnInit {
   ) {
     if (
       !this.result &&
-      (this.contact.name || Object.keys(this.answers).length)
+      (Object.keys(this.answers).length || this.appointment)
     ) {
       e.preventDefault();
       e.returnValue = '';
