@@ -165,3 +165,56 @@ input[type="radio"] {
   margin-bottom: 1rem;
   max-width: 420px;
 }
+
+.builder-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(170px, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+.builder-content {
+  min-width: 0;
+}
+.block-toolbar {
+  position: sticky;
+  top: 5rem;
+  flex-direction: column;
+  align-items: stretch;
+  margin: 0;
+  padding: 1rem;
+  max-height: calc(100dvh - 6rem);
+  overflow: auto;
+}
+.block-toolbar .btn {
+  white-space: normal;
+}
+a.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+app-manager-rich-text-editor {
+  display: block;
+  margin-top: 0.5rem;
+}
+@media (max-width: 860px) {
+  .builder-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .block-toolbar {
+    grid-row: 1;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    top: 4rem;
+    z-index: 5;
+    padding: 0.5rem;
+    max-height: none;
+    overflow-x: auto;
+  }
+  .block-toolbar .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}

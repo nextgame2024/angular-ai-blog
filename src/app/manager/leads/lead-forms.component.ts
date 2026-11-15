@@ -97,6 +97,7 @@ export class LeadFormsComponent implements OnInit {
   ];
   readonly answerTypes: ManagerSelectOption[] = [
     { value: 'input', label: 'Input' },
+    { value: 'richtext', label: 'Description (rich text)' },
     { value: 'list', label: 'List (dropdown)' },
     { value: 'checkboxes', label: 'Checkboxes' },
   ];
@@ -120,7 +121,10 @@ export class LeadFormsComponent implements OnInit {
     return groups;
   }
   private isAnswer(block?: FormBlock) {
-    return !!block && ['input', 'list', 'checkboxes'].includes(block.kind);
+    return (
+      !!block &&
+      ['input', 'list', 'checkboxes', 'richtext'].includes(block.kind)
+    );
   }
   canAdd(kind: BlockKind) {
     return (
@@ -136,7 +140,7 @@ export class LeadFormsComponent implements OnInit {
       this.busy ||
       !this.editor ||
       this.editor.blocks[index]?.kind !== 'question' ||
-      !['input', 'list', 'checkboxes'].includes(kind)
+      !['input', 'list', 'checkboxes', 'richtext'].includes(kind)
     )
       return;
     let answer = this.editor.blocks[index + 1];
@@ -152,8 +156,11 @@ export class LeadFormsComponent implements OnInit {
       this.editor.blocks.splice(index + 1, 0, answer);
     }
     answer.kind = kind as BlockKind;
-    answer.options =
-      kind === 'input' ? [] : answer.options.length ? answer.options : [''];
+    answer.options = ['input', 'richtext'].includes(kind)
+      ? []
+      : answer.options.length
+        ? answer.options
+        : [''];
     this.dirty = true;
   }
   get totalPages() {
@@ -298,6 +305,57 @@ export class LeadFormsComponent implements OnInit {
         },
       });
   }
+  publicationUrl(row: FormRow) {
+    return row.publicationToken
+      ? window.location.origin + '/forms/' + row.publicationToken
+      : '';
+  }
+  publishRow(row: FormRow) {
+    if (this.busy || !this.canManage) return;
+    this.busy = true;
+    this.api
+      .publish(row)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (p) => {
+          this.busy = false;
+          row.publicationToken = p.token;
+          row.publishedVersion = row.version;
+          this.notify('Form published. Use the website icon to open it.');
+        },
+        error: (e) => {
+          this.busy = false;
+          this.notify(this.message(e), 'error');
+        },
+      });
+  }
+  unpublishRow(row: FormRow) {
+    if (this.busy || !this.canManage) return;
+    this.confirmation = {
+      message:
+        'Unpublish “' +
+        row.name +
+        '”? Its public link will stop accepting responses.',
+      action: () => {
+        this.busy = true;
+        this.api
+          .unpublish(row.id)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe({
+            next: () => {
+              this.busy = false;
+              row.publicationToken = null;
+              row.publishedVersion = null;
+              this.notify('Form unpublished.');
+            },
+            error: (e) => {
+              this.busy = false;
+              this.notify(this.message(e), 'error');
+            },
+          });
+      },
+    };
+  }
   publish() {
     if (
       !this.editor ||
@@ -403,7 +461,7 @@ export class LeadFormsComponent implements OnInit {
     if (b.kind === 'calendar') return !validFormCalendar(b.calendar);
     if (
       b.kind === 'question' &&
-      !['input', 'list', 'checkboxes'].includes(
+      !['input', 'list', 'checkboxes', 'richtext'].includes(
         this.editor?.blocks[index + 1]?.kind ?? '',
       )
     )
@@ -416,7 +474,7 @@ export class LeadFormsComponent implements OnInit {
           b.options.length
       );
     return (
-      b.kind !== 'input' &&
+      !['input', 'richtext'].includes(b.kind) &&
       !b.text
         .replace(/<[^>]*>/g, '')
         .replace(/&nbsp;/g, ' ')

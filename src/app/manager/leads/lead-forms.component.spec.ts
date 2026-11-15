@@ -198,6 +198,20 @@ describe('Lead form builder', () => {
     calendar.calendar!.advisorId = 'advisor';
     expect(page.blockInvalid(calendar, 4)).toBeFalse();
   });
+  it('publishes and unpublishes directly from a form row', () => {
+    const row: any = { id: 'form', name: 'Discovery', version: 2 };
+    api.publish.and.returnValue(of({ token: 'tenant.publication' }));
+    page.publishRow(row);
+    expect(api.publish).toHaveBeenCalledWith(row);
+    expect(row.publishedVersion).toBe(2);
+    expect(page.publicationUrl(row)).toBe(
+      window.location.origin + '/forms/tenant.publication',
+    );
+    api.unpublish.and.returnValue(of({}));
+    page.unpublishRow(row);
+    page.confirmation!.action();
+    expect(row.publicationToken).toBeNull();
+  });
   it('publishes only saved forms and shows the campaign URL', () => {
     page.create();
     page.editor!.version = 1;
@@ -259,6 +273,44 @@ describe('Lead form builder', () => {
     expect(
       root.querySelector('.form-preview input')?.hasAttribute('required'),
     ).toBeTrue();
+  });
+  it('keeps the block toolbar sticky beside questions and adapts to narrow screens', () => {
+    page.create();
+    for (let i = 0; i < 8; i++) page.add('question');
+    page.changeAnswer(0, 'richtext');
+    fixture.detectChanges();
+    const frame = document.createElement('iframe');
+    frame.style.height = '600px';
+    document.body.appendChild(frame);
+    try {
+      const doc = frame.contentDocument!;
+      for (const style of Array.from(document.querySelectorAll('style')))
+        doc.head.appendChild(style.cloneNode(true));
+      doc.body.style.margin = '0';
+      doc.body.appendChild(fixture.nativeElement.cloneNode(true));
+      for (const width of [390, 1280])
+        for (const dark of [false, true]) {
+          frame.style.width = width + 'px';
+          doc.documentElement.classList.toggle('dark', dark);
+          const toolbar = doc.querySelector('.block-toolbar') as HTMLElement;
+          const content = doc.querySelector('.builder-content') as HTMLElement;
+          expect(frame.contentWindow!.getComputedStyle(toolbar).position).toBe(
+            'sticky',
+          );
+          if (width === 1280) {
+            expect(toolbar.getBoundingClientRect().left).toBeGreaterThan(
+              content.getBoundingClientRect().left,
+            );
+            expect(content.offsetWidth / toolbar.offsetWidth).toBeCloseTo(4, 0);
+          }
+          expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(width);
+          frame.contentWindow!.scrollTo(0, 800);
+          expect(toolbar.getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
+          frame.contentWindow!.scrollTo(0, 0);
+        }
+    } finally {
+      frame.remove();
+    }
   });
   it('renders desktop and mobile layouts in light and dark themes', () => {
     page.rows = [

@@ -32,6 +32,61 @@
 </ng-template>
 <ng-template #rowActions let-row>
   <div class="actions">
+    @if (row.publicationToken) {
+      <a
+        class="btn icon-btn"
+        [href]="publicationUrl(row)"
+        target="_blank"
+        rel="noopener noreferrer"
+        [attr.aria-label]="'Open public form ' + row.name"
+        title="Open public form in a new tab"
+        ><svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M3 12h18M12 3c5 5 5 13 0 18M12 3c-5 5-5 13 0 18" /></svg
+      ></a>
+      @if (canManage) {
+        @if (row.publishedVersion !== row.version) {
+          <button
+            class="btn icon-btn"
+            type="button"
+            (click)="publishRow(row)"
+            [disabled]="busy"
+            title="Publish latest changes"
+            [attr.aria-label]="'Publish latest changes to ' + row.name"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 16V3m-5 5 5-5 5 5M4 14v7h16v-7" />
+            </svg>
+          </button>
+        }
+        <button
+          class="btn icon-btn"
+          type="button"
+          (click)="unpublishRow(row)"
+          [disabled]="busy"
+          title="Unpublish"
+          [attr.aria-label]="'Unpublish ' + row.name"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 3v13m-5-5 5 5 5-5M4 14v7h16v-7" />
+          </svg>
+        </button>
+      }
+    } @else if (canManage) {
+      <button
+        class="btn icon-btn"
+        type="button"
+        (click)="publishRow(row)"
+        [disabled]="busy"
+        title="Publish"
+        [attr.aria-label]="'Publish ' + row.name"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 16V3m-5 5 5-5 5 5M4 14v7h16v-7" />
+        </svg>
+      </button>
+    }
+
     <button
       class="btn icon-btn"
       type="button"
@@ -311,39 +366,20 @@
           {{ busy ? "Saving…" : "Save form" }}
         </button>
         <button
-          class="btn primary"
+          class="btn"
           type="button"
-          (click)="publish()"
-          [disabled]="busy || dirty || !editor.version"
-          title="Save changes before publishing"
+          (click)="typesOpen = true; loadTypes()"
+          [disabled]="busy"
         >
-          Publish
+          Create type
         </button>
       }
     </div>
   </header>
-  @if (publicUrl) {
-    <div class="notice">
-      <label for="public-form-link">Public form link</label
-      ><input
-        id="public-form-link"
-        [value]="publicUrl"
-        readonly
-        (click)="$any($event.target).select()"
-      /><a [href]="publicUrl" target="_blank" rel="noopener"
-        >Open public form</a
-      >
-      <button class="btn" type="button" (click)="unpublish()" [disabled]="busy">
-        Unpublish
-      </button>
-    </div>
-  }
-  @if (dirty || !editor.version) {
-    <p class="muted">
-      Save your form before publishing. Draft edits do not change the published
-      form.
-    </p>
-  }
+  <p class="muted">
+    Save changes, then publish from the Forms list. Draft edits do not change
+    the public form.
+  </p>
   @if (!preview) {
     <fieldset class="builder-fields" [disabled]="busy">
       <section class="card form-body form-grid">
@@ -371,186 +407,207 @@
             [class.invalid]="attempted && !editor.typeId"
           ></app-manager-select>
         </div>
-        <div class="wide actions">
-          <button
-            class="btn"
-            type="button"
-            (click)="typesOpen = true; loadTypes()"
-            [disabled]="busy"
-          >
-            Create type
-          </button>
-          @if (!typesReady) {
+        @if (!typesReady) {
+          <div class="wide">
             <button class="btn" type="button" (click)="loadTypes()">
               Retry loading types
             </button>
-          }
-        </div>
-      </section>
-      <div class="block-toolbar">
-        @for (button of blockButtons; track button.kind) {
-          <button
-            class="btn"
-            type="button"
-            (click)="add(button.kind)"
-            [disabled]="!canAdd(button.kind)"
-          >
-            {{ button.label }}
-          </button>
+          </div>
         }
-      </div>
-      <p class="muted">
-        Choose the answer type inside each question. Lists and checkboxes can
-        have up to 50 options.
-      </p>
-      @if (!editor.blocks.length) {
-        <div class="card empty" [class.invalid]="attempted">
-          Use the buttons above to add your first block.
-        </div>
-      }
-      @for (
-        group of blockGroups;
-        track group.block.id;
-        let position = $index;
-        let last = $last
-      ) {
-        @let block = group.block;
-        @let i = group.index;
-        <section
-          class="card block"
-          [class.invalid]="
-            blockInvalid(block, i) ||
-            (group.answer && blockInvalid(group.answer, i + 1))
-          "
-        >
-          <header class="block-header">
-            <strong>{{ position + 1 }}. {{ block.kind | titlecase }}</strong>
-            <div class="actions">
-              <button
-                class="btn icon-btn"
-                type="button"
-                (click)="move(i, -1)"
-                [disabled]="busy || position === 0"
-                aria-label="Move block up"
-              >
-                <svg viewBox="0 0 24 24"><path d="m6 14 6-6 6 6" /></svg>
-              </button>
-              <button
-                class="btn icon-btn"
-                type="button"
-                (click)="move(i, 1)"
-                [disabled]="busy || last"
-                aria-label="Move block down"
-              >
-                <svg viewBox="0 0 24 24"><path d="m6 10 6 6 6-6" /></svg>
-              </button>
-              <button class="btn" type="button" (click)="remove(i)">
-                Remove
-              </button>
+      </section>
+      <div class="builder-layout">
+        <div class="builder-content">
+          <p class="muted">
+            Choose the answer type inside each question. Lists and checkboxes
+            can have up to 50 options.
+          </p>
+          @if (!editor.blocks.length) {
+            <div class="card empty" [class.invalid]="attempted">
+              Use the Add buttons to create your first block.
             </div>
-          </header>
-          @if (block.kind === "calendar" && block.calendar) {
-            <app-lead-form-calendar-editor
-              [value]="block.calendar"
-              [id]="block.id"
-              [disabled]="busy"
-              [attempted]="attempted"
-              (changed)="dirty = true"
-            />
-          } @else if (block.kind === "description") {
-            <label [attr.for]="block.id">Description</label
-            ><app-manager-rich-text-editor
-              [id]="block.id"
-              [(ngModel)]="block.text"
-              (ngModelChange)="dirty = true"
-              [disabled]="busy"
-              placeholder="Add a description or confirmation message…"
-            ></app-manager-rich-text-editor>
-          } @else if (block.kind === "checkboxes" || block.kind === "list") {
-            <ng-container
-              *ngTemplateOutlet="answerOptions; context: { $implicit: block }"
-            ></ng-container>
-          } @else {
-            <label [attr.for]="block.id">{{
-              block.kind === "input"
-                ? "Input placeholder (optional)"
-                : (block.kind | titlecase) + " text *"
-            }}</label
-            ><input
-              [id]="block.id"
-              [(ngModel)]="block.text"
-              (ngModelChange)="dirty = true"
-              maxlength="1000"
-            />
-            @if (block.kind === "question") {
-              <fieldset class="required-options">
-                <legend>Is this question required?</legend>
-                <label
-                  ><input
-                    type="radio"
-                    [name]="block.id + '-required'"
-                    [(ngModel)]="block.required"
-                    (ngModelChange)="dirty = true"
-                    [value]="true"
-                  />
-                  Required</label
-                ><label
-                  ><input
-                    type="radio"
-                    [name]="block.id + '-required'"
-                    [(ngModel)]="block.required"
-                    (ngModelChange)="dirty = true"
-                    [value]="false"
-                  />
-                  Optional</label
-                >
-              </fieldset>
-              <div class="question-answer">
-                <label [attr.for]="block.id + '-answer-type'"
-                  >How should this question be answered?</label
-                >
-                <app-manager-select
-                  [id]="block.id + '-answer-type'"
-                  [ngModel]="group.answer?.kind ?? ''"
-                  (ngModelChange)="changeAnswer(i, $event)"
-                  [options]="answerTypes"
-                  [disabled]="busy"
-                  ariaLabel="Answer type"
-                  placeholder="Select an answer type"
-                  [class.invalid]="attempted && !group.answer"
-                ></app-manager-select>
-                @if (group.answer; as answer) {
-                  @if (answer.kind === "input") {
-                    <label [attr.for]="answer.id"
-                      >Input placeholder (optional)</label
-                    >
-                    <input
-                      [id]="answer.id"
-                      [(ngModel)]="answer.text"
-                      (ngModelChange)="dirty = true"
-                      maxlength="1000"
-                    />
-                  } @else {
-                    <p class="muted">
-                      {{
-                        answer.kind === "list"
-                          ? "Add the options available in the dropdown."
-                          : "Add the options the respondent can select."
-                      }}
-                    </p>
-                    <ng-container
-                      *ngTemplateOutlet="
-                        answerOptions;
-                        context: { $implicit: answer }
-                      "
-                    ></ng-container>
-                  }
-                }
-              </div>
-            }
           }
-        </section>
-      }
+          @for (
+            group of blockGroups;
+            track group.block.id;
+            let position = $index;
+            let last = $last
+          ) {
+            @let block = group.block;
+            @let i = group.index;
+            <section
+              class="card block"
+              [class.invalid]="
+                blockInvalid(block, i) ||
+                (group.answer && blockInvalid(group.answer, i + 1))
+              "
+            >
+              <header class="block-header">
+                <strong
+                  >{{ position + 1 }}. {{ block.kind | titlecase }}</strong
+                >
+                <div class="actions">
+                  <button
+                    class="btn icon-btn"
+                    type="button"
+                    (click)="move(i, -1)"
+                    [disabled]="busy || position === 0"
+                    aria-label="Move block up"
+                  >
+                    <svg viewBox="0 0 24 24"><path d="m6 14 6-6 6 6" /></svg>
+                  </button>
+                  <button
+                    class="btn icon-btn"
+                    type="button"
+                    (click)="move(i, 1)"
+                    [disabled]="busy || last"
+                    aria-label="Move block down"
+                  >
+                    <svg viewBox="0 0 24 24"><path d="m6 10 6 6 6-6" /></svg>
+                  </button>
+                  <button class="btn" type="button" (click)="remove(i)">
+                    Remove
+                  </button>
+                </div>
+              </header>
+              @if (block.kind === "calendar" && block.calendar) {
+                <app-lead-form-calendar-editor
+                  [value]="block.calendar"
+                  [id]="block.id"
+                  [disabled]="busy"
+                  [attempted]="attempted"
+                  (changed)="dirty = true"
+                />
+              } @else if (block.kind === "description") {
+                <label [attr.for]="block.id">Description</label
+                ><app-manager-rich-text-editor
+                  [id]="block.id"
+                  [(ngModel)]="block.text"
+                  (ngModelChange)="dirty = true"
+                  [disabled]="busy"
+                  placeholder="Add a description or confirmation message…"
+                ></app-manager-rich-text-editor>
+              } @else if (
+                block.kind === "checkboxes" || block.kind === "list"
+              ) {
+                <ng-container
+                  *ngTemplateOutlet="
+                    answerOptions;
+                    context: { $implicit: block }
+                  "
+                ></ng-container>
+              } @else {
+                <label [attr.for]="block.id">{{
+                  block.kind === "input"
+                    ? "Input placeholder (optional)"
+                    : (block.kind | titlecase) + " text *"
+                }}</label
+                ><input
+                  [id]="block.id"
+                  [(ngModel)]="block.text"
+                  (ngModelChange)="dirty = true"
+                  maxlength="1000"
+                />
+                @if (block.kind === "question") {
+                  <fieldset class="required-options">
+                    <legend>Is this question required?</legend>
+                    <label
+                      ><input
+                        type="radio"
+                        [name]="block.id + '-required'"
+                        [(ngModel)]="block.required"
+                        (ngModelChange)="dirty = true"
+                        [value]="true"
+                      />
+                      Required</label
+                    ><label
+                      ><input
+                        type="radio"
+                        [name]="block.id + '-required'"
+                        [(ngModel)]="block.required"
+                        (ngModelChange)="dirty = true"
+                        [value]="false"
+                      />
+                      Optional</label
+                    >
+                  </fieldset>
+                  <div class="question-answer">
+                    <label [attr.for]="block.id + '-answer-type'"
+                      >How should this question be answered?</label
+                    >
+                    <app-manager-select
+                      [id]="block.id + '-answer-type'"
+                      [ngModel]="group.answer?.kind ?? ''"
+                      (ngModelChange)="changeAnswer(i, $event)"
+                      [options]="answerTypes"
+                      [disabled]="busy"
+                      ariaLabel="Answer type"
+                      placeholder="Select an answer type"
+                      [class.invalid]="attempted && !group.answer"
+                    ></app-manager-select>
+                    @if (group.answer; as answer) {
+                      @if (answer.kind === "richtext") {
+                        <p class="muted">
+                          The respondent will write a formatted, open-ended
+                          answer.
+                        </p>
+                        <label [attr.for]="answer.id"
+                          >Answer placeholder (optional)</label
+                        ><input
+                          [id]="answer.id"
+                          [(ngModel)]="answer.text"
+                          (ngModelChange)="dirty = true"
+                          maxlength="1000"
+                        />
+                        <app-manager-rich-text-editor
+                          [ngModel]="''"
+                          [disabled]="true"
+                          [placeholder]="answer.text || 'Write your answer…'"
+                        />
+                      } @else if (answer.kind === "input") {
+                        <label [attr.for]="answer.id"
+                          >Input placeholder (optional)</label
+                        >
+                        <input
+                          [id]="answer.id"
+                          [(ngModel)]="answer.text"
+                          (ngModelChange)="dirty = true"
+                          maxlength="1000"
+                        />
+                      } @else {
+                        <p class="muted">
+                          {{
+                            answer.kind === "list"
+                              ? "Add the options available in the dropdown."
+                              : "Add the options the respondent can select."
+                          }}
+                        </p>
+                        <ng-container
+                          *ngTemplateOutlet="
+                            answerOptions;
+                            context: { $implicit: answer }
+                          "
+                        ></ng-container>
+                      }
+                    }
+                  </div>
+                }
+              }
+            </section>
+          }
+        </div>
+        <aside class="block-toolbar card" aria-label="Add form blocks">
+          @for (button of blockButtons; track button.kind) {
+            <button
+              class="btn"
+              type="button"
+              (click)="add(button.kind)"
+              [disabled]="!canAdd(button.kind)"
+            >
+              {{ button.label }}
+            </button>
+          }
+        </aside>
+      </div>
     </fieldset>
   } @else {
     <section class="card form-preview" aria-label="Form preview">
@@ -580,6 +637,13 @@
                 <span class="required-mark">Required</span>
               }
             </label>
+          }
+          @case ("richtext") {
+            <app-manager-rich-text-editor
+              [id]="'answer-' + block.id"
+              [placeholder]="block.text || 'Write your answer…'"
+              [attr.aria-label]="question(i)?.text || 'Your answer'"
+            />
           }
           @case ("input") {
             <input

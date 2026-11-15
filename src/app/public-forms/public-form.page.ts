@@ -1,3 +1,4 @@
+import { ManagerRichTextEditorComponent } from '../manager/components/shared/manager-rich-text-editor/manager-rich-text-editor.component';
 import {
   Component,
   ViewChild,
@@ -34,6 +35,7 @@ interface PublishedForm {
     LeadFormCalendarComponent,
     ManagerSelectComponent,
     ManagerToastComponent,
+    ManagerRichTextEditorComponent,
   ],
   template: `
     <main class="public-shell">
@@ -120,6 +122,17 @@ interface PublishedForm {
                       <span class="required-mark">Required</span>
                     }
                   </label>
+                }
+                @case ('richtext') {
+                  <app-manager-rich-text-editor
+                    [id]="'answer-' + block.id"
+                    [ngModel]="answers[block.id] ?? ''"
+                    (ngModelChange)="answers[block.id] = $event"
+                    [disabled]="saving"
+                    [placeholder]="block.text || 'Write your answer…'"
+                    [attr.aria-label]="question(i)?.text || 'Your answer'"
+                    [class.invalid]="invalid.has(block.id)"
+                  />
                 }
                 @case ('input') {
                   <input
@@ -373,6 +386,18 @@ export class PublicFormPage implements OnInit {
       ? [...new Set([...values, v])]
       : values.filter((x) => x !== v);
   }
+  answerEmpty(block: { id: string; kind: string }) {
+    const value = this.answers[block.id];
+    if (block.kind !== 'richtext') return !value?.length;
+    const template = document.createElement('template');
+    template.innerHTML = typeof value === 'string' ? value : '';
+    template.content
+      .querySelectorAll('script,style')
+      .forEach((node) => node.remove());
+    return !(template.content.textContent || '')
+      .replace(/[\u200b-\u200d\ufeff]/g, '')
+      .trim();
+  }
   submit() {
     if (!this.form || this.saving || this.result) return;
     this.invalid.clear();
@@ -380,7 +405,7 @@ export class PublicFormPage implements OnInit {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.contact.email.trim()))
       this.invalid.add('email');
     this.form.blocks.forEach((b, i) => {
-      if (this.question(i)?.required && !this.answers[b.id]?.length)
+      if (this.question(i)?.required && this.answerEmpty(b))
         this.invalid.add(b.id);
       if (b.kind === 'calendar' && !this.appointment) this.invalid.add(b.id);
     });

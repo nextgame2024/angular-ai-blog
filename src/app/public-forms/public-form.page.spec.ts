@@ -54,6 +54,22 @@ describe('Published customer form', () => {
     fixture.detectChanges();
   });
   afterEach(() => http.verify());
+  it('rejects visually empty rich-text answers and submits formatted text', () => {
+    page.form!.blocks[1].kind = 'richtext';
+    fixture.detectChanges();
+    page.contact = { name: 'Jane', email: 'jane@example.test', phone: '' };
+    page.answers['a'] = '<p>&nbsp;<br></p>';
+    page.submit();
+    expect(page.invalid.has('a')).toBeTrue();
+    http.expectNone(base + '/submissions');
+    page.answers['a'] = '<p><strong>My goals</strong></p>';
+    page.submit();
+    const request = http.expectOne(base + '/submissions');
+    expect(request.request.body.answers.a).toContain(
+      '<strong>My goals</strong>',
+    );
+    request.flush({});
+  });
   it('requires contact details and question answers before submitting', () => {
     page.submit();
     expect(page.invalid.has('name')).toBeTrue();

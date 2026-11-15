@@ -8,7 +8,12 @@ interface FormResponse {
   id: string;
   formName: string;
   createdAt: string;
-  answers: { id: string; label: string; value: string | string[] }[];
+  answers: {
+    id: string;
+    label: string;
+    value: string | string[];
+    format?: string;
+  }[];
 }
 @Component({
   selector: 'app-lead-form-responses',
@@ -30,7 +35,13 @@ interface FormResponse {
         <dl>
           @for (answer of response.answers; track answer.id) {
             <dt>{{ answer.label }}</dt>
-            <dd>{{ display(answer.value) }}</dd>
+            <dd>
+              @if (answer.format === 'html') {
+                <div [innerHTML]="display(answer.value)"></div>
+              } @else {
+                {{ display(answer.value) }}
+              }
+            </dd>
           }
         </dl>
       </details>

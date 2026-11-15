@@ -9,7 +9,8 @@ export type BlockKind =
   | 'checkboxes'
   | 'list'
   | 'input'
-  | 'calendar';
+  | 'calendar'
+  | 'richtext';
 export interface FormCalendar {
   advisorId: string;
   timezone: string;
@@ -31,6 +32,8 @@ export interface LeadForm {
   version: number;
 }
 export interface FormRow {
+  publicationToken?: string | null;
+  publishedVersion?: number | null;
   id: string;
   name: string;
   typeId: string;
@@ -79,7 +82,7 @@ export class LeadFormsService {
       form,
     });
   }
-  publish(form: LeadForm) {
+  publish(form: Pick<LeadForm, 'id' | 'version'>) {
     return this.http.post<{ token: string }>(
       `${this.base}/forms/${form.id}/publish`,
       { expectedVersion: form.version },
