@@ -17,6 +17,41 @@ describe('Form calendar', () => {
     timezone: 'Australia/Brisbane',
     weeklyHours: [{ day: 1, start: '08:00', end: '17:00' }],
   };
+  it('copies a full day of half-hour intervals to the rest of the week', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: LeadSchedulingService,
+          useValue: { context: () => of({ advisors: [] }) },
+        },
+      ],
+    });
+    const editor = TestBed.createComponent(
+      LeadFormCalendarEditorComponent,
+    ).componentInstance;
+    const time = (minutes: number) =>
+      String(Math.floor(minutes / 60)).padStart(2, '0') +
+      ':' +
+      String(minutes % 60).padStart(2, '0');
+    editor.value = {
+      ...configuration,
+      weeklyHours: Array.from({ length: 16 }, (_, i) => ({
+        day: 1,
+        start: time(540 + i * 30),
+        end: time(570 + i * 30),
+      })),
+    };
+    editor.copyDays = new Set([0, 2, 3, 4, 5, 6]);
+    editor.copyHours();
+    expect(editor.value.weeklyHours.length).toBe(112);
+    expect(validFormCalendar(editor.value)).toBeTrue();
+    editor.copyHours();
+    expect(editor.value.weeklyHours.length).toBe(112);
+    for (let day = 0; day < 7; day++)
+      expect(editor.value.weeklyHours.filter((h) => h.day === day).length).toBe(
+        16,
+      );
+  });
   it('copies all intervals to selected days without duplicates or shared objects', () => {
     TestBed.configureTestingModule({
       providers: [

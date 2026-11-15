@@ -12,8 +12,14 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ManagerSelectComponent } from '../components/shared/manager-select/manager-select.component';
 import { LeadSchedulingService } from '../components/schedule/leads/lead-scheduling.service';
 import { FormCalendar } from './lead-forms.service';
+// A week contains 672 non-overlapping 15-minute intervals.
+export const MAX_FORM_WEEKLY_INTERVALS = 7 * 24 * 4;
 export function validFormCalendar(c?: FormCalendar): boolean {
-  if (!c?.advisorId || !c.weeklyHours.length || c.weeklyHours.length > 28)
+  if (
+    !c?.advisorId ||
+    !c.weeklyHours.length ||
+    c.weeklyHours.length > MAX_FORM_WEEKLY_INTERVALS
+  )
     return false;
   try {
     new Intl.DateTimeFormat('en', { timeZone: c.timezone });
@@ -117,7 +123,7 @@ export function validFormCalendar(c?: FormCalendar): boolean {
         value.weeklyHours.push({ day: 1, start: '09:00', end: '17:00' });
         changed.emit()
       "
-      [disabled]="disabled || value.weeklyHours.length >= 28"
+      [disabled]="disabled || value.weeklyHours.length >= maxWeeklyIntervals"
     >
       Add day / hours
     </button>
@@ -236,6 +242,7 @@ export class LeadFormCalendarEditorComponent implements OnInit {
     ...this.times.slice(1),
     { value: '24:00', label: '12:00 am (midnight)' },
   ];
+  readonly maxWeeklyIntervals = MAX_FORM_WEEKLY_INTERVALS;
   copyFrom = '1';
   copyDays = new Set<number>();
   copyMessage = '';
@@ -255,8 +262,8 @@ export class LeadFormCalendarEditorComponent implements OnInit {
     }
     const next = this.value.weeklyHours.filter((h) => !targets.includes(h.day));
     for (const day of targets) next.push(...source.map((h) => ({ ...h, day })));
-    if (next.length > 28) {
-      this.copyMessage = 'Use no more than 28 intervals. Copy to fewer days.';
+    if (next.length > MAX_FORM_WEEKLY_INTERVALS) {
+      this.copyMessage = `Use no more than ${MAX_FORM_WEEKLY_INTERVALS} intervals per week.`;
       return;
     }
     if (

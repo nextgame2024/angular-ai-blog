@@ -207,6 +207,34 @@ describe('Lead form builder', () => {
     calendar.calendar!.advisorId = 'advisor';
     expect(page.blockInvalid(calendar, 4)).toBeFalse();
   });
+  it('shows one public-link globe and a visibility-off unpublish action even after saved edits', () => {
+    page.rows = [
+      {
+        id: 'form',
+        name: 'Published',
+        typeId: 'type',
+        typeName: 'Technical',
+        version: 2,
+        updatedAt: '2026-11-16',
+        publicationToken: 'tenant.publication',
+        publishedVersion: 1,
+      },
+    ];
+    fixture.detectChanges();
+    const actions = fixture.nativeElement.querySelector(
+      '.desktop-table .actions',
+    );
+    expect(
+      actions.querySelectorAll('a[title="Open public form in a new tab"]')
+        .length,
+    ).toBe(1);
+    expect(
+      actions.querySelector('[title="Publish latest changes"]'),
+    ).toBeNull();
+    expect(
+      actions.querySelector('[title="Unpublish"] path').getAttribute('d'),
+    ).toContain('m3 3 18 18');
+  });
   it('publishes and unpublishes directly from a form row', () => {
     const row: any = { id: 'form', name: 'Discovery', version: 2 };
     api.publish.and.returnValue(of({ token: 'tenant.publication' }));
