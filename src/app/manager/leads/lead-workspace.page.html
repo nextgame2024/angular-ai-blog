@@ -1,4 +1,5 @@
 <div class="lead-shell">
+  <div class="workspace-chrome">
   <nav class="breadcrumb" aria-label="Breadcrumb">
     <a routerLink="/manager/menu">Menu</a><span>/</span
     ><span>Leads & Conversations</span>
@@ -49,7 +50,9 @@
       Settings</button
     >}
   </nav>
-  } @if(contextLoading){<app-manager-list-loader
+  }
+  </div>
+  @if(contextLoading){<app-manager-list-loader
     label="Loading your enquiries workspace…"
   ></app-manager-list-loader
   >} @if(contextError){

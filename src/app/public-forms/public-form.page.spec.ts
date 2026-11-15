@@ -157,7 +157,7 @@ describe('Published customer form', () => {
     retry.flush({ receipt: 'receipt', appointment: null });
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain(
-      'Your response has been received.',
+      'Thank you for telling us about your business!',
     );
   });
   it('shows confirmation with the appointment timezone', () => {

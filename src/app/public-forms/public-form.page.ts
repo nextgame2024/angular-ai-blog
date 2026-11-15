@@ -47,8 +47,7 @@ interface PublishedForm {
       }
       @if (result) {
         <section class="card form-body">
-          <h1>Thank you!</h1>
-          <p>Your response has been received.</p>
+          <h1>Thank you for telling us about your business!</h1>
           @if (result.appointment) {
             <p>
               Your appointment is confirmed for
@@ -56,7 +55,11 @@ interface PublishedForm {
               >.
             </p>
           }
-          <p class="muted">{{ form?.businessName }}</p>
+          <p>
+            Our team will review your answers to better understand your needs
+            and identify relevant opportunities before we meet.
+          </p>
+          <p>We look forward to speaking with you.</p>
         </section>
       } @else if (form) {
         <section class="card form-body">

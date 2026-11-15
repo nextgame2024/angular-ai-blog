@@ -1045,3 +1045,8 @@
 :host-context(html.dark) .scheduling-views {border-color:#34465f;}
 :host-context(html.dark) .scheduling-views a {color:#b0c1da;}
 :host-context(html.dark) .scheduling-views a.active {color:#9ec3ff;}
+
+.lead-bookings-help { margin: .25rem 0; font-size: .85rem; color: #475569; }
+.lead-bookings-help a { color: #008b7d; font-weight: 600; text-underline-offset: 3px; }
+:host-context(html.dark) .lead-bookings-help { color: #b0c1da; }
+:host-context(html.dark) .lead-bookings-help a { color: #79e1cc; }
