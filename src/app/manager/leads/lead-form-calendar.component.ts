@@ -13,7 +13,6 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { ManagerCalendarComponent } from '../components/shared/manager-calendar/manager-calendar.component';
-import { ManagerSelectComponent } from '../components/shared/manager-select/manager-select.component';
 import { FormBlock } from './lead-forms.service';
 import { SlotState } from '../components/schedule/leads/lead-scheduling.service';
 export interface FormAppointment {
@@ -22,7 +21,7 @@ export interface FormAppointment {
 }
 @Component({
   selector: 'app-lead-form-calendar',
-  imports: [FormsModule, ManagerCalendarComponent, ManagerSelectComponent],
+  imports: [FormsModule, ManagerCalendarComponent],
   template: `
     <h3>Choose an appointment</h3>
     <p class="muted">Times shown in {{ block.calendar?.timezone }}.</p>
@@ -31,36 +30,53 @@ export interface FormAppointment {
       [min]="today"
       (valueChange)="day = $event; load()"
       [disabled]="disabled"
-    />
-    @if (!token) {
-      <p class="muted">
-        Preview only. The published form shows bookable times after checking
-        Scheduling.
-      </p>
-    }
-    @if (loading) {
-      <p role="status">Loading available times…</p>
-    }
-    @if (error) {
-      <p role="alert">{{ error }}</p>
-      <button class="btn" type="button" (click)="load()" [disabled]="disabled">
-        Retry times
-      </button>
-    }
-    @if (!loading && !error) {
-      <label>Available time</label
-      ><app-manager-select
-        [ngModel]="selected"
-        (ngModelChange)="choose($event)"
-        [options]="options"
-        [disabled]="disabled"
-        ariaLabel="Available appointment time"
-        placeholder="Select a time"
-      />
-      @if (!options.length) {
-        <p class="muted">No available times for this day.</p>
-      }
-    }
+    >
+      <section
+        class="calendar-times"
+        aria-label="Available appointment times"
+        [attr.aria-busy]="loading"
+      >
+        <h4>Available times — {{ day }}</h4>
+        @if (!token) {
+          <p class="muted">
+            Preview only. Availability is confirmed on the published form.
+          </p>
+        }
+        @if (loading) {
+          <p role="status">Loading available times…</p>
+        }
+        @if (error) {
+          <p role="alert">{{ error }}</p>
+          <button
+            class="btn"
+            type="button"
+            (click)="load()"
+            [disabled]="disabled"
+          >
+            Retry times
+          </button>
+        }
+        @if (!loading && !error) {
+          <div class="time-grid">
+            @for (option of options; track option.value) {
+              <button
+                type="button"
+                class="btn time-slot"
+                [class.primary]="selected === option.value"
+                [attr.aria-pressed]="selected === option.value"
+                [disabled]="disabled"
+                (click)="choose(option.value)"
+              >
+                {{ option.label }}
+              </button>
+            }
+          </div>
+          @if (!options.length) {
+            <p class="muted">No available times for this day.</p>
+          }
+        }
+      </section>
+    </app-manager-calendar>
   `,
   styleUrls: ['./lead-workspace.page.css'],
   styles: [
@@ -73,11 +89,40 @@ export interface FormAppointment {
         font-size: 1rem;
         font-weight: 700;
       }
-      app-manager-select {
-        display: block;
-        margin: 0.5rem 0 1rem;
+      .calendar-times {
+        margin-top: 1rem;
+        border-top: 1px solid #d6e2f3;
+        padding-top: 1rem;
+      }
+      .time-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.5rem;
+      }
+      .time-slot {
+        color: #008f7b;
+        background: #fff;
+        border-color: #0aa78f;
+        white-space: normal;
+        min-height: 44px;
+      }
+      .time-slot.primary {
+        background: #0aa78f;
+        color: white;
+      }
+      :host-context(html.dark) .time-slot {
+        background: #182438;
+        color: #70e0cb;
+      }
+      :host-context(html.dark) .time-slot.primary {
+        background: #0a927e;
+        color: white;
+      }
+      :host-context(html.dark) .calendar-times {
+        border-color: #34465f;
       }
       app-manager-calendar {
+        max-width: none;
         margin-bottom: 1rem;
       }
     `,
@@ -127,6 +172,12 @@ export class LeadFormCalendarComponent implements OnChanges {
     }).format(new Date(instant));
   }
   choose(value: string) {
+    if (
+      this.disabled ||
+      this.loading ||
+      !this.options.some((o) => o.value === value)
+    )
+      return;
     this.selected = value;
     this.selectionChange.emit(
       value && this.token
@@ -149,7 +200,7 @@ export class LeadFormCalendarComponent implements OnChanges {
         .filter((h) => h.day === weekday)
         .map((h) => ({
           value: h.start,
-          label: h.start + ' – ' + h.end + ' (configured hours)',
+          label: h.start + ' – ' + h.end,
         }));
       return;
     }

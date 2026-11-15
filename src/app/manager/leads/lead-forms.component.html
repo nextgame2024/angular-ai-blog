@@ -55,7 +55,8 @@
             [attr.aria-label]="'Publish latest changes to ' + row.name"
           >
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 16V3m-5 5 5-5 5 5M4 14v7h16v-7" />
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18M12 3c5 5 5 13 0 18M12 3c-5 5-5 13 0 18" />
             </svg>
           </button>
         }
@@ -82,7 +83,8 @@
         [attr.aria-label]="'Publish ' + row.name"
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 16V3m-5 5 5-5 5 5M4 14v7h16v-7" />
+          <circle cx="12" cy="12" r="9" />
+          <path d="M3 12h18M12 3c5 5 5 13 0 18M12 3c-5 5-5 13 0 18" />
         </svg>
       </button>
     }
@@ -382,7 +384,7 @@
   </p>
   @if (!preview) {
     <fieldset class="builder-fields" [disabled]="busy">
-      <section class="card form-body form-grid">
+      <section class="card form-body form-grid form-metadata">
         <div>
           <label for="form-name">Form name *</label
           ><input
@@ -406,6 +408,21 @@
             ariaLabel="Form type"
             [class.invalid]="attempted && !editor.typeId"
           ></app-manager-select>
+        </div>
+        <div>
+          <label for="form-emails">Emails *</label>
+          <input
+            id="form-emails"
+            type="text"
+            [(ngModel)]="editor.emails"
+            (ngModelChange)="dirty = true"
+            maxlength="2600"
+            placeholder="jose@sophiaai.com.au, carolina@sophiaai.com.au"
+            [class.invalid]="attempted && !validEmails()"
+          />
+          <p class="muted">
+            Send responses to these comma-separated email addresses.
+          </p>
         </div>
         @if (!typesReady) {
           <div class="wide">

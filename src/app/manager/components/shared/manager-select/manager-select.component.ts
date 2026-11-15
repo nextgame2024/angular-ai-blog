@@ -1,4 +1,3 @@
-
 import {
   AfterViewChecked,
   Component,
@@ -18,25 +17,28 @@ export interface ManagerSelectOption {
 }
 
 @Component({
-    selector: 'app-manager-select',
-    imports: [],
-    templateUrl: './manager-select.component.html',
-    styleUrls: ['./manager-select.component.css'],
-    providers: [
-        {
-            provide: NG_VALUE_ACCESSOR,
-            useExisting: forwardRef(() => ManagerSelectComponent),
-            multi: true,
-        },
-    ]
+  selector: 'app-manager-select',
+  imports: [],
+  templateUrl: './manager-select.component.html',
+  styleUrls: ['./manager-select.component.css'],
+  providers: [
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => ManagerSelectComponent),
+      multi: true,
+    },
+  ],
 })
-export class ManagerSelectComponent implements ControlValueAccessor, AfterViewChecked {
+export class ManagerSelectComponent
+  implements ControlValueAccessor, AfterViewChecked
+{
   @Input() options: ManagerSelectOption[] = [];
   @Input() placeholder = 'Select';
   @Input() disabled = false;
   @Input() searchable = false;
   @Input() ariaLabel = '';
-  @Input() panelDirection: 'down' | 'up' = 'down';
+  @Input() panelDirection: 'down' | 'up' | 'auto' = 'down';
+  effectiveDirection: 'down' | 'up' = 'down';
   menuStyles: Record<string, string> = {};
   @ViewChild('menu') private menu?: ElementRef<HTMLElement>;
   private positionAfterRender = false;
@@ -51,7 +53,13 @@ export class ManagerSelectComponent implements ControlValueAccessor, AfterViewCh
 
   get filteredOptions(): ManagerSelectOption[] {
     const query = this.searchTerm.trim().toLocaleLowerCase();
-    return query ? this.options.filter(option => `${option.label} ${option.searchText ?? ''}`.toLocaleLowerCase().includes(query)) : this.options;
+    return query
+      ? this.options.filter((option) =>
+          `${option.label} ${option.searchText ?? ''}`
+            .toLocaleLowerCase()
+            .includes(query),
+        )
+      : this.options;
   }
 
   private onChange: (value: string | null) => void = () => {};
@@ -73,15 +81,52 @@ export class ManagerSelectComponent implements ControlValueAccessor, AfterViewCh
       this.positionAfterRender = true;
       this.searchTerm = '';
       const rect = this.hostRef.nativeElement.getBoundingClientRect();
-      this.menuStyles = this.panelDirection === 'up' ? {
-        position: 'fixed', top: 'auto', bottom: `${window.innerHeight - rect.top + 6}px`,
-        left: `${rect.left}px`, right: 'auto', width: `${rect.width}px`,
-        maxHeight: `${Math.max(0, Math.min(220, rect.top - 12))}px`, zIndex: '1100',
-      } : {
-        position: 'fixed', top: `${rect.bottom + 6}px`, bottom: 'auto',
-        left: `${rect.left}px`, right: 'auto', width: `${rect.width}px`,
-        maxHeight: `${Math.max(0, Math.min(220, window.innerHeight - rect.bottom - 12))}px`, zIndex: '1100',
-      };
+      let top = 0,
+        bottom = window.innerHeight;
+      for (
+        let parent = this.hostRef.nativeElement.parentElement;
+        parent;
+        parent = parent.parentElement
+      ) {
+        if (
+          this.panelDirection === 'auto' &&
+          /(auto|scroll|hidden|clip)/.test(getComputedStyle(parent).overflowY)
+        ) {
+          const bounds = parent.getBoundingClientRect();
+          top = Math.max(top, bounds.top);
+          bottom = Math.min(bottom, bounds.bottom);
+        }
+      }
+      const above = Math.max(0, rect.top - top - 12),
+        below = Math.max(0, bottom - rect.bottom - 12);
+      this.effectiveDirection =
+        this.panelDirection === 'auto'
+          ? below < 220 && above > below
+            ? 'up'
+            : 'down'
+          : this.panelDirection;
+      this.menuStyles =
+        this.effectiveDirection === 'up'
+          ? {
+              position: 'fixed',
+              top: 'auto',
+              bottom: `${window.innerHeight - rect.top + 6}px`,
+              left: `${rect.left}px`,
+              right: 'auto',
+              width: `${rect.width}px`,
+              maxHeight: `${Math.max(0, Math.min(220, above))}px`,
+              zIndex: '1100',
+            }
+          : {
+              position: 'fixed',
+              top: `${rect.bottom + 6}px`,
+              bottom: 'auto',
+              left: `${rect.left}px`,
+              right: 'auto',
+              width: `${rect.width}px`,
+              maxHeight: `${Math.max(0, Math.min(220, below))}px`,
+              zIndex: '1100',
+            };
     }
     if (!this.open) this.onTouched();
   }
@@ -90,7 +135,9 @@ export class ManagerSelectComponent implements ControlValueAccessor, AfterViewCh
     if (!this.positionAfterRender || !this.open || !this.menu) return;
     this.positionAfterRender = false;
     const menu = this.menu.nativeElement;
-    const trigger = this.hostRef.nativeElement.querySelector('.select-trigger')!.getBoundingClientRect();
+    const trigger = this.hostRef.nativeElement
+      .querySelector('.select-trigger')!
+      .getBoundingClientRect();
     // A transformed/filtered/scaled manager shell can become the containing
     // block for fixed elements. Correct against rendered geometry so the menu
     // stays 6px above its trigger in that shell as well as in the viewport.
@@ -100,7 +147,7 @@ export class ManagerSelectComponent implements ControlValueAccessor, AfterViewCh
     menu.style.width = `${trigger.width / (scaleX || 1)}px`;
     bounds = menu.getBoundingClientRect();
     menu.style.left = `${parseFloat(menu.style.left) + (trigger.left - bounds.left) / (scaleX || 1)}px`;
-    if(this.panelDirection === 'up') {
+    if (this.effectiveDirection === 'up') {
       menu.style.bottom = `${parseFloat(menu.style.bottom) + (bounds.bottom - trigger.top + 6) / (scaleY || 1)}px`;
     } else {
       menu.style.top = `${parseFloat(menu.style.top) + (trigger.bottom + 6 - bounds.top) / (scaleY || 1)}px`;
@@ -148,5 +195,10 @@ export class ManagerSelectComponent implements ControlValueAccessor, AfterViewCh
   @HostListener('window:resize')
   @HostListener('window:scroll')
   @HostListener('keydown.escape')
-  closeMenu(): void { if (this.open) { this.open = false; this.onTouched(); } }
+  closeMenu(): void {
+    if (this.open) {
+      this.open = false;
+      this.onTouched();
+    }
+  }
 }

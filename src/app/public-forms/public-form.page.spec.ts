@@ -54,6 +54,20 @@ describe('Published customer form', () => {
     fixture.detectChanges();
   });
   afterEach(() => http.verify());
+  it('offers Send and Cancel and clears answers without submitting on Cancel', () => {
+    expect(fixture.nativeElement.textContent).toContain('Send');
+    const confirm = spyOn(window, 'confirm').and.returnValue(true);
+    page.answers['a'] = 'Education';
+    page.contact.name = 'Jane';
+    const buttons = Array.from(
+      fixture.nativeElement.querySelectorAll('button'),
+    ) as HTMLButtonElement[];
+    buttons.find((button) => button.textContent?.trim() === 'Cancel')!.click();
+    expect(confirm).toHaveBeenCalled();
+    expect(page.answers).toEqual({});
+    expect(page.contact.name).toBe('');
+    http.expectNone(base + '/submissions');
+  });
   it('rejects visually empty rich-text answers and submits formatted text', () => {
     page.form!.blocks[1].kind = 'richtext';
     fixture.detectChanges();

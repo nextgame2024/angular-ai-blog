@@ -25,6 +25,7 @@ export interface FormBlock {
   calendar?: FormCalendar;
 }
 export interface LeadForm {
+  emails?: string;
   id: string;
   name: string;
   typeId: string;

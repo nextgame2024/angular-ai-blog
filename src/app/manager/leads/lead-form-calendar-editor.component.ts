@@ -42,6 +42,7 @@ export function validFormCalendar(c?: FormCalendar): boolean {
       <div>
         <label>Appointment advisor *</label
         ><app-manager-select
+          panelDirection="auto"
           [ngModel]="value.advisorId"
           (ngModelChange)="value.advisorId = $event; changed.emit()"
           [options]="advisors"
@@ -76,6 +77,7 @@ export function validFormCalendar(c?: FormCalendar): boolean {
     @for (h of value.weeklyHours; track $index; let i = $index) {
       <div class="hours-row">
         <app-manager-select
+          panelDirection="auto"
           [ngModel]="'' + h.day"
           (ngModelChange)="h.day = +$event; changed.emit()"
           [options]="weekdays"
@@ -83,6 +85,7 @@ export function validFormCalendar(c?: FormCalendar): boolean {
           ariaLabel="Available weekday"
         />
         <app-manager-select
+          panelDirection="auto"
           [(ngModel)]="h.start"
           (ngModelChange)="changed.emit()"
           [options]="times"
@@ -90,6 +93,7 @@ export function validFormCalendar(c?: FormCalendar): boolean {
           ariaLabel="Available from"
         />
         <app-manager-select
+          panelDirection="auto"
           [(ngModel)]="h.end"
           (ngModelChange)="changed.emit()"
           [options]="endTimes"
@@ -117,6 +121,45 @@ export function validFormCalendar(c?: FormCalendar): boolean {
     >
       Add day / hours
     </button>
+    <fieldset class="copy-hours" [disabled]="disabled">
+      <legend>Copy a day’s hours</legend>
+      <app-manager-select
+        panelDirection="auto"
+        [(ngModel)]="copyFrom"
+        [options]="weekdays"
+        ariaLabel="Copy hours from"
+      />
+      <p class="muted">
+        Copy all intervals to the selected days, replacing their existing hours.
+      </p>
+      <div class="copy-days">
+        @for (day of weekdays; track day.value) {
+          @if (day.value !== copyFrom) {
+            <label
+              ><input
+                type="checkbox"
+                [checked]="copyDays.has(+day.value)"
+                (change)="
+                  toggleCopyDay(+day.value, $any($event.target).checked)
+                "
+              />
+              {{ day.label }}</label
+            >
+          }
+        }
+      </div>
+      <button
+        class="btn"
+        type="button"
+        (click)="copyHours()"
+        [disabled]="disabled || !copyDays.size"
+      >
+        Copy hours
+      </button>
+      @if (copyMessage) {
+        <p role="status">{{ copyMessage }}</p>
+      }
+    </fieldset>
     @if (attempted && !valid()) {
       <p role="alert" class="muted">
         Select an advisor, a valid timezone and at least one time interval. End
@@ -127,6 +170,30 @@ export function validFormCalendar(c?: FormCalendar): boolean {
   styleUrls: ['./lead-workspace.page.css'],
   styles: [
     `
+      .copy-hours {
+        margin-top: 1rem;
+        border: 1px solid #cbdaf1;
+        border-radius: 8px;
+        padding: 1rem;
+        min-width: 0;
+      }
+      .copy-days {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+      .copy-days label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .copy-days input {
+        width: auto;
+      }
+      :host-context(html.dark) .copy-hours {
+        border-color: #34465f;
+      }
       .hours-row {
         display: grid;
         grid-template-columns: 1.2fr 1fr 1fr auto;
@@ -169,6 +236,45 @@ export class LeadFormCalendarEditorComponent implements OnInit {
     ...this.times.slice(1),
     { value: '24:00', label: '12:00 am (midnight)' },
   ];
+  copyFrom = '1';
+  copyDays = new Set<number>();
+  copyMessage = '';
+  toggleCopyDay(day: number, checked: boolean) {
+    checked ? this.copyDays.add(day) : this.copyDays.delete(day);
+  }
+  copyHours() {
+    if (this.disabled) return;
+    const targets = [...this.copyDays].filter((day) => day !== +this.copyFrom);
+    const source = this.value.weeklyHours.filter(
+      (h) => h.day === +this.copyFrom,
+    );
+    if (!targets.length || !source.length) {
+      this.copyMessage =
+        'Choose a day with hours and at least one destination day.';
+      return;
+    }
+    const next = this.value.weeklyHours.filter((h) => !targets.includes(h.day));
+    for (const day of targets) next.push(...source.map((h) => ({ ...h, day })));
+    if (next.length > 28) {
+      this.copyMessage = 'Use no more than 28 intervals. Copy to fewer days.';
+      return;
+    }
+    if (
+      !validFormCalendar({
+        ...this.value,
+        advisorId: this.value.advisorId || 'preview',
+        weeklyHours: next,
+      })
+    ) {
+      this.copyMessage = 'Check the source hours and timezone before copying.';
+      return;
+    }
+    this.value.weeklyHours = next.sort(
+      (a, b) => a.day - b.day || a.start.localeCompare(b.start),
+    );
+    this.changed.emit();
+    this.copyMessage = 'Hours copied to the selected days.';
+  }
   ngOnInit() {
     this.load();
   }

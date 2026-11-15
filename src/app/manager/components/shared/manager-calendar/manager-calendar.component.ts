@@ -47,6 +47,7 @@ import {
         </button>
       }
     </div>
+    <ng-content />
   `,
   styles: [
     `

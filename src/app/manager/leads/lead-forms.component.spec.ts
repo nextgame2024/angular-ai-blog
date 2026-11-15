@@ -46,6 +46,14 @@ describe('Lead form builder', () => {
     page.canManage = true;
     fixture.detectChanges();
   });
+  it('requires valid comma-separated notification emails', () => {
+    page.create();
+    expect(page.validEmails()).toBeFalse();
+    page.editor!.emails = 'jose@example.test, carolina@example.test';
+    expect(page.validEmails()).toBeTrue();
+    page.editor!.emails = 'jose@example.test, bad';
+    expect(page.validEmails()).toBeFalse();
+  });
   it('loads the list and preserves server paging and sorting', () => {
     api.list.and.returnValue(of({ items: [], total: 80 }));
     page.total = 80;
@@ -85,6 +93,7 @@ describe('Lead form builder', () => {
     page.create();
     page.editor!.name = 'Discovery';
     page.editor!.typeId = 'type';
+    page.editor!.emails = 'owner@example.test';
     page.add('question');
     page.editor!.blocks[0].text = 'Business type?';
     page.editor!.blocks[0].required = true;
@@ -232,6 +241,7 @@ describe('Lead form builder', () => {
     page.create();
     page.editor!.name = 'Discovery';
     page.editor!.typeId = 'type';
+    page.editor!.emails = 'owner@example.test';
     page.add('title');
     page.editor!.blocks[0].text = 'Hello';
     api.save.and.returnValue(

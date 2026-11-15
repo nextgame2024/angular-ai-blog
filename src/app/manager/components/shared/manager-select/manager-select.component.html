@@ -6,7 +6,7 @@
     [attr.aria-expanded]="open"
     [disabled]="disabled"
     (click)="toggle($event)"
-    >
+  >
     <span class="value" [class.placeholder]="!selectedLabel">
       {{ selectedLabel || placeholder }}
     </span>
@@ -18,9 +18,22 @@
   </button>
 
   @if (open) {
-    <div #menu class="select-menu" [style]="menuStyles" [class.opens-up]="panelDirection === 'up'">
+    <div
+      #menu
+      class="select-menu"
+      [style]="menuStyles"
+      [class.opens-up]="effectiveDirection === 'up'"
+    >
       @if (searchable) {
-        <input class="select-search" type="search" [value]="searchTerm" (input)="searchTerm = $any($event.target).value" (click)="$event.stopPropagation()" placeholder="Search…" aria-label="Search options" />
+        <input
+          class="select-search"
+          type="search"
+          [value]="searchTerm"
+          (input)="searchTerm = $any($event.target).value"
+          (click)="$event.stopPropagation()"
+          placeholder="Search…"
+          aria-label="Search options"
+        />
       }
       @for (opt of filteredOptions; track opt) {
         <button
@@ -28,7 +41,7 @@
           class="select-option"
           [class.is-active]="opt.value === value"
           (click)="selectOption(opt, $event)"
-          >
+        >
           <span>{{ opt.label }}</span>
           @if (opt.value === value) {
             <span class="check" aria-hidden="true">
@@ -39,7 +52,9 @@
           }
         </button>
       }
-      @if (searchable && filteredOptions.length === 0) { <span class="select-empty">No matches</span> }
+      @if (searchable && filteredOptions.length === 0) {
+        <span class="select-empty">No matches</span>
+      }
     </div>
   }
 </div>

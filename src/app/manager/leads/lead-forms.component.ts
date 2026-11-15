@@ -481,12 +481,22 @@ export class LeadFormsComponent implements OnInit {
         .trim()
     );
   }
+  validEmails() {
+    const emails = (this.editor?.emails || '').split(',').map((e) => e.trim());
+    return (
+      emails.length <= 10 &&
+      emails.every(
+        (e) => e.length <= 254 && /^[^\s@,<>]+@[^\s@,<>]+\.[^\s@,<>]+$/.test(e),
+      )
+    );
+  }
   save() {
     if (!this.editor || this.busy || !this.canManage) return;
     this.attempted = true;
     if (
       !this.editor.name.trim() ||
       !this.editor.typeId ||
+      !this.validEmails() ||
       !this.editor.blocks.length ||
       this.editor.blocks.some((b, i) => this.blockInvalid(b, i))
     ) {

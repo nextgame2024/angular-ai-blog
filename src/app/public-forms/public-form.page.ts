@@ -208,13 +208,15 @@ interface PublishedForm {
             (click)="submit()"
             [disabled]="saving"
           >
-            {{
-              saving
-                ? 'Submitting…'
-                : hasCalendar
-                  ? 'Submit and confirm appointment'
-                  : 'Submit response'
-            }}
+            {{ saving ? 'Sending…' : 'Send' }}
+          </button>
+          <button
+            class="btn"
+            type="button"
+            (click)="cancel()"
+            [disabled]="saving"
+          >
+            Cancel
           </button>
         </section>
       }
@@ -231,7 +233,7 @@ interface PublishedForm {
   styles: [
     `
       .public-shell {
-        max-width: 800px;
+        max-width: 1100px;
         margin: 2rem auto;
         padding: 1rem;
       }
@@ -397,6 +399,19 @@ export class PublicFormPage implements OnInit {
     return !(template.content.textContent || '')
       .replace(/[\u200b-\u200d\ufeff]/g, '')
       .trim();
+  }
+  cancel() {
+    if (this.saving) return;
+    if (!window.confirm('Discard your answers and start again?')) return;
+    this.answers = {};
+    this.contact = { name: '', email: '', phone: '' };
+    this.appointment = null;
+    this.invalid.clear();
+    this.toast = 'Your answers have been cleared.';
+    this.key = crypto.randomUUID();
+    this.form = this.form
+      ? { ...this.form, blocks: structuredClone(this.form.blocks) }
+      : null;
   }
   submit() {
     if (!this.form || this.saving || this.result) return;
