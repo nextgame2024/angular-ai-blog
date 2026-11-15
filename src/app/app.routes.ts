@@ -10,6 +10,7 @@ import {
 } from './manager/store/explore/manager.reducer';
 
 export const appRoutes: Route[] = [
+  { path: 'forms/:token', loadComponent: () => import('./public-forms/public-form.page').then(m => m.PublicFormPage) },
   {
     path: '',
     pathMatch: 'full',

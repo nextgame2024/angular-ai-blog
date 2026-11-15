@@ -35,7 +35,7 @@ export interface LeadRow {
   stage: LeadStage;
   assignedTo: string | null;
   version: number;
-  source: 'manual' | 'whatsapp';
+  source: 'manual' | 'whatsapp' | 'form';
   updatedAt: string;
   conversationId: string;
   ownership: 'paused' | 'human' | 'human_requested' | 'bot';

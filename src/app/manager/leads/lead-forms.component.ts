@@ -1,3 +1,8 @@
+import { LeadFormCalendarComponent } from './lead-form-calendar.component';
+import {
+  LeadFormCalendarEditorComponent,
+  validFormCalendar,
+} from './lead-form-calendar-editor.component';
 import { CommonModule } from '@angular/common';
 import { A11yModule } from '@angular/cdk/a11y';
 import {
@@ -38,6 +43,8 @@ import {
     ManagerListLoaderComponent,
     ManagerRichTextEditorComponent,
     PageJumpComponent,
+    LeadFormCalendarEditorComponent,
+    LeadFormCalendarComponent,
   ],
   templateUrl: './lead-forms.component.html',
   styleUrls: ['./lead-workspace.page.css', './lead-forms.component.css'],
@@ -71,6 +78,7 @@ export class LeadFormsComponent implements OnInit {
   typeName = '';
   typeAttempted = false;
   confirmation: { message: string; action: () => void } | null = null;
+  publicUrl = '';
   toast = '';
   tone: 'success' | 'error' = 'success';
   readonly pageSizes = [25, 50, 100].map((n) => ({
@@ -82,10 +90,72 @@ export class LeadFormsComponent implements OnInit {
     { kind: 'subtitle', label: 'Add subtitle' },
     { kind: 'question', label: 'Add question' },
     { kind: 'description', label: 'Add description' },
-    { kind: 'checkboxes', label: 'Add checkboxes' },
     { kind: 'list', label: 'Add list' },
     { kind: 'input', label: 'Add input' },
+    { kind: 'checkboxes', label: 'Add checkboxes' },
+    { kind: 'calendar', label: 'Add calendar' },
   ];
+  readonly answerTypes: ManagerSelectOption[] = [
+    { value: 'input', label: 'Input' },
+    { value: 'list', label: 'List (dropdown)' },
+    { value: 'checkboxes', label: 'Checkboxes' },
+  ];
+  // Keep the existing storage contract while editing question/answer pairs as one unit.
+  get blockGroups() {
+    const blocks = this.editor?.blocks ?? [];
+    const groups: {
+      block: FormBlock;
+      index: number;
+      answer: FormBlock | null;
+    }[] = [];
+    for (let index = 0; index < blocks.length; index++) {
+      const block = blocks[index];
+      const answer =
+        block.kind === 'question' && this.isAnswer(blocks[index + 1])
+          ? blocks[index + 1]
+          : null;
+      groups.push({ block, index, answer });
+      if (answer) index++;
+    }
+    return groups;
+  }
+  private isAnswer(block?: FormBlock) {
+    return !!block && ['input', 'list', 'checkboxes'].includes(block.kind);
+  }
+  canAdd(kind: BlockKind) {
+    return (
+      !this.busy &&
+      !!this.editor &&
+      (kind !== 'calendar' ||
+        !this.editor.blocks.some((b) => b.kind === 'calendar')) &&
+      this.editor.blocks.length + (kind === 'question' ? 2 : 1) <= 100
+    );
+  }
+  changeAnswer(index: number, kind: string) {
+    if (
+      this.busy ||
+      !this.editor ||
+      this.editor.blocks[index]?.kind !== 'question' ||
+      !['input', 'list', 'checkboxes'].includes(kind)
+    )
+      return;
+    let answer = this.editor.blocks[index + 1];
+    if (!this.isAnswer(answer)) {
+      if (this.editor.blocks.length >= 100) return;
+      answer = {
+        id: crypto.randomUUID(),
+        kind: 'input',
+        text: '',
+        required: false,
+        options: [],
+      };
+      this.editor.blocks.splice(index + 1, 0, answer);
+    }
+    answer.kind = kind as BlockKind;
+    answer.options =
+      kind === 'input' ? [] : answer.options.length ? answer.options : [''];
+    this.dirty = true;
+  }
   get totalPages() {
     return Math.max(1, Math.ceil(this.total / this.limit));
   }
@@ -185,6 +255,7 @@ export class LeadFormsComponent implements OnInit {
   }
   create() {
     if (!this.canManage || this.busy) return;
+    this.publicUrl = '';
     this.editor = {
       id: crypto.randomUUID(),
       name: '',
@@ -205,6 +276,17 @@ export class LeadFormsComponent implements OnInit {
       .subscribe({
         next: (r) => {
           this.editor = r;
+          this.publicUrl = '';
+          this.api
+            .publication(r.id)
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe({
+              next: (p) =>
+                (this.publicUrl = p.token
+                  ? window.location.origin + '/forms/' + p.token
+                  : ''),
+              error: () => {},
+            });
           this.preview = preview || !this.canManage;
           this.dirty = false;
           this.attempted = false;
@@ -216,8 +298,52 @@ export class LeadFormsComponent implements OnInit {
         },
       });
   }
+  publish() {
+    if (
+      !this.editor ||
+      this.busy ||
+      this.dirty ||
+      !this.canManage ||
+      !this.editor.version
+    )
+      return;
+    this.busy = true;
+    this.api
+      .publish(this.editor)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (p) => {
+          this.busy = false;
+          this.publicUrl = window.location.origin + '/forms/' + p.token;
+          this.notify('Form published. Share the public link.');
+        },
+        error: (e) => {
+          this.busy = false;
+          this.notify(this.message(e), 'error');
+        },
+      });
+  }
+  unpublish() {
+    if (!this.editor || this.busy) return;
+    this.busy = true;
+    this.api
+      .unpublish(this.editor.id)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.busy = false;
+          this.publicUrl = '';
+          this.notify('Public form unpublished.');
+        },
+        error: (e) => {
+          this.busy = false;
+          this.notify(this.message(e), 'error');
+        },
+      });
+  }
   reset() {
     this.editor = null;
+    this.publicUrl = '';
     this.dirty = false;
     this.typeName = '';
     this.typesOpen = false;
@@ -232,28 +358,49 @@ export class LeadFormsComponent implements OnInit {
     else this.editor = null;
   }
   add(kind: BlockKind) {
-    if (!this.editor || this.busy || this.editor.blocks.length >= 100) return;
+    if (!this.editor || !this.canAdd(kind)) return;
     this.editor.blocks.push({
       id: crypto.randomUUID(),
       kind,
       text: '',
       required: false,
       options: ['list', 'checkboxes'].includes(kind) ? [''] : [],
+      ...(kind === 'calendar'
+        ? {
+            calendar: {
+              advisorId: '',
+              timezone: 'Australia/Brisbane',
+              weeklyHours: [{ day: 1, start: '08:00', end: '17:00' }],
+            },
+          }
+        : {}),
     });
+    if (kind === 'question')
+      this.changeAnswer(this.editor.blocks.length - 1, 'input');
     this.dirty = true;
   }
   move(index: number, delta: number) {
-    const b = this.editor?.blocks;
-    if (!b || index + delta < 0 || index + delta >= b.length) return;
-    [b[index], b[index + delta]] = [b[index + delta], b[index]];
+    if (this.busy || !this.editor) return;
+    const groups = this.blockGroups;
+    const current = groups.findIndex((group) => group.index === index);
+    const target = current + delta;
+    if (current < 0 || target < 0 || target >= groups.length) return;
+    [groups[current], groups[target]] = [groups[target], groups[current]];
+    this.editor.blocks = groups.flatMap((group) =>
+      group.answer ? [group.block, group.answer] : [group.block],
+    );
     this.dirty = true;
   }
   remove(index: number) {
-    this.editor?.blocks.splice(index, 1);
+    if (this.busy) return;
+    const group = this.blockGroups.find((group) => group.index === index);
+    if (!group) return;
+    this.editor?.blocks.splice(index, group.answer ? 2 : 1);
     this.dirty = true;
   }
   blockInvalid(b: FormBlock, index: number) {
     if (!this.attempted) return false;
+    if (b.kind === 'calendar') return !validFormCalendar(b.calendar);
     if (
       b.kind === 'question' &&
       !['input', 'list', 'checkboxes'].includes(
@@ -287,7 +434,7 @@ export class LeadFormsComponent implements OnInit {
     ) {
       this.preview = false;
       this.notify(
-        'Complete the highlighted fields. Place an input, list or checkboxes immediately after each question.',
+        'Complete the highlighted fields and add distinct options for each list or checkbox answer.',
         'error',
       );
       return;

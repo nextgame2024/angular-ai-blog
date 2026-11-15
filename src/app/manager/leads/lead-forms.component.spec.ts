@@ -1,3 +1,4 @@
+import { LeadSchedulingService } from '../components/schedule/leads/lead-scheduling.service';
 import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { of, throwError } from 'rxjs';
 import { LeadFormsComponent } from './lead-forms.component';
@@ -15,14 +16,30 @@ describe('Lead form builder', () => {
       'createType',
       'deleteType',
       'delete',
+      'publication',
+      'publish',
+      'unpublish',
     ]);
+    api.publication.and.returnValue(of({ token: null, version: null }));
     api.types.and.returnValue(
       of({ items: [{ id: 'type', name: 'Technical', formCount: 1 }] }),
     );
     api.list.and.returnValue(of({ items: [], total: 0 }));
     await TestBed.configureTestingModule({
       imports: [LeadFormsComponent],
-      providers: [{ provide: LeadFormsService, useValue: api }],
+      providers: [
+        { provide: LeadFormsService, useValue: api },
+        {
+          provide: LeadSchedulingService,
+          useValue: {
+            context: () =>
+              of({
+                advisors: [{ id: 'advisor', name: 'Advisor' }],
+                timezone: 'Australia/Brisbane',
+              }),
+          },
+        },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(LeadFormsComponent);
     page = fixture.componentInstance;
@@ -39,20 +56,163 @@ describe('Lead form builder', () => {
       jasmine.objectContaining({ page: 1, sort: 'name', direction: 'asc' }),
     );
   });
-  it('blocks saving questions without a following answer control', () => {
+  it('creates one question card containing its answer type and required controls', () => {
+    page.create();
+    page.add('question');
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelectorAll('.block').length).toBe(1);
+    expect(root.querySelector('.block-header strong')?.textContent).toContain(
+      '1. Question',
+    );
+    expect(root.querySelectorAll('.required-options input').length).toBe(2);
+    expect(
+      root.querySelector('.question-answer app-manager-select'),
+    ).toBeTruthy();
+    expect(page.blockGroups[0].answer?.kind).toBe('input');
+    expect(page.blockButtons.map((b) => b.kind)).toEqual([
+      'title',
+      'subtitle',
+      'question',
+      'description',
+      'list',
+      'input',
+      'checkboxes',
+      'calendar',
+    ]);
+  });
+  it('validates options inside the question and saves the compatible answer relationship', () => {
     page.create();
     page.editor!.name = 'Discovery';
     page.editor!.typeId = 'type';
     page.add('question');
-    page.editor!.blocks[0].text = 'Your name?';
+    page.editor!.blocks[0].text = 'Business type?';
+    page.editor!.blocks[0].required = true;
+    page.changeAnswer(0, 'list');
     page.save();
     expect(api.save).not.toHaveBeenCalled();
-    expect(page.blockInvalid(page.editor!.blocks[0], 0)).toBeTrue();
-    page.add('input');
-    api.save.and.returnValue(of({ ...page.editor!, version: 1 }));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.block.invalid')).toBeTruthy();
+    page.editor!.blocks[1].options = ['Education', 'Education'];
     page.save();
-    expect(api.save).toHaveBeenCalled();
+    expect(api.save).not.toHaveBeenCalled();
+    page.editor!.blocks[1].options = ['Education', 'Other'];
+    page.changeAnswer(0, 'checkboxes');
+    expect(page.editor!.blocks[1].options).toEqual(['Education', 'Other']);
+    const expected = structuredClone(page.editor!);
+    api.save.and.returnValue(of({ ...expected, version: 1 }));
+    page.save();
+    expect(api.save).toHaveBeenCalledWith(expected);
     expect(page.editor).toBeNull();
+  });
+  it('loads existing separate question and answer records as one card without changing their IDs', () => {
+    const question = {
+      id: 'q',
+      kind: 'question' as const,
+      text: 'Your name?',
+      required: true,
+      options: [],
+    };
+    const answer = {
+      id: 'a',
+      kind: 'input' as const,
+      text: 'Full name',
+      required: false,
+      options: [],
+    };
+    api.detail.and.returnValue(
+      of({
+        id: 'form',
+        name: 'Discovery',
+        typeId: 'type',
+        blocks: [question, answer],
+        version: 1,
+      }),
+    );
+    page.open({
+      id: 'form',
+      name: 'Discovery',
+      typeId: 'type',
+      typeName: 'Technical',
+      version: 1,
+      updatedAt: '',
+    });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.block').length).toBe(1);
+    expect(page.blockGroups[0].answer?.id).toBe('a');
+    expect(page.dirty).toBeFalse();
+  });
+  it('moves and removes questions with their answers and keeps card numbering consecutive', () => {
+    page.create();
+    page.add('title');
+    page.add('question');
+    page.add('question');
+    page.add('description');
+    const first = page.editor!.blocks[1].id,
+      answer = page.editor!.blocks[2].id;
+    page.move(1, 1);
+    expect(page.editor!.blocks[3].id).toBe(first);
+    expect(page.editor!.blocks[4].id).toBe(answer);
+    page.move(3, -1);
+    expect(page.editor!.blocks[1].id).toBe(first);
+    fixture.detectChanges();
+    expect(
+      Array.from(
+        fixture.nativeElement.querySelectorAll('.block-header strong'),
+        (el: any) => el.textContent.trim(),
+      ),
+    ).toEqual(['1. Title', '2. Question', '3. Question', '4. Description']);
+    page.remove(1);
+    expect(
+      page.editor!.blocks.some((b) => b.id === first || b.id === answer),
+    ).toBeFalse();
+    expect(page.blockGroups.length).toBe(3);
+  });
+  it('reserves space for both parts of a question at the storage limit', () => {
+    page.create();
+    for (let i = 0; i < 99; i++) page.add('title');
+    expect(page.canAdd('question')).toBeFalse();
+    page.add('question');
+    expect(page.editor!.blocks.length).toBe(99);
+  });
+  it('keeps standalone controls separate and configures one calendar per form', () => {
+    page.create();
+    page.add('question');
+    page.add('list');
+    page.add('input');
+    page.add('calendar');
+    expect(page.blockGroups.map((g) => g.block.kind)).toEqual([
+      'question',
+      'list',
+      'input',
+      'calendar',
+    ]);
+    expect(page.canAdd('calendar')).toBeFalse();
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('app-lead-form-calendar-editor'),
+    ).toBeTruthy();
+    page.attempted = true;
+    const calendar = page.editor!.blocks[4];
+    expect(page.blockInvalid(calendar, 4)).toBeTrue();
+    calendar.calendar!.advisorId = 'advisor';
+    expect(page.blockInvalid(calendar, 4)).toBeFalse();
+  });
+  it('publishes only saved forms and shows the campaign URL', () => {
+    page.create();
+    page.editor!.version = 1;
+    page.dirty = true;
+    page.publish();
+    expect(api.publish).not.toHaveBeenCalled();
+    page.dirty = false;
+    api.publish.and.returnValue(of({ token: 'tenant.publication' }));
+    page.publish();
+    expect(page.publicUrl).toBe(
+      window.location.origin + '/forms/tenant.publication',
+    );
+    api.unpublish.and.returnValue(of({}));
+    page.unpublish();
+    expect(page.publicUrl).toBe('');
   });
   it('preserves edited content after a conflict', () => {
     page.create();
@@ -88,7 +248,6 @@ describe('Lead form builder', () => {
     page.add('question');
     page.editor!.blocks[1].text = 'Your name?';
     page.editor!.blocks[1].required = true;
-    page.add('input');
     page.preview = true;
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;

@@ -1,3 +1,4 @@
+import { ManagerCalendarComponent } from '../../shared/manager-calendar/manager-calendar.component';
 import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import {
@@ -48,6 +49,7 @@ function day(value = new Date()) {
     ManagerToastComponent,
     ManagerListLoaderComponent,
     PageJumpComponent,
+    ManagerCalendarComponent,
   ],
   templateUrl: './lead-scheduling.page.html',
   styleUrls: [

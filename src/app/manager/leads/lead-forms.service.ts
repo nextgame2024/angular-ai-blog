@@ -8,13 +8,20 @@ export type BlockKind =
   | 'description'
   | 'checkboxes'
   | 'list'
-  | 'input';
+  | 'input'
+  | 'calendar';
+export interface FormCalendar {
+  advisorId: string;
+  timezone: string;
+  weeklyHours: { day: number; start: string; end: string }[];
+}
 export interface FormBlock {
   id: string;
   kind: BlockKind;
   text: string;
   required: boolean;
   options: string[];
+  calendar?: FormCalendar;
 }
 export interface LeadForm {
   id: string;
@@ -71,6 +78,20 @@ export class LeadFormsService {
       expectedVersion: version,
       form,
     });
+  }
+  publish(form: LeadForm) {
+    return this.http.post<{ token: string }>(
+      `${this.base}/forms/${form.id}/publish`,
+      { expectedVersion: form.version },
+    );
+  }
+  publication(id: string) {
+    return this.http.get<{ token: string | null; version: number | null }>(
+      `${this.base}/forms/${id}/publication`,
+    );
+  }
+  unpublish(id: string) {
+    return this.http.delete(`${this.base}/forms/${id}/publication`);
   }
   delete(row: FormRow) {
     return this.http.delete(`${this.base}/forms/${row.id}`, {

@@ -1,3 +1,4 @@
+import { LeadFormResponsesComponent } from './lead-form-responses.component';
 import { LeadFormsComponent } from './lead-forms.component';
 import { LeadReplyComponent } from './lead-reply.component';
 import { CommonModule } from '@angular/common';
@@ -60,6 +61,7 @@ import {
     LeadAssistantSettingsPage,
     LeadReplyComponent,
     LeadFormsComponent,
+    LeadFormResponsesComponent,
   ],
   templateUrl: './lead-workspace.page.html',
   styleUrls: ['./lead-workspace.page.css'],
@@ -640,7 +642,7 @@ export class LeadWorkspacePage implements OnInit {
       event.kind === 'outbound_message'
     )
       return 'Voice reply';
-    if (event.kind === 'lead_created') return 'Manually entered enquiry.';
+    if (event.kind === 'lead_created') return event.metadata['source'] === 'form' ? 'Submitted through a public form.' : 'Manually entered enquiry.';
     if (event.kind === 'assignment_changed')
       return 'Advisor assignment changed; the conversation was paused.';
     if (event.kind === 'ownership_changed')

@@ -371,8 +371,9 @@
             />
           </div>
           <div>
-            <label for="booking-date">Date in customer timezone</label
-            ><input
+            <label for="booking-date">Date in customer timezone</label>
+            <app-manager-calendar [value]="booking.controls.date.value" (valueChange)="booking.controls.date.setValue($event)" [disabled]="saving" />
+            <input
               id="booking-date"
               type="date"
               formControlName="date"

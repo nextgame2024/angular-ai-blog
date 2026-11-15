@@ -1,3 +1,35 @@
+<ng-template #answerOptions let-answer>
+  @for (option of answer.options; track $index; let j = $index) {
+    <div class="option-row">
+      @if (answer.kind === "checkboxes") {
+        <input type="checkbox" disabled aria-label="Checkbox option preview" />
+      }
+      <input
+        [ngModel]="option"
+        (ngModelChange)="answer.options[j] = $event; dirty = true"
+        maxlength="200"
+        [attr.aria-label]="'Option ' + (j + 1) + ' label'"
+        placeholder="Option label"
+      />
+      <button
+        class="btn"
+        type="button"
+        (click)="answer.options.splice(j, 1); dirty = true"
+        [disabled]="answer.options.length === 1"
+      >
+        Remove
+      </button>
+    </div>
+  }
+  <button
+    class="btn"
+    type="button"
+    (click)="answer.options.push(''); dirty = true"
+    [disabled]="answer.options.length >= 50"
+  >
+    Add option
+  </button>
+</ng-template>
 <ng-template #rowActions let-row>
   <div class="actions">
     <button
@@ -278,9 +310,40 @@
         >
           {{ busy ? "Saving…" : "Save form" }}
         </button>
+        <button
+          class="btn primary"
+          type="button"
+          (click)="publish()"
+          [disabled]="busy || dirty || !editor.version"
+          title="Save changes before publishing"
+        >
+          Publish
+        </button>
       }
     </div>
   </header>
+  @if (publicUrl) {
+    <div class="notice">
+      <label for="public-form-link">Public form link</label
+      ><input
+        id="public-form-link"
+        [value]="publicUrl"
+        readonly
+        (click)="$any($event.target).select()"
+      /><a [href]="publicUrl" target="_blank" rel="noopener"
+        >Open public form</a
+      >
+      <button class="btn" type="button" (click)="unpublish()" [disabled]="busy">
+        Unpublish
+      </button>
+    </div>
+  }
+  @if (dirty || !editor.version) {
+    <p class="muted">
+      Save your form before publishing. Draft edits do not change the published
+      form.
+    </p>
+  }
   @if (!preview) {
     <fieldset class="builder-fields" [disabled]="busy">
       <section class="card form-body form-grid">
@@ -330,31 +393,44 @@
             class="btn"
             type="button"
             (click)="add(button.kind)"
-            [disabled]="busy || editor.blocks.length >= 100"
+            [disabled]="!canAdd(button.kind)"
           >
             {{ button.label }}
           </button>
         }
       </div>
       <p class="muted">
-        Place an input, list or checkboxes immediately after a question. Up to
-        100 blocks and 50 options per field.
+        Choose the answer type inside each question. Lists and checkboxes can
+        have up to 50 options.
       </p>
       @if (!editor.blocks.length) {
         <div class="card empty" [class.invalid]="attempted">
           Use the buttons above to add your first block.
         </div>
       }
-      @for (block of editor.blocks; track block.id; let i = $index) {
-        <section class="card block" [class.invalid]="blockInvalid(block, i)">
+      @for (
+        group of blockGroups;
+        track group.block.id;
+        let position = $index;
+        let last = $last
+      ) {
+        @let block = group.block;
+        @let i = group.index;
+        <section
+          class="card block"
+          [class.invalid]="
+            blockInvalid(block, i) ||
+            (group.answer && blockInvalid(group.answer, i + 1))
+          "
+        >
           <header class="block-header">
-            <strong>{{ i + 1 }}. {{ block.kind | titlecase }}</strong>
+            <strong>{{ position + 1 }}. {{ block.kind | titlecase }}</strong>
             <div class="actions">
               <button
                 class="btn icon-btn"
                 type="button"
                 (click)="move(i, -1)"
-                [disabled]="busy || i === 0"
+                [disabled]="busy || position === 0"
                 aria-label="Move block up"
               >
                 <svg viewBox="0 0 24 24"><path d="m6 14 6-6 6 6" /></svg>
@@ -363,7 +439,7 @@
                 class="btn icon-btn"
                 type="button"
                 (click)="move(i, 1)"
-                [disabled]="busy || i === editor.blocks.length - 1"
+                [disabled]="busy || last"
                 aria-label="Move block down"
               >
                 <svg viewBox="0 0 24 24"><path d="m6 10 6 6 6-6" /></svg>
@@ -373,7 +449,15 @@
               </button>
             </div>
           </header>
-          @if (block.kind === "description") {
+          @if (block.kind === "calendar" && block.calendar) {
+            <app-lead-form-calendar-editor
+              [value]="block.calendar"
+              [id]="block.id"
+              [disabled]="busy"
+              [attempted]="attempted"
+              (changed)="dirty = true"
+            />
+          } @else if (block.kind === "description") {
             <label [attr.for]="block.id">Description</label
             ><app-manager-rich-text-editor
               [id]="block.id"
@@ -383,40 +467,9 @@
               placeholder="Add a description or confirmation message…"
             ></app-manager-rich-text-editor>
           } @else if (block.kind === "checkboxes" || block.kind === "list") {
-            @for (option of block.options; track $index; let j = $index) {
-              <div class="option-row">
-                @if (block.kind === "checkboxes") {
-                  <input
-                    type="checkbox"
-                    disabled
-                    aria-label="Checkbox option preview"
-                  />
-                }
-                <input
-                  [ngModel]="option"
-                  (ngModelChange)="block.options[j] = $event; dirty = true"
-                  maxlength="200"
-                  [attr.aria-label]="'Option ' + (j + 1) + ' label'"
-                  placeholder="Option label"
-                />
-                <button
-                  class="btn"
-                  type="button"
-                  (click)="block.options.splice(j, 1); dirty = true"
-                  [disabled]="block.options.length === 1"
-                >
-                  Remove
-                </button>
-              </div>
-            }
-            <button
-              class="btn"
-              type="button"
-              (click)="block.options.push(''); dirty = true"
-              [disabled]="block.options.length >= 50"
-            >
-              Add option
-            </button>
+            <ng-container
+              *ngTemplateOutlet="answerOptions; context: { $implicit: block }"
+            ></ng-container>
           } @else {
             <label [attr.for]="block.id">{{
               block.kind === "input"
@@ -452,6 +505,48 @@
                   Optional</label
                 >
               </fieldset>
+              <div class="question-answer">
+                <label [attr.for]="block.id + '-answer-type'"
+                  >How should this question be answered?</label
+                >
+                <app-manager-select
+                  [id]="block.id + '-answer-type'"
+                  [ngModel]="group.answer?.kind ?? ''"
+                  (ngModelChange)="changeAnswer(i, $event)"
+                  [options]="answerTypes"
+                  [disabled]="busy"
+                  ariaLabel="Answer type"
+                  placeholder="Select an answer type"
+                  [class.invalid]="attempted && !group.answer"
+                ></app-manager-select>
+                @if (group.answer; as answer) {
+                  @if (answer.kind === "input") {
+                    <label [attr.for]="answer.id"
+                      >Input placeholder (optional)</label
+                    >
+                    <input
+                      [id]="answer.id"
+                      [(ngModel)]="answer.text"
+                      (ngModelChange)="dirty = true"
+                      maxlength="1000"
+                    />
+                  } @else {
+                    <p class="muted">
+                      {{
+                        answer.kind === "list"
+                          ? "Add the options available in the dropdown."
+                          : "Add the options the respondent can select."
+                      }}
+                    </p>
+                    <ng-container
+                      *ngTemplateOutlet="
+                        answerOptions;
+                        context: { $implicit: answer }
+                      "
+                    ></ng-container>
+                  }
+                }
+              </div>
             }
           }
         </section>
@@ -464,6 +559,9 @@
       }
       @for (block of editor.blocks; track block.id; let i = $index) {
         @switch (block.kind) {
+          @case ("calendar") {
+            <app-lead-form-calendar [block]="block" />
+          }
           @case ("title") {
             <h1>{{ block.text }}</h1>
           }

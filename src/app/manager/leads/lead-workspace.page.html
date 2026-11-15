@@ -206,7 +206,7 @@
                     {{row.displayName}}</button
                   ><small
                     >{{languageLabels[row.language] || row.language}} ·
-                    {{row.source==='manual'?'Manual enquiry':'WhatsApp'}}</small
+                    {{row.source==='form'?'Public form':row.source==='manual'?'Manual enquiry':'WhatsApp'}}</small
                   >
                 </td>
                 <td>{{row.interest || 'Not provided'}}</td>
@@ -365,7 +365,7 @@
         <div>
           <h4>{{conversation.lead.displayName}}</h4>
           <p class="muted">
-            {{conversation.lead.source==='manual'?'Manually entered
+            {{conversation.lead.source==='form'?'Public form':conversation.lead.source==='manual'?'Manually entered
             enquiry':'WhatsApp enquiry'}} ·
             {{languageLabels[conversation.lead.language]}}
           </p>
@@ -379,6 +379,7 @@
           Edit lead
         </button>
       </div>
+      @if(conversation.lead.source==='form'){<app-lead-form-responses [leadId]="conversation.lead.leadId" />}
       <dl class="facts">
         <div>
           <dt>Stage</dt>

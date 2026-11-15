@@ -156,3 +156,12 @@ input[type="radio"] {
     margin-top: 0.75rem;
   }
 }
+
+.question-answer {
+  margin-top: 1rem;
+}
+.question-answer > app-manager-select {
+  display: block;
+  margin-bottom: 1rem;
+  max-width: 420px;
+}
