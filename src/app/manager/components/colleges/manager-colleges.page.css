@@ -45,3 +45,14 @@
   .cricos-summary, .course-toolbar { grid-template-columns: 1fr; }
   .course-toolbar { margin: 0 .5rem; }
 }
+
+.form.college-details-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+.college-details-grid > label, .details-value { min-width: 0; }
+.college-details-grid input, .college-details-grid textarea { min-width: 0; width: 100%; box-sizing: border-box; }
+.details-full-width { grid-column: 1 / -1; }
+.details-value { display: grid; gap: .35rem; font-size: .9rem; }
+.details-readonly { padding: .65rem .7rem; border: 1px solid rgba(15,23,42,.12); border-radius: 12px; background: #f4f7fb; color: #435673; min-height: 44px; box-sizing: border-box; overflow-wrap: anywhere; }
+.details-readonly a { color: #006fc9; }
+:host-context(html.dark) .details-readonly { background: #1f3045; color: #d5e1ef; border-color: #344960; }
+:host-context(html.dark) .details-readonly a { color: #7ec3ff; }
+@media (max-width: 700px) { .form.college-details-grid { grid-template-columns: 1fr; } }

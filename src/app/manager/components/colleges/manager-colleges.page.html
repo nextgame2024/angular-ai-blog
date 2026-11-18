@@ -64,27 +64,25 @@
   } @else if (tab === 'details') {
     @if (!selected && !warningDismissed) { <div class="warning-banner" role="status"><span class="warning-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4 3 20h18L12 4Z"></path><path d="M12 9v5"></path><path d="M12 17h.01"></path></svg></span>Save the college first to enable the Contacts, Sites, Courses and Commissions tabs.<button type="button" class="warning-dismiss" aria-label="Dismiss notice" (click)="warningDismissed = true">x</button></div> }
     <section class="card college-form-card"><div class="card-header"><strong>College details</strong></div>
-      <form class="form" [formGroup]="collegeForm" (ngSubmit)="save()">
-        <label><span>College Name *</span><input formControlName="college_name" placeholder="College name" maxlength="200" /></label>
+      <form class="form college-details-grid" [formGroup]="collegeForm" (ngSubmit)="save()">
+        <label><span>College name *</span><input formControlName="college_name" placeholder="College name" maxlength="200" /></label>
         <label><span>Acronym</span><input formControlName="acronym" placeholder="For example, APIC" maxlength="80" /></label>
-        <div class="grid-2"><label><span>Owner Name</span><input formControlName="owner_name" placeholder="Owner name" /></label><label><span>ABN</span><input formControlName="abn" placeholder="ABN" /></label></div>
-        @if (selected?.cricosProviderCode) {
-          <div class="cricos-summary" aria-label="Official CRICOS details">
-            <div><span>CRICOS provider code</span><strong>{{ selected?.cricosProviderCode }}</strong></div>
-            <div><span>Trading name</span><strong>{{ selected?.tradingName || '—' }}</strong></div>
-            <div><span>Institution type</span><strong>{{ selected?.institutionType || '—' }}</strong></div>
-            <div><span>Registered capacity</span><strong>{{ selected?.institutionCapacity ?? '—' }}</strong></div>
-            <div><span>Website</span><strong>@if (selected?.website) { <a [href]="selected?.website" target="_blank" rel="noopener noreferrer">{{ selected?.website }}</a> } @else { — }</strong></div>
-            <div><span>Postal address</span><strong>{{ selected?.postalAddress || '—' }}@if (selected?.postalCity) {, {{ selected?.postalCity }}} @if (selected?.postalState) { {{ selected?.postalState }}} @if (selected?.postalPostcode) { {{ selected?.postalPostcode }}}</strong></div>
-          </div>
-        }
-        <div class="primary-site-summary"><strong>Primary site</strong><span>Manage addresses and contact details in the Sites tab.</span></div>
+        <label><span>ABN</span><input formControlName="abn" placeholder="ABN" /></label>
+        <div class="primary-site-summary details-full-width"><strong>Primary site</strong><span>Manage addresses and contact details in the Sites tab.</span></div>
+        <label><span>CRICOS provider code</span><input [value]="selected?.cricosProviderCode || ''" readonly placeholder="—" /></label>
+        <label><span>Trading name</span><input [value]="selected?.tradingName || ''" readonly placeholder="—" /></label>
+        <label><span>Institution type</span><input [value]="selected?.institutionType || ''" readonly placeholder="—" /></label>
+        <label><span>Registered capacity</span><input [value]="selected?.institutionCapacity ?? ''" readonly placeholder="—" /></label>
+        <div class="details-value"><span>Website</span><div class="details-readonly">@if (selected?.website) { <a [href]="selected?.website" target="_blank" rel="noopener noreferrer">{{ selected?.website }}</a> } @else { — }</div></div>
+        <label><span>Email</span><input [value]="selected?.email || ''" readonly placeholder="No primary site" /></label>
+        <label><span>Phone</span><input [value]="selected?.tel || ''" readonly placeholder="No primary site" /></label>
+        <label><span>Mobile</span><input [value]="selected?.cel || ''" readonly placeholder="No primary site" /></label>
+        <label><span>Status</span><app-manager-select formControlName="status" [options]="statusOptions" placeholder="Select status"></app-manager-select></label>
         <label><span>Address</span><input [value]="selected?.address || ''" readonly placeholder="No primary site" /></label>
-        <div class="grid-2"><label><span>City</span><input [value]="selected?.city || ''" readonly placeholder="No primary site" /></label><label><span>Category</span><input [value]="selected?.category || ''" readonly placeholder="No primary site" /></label></div>
-        <div class="grid-2"><label><span>Email</span><input [value]="selected?.email || ''" readonly placeholder="No primary site" /></label><label><span>Mobile</span><input [value]="selected?.cel || ''" readonly placeholder="No primary site" /></label></div>
-        <div class="grid-2"><label><span>Phone</span><input [value]="selected?.tel || ''" readonly placeholder="No primary site" /></label><label><span>Status</span><app-manager-select formControlName="status" [options]="statusOptions" placeholder="Select status"></app-manager-select></label></div>
-        <label><span>Notes</span><textarea formControlName="notes" rows="3" placeholder="Notes..."></textarea></label>
-        <div class="card-actions right-actions"><button class="btn" type="button" (click)="close()">Cancel</button><button class="btn primary" type="submit" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"></path></svg></span>{{ saving ? 'Saving…' : 'Save' }}</button></div>
+        <label><span>Postal address</span><input value="{{ selected?.postalAddress || '' }}{{ selected?.postalCity ? ', ' + selected?.postalCity : '' }}{{ selected?.postalState ? ' ' + selected?.postalState : '' }}{{ selected?.postalPostcode ? ' ' + selected?.postalPostcode : '' }}" readonly placeholder="—" /></label>
+        <label><span>City</span><input [value]="selected?.city || ''" readonly placeholder="No primary site" /></label>
+        <label class="details-full-width"><span>Notes</span><textarea formControlName="notes" rows="3" placeholder="Notes..."></textarea></label>
+        <div class="card-actions right-actions details-full-width"><button class="btn" type="button" (click)="close()">Cancel</button><button class="btn primary" type="submit" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"></path></svg></span>{{ saving ? 'Saving…' : 'Save' }}</button></div>
       </form>
     </section>
   } @else if (tab === 'commissions' && selected) {

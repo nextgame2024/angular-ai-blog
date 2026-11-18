@@ -182,10 +182,30 @@ describe('ManagerCollegesPageComponent', () => {
     fixture.detectChanges();
     const readonly = [...fixture.nativeElement.querySelectorAll('.college-form-card input[readonly]')] as HTMLInputElement[];
     expect(readonly.map((input) => input.value)).toContain('Brisbane');
-    expect(readonly.map((input) => input.value)).toContain('English language');
+    expect(fixture.nativeElement.querySelector('[formControlName="owner_name"]')).toBeNull();
+    expect(fixture.nativeElement.querySelectorAll('.college-details-grid > label')).toHaveSize(15);
     expect(readonly.every((input) => input.readOnly)).toBeTrue();
     expect(fixture.componentInstance.collegeForm.getRawValue()).not.toEqual(jasmine.objectContaining({ city: 'Brisbane' }));
   });
+
+  for (const width of [390, 1440]) for (const dark of [false, true]) {
+    it(`lays out Details at ${width}px in ${dark ? 'dark' : 'light'} mode`, () => {
+      const fixture = TestBed.createComponent(ManagerCollegesPageComponent);
+      fixture.detectChanges(); fixture.componentInstance.edit(college); fixture.detectChanges();
+      const frame = document.createElement('iframe'); frame.style.width = `${width}px`; frame.style.height = '1000px'; document.body.appendChild(frame);
+      try {
+        const doc = frame.contentDocument!, win = frame.contentWindow!;
+        doc.documentElement.classList.toggle('dark', dark); doc.body.style.cssText = 'margin:0;padding:12px;box-sizing:border-box';
+        document.querySelectorAll('style').forEach(style => doc.head.appendChild(style.cloneNode(true)));
+        doc.body.appendChild(fixture.nativeElement.cloneNode(true));
+        const grid = doc.querySelector('.college-details-grid')!;
+        expect(win.getComputedStyle(grid).gridTemplateColumns.split(' ').length).toBe(width > 700 ? 3 : 1);
+        expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(width + 1);
+        const fields = [...grid.querySelectorAll(':scope > label > span, :scope > .details-value > span')].map(el => el.textContent?.trim());
+        expect(fields).toEqual(['College name *', 'Acronym', 'ABN', 'CRICOS provider code', 'Trading name', 'Institution type', 'Registered capacity', 'Website', 'Email', 'Phone', 'Mobile', 'Status', 'Address', 'Postal address', 'City', 'Notes']);
+      } finally { frame.remove(); fixture.destroy(); }
+    });
+  }
 
   it('creates a first site as primary and sends site details separately', () => {
     const fixture = TestBed.createComponent(ManagerCollegesPageComponent);
