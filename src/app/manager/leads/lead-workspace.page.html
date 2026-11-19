@@ -421,6 +421,35 @@
         </div>
         }
       </dl>
+      @if(conversation.discovery; as discovery){
+      <section class="discovery-panel" aria-label="Initial assessment and follow-up">
+        <h4 class="activity-title">Initial assessment <span class="badge">{{discovery.assessment.priority | titlecase}} priority</span></h4>
+        <p class="muted">{{discovery.assessment.scoreLabel}}: {{discovery.assessment.score}}/100 · Updated {{discovery.updatedAt | date:'short'}}</p>
+        <p class="muted">Based on customer statements. Review the assessment before qualifying this lead.</p>
+        <dl class="facts">
+          @for(fact of discovery.assessment.summary; track fact.field){
+          <div><dt>{{fact.label}}</dt><dd>“{{fact.quote}}” <small class="muted">(message {{fact.eventId}})</small></dd></div>
+          }
+        </dl>
+        <details><summary>Why this priority?</summary><ul>@for(reason of discovery.assessment.reasons; track reason){<li>{{reason}}</li>}</ul>
+          <p>{{discovery.assessment.serviceFit}}</p>
+        </details>
+        @if(discovery.assessment.missing.length){<p><strong>Still to clarify:</strong> {{discovery.assessment.missing.join(', ')}}</p>}
+        <p>{{discovery.assessment.nextStep}}</p>
+        <h4 class="activity-title">Staff follow-up</h4>
+        <p><span class="badge">{{discovery.followUpStatus | titlecase}}</span> · Due {{discovery.followUpDueAt | date:'medium'}} · {{staffName(conversation.lead.assignedTo)}}</p>
+        <p class="muted">This is a staff task. Review the conversation and contact preferences before contacting the customer. WhatsApp replies use the existing reply-window controls.</p>
+        @if(discovery.automaticFollowUp; as automatic){
+          <p class="muted">Requested WhatsApp reminder: {{automatic.deliveryState || automatic.state}} · {{automatic.dueAt | date:'medium'}}</p>
+        }
+        <div class="follow-up-actions">
+          <button type="button" class="btn" (click)="followUp('completed')" [disabled]="saving || discovery.followUpStatus==='completed'">Mark completed</button>
+          <button type="button" class="btn" (click)="followUp('pending', 1)" [disabled]="saving || conversation.lead.stage==='closed'">Follow up tomorrow</button>
+          <button type="button" class="btn" (click)="followUp('pending', 7)" [disabled]="saving || conversation.lead.stage==='closed'">Follow up in a week</button>
+          <button type="button" class="btn" (click)="followUp('dismissed')" [disabled]="saving || discovery.followUpStatus==='dismissed'">Dismiss</button>
+        </div>
+      </section>
+      }
       <div class="ownership-bar">
         <div>
           <span class="badge"

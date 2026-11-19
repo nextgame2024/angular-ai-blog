@@ -699,3 +699,12 @@ app-manager-select.invalid {
 
 .workspace-chrome { background: #f7f9fc; padding: .1rem .1rem 0; }
 :host-context(html.dark) .workspace-chrome { background: #111c2d; }
+
+.discovery-panel {margin:1rem; padding:1rem; background:#f7faff; border:1px solid #d6e2f3; border-radius:10px; font-size:.82rem; overflow-wrap:anywhere;}
+.discovery-panel .activity-title {margin:0 0 .5rem; display:flex; flex-wrap:wrap; align-items:center; gap:.5rem;}
+.discovery-panel .facts {margin:1rem 0;}
+.discovery-panel details {margin:.75rem 0;}
+.discovery-panel summary {cursor:pointer; min-height:32px;}
+.follow-up-actions {display:flex; flex-wrap:wrap; gap:.5rem;}
+:host-context(html.dark) .discovery-panel {background:#172a40; border-color:#34465f; color:#e6eefb;}
+@media(max-width:420px) {.discovery-panel {margin:.75rem; padding:.75rem;} .follow-up-actions .btn {width:100%; white-space:normal;}}

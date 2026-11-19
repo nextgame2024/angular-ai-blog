@@ -65,6 +65,21 @@ describe('Leads and team inbox', () => {
   let fixture: ComponentFixture<LeadWorkspacePage>,
     page: LeadWorkspacePage,
     api: jasmine.SpyObj<LeadWorkspaceService>;
+  it('shows assessment evidence and uses versioned follow-up controls without duplicate submissions', () => {
+    const d=detail();
+    d.discovery={revision:3,sourceEventId:'1',updatedAt:'2026-11-19T00:00:00Z',followUpStatus:'pending',followUpDueAt:'2026-11-20T00:00:00Z',assessment:{score:45,priority:'medium',scoreLabel:'Discovery readiness',reasons:['Business need described (+30)'],missing:['Timing'],nextStep:'Clarify timing.',serviceFit:'Requires advisor review',summary:[{field:'need',label:'Business need',quote:'We lose enquiries',eventId:'1'}]}};
+    page.replyUpdated(d);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('We lose enquiries');
+    expect(fixture.nativeElement.textContent).toContain('45/100');
+    const response=new Subject<LeadConversation>();
+    api.followUp.and.returnValue(response);
+    page.followUp('completed');page.followUp('completed');
+    expect(api.followUp).toHaveBeenCalledOnceWith('lead-1',3,'completed',undefined);
+    response.next({...d,discovery:{...d.discovery,revision:4,followUpStatus:'completed'}});
+    expect(page.selected?.discovery?.followUpStatus).toBe('completed');
+    expect(page.saving).toBeFalse();
+  });
   beforeEach(async () => {
     api = jasmine.createSpyObj('LeadWorkspaceService', [
       'context',
@@ -75,6 +90,7 @@ describe('Leads and team inbox', () => {
       'note',
       'ownership',
       'events',
+      'followUp',
     ]);
     api.context.and.returnValue(of(context()));
     api.list.and.returnValue(

@@ -87,7 +87,21 @@ export interface ReplyState {
     createdAt: string;
   }[];
 }
+export interface LeadDiscovery {
+  revision: number;
+  sourceEventId: string;
+  updatedAt: string;
+  assessment: {
+    score: number; priority: 'high' | 'medium' | 'early'; scoreLabel: string;
+    reasons: string[]; missing: string[]; nextStep: string; serviceFit: string;
+    summary: {field: string; label: string; quote: string; eventId: string}[];
+  };
+  followUpStatus: 'pending' | 'completed' | 'dismissed';
+  followUpDueAt: string;
+  automaticFollowUp?: {state: string; dueAt: string; deliveryState: string | null} | null;
+}
 export interface LeadConversation {
+  discovery?: LeadDiscovery | null;
   reply?: ReplyState | null;
   lead: LeadDetail;
   events: LeadEvent[];
@@ -123,6 +137,9 @@ export class LeadWorkspaceService {
     assignedTo: string;
   }) {
     return this.http.get<LeadList>(`${this.base}/leads`, { params });
+  }
+  followUp(id: string, expectedRevision: number, status: 'pending' | 'completed' | 'dismissed', dueAt?: string) {
+    return this.http.put<LeadConversation>(`${this.base}/leads/${id}/follow-up`, {expectedRevision, status, dueAt});
   }
   detail(id: string) {
     return this.http.get<LeadConversation>(`${this.base}/leads/${id}`);

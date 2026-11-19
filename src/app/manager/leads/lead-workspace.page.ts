@@ -514,6 +514,20 @@ export class LeadWorkspacePage implements OnInit {
       },
     });
   }
+  followUp(status: 'pending' | 'completed' | 'dismissed', days?: number): void {
+    if (this.saving || !this.selected?.discovery) return;
+    this.saving = true;
+    const dueAt = days ? new Date(Date.now() + days * 86400000).toISOString() : undefined;
+    this.api.followUp(this.selected.lead.leadId, this.selected.discovery.revision, status, dueAt)
+      .pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        next: value => {
+          this.saving = false;
+          this.applyDetail(value);
+          this.notify('Staff follow-up updated.');
+        },
+        error: e => { this.saving = false; this.notify(this.message(e), 'error'); },
+      });
+  }
   addNote(): void {
     if (!this.selected || this.saving) return;
     this.note.markAsTouched();
@@ -650,6 +664,7 @@ export class LeadWorkspacePage implements OnInit {
         'Ownership: ' +
         this.ownershipLabel(String(event.metadata['ownership'] ?? ''))
       );
+    if (event.kind === 'lead_updated' && event.metadata['followUpStatus']) return 'Staff follow-up: ' + String(event.metadata['followUpStatus']);
     if (event.kind === 'lead_updated') {
       const labels: Record<string, string> = {
         displayName: 'name',
