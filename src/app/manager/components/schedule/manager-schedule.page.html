@@ -14,7 +14,11 @@
 
       <div class="actions" [class.actions--project]="isProjectScope$$()">
         @if (isProjectScope$$()) {
-        <button type="button" class="btn secondary" (click)="finishProjectSchedule()">
+        <button
+          type="button"
+          class="btn secondary"
+          (click)="finishProjectSchedule()"
+        >
           <span class="btn-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24">
               <path d="m5 12 4 4L19 6"></path>
@@ -39,12 +43,29 @@
       </div>
     </div>
 
-    @if(!isProjectScope$$()) {<nav class="scheduling-views" aria-label="Scheduling views"><a routerLink="/manager/scheduling" class="active" aria-current="page">Project bookings</a><a routerLink="/manager/scheduling/leads">Lead appointments</a></nav>}
-    @if (!isProjectScope$$()) {
-      <p class="lead-bookings-help">Appointments booked through public forms appear in
-        <a routerLink="/manager/scheduling/leads">Lead appointments</a>.
-      </p>
-    }
+    @if(!isProjectScope$$()) {
+    <p class="lead-bookings-help">
+      Project bookings and appointments from WhatsApp and forms appear here.
+      Times shown in {{displayTimezone}}.
+    </p>
+    <button
+      type="button"
+      class="btn secondary"
+      [disabled]="!appointmentReady()"
+      (click)="appointmentEditor?.openAvailability()"
+    >
+      Advisor availability
+    </button>
+    @if(appointmentsLoading$$()){<app-manager-list-loader
+      label="Loading appointments…"
+    />} @if(appointmentsError$$()){
+    <div class="error" role="alert">
+      {{appointmentsError$$()}}
+      <button class="btn" type="button" (click)="refreshAppointments()">
+        Retry
+      </button>
+    </div>
+    } }
     <div class="calendar-controls">
       <div class="calendar-nav">
         <button
@@ -103,13 +124,7 @@
     <span>{{ errorMessage }}</span>
   </div>
   } @if (pageLoading$$()) {
-  <div class="screen-loader" aria-live="polite" aria-busy="true">
-    <div class="loader-card">
-      <div class="loader-ring" aria-hidden="true"></div>
-      <div class="loader-bar" aria-hidden="true"></div>
-      <div class="loader-text">Loading...</div>
-    </div>
-  </div>
+  <app-manager-list-loader label="Loading scheduling…" />
   }
 
   <section class="calendar-card desktop-calendar">
@@ -152,7 +167,7 @@
             <button
               type="button"
               class="schedule-pill"
-              [attr.aria-label]="'Edit booking for ' + getScheduledItemDisplay(schedule)"
+              [attr.aria-label]="(schedule.appointment ? 'View appointment for ' : 'Edit booking for ') + getScheduledItemDisplay(schedule)"
               (click)="openEdit(schedule, $event)"
             >
               <span class="schedule-pill__label">
@@ -166,7 +181,7 @@
             <button
               type="button"
               class="schedule-pill-delete"
-              [attr.aria-label]="'Delete booking for ' + getScheduledItemDisplay(schedule)"
+              [attr.aria-label]="(schedule.appointment ? 'Cancel appointment for ' : 'Delete booking for ') + getScheduledItemDisplay(schedule)"
               (click)="openDeleteConfirm(schedule, $event)"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -258,7 +273,7 @@
         <button
           type="button"
           class="agenda-item__delete"
-          [attr.aria-label]="'Delete booking for ' + getScheduledItemDisplay(schedule)"
+          [attr.aria-label]="(schedule.appointment ? 'Cancel appointment for ' : 'Delete booking for ') + getScheduledItemDisplay(schedule)"
           (click)="openDeleteConfirm(schedule, $event)"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -282,6 +297,8 @@
       role="dialog"
       aria-modal="true"
       aria-labelledby="schedule-modal-title"
+      cdkTrapFocus
+      [cdkTrapFocusAutoCapture]="true"
     >
       <div class="schedule-modal__header">
         <div>
@@ -310,8 +327,25 @@
         autocomplete="off"
         (submit)="$event.preventDefault(); saveSchedule()"
       >
+        @if(!isProjectScope$$() && modalMode$$()==='create'){
+        <fieldset class="booking-kind">
+          <legend>Booking type</legend>
+          <label
+            ><input type="radio" name="booking-kind" checked /> Project</label
+          >
+          <label
+            ><input
+              type="radio"
+              name="booking-kind"
+              [disabled]="!appointmentReady()"
+              (change)="chooseAppointment()"
+            />
+            Appointment</label
+          >
+        </fieldset>
+        }
         <label class="form-field form-field--wide">
-          <span>Scheduled item *</span>
+          <span>Project *</span>
 
           @if (isProjectScope$$()) {
           <div class="autocomplete autocomplete--locked">
@@ -331,6 +365,7 @@
             <input
               type="text"
               [formControl]="scheduledItemSearchCtrl"
+              [class.invalid]="scheduleForm.controls.scheduled_item_id.touched && scheduleForm.controls.scheduled_item_id.invalid"
               placeholder="Search by project name"
               autocomplete="off"
               (focus)="onScheduledItemFocus()"
@@ -367,14 +402,14 @@
           <label class="form-field">
             <span>Date *</span>
             @if (isDateEditable$$()) {
-              <input type="date" formControlName="date" />
+            <input type="date" formControlName="date" />
             } @else {
-              <input
-                type="text"
-                [value]="getFieldDate(modalDate$$())"
-                readonly
-                disabled
-              />
+            <input
+              type="text"
+              [value]="getFieldDate(modalDate$$())"
+              readonly
+              disabled
+            />
             }
           </label>
 
@@ -496,3 +531,79 @@
   </div>
   }
 </div>
+
+@if(!isProjectScope$$()){
+<app-lead-scheduling
+  [embedded]="true"
+  (ready)="appointmentReady.set($event)"
+  (changed)="refreshAppointments()"
+  (projectRequested)="openCreate($event)"
+/>
+} @if(appointmentDetail$$(); as appointment){
+<div class="schedule-modal-backdrop" (click)="appointmentDetail$$.set(null)">
+  <section
+    class="schedule-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="appointment-detail-title"
+    (click)="$event.stopPropagation()"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <header class="schedule-modal__header">
+      <h4 id="appointment-detail-title">
+        Appointment · {{appointment.leadName}}
+      </h4>
+      <button
+        class="icon-btn"
+        type="button"
+        aria-label="Close appointment details"
+        (click)="appointmentDetail$$.set(null)"
+      >
+        ×
+      </button>
+    </header>
+    <div class="schedule-form">
+      <p>
+        {{appointmentEditor?.format(appointment.startsAt,displayTimezone)}} –
+        {{appointmentEditor?.format(appointment.endsAt,displayTimezone)}}
+      </p>
+      <p>Advisor: {{appointmentEditor?.advisorName(appointment.advisorId)}}</p>
+      <label class="form-field"
+        ><span>Description</span
+        ><textarea
+          class="appointment-description"
+          readonly
+          rows="10"
+          [value]="appointmentDescription(appointment)"
+        ></textarea>
+      </label>
+      <div class="modal-actions">
+        <button
+          class="btn"
+          type="button"
+          (click)="appointmentDetail$$.set(null)"
+        >
+          Close
+        </button>
+        <button
+          class="btn"
+          type="button"
+          [disabled]="!appointmentEditor?.canChange(appointment)"
+          (click)="cancelAppointment(appointment)"
+        >
+          Cancel appointment
+        </button>
+        <button
+          class="btn primary"
+          type="button"
+          [disabled]="!appointmentEditor?.canChange(appointment)"
+          (click)="rescheduleAppointment(appointment)"
+        >
+          Reschedule
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+}

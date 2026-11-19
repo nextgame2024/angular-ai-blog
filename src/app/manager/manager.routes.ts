@@ -235,8 +235,8 @@ export const MANAGER_ROUTES: Route[] = [
       },
       {
         path: 'scheduling/leads',
-        loadComponent: () => import('./components/schedule/leads/lead-scheduling.page').then(m => m.LeadSchedulingPage),
-        data: { title: 'Lead appointments', fullscreen: true },
+        redirectTo: 'scheduling',
+        pathMatch: 'full',
       },
       MANAGER_SCHEDULE_ROUTE,
       {

@@ -106,3 +106,50 @@ a:focus-visible {
     padding: 0.8rem 0.55rem;
   }
 }
+
+.booking-kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border: 0;
+  padding: 0;
+  margin: 0 0 1rem;
+  min-width: 0;
+}
+.booking-kind legend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.booking-kind label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  cursor: pointer;
+}
+.booking-kind input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  accent-color: #0ca78e;
+}
+.appointment-description {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #172033;
+  background: #f8fafc;
+  white-space: pre-wrap;
+}
+:host-context(html.dark) .appointment-description {
+  background: #151c2b;
+  color: #e2e8f0;
+  border-color: #42516b;
+}
+:host-context(html.dark) .booking-kind {
+  color: #e2e8f0;
+}

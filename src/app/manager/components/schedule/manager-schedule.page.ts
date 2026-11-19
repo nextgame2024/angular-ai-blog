@@ -1,6 +1,14 @@
+import { LeadSchedulingPage } from './leads/lead-scheduling.page';
+import {
+  LeadSchedulingService,
+  LeadAppointment,
+} from './leads/lead-scheduling.service';
+import { ManagerListLoaderComponent } from '../shared/manager-list-loader/manager-list-loader.component';
+import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import {
   Component,
+  ViewChild,
   DestroyRef,
   HostListener,
   computed,
@@ -18,7 +26,7 @@ import {
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription } from 'rxjs';
 import {
   debounceTime,
   distinctUntilChanged,
@@ -374,7 +382,8 @@ function buildScheduledItemFromProject(project: BmProject): BmScheduledItem {
     scheduledItemType: 'project',
     scheduledItemId: project.projectId,
     scheduledItemLabel: String(project.projectName || '').trim(),
-    scheduledItemSecondaryLabel: String(project.clientName || '').trim() || null,
+    scheduledItemSecondaryLabel:
+      String(project.clientName || '').trim() || null,
     projectId: project.projectId,
   };
 }
@@ -388,11 +397,111 @@ function buildScheduledItemFromProject(project: BmProject): BmScheduledItem {
     RouterModule,
     ManagerRichTextEditorComponent,
     ManagerSelectComponent,
+    LeadSchedulingPage,
+    ManagerListLoaderComponent,
+    A11yModule,
   ],
   templateUrl: './manager-schedule.page.html',
   styleUrls: ['./manager-schedule.page.css'],
 })
 export class ManagerSchedulePageComponent {
+  @ViewChild(LeadSchedulingPage) appointmentEditor?: LeadSchedulingPage;
+  private readonly appointmentApi = inject(LeadSchedulingService);
+  private appointmentRequest?: Subscription;
+  readonly appointments$$ = signal<BmSchedule[]>([]);
+  readonly appointmentsLoading$$ = signal(false);
+  readonly appointmentReady = signal(false);
+  readonly appointmentsError$$ = signal('');
+  readonly appointmentDetail$$ = signal<LeadAppointment | null>(null);
+  readonly displayTimezone =
+    Intl.DateTimeFormat().resolvedOptions().timeZone || 'Australia/Brisbane';
+  refreshAppointments() {
+    this.appointmentRequest?.unsubscribe();
+    if (this.isProjectScope$$()) {
+      this.appointments$$.set([]);
+      return;
+    }
+    const start = formatIsoDate(startOfWeek(startOfMonth(this.viewDate$$())));
+    const end = formatIsoDate(endOfWeek(endOfMonth(this.viewDate$$())));
+    this.appointmentsLoading$$.set(true);
+    this.appointmentsError$$.set('');
+    this.appointments$$.set([]);
+    this.appointmentRequest = this.appointmentApi
+      .calendarRange(start, end, this.displayTimezone)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (items) => {
+          this.appointments$$.set(
+            items.map((a) => this.appointmentSchedule(a)),
+          );
+          this.appointmentsLoading$$.set(false);
+        },
+        error: () => {
+          this.appointmentsLoading$$.set(false);
+          this.appointmentsError$$.set(
+            'Appointments could not be loaded. Check your scheduling access or try again.',
+          );
+        },
+      });
+  }
+  private appointmentSchedule(a: LeadAppointment): BmSchedule {
+    const parts = (instant: string) =>
+      Object.fromEntries(
+        new Intl.DateTimeFormat('en-CA', {
+          timeZone: this.displayTimezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hourCycle: 'h23',
+        })
+          .formatToParts(new Date(instant))
+          .map((p) => [p.type, p.value]),
+      );
+    const start = parts(a.startsAt),
+      end = parts(a.endsAt);
+    return {
+      scheduleId: 'appointment:' + a.id,
+      scheduledItemId: a.id,
+      scheduledItemType: 'appointment',
+      scheduledItemLabel: a.leadName,
+      scheduledItemSecondaryLabel: 'Appointment',
+      date: `${start['year']}-${start['month']}-${start['day']}`,
+      startTime: `${start['hour']}:${start['minute']}`,
+      endTime: `${end['hour']}:${end['minute']}`,
+      description: this.appointmentDescription(a),
+      appointment: a,
+    };
+  }
+  appointmentDescription(a: LeadAppointment) {
+    return [
+      `Name: ${a.leadName}`,
+      `Email: ${a.leadEmail || 'Not provided'}`,
+      a.assessment
+        ? `${a.assessment.scoreLabel || 'Discovery readiness'}: ${a.assessment.score}/100 (${a.assessment.priority})`
+        : 'Assessment: Not available',
+      ...(a.assessment?.summary ?? []).map((f) => `${f.label}: ${f.quote}`),
+      a.assessment?.nextStep,
+      a.description,
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
+  chooseAppointment() {
+    const date = this.scheduleForm.controls.date.value || this.selectedDay$$();
+    this.closeModal();
+    this.appointmentEditor?.openBooking(null, date);
+  }
+  rescheduleAppointment(a: LeadAppointment) {
+    this.appointmentDetail$$.set(null);
+    this.appointmentEditor?.openBooking(a);
+  }
+  cancelAppointment(a: LeadAppointment) {
+    this.appointmentDetail$$.set(null);
+    this.appointmentEditor?.openCancel(a);
+  }
+
   private readonly store = inject(Store);
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
@@ -505,7 +614,7 @@ export class ManagerSchedulePageComponent {
       return `Manage bookings for ${buildScheduledItemDisplay(projectScopeItem)}.`;
     }
 
-    return 'Book projects now, while keeping the manager ready for any scheduled job type later.';
+    return 'Manage project bookings and appointments in one calendar.';
   });
 
   readonly startTime$$ = toSignal(
@@ -546,10 +655,10 @@ export class ManagerSchedulePageComponent {
   });
   readonly monthLabel$$ = computed(() => formatMonthYear(this.viewDate$$()));
   readonly monthBookingCount$$ = computed(() =>
-    groupSchedulesForMonth(this.viewDate$$(), this.filteredSchedules$$()).reduce(
-      (total, group) => total + group.schedules.length,
-      0,
-    ),
+    groupSchedulesForMonth(
+      this.viewDate$$(),
+      this.filteredSchedules$$(),
+    ).reduce((total, group) => total + group.schedules.length, 0),
   );
   readonly yearOptions$$ = computed<ManagerSelectOption[]>(() =>
     buildYearOptions(this.viewDate$$().getFullYear()).map((year) => ({
@@ -560,7 +669,7 @@ export class ManagerSchedulePageComponent {
 
   readonly filteredSchedules$$ = computed(() => {
     const projectScopeId = this.projectScopeId$$();
-    const schedules = this.schedules$$();
+    const schedules = [...this.schedules$$(), ...this.appointments$$()];
 
     if (!projectScopeId) {
       return schedules;
@@ -568,8 +677,8 @@ export class ManagerSchedulePageComponent {
 
     return schedules.filter(
       (schedule) =>
-        schedule.projectId === projectScopeId
-        || schedule.scheduledItemId === projectScopeId,
+        schedule.projectId === projectScopeId ||
+        schedule.scheduledItemId === projectScopeId,
     );
   });
 
@@ -637,7 +746,8 @@ export class ManagerSchedulePageComponent {
 
     const editingScheduleId = this.editingSchedule$$()?.scheduleId ?? null;
     return (this.schedulesByDate$$().get(modalDate) ?? []).filter(
-      (schedule) => schedule.scheduleId !== editingScheduleId,
+      (schedule) =>
+        !schedule.appointment && schedule.scheduleId !== editingScheduleId,
     );
   });
 
@@ -691,6 +801,7 @@ export class ManagerSchedulePageComponent {
     const rangeStart = formatIsoDate(startOfWeek(monthStart));
     const rangeEnd = formatIsoDate(endOfWeek(monthEnd));
 
+    this.refreshAppointments();
     this.store.dispatch(
       ManagerScheduleActions.loadScheduleRange({
         start: rangeStart,
@@ -755,6 +866,7 @@ export class ManagerSchedulePageComponent {
   constructor() {
     this.destroyRef.onDestroy(() => {
       this.clearToastTimers();
+      this.appointmentRequest?.unsubscribe();
     });
 
     this.route.queryParamMap
@@ -889,6 +1001,10 @@ export class ManagerSchedulePageComponent {
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    if (this.appointmentDetail$$()) {
+      this.appointmentDetail$$.set(null);
+      return;
+    }
     if (this.deleteConfirmSchedule$$()) {
       this.closeDeleteConfirm();
       return;
@@ -940,6 +1056,10 @@ export class ManagerSchedulePageComponent {
 
   openEdit(schedule: BmSchedule, event?: MouseEvent): void {
     event?.stopPropagation();
+    if (schedule.appointment) {
+      this.appointmentDetail$$.set(schedule.appointment);
+      return;
+    }
     this.selectedDay$$.set(schedule.date);
     this.isDateEditable$$.set(true);
     this.store.dispatch(
@@ -956,6 +1076,10 @@ export class ManagerSchedulePageComponent {
   openDeleteConfirm(schedule: BmSchedule, event?: MouseEvent): void {
     event?.preventDefault();
     event?.stopPropagation();
+    if (schedule.appointment) {
+      this.cancelAppointment(schedule.appointment);
+      return;
+    }
     this.store.dispatch(
       ManagerScheduleActions.openScheduleDeleteConfirm({
         scheduleId: schedule.scheduleId,
@@ -1055,6 +1179,7 @@ export class ManagerSchedulePageComponent {
   }
 
   saveSchedule(): void {
+    if (this.saving$$()) return;
     const formDate = this.scheduleForm.controls.date.value;
     const scheduledItem =
       this.selectedScheduledItem$$() ?? this.projectScopeItem$$();

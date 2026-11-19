@@ -10,6 +10,7 @@ export interface BmScheduledItem {
 }
 
 export interface BmSchedule {
+  appointment?: import('../components/schedule/leads/lead-scheduling.service').LeadAppointment;
   scheduleId: string;
   companyId?: string | null;
   userId?: string | null;

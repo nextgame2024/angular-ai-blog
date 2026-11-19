@@ -42,6 +42,7 @@ describe('Scheduling lead appointments', () => {
       'saveCalendar',
       'slots',
       'mutate',
+      'bookContact',
     ]);
     leads = jasmine.createSpyObj('LeadWorkspaceService', ['list', 'detail']);
     api.context.and.returnValue(
@@ -65,6 +66,7 @@ describe('Scheduling lead appointments', () => {
     );
     api.calendar.and.returnValue(of({ calendar: null, canEdit: true }));
     api.mutate.and.returnValue(of({ appointment: appt() }));
+    api.bookContact.and.returnValue(of({ appointment: appt() }));
     leads.list.and.returnValue(of({ items: [], total: 0, page: 1, limit: 25 }));
     await TestBed.configureTestingModule({
       imports: [LeadSchedulingPage],
@@ -81,6 +83,34 @@ describe('Scheduling lead appointments', () => {
   afterEach(() => {
     document.documentElement.classList.remove('dark');
     fixture.destroy();
+  });
+  it('books a new contact without selecting a project or existing lead', () => {
+    page.openBooking();
+    page.changeContactMode('new');
+    page.contact.setValue({
+      displayName: 'New person',
+      email: 'person@example.test',
+    });
+    page.booking.controls.slot.setValue(start);
+    page.saveBooking();
+    expect(api.bookContact).toHaveBeenCalled();
+    expect(api.bookContact.calls.mostRecent().args[0]).toEqual(
+      jasmine.objectContaining({
+        contact: { displayName: 'New person', email: 'person@example.test' },
+        advisorId: 'advisor',
+      }),
+    );
+    expect(api.mutate).not.toHaveBeenCalled();
+  });
+  it('embedded appointment editor hides the separate list and emits calendar refresh', () => {
+    page.embedded = true;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.desktop-table')).toBeNull();
+    const changed = spyOn(page.changed, 'emit');
+    page.openBooking();
+    page.booking.patchValue({ leadId: 'lead', slot: start });
+    page.saveBooking();
+    expect(changed).toHaveBeenCalled();
   });
   it('loads once and applies server pagination and sort instead of sorting one page locally', () => {
     expect(api.list).toHaveBeenCalledTimes(1);
@@ -102,6 +132,7 @@ describe('Scheduling lead appointments', () => {
     expect(page.mode).toBe('book');
     expect(page.booking.controls.slot.value).toBe(start);
     api.mutate.and.returnValue(of({ appointment: appt() }));
+    api.bookContact.and.returnValue(of({ appointment: appt() }));
     page.saveBooking();
     expect((api.mutate.calls.mostRecent().args[2] as any).requestKey).toBe(
       first.requestKey,

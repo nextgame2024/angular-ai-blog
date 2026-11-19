@@ -1,3 +1,4 @@
+import { EMPTY, expand, reduce, throwError } from 'rxjs';
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
@@ -15,6 +16,14 @@ export interface LeadAppointment {
   id: string;
   leadId: string;
   leadName: string;
+  leadEmail?: string;
+  assessment?: {
+    score: number;
+    priority: string;
+    scoreLabel?: string;
+    summary?: { label: string; quote: string }[];
+    nextStep?: string;
+  } | null;
   advisorId: string;
   startsAt: string;
   endsAt: string;
@@ -48,6 +57,7 @@ export class LeadSchedulingService {
       lead: {
         leadId: string;
         displayName: string;
+        email?: string;
         assignedTo: string | null;
         stage: string;
       };
@@ -72,6 +82,46 @@ export class LeadSchedulingService {
       page: number;
       limit: number;
     }>(this.base + '/appointments', { params });
+  }
+  calendarRange(start: string, end: string, timezone: string) {
+    const params = {
+      start,
+      end,
+      timezone,
+      status: 'confirmed',
+      limit: 100,
+      sort: 'startsAt',
+      direction: 'asc',
+    };
+    return this.list({ ...params, page: 1 }).pipe(
+      expand((result) =>
+        result.page * result.limit >= result.total
+          ? EMPTY
+          : result.page >= 50
+            ? throwError(
+                () =>
+                  new Error(
+                    'Too many appointments. Narrow the calendar range.',
+                  ),
+              )
+            : this.list({ ...params, page: result.page + 1 }),
+      ),
+      reduce(
+        (items: LeadAppointment[], result) =>
+          Array.from(
+            new Map(
+              [...items, ...result.items].map((item) => [item.id, item]),
+            ).values(),
+          ),
+        [],
+      ),
+    );
+  }
+  bookContact(body: unknown) {
+    return this.http.post<{ appointment: LeadAppointment }>(
+      this.base + '/appointments/new-contact',
+      body,
+    );
   }
   slots(params: Record<string, string>) {
     return this.http.get<SlotState>(this.base + '/availability', { params });

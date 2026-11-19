@@ -980,7 +980,9 @@
 
   .schedule-modal {
     width: 100%;
-    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1rem);
+    max-height: calc(
+      100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 1rem
+    );
     border-radius: 24px;
   }
 
@@ -990,7 +992,11 @@
     bottom: 0;
     margin: 0 -1rem -1rem;
     padding: 0.85rem 1rem calc(env(safe-area-inset-bottom) + 0.9rem);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, #ffffff 24%);
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.18) 0%,
+      #ffffff 24%
+    );
     border-top: 1px solid rgba(15, 23, 42, 0.08);
   }
 
@@ -1001,9 +1007,7 @@
   .schedule-modal-backdrop {
     align-items: flex-start;
     overflow-y: auto;
-    padding:
-      calc(env(safe-area-inset-top) + 0.5rem)
-      0.5rem
+    padding: calc(env(safe-area-inset-top) + 0.5rem) 0.5rem
       calc(env(safe-area-inset-bottom) + 0.5rem);
   }
 
@@ -1038,15 +1042,115 @@
   }
 }
 
-.scheduling-views {display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0;border-bottom:1px solid #d6e2f3;}
-.scheduling-views a {font:inherit;font-size:.85rem;font-weight:600;text-decoration:none;color:#607496;padding:.8rem 1rem;min-height:44px;box-sizing:border-box;border-bottom:3px solid transparent;}
-.scheduling-views a.active {color:#008b7d;border-bottom-color:#0ca78e;}
-.scheduling-views a:focus-visible {outline:3px solid #8cb6ff;outline-offset:2px;}
-:host-context(html.dark) .scheduling-views {border-color:#34465f;}
-:host-context(html.dark) .scheduling-views a {color:#b0c1da;}
-:host-context(html.dark) .scheduling-views a.active {color:#9ec3ff;}
+.lead-bookings-help {
+  margin: 0.25rem 0;
+  font-size: 0.85rem;
+  color: #475569;
+}
+.lead-bookings-help a {
+  color: #008b7d;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+:host-context(html.dark) .lead-bookings-help {
+  color: #b0c1da;
+}
+:host-context(html.dark) .lead-bookings-help a {
+  color: #79e1cc;
+}
 
-.lead-bookings-help { margin: .25rem 0; font-size: .85rem; color: #475569; }
-.lead-bookings-help a { color: #008b7d; font-weight: 600; text-underline-offset: 3px; }
-:host-context(html.dark) .lead-bookings-help { color: #b0c1da; }
-:host-context(html.dark) .lead-bookings-help a { color: #79e1cc; }
+.booking-kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  border: 0;
+  padding: 0;
+  margin: 0 0 1rem;
+  min-width: 0;
+}
+.booking-kind legend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+.booking-kind label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  cursor: pointer;
+}
+.booking-kind input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  accent-color: #0ca78e;
+}
+.appointment-description {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 0.75rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #172033;
+  background: #f8fafc;
+  white-space: pre-wrap;
+}
+:host-context(html.dark) .appointment-description {
+  background: #151c2b;
+  color: #e2e8f0;
+  border-color: #42516b;
+}
+:host-context(html.dark) .booking-kind {
+  color: #e2e8f0;
+}
+
+:host-context(html.dark) .schedule-modal,
+:host-context(html.dark) .delete-modal,
+:host-context(html.dark) .calendar-card,
+:host-context(html.dark) .agenda-card,
+:host-context(html.dark) .calendar-day,
+:host-context(html.dark) .mobile-day,
+:host-context(html.dark) .agenda-item {
+  background: #151c2b;
+  color: #e2e8f0;
+  border-color: #34465f;
+}
+:host-context(html.dark) .schedule-modal__header h4,
+:host-context(html.dark) .calendar-card-header h4,
+:host-context(html.dark) .agenda-header h4,
+:host-context(html.dark) .calendar-day-number,
+:host-context(html.dark) .form-field > span,
+:host-context(html.dark) .select-field > span {
+  color: #e2e8f0;
+}
+:host-context(html.dark) .calendar-card-header p,
+:host-context(html.dark) .agenda-header p,
+:host-context(html.dark) .weekday-row,
+:host-context(html.dark) .mobile-weekday-row {
+  color: #b0c1da;
+}
+:host-context(html.dark) .calendar-day.outside-month {
+  background: #101725;
+}
+:host-context(html.dark) .calendar-day:hover,
+:host-context(html.dark) .calendar-day:focus-visible {
+  background: #26324a;
+}
+:host-context(html.dark) .calendar-day.outside-month .calendar-day-number {
+  color: #8292ab;
+}
+:host-context(html.dark) .modal-actions {
+  background: #151c2b;
+  border-color: #34465f;
+}
+:host-context(html.dark) .form-field input,
+:host-context(html.dark) .autocomplete input {
+  background: #101725;
+  color: #e2e8f0;
+  border-color: #42516b;
+}
+:host-context(html.dark) .agenda-item__title { color: #e2e8f0; }
+:host-context(html.dark) .agenda-item__time,
+:host-context(html.dark) .agenda-item__chevron { color: #b0c1da; }

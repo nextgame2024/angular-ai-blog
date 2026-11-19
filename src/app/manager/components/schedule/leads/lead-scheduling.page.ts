@@ -3,6 +3,9 @@ import { A11yModule } from '@angular/cdk/a11y';
 import { CommonModule } from '@angular/common';
 import {
   Component,
+  Input,
+  Output,
+  EventEmitter,
   DestroyRef,
   HostListener,
   OnInit,
@@ -58,6 +61,45 @@ function day(value = new Date()) {
   ],
 })
 export class LeadSchedulingPage implements OnInit {
+  @Input() embedded = false;
+  @Output() ready = new EventEmitter<boolean>(true);
+  @Output() changed = new EventEmitter<void>();
+  @Output() projectRequested = new EventEmitter<string>();
+  contactMode: 'existing' | 'new' = 'existing';
+  readonly contact = inject(FormBuilder).nonNullable.group({
+    displayName: ['', [Validators.required, Validators.maxLength(160)]],
+    email: [
+      '',
+      [Validators.required, Validators.email, Validators.maxLength(320)],
+    ],
+  });
+  changeContactMode(value: 'existing' | 'new') {
+    this.contactMode = value;
+    this.booking.controls.leadId.setValidators(
+      value === 'existing' ? Validators.required : [],
+    );
+    this.booking.controls.leadId.updateValueAndValidity();
+  }
+  chooseProject() {
+    const date = this.booking.controls.date.value;
+    this.close();
+    this.projectRequested.emit(date);
+  }
+  get appointmentDetails() {
+    const a = this.editing;
+    if (!a) return '';
+    return [
+      a.leadName,
+      a.leadEmail || 'Email not provided',
+      a.assessment
+        ? `${a.assessment.scoreLabel || 'Discovery readiness'}: ${a.assessment.score}/100 (${a.assessment.priority})`
+        : 'Assessment not available',
+      ...(a.assessment?.summary ?? []).map((f) => `${f.label}: ${f.quote}`),
+      a.assessment?.nextStep,
+    ]
+      .filter(Boolean)
+      .join('\n');
+  }
   private readonly api = inject(LeadSchedulingService);
   private readonly leads = inject(LeadWorkspaceService);
   private readonly fb = inject(FormBuilder);
@@ -264,6 +306,7 @@ export class LeadSchedulingPage implements OnInit {
       .subscribe({
         next: (c) => {
           this.context = c;
+          this.ready.emit(true);
           this.contextLoading = false;
           this.advisorOptions = c.advisors.map((a) => ({
             value: a.id,
@@ -280,11 +323,12 @@ export class LeadSchedulingPage implements OnInit {
         error: (e) => {
           this.contextLoading = false;
           this.loadError = this.errorText(e);
+          this.ready.emit(false);
         },
       });
   }
   refresh(reset = false) {
-    if (!this.context) return;
+    if (this.embedded || !this.context) return;
     if (this.range.invalid) {
       this.range.markAllAsTouched();
       this.notify('Select valid dates and a display timezone.', 'error');
@@ -319,6 +363,7 @@ export class LeadSchedulingPage implements OnInit {
           this.loading = false;
           this.rangeInvalidFields = new Set(e.error?.fields ?? []);
           this.loadError = this.errorText(e);
+          this.ready.emit(false);
           this.notify(this.loadError, 'error');
         },
       });
@@ -373,7 +418,9 @@ export class LeadSchedulingPage implements OnInit {
   canChange(a: LeadAppointment) {
     return a.status === 'confirmed' && Date.parse(a.startsAt) > Date.now();
   }
-  openBooking(a: LeadAppointment | null = null) {
+  openBooking(a: LeadAppointment | null = null, selectedDate?: string) {
+    this.changeContactMode('existing');
+    this.contact.reset();
     this.mode = a ? 'reschedule' : 'book';
     this.editing = a;
     this.key = '';
@@ -393,7 +440,7 @@ export class LeadSchedulingPage implements OnInit {
               month: '2-digit',
               day: '2-digit',
             }).format(new Date(a.startsAt))
-          : day(),
+          : (selectedDate ?? day()),
         timezone: a?.timezone ?? this.range.controls.timezone.value,
         slot: '',
         description: a?.description ?? '',
@@ -482,19 +529,26 @@ export class LeadSchedulingPage implements OnInit {
   saveBooking() {
     if (this.saving) return;
     this.booking.markAllAsTouched();
+    if (this.contactMode === 'new') this.contact.markAllAsTouched();
     if (
       this.booking.invalid ||
+      (this.contactMode === 'new' && this.contact.invalid) ||
       !this.slotState ||
       !this.slotOptions.some(
         (o) => o.value === this.booking.controls.slot.value,
       )
     ) {
-      this.notify('Select a lead, advisor, date and available time.', 'error');
+      this.notify(
+        'Complete contact details, advisor, date and available time.',
+        'error',
+      );
       return;
     }
     const b = this.booking.getRawValue(),
       body = {
-        leadId: b.leadId,
+        ...(this.contactMode === 'new'
+          ? { contact: this.contact.getRawValue() }
+          : { leadId: b.leadId }),
         advisorId: b.advisorId,
         startsAt: b.slot,
         timezone: b.timezone,
@@ -508,31 +562,36 @@ export class LeadSchedulingPage implements OnInit {
       this.signature = signature;
       this.key = crypto.randomUUID();
     }
-    this.mutation = this.api
-      .mutate(this.editing ? 'reschedule' : 'book', this.editing?.id ?? null, {
-        ...body,
-        requestKey: this.key,
-      })
-      .subscribe({
-        next: () => {
-          this.saving = false;
-          const changed = !!this.editing;
-          this.close();
-          this.notify(
-            changed ? 'Appointment rescheduled.' : 'Appointment booked.',
+    const payload = { ...body, requestKey: this.key };
+    const request =
+      this.contactMode === 'new' && !this.editing
+        ? this.api.bookContact(payload)
+        : this.api.mutate(
+            this.editing ? 'reschedule' : 'book',
+            this.editing?.id ?? null,
+            payload,
           );
-          this.refresh();
-        },
-        error: (e) => {
-          this.saving = false;
-          this.invalidFields = new Set(e.error?.fields ?? []);
-          this.notify(this.errorText(e), 'error');
-          if (this.invalidFields.has('slot')) {
-            this.booking.controls.slot.reset('');
-            this.loadSlots();
-          }
-        },
-      });
+    this.mutation = request.subscribe({
+      next: () => {
+        this.saving = false;
+        const changed = !!this.editing;
+        this.close();
+        this.notify(
+          changed ? 'Appointment rescheduled.' : 'Appointment booked.',
+        );
+        this.refresh();
+        this.changed.emit();
+      },
+      error: (e) => {
+        this.saving = false;
+        this.invalidFields = new Set(e.error?.fields ?? []);
+        this.notify(this.errorText(e), 'error');
+        if (this.invalidFields.has('slot')) {
+          this.booking.controls.slot.reset('');
+          this.loadSlots();
+        }
+      },
+    });
   }
   openCancel(a: LeadAppointment) {
     this.cancelTarget = a;
@@ -554,6 +613,7 @@ export class LeadSchedulingPage implements OnInit {
           this.cancelTarget = null;
           this.notify('Appointment cancelled.');
           this.refresh();
+          this.changed.emit();
         },
         error: (e) => {
           this.saving = false;

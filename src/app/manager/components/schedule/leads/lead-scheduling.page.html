@@ -1,12 +1,13 @@
+@if(!embedded){
 <div class="lead-shell">
   <nav class="breadcrumb" aria-label="Breadcrumb">
     <a routerLink="/manager/menu">Menu</a><span>/</span
     ><a routerLink="/manager/scheduling">Scheduling</a><span>/</span
-    ><span>Lead appointments</span>
+    ><span>Scheduling</span>
   </nav>
   <header class="page-header">
     <div>
-      <h3>Lead appointments</h3>
+      <h3>Scheduling</h3>
       <p>Manage advisor availability and book time with your leads.</p>
     </div>
     <div class="header-actions">
@@ -27,15 +28,6 @@
       </button>
     </div>
   </header>
-  <nav class="tabs" aria-label="Scheduling views">
-    <a routerLink="/manager/scheduling">Project bookings</a
-    ><a
-      routerLink="/manager/scheduling/leads"
-      class="active"
-      aria-current="page"
-      >Lead appointments</a
-    >
-  </nav>
   @if(contextLoading){<app-manager-list-loader
     label="Loading scheduling workspace…"
   />} @if(!context && loadError){
@@ -107,7 +99,7 @@
     before configuring appointments.
   </div>
   }
-  <section class="card" aria-label="Lead appointments">
+  <section class="card" aria-label="Scheduling">
     <div class="list-title">
       <h4>Appointments ({{total}})</h4>
       <button
@@ -279,6 +271,7 @@
   </section>
   }
 </div>
+}
 <ng-template #actions let-row
   ><div class="row-actions">
     <button
@@ -331,10 +324,71 @@
     </header>
     <form [formGroup]="booking" (ngSubmit)="saveBooking()">
       <fieldset class="form-body" [disabled]="saving">
+        @if(embedded && !editing){
+        <fieldset class="booking-kind">
+          <legend>Booking type</legend>
+          <label
+            ><input
+              type="radio"
+              name="booking-kind"
+              (change)="chooseProject()"
+            />
+            Project</label
+          >
+          <label
+            ><input type="radio" name="booking-kind" checked />
+            Appointment</label
+          >
+        </fieldset>
+        } @if(!editing){
+        <fieldset class="booking-kind">
+          <legend>Contact</legend>
+          <label
+            ><input
+              type="radio"
+              name="contact-kind"
+              [checked]="contactMode==='existing'"
+              (change)="changeContactMode('existing')"
+            />
+            Existing contact</label
+          >
+          <label
+            ><input
+              type="radio"
+              name="contact-kind"
+              [checked]="contactMode==='new'"
+              (change)="changeContactMode('new')"
+            />
+            New contact</label
+          >
+        </fieldset>
+        }
         <div class="form-grid">
-          @if(!editing){
+          @if(!editing && contactMode==='new'){
+          <div>
+            <label for="contact-name">Name *</label
+            ><input
+              id="contact-name"
+              [formControl]="contact.controls.displayName"
+              maxlength="160"
+              autocomplete="name"
+              [class.invalid]="contact.controls.displayName.touched && contact.controls.displayName.invalid"
+            />
+          </div>
+          <div>
+            <label for="contact-email">Email *</label
+            ><input
+              id="contact-email"
+              type="email"
+              [formControl]="contact.controls.email"
+              maxlength="320"
+              autocomplete="email"
+              [class.invalid]="contact.controls.email.touched && contact.controls.email.invalid"
+            />
+          </div>
+          } @if(!editing && contactMode==='existing'){
           <div class="wide">
-            <label for="lead-search">Find a lead</label
+            <label for="lead-search">Find a contact</label
             ><input
               id="lead-search"
               type="search"
@@ -342,24 +396,25 @@
               placeholder="Search by name or interest"
               maxlength="200"
             />@if(leadSearching){
-            <p class="muted">Searching leads…</p>
+            <p class="muted">Searching contacts…</p>
             }
             <p class="muted">
-              Search more specifically if the lead is not in the first 25
+              Search more specifically if the contact is not in the first 25
               results.
             </p>
           </div>
-          }
+          } @if(editing || contactMode==='existing'){
           <div>
-            <label>Lead</label
+            <label>Contact</label
             ><app-manager-select
               [options]="leadOptions"
               formControlName="leadId"
               [disabled]="saving||!!editing"
-              ariaLabel="Appointment lead"
+              ariaLabel="Appointment contact"
               [class.invalid]="booking.controls.leadId.touched&&booking.controls.leadId.invalid"
             />
           </div>
+          }
           <div>
             <label>Advisor</label
             ><app-manager-select
@@ -372,7 +427,11 @@
           </div>
           <div>
             <label for="booking-date">Date in customer timezone</label>
-            <app-manager-calendar [value]="booking.controls.date.value" (valueChange)="booking.controls.date.setValue($event)" [disabled]="saving" />
+            <app-manager-calendar
+              [value]="booking.controls.date.value"
+              (valueChange)="booking.controls.date.setValue($event)"
+              [disabled]="saving"
+            />
             <input
               id="booking-date"
               type="date"
@@ -425,7 +484,15 @@
             </button>
           </div>
           <div class="wide">
-            <label for="appointment-note">Appointment note (optional)</label
+            @if(editing){<label for="appointment-details"
+              >Contact and assessment</label
+            ><textarea
+              id="appointment-details"
+              readonly
+              rows="7"
+              [value]="appointmentDetails"
+            ></textarea
+            >} <label for="appointment-note">Description (optional)</label
             ><textarea
               id="appointment-note"
               formControlName="description"
