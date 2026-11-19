@@ -239,6 +239,27 @@ describe('SophiaGeminiLiveBrowserAdapter', () => {
 });
 
 describe('SophiaDailyConversationBrowserAdapter', () => {
+  it('does not interrupt native generation on user speech or the final transcript', async () => {
+    const tavus = jasmine.createSpyObj<SophiaTavusClientService>('Tavus', ['connect', 'interrupt', 'speak', 'respond', 'disconnect']);
+    tavus.disconnect.and.resolveTo();
+    tavus.connect.and.resolveTo();
+    TestBed.configureTestingModule({ providers: [SophiaDailyConversationBrowserAdapter, { provide: SophiaTavusClientService, useValue: tavus }] });
+    const adapter = TestBed.inject(SophiaDailyConversationBrowserAdapter);
+    const activity = jasmine.createSpy('activity');
+    const payload = response();
+    payload.avatar.streamUrl = 'https://test.daily.co/conversation';
+    await adapter.connect({ response: payload, audioBridge: 'webrtc-track', media: {
+      remoteAudio: document.createElement('audio'), avatarAudio: document.createElement('audio'), avatarVideo: document.createElement('video'),
+    }, callbacks: { ...callbacks(), onUserActivity: activity } });
+    const connected = tavus.connect.calls.mostRecent().args[0];
+    connected.onUserUtterance?.();
+    connected.onUserUtterance?.();
+    expect(activity).toHaveBeenCalledTimes(2);
+    expect(tavus.interrupt).not.toHaveBeenCalled();
+    adapter.interrupt();
+    expect(tavus.interrupt).toHaveBeenCalledTimes(1);
+  });
+
   it('routes typed user input to the Tavus conversation transport', () => {
     const tavus = jasmine.createSpyObj<SophiaTavusClientService>(
       'SophiaTavusClientService',

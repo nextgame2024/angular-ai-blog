@@ -269,10 +269,10 @@ export class SophiaDailyConversationBrowserAdapter
         );
       },
       onEvent: (event) => request.callbacks.onEvent({ type: event }),
-      onUserUtterance: () => {
-        this.interrupt();
-        request.callbacks.onUserActivity();
-      },
+      // Native conversation transport owns speech interruption. A final user
+      // transcript can arrive after response generation starts; interrupting
+      // here would cancel the answer to the question we just heard.
+      onUserUtterance: () => request.callbacks.onUserActivity(),
       onReplicaSpeechStarted: request.callbacks.onAssistantSpeechStarted,
       onReplicaSpeechStopped: request.callbacks.onAssistantSpeechStopped,
       onReplicaUtterance: request.callbacks.onAssistantTurnCompleted,
