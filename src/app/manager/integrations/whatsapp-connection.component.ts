@@ -1,4 +1,5 @@
 import { WhatsAppResponseSettingsComponent } from './whatsapp-response-settings.component';
+import { WhatsAppSignupComponent } from './whatsapp-signup.component';
 import { CommonModule } from '@angular/common';
 import { Component, DestroyRef, OnInit, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -15,6 +16,7 @@ import { ManagerListLoaderComponent } from '../components/shared/manager-list-lo
     CommonModule,
     RouterLink,
     WhatsAppResponseSettingsComponent,
+    WhatsAppSignupComponent,
     ManagerToastComponent,
     ManagerListLoaderComponent,
   ],

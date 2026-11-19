@@ -2,6 +2,7 @@ import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of, Subject, throwError } from 'rxjs';
 import { WhatsAppConnectionComponent } from './whatsapp-connection.component';
+import { WhatsAppSignupService } from './whatsapp-signup.service';
 import {
   WhatsAppConnectionService,
   WhatsAppChannelState,
@@ -25,6 +26,7 @@ describe('Company WhatsApp receiving controls', () => {
       providers: [
         provideRouter([]),
         { provide: WhatsAppConnectionService, useValue: api },
+        { provide: WhatsAppSignupService, useValue: { settings: () => of({ available: false, connection: null }) } },
       ],
     }).compileComponents();
     fixture = TestBed.createComponent(WhatsAppConnectionComponent);
