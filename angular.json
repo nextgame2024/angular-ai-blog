@@ -22,7 +22,6 @@
             "assets": [
               "src/favicon.ico",
               "src/assets",
-              { "glob": "*.html", "input": "src/public-legal", "output": "/" },
               {
                 "glob": "**/*",
                 "input": "node_modules/primeicons",

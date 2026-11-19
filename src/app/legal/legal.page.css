@@ -1,0 +1,16 @@
+:host { display: block; padding: 24px 16px; }
+.legal-page { box-sizing: border-box; max-width: 880px; margin: 0 auto; padding: 32px; background: #fff; color: #172239; border: 1px solid #e2e8f0; border-radius: 16px; font-size: 16px; line-height: 1.75; overflow-wrap: anywhere; }
+h1 { margin: 16px 0; font-size: 30px; font-weight: 750; line-height: 1.25; }
+h2 { margin: 28px 0 12px; font-size: 22px; font-weight: 700; line-height: 1.3; }
+p { margin: 12px 0; }
+ul, ol { padding-left: 24px; margin: 16px 0; }
+ul { list-style: disc; }
+ol { list-style: decimal; }
+li { margin: 8px 0; }
+a { color: #3847be; text-decoration: underline; text-underline-offset: 3px; }
+a:focus-visible { outline: 3px solid #0d9488; outline-offset: 4px; }
+small { color: #526078; }
+:host-context(html.dark) .legal-page { background: #172239; color: #e2e8f0; border-color: #334155; }
+:host-context(html.dark) a { color: #a5b4fc; }
+:host-context(html.dark) small { color: #cbd5e1; }
+@media (max-width: 600px) { :host { padding: 12px; } .legal-page { padding: 20px; } h1 { font-size: 26px; } h2 { font-size: 20px; } }

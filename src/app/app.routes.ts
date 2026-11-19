@@ -10,6 +10,10 @@ import {
 } from './manager/store/explore/manager.reducer';
 
 export const appRoutes: Route[] = [
+  { path: 'privacy-policy', title: 'Privacy policy | Sophia Ai', loadComponent: () => import('./legal/privacy-policy.page').then(m => m.PrivacyPolicyPage) },
+  { path: 'data-deletion', title: 'Data deletion | Sophia Ai', loadComponent: () => import('./legal/data-deletion.page').then(m => m.DataDeletionPage) },
+  { path: 'privacy-policy.html', pathMatch: 'full', redirectTo: 'privacy-policy' },
+  { path: 'data-deletion.html', pathMatch: 'full', redirectTo: 'data-deletion' },
   { path: 'forms/:token', loadComponent: () => import('./public-forms/public-form.page').then(m => m.PublicFormPage) },
   {
     path: '',
