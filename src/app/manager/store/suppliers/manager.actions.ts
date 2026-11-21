@@ -12,7 +12,12 @@ export const ManagerSuppliersActions = createActionGroup({
   events: {
     'Set Suppliers Search Query': props<{ query: string }>(),
 
-    'Load Suppliers': props<{ page: number }>(),
+    'Load Suppliers': props<{
+      page: number;
+      limit?: number;
+      sort?: string;
+      direction?: 'asc' | 'desc';
+    }>(),
     'Load Suppliers Success': props<{ result: PagedResult<BmSupplier> }>(),
     'Load Suppliers Failure': props<{ error: string }>(),
 
@@ -51,7 +56,10 @@ export const ManagerSuppliersActions = createActionGroup({
     'Save Supplier Contact Success': props<{ contact: BmSupplierContact }>(),
     'Save Supplier Contact Failure': props<{ error: string }>(),
 
-    'Delete Supplier Contact': props<{ supplierId: string; contactId: string }>(),
+    'Delete Supplier Contact': props<{
+      supplierId: string;
+      contactId: string;
+    }>(),
     'Delete Supplier Contact Success': props<{ contactId: string }>(),
     'Delete Supplier Contact Failure': props<{ error: string }>(),
 
@@ -72,10 +80,15 @@ export const ManagerSuppliersActions = createActionGroup({
     'Close Supplier Material Form': emptyProps(),
 
     'Save Supplier Material': props<{ supplierId: string; payload: any }>(),
-    'Save Supplier Material Success': props<{ supplierMaterial: BmSupplierMaterial }>(),
+    'Save Supplier Material Success': props<{
+      supplierMaterial: BmSupplierMaterial;
+    }>(),
     'Save Supplier Material Failure': props<{ error: string }>(),
 
-    'Remove Supplier Material': props<{ supplierId: string; materialId: string }>(),
+    'Remove Supplier Material': props<{
+      supplierId: string;
+      materialId: string;
+    }>(),
     'Remove Supplier Material Success': props<{ materialId: string }>(),
     'Remove Supplier Material Failure': props<{ error: string }>(),
   },

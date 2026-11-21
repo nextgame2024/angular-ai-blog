@@ -8,6 +8,7 @@ import { ManagerSuppliersActions } from './manager.actions';
 import { ManagerSuppliersService } from '../../services/manager.suppliers.service';
 import {
   selectManagerSuppliersSearchQuery,
+  selectManagerSuppliersState,
   selectManagerEditingSupplierId,
   selectManagerEditingSupplierContactId,
   selectManagerEditingSupplierMaterialId,
@@ -27,23 +28,31 @@ export class ManagerSuppliersEffects {
   loadSuppliers$ = createEffect(() =>
     this.actions$.pipe(
       ofType(ManagerSuppliersActions.loadSuppliers),
-      withLatestFrom(this.store.select(selectManagerSuppliersSearchQuery)),
-      switchMap(([{ page }, q]) =>
-        this.api.listSuppliers({ page, limit: 20, q: q || undefined }).pipe(
-          map((result) =>
-            ManagerSuppliersActions.loadSuppliersSuccess({ result }),
-          ),
-          catchError((err) =>
-            of(
-              ManagerSuppliersActions.loadSuppliersFailure({
-                error:
-                  err?.error?.error ||
-                  err?.message ||
-                  'Failed to load suppliers',
-              }),
+      withLatestFrom(this.store.select(selectManagerSuppliersState)),
+      switchMap(([{ page }, state]) =>
+        this.api
+          .listSuppliers({
+            page,
+            limit: state.suppliersLimit,
+            q: state.suppliersSearchQuery || undefined,
+            sort: state.suppliersSort,
+            direction: state.suppliersDirection,
+          })
+          .pipe(
+            map((result) =>
+              ManagerSuppliersActions.loadSuppliersSuccess({ result }),
+            ),
+            catchError((err) =>
+              of(
+                ManagerSuppliersActions.loadSuppliersFailure({
+                  error:
+                    err?.error?.error ||
+                    err?.message ||
+                    'Failed to load suppliers',
+                }),
+              ),
             ),
           ),
-        ),
       ),
     ),
   );
@@ -59,7 +68,9 @@ export class ManagerSuppliersEffects {
 
         return req$.pipe(
           map((res) =>
-            ManagerSuppliersActions.saveSupplierSuccess({ supplier: res.supplier }),
+            ManagerSuppliersActions.saveSupplierSuccess({
+              supplier: res.supplier,
+            }),
           ),
           catchError((err) =>
             of(

@@ -1,27 +1,13 @@
 import { createReducer, on } from '@ngrx/store';
 import { ManagerSuppliersActions } from './manager.actions';
 import { initialManagerSuppliersState } from './manager.state';
-import type { BmSupplier, BmSupplierContact, BmSupplierMaterial } from '../../types/suppliers.interface';
+import type {
+  BmSupplier,
+  BmSupplierContact,
+  BmSupplierMaterial,
+} from '../../types/suppliers.interface';
 
 export const MANAGER_SUPPLIERS_FEATURE_KEY = 'managerSuppliers';
-
-const sortSuppliersForList = (items: BmSupplier[]): BmSupplier[] =>
-  [...items].sort((a, b) => {
-    const aArchived = (a.status ?? 'active') === 'archived';
-    const bArchived = (b.status ?? 'active') === 'archived';
-    if (aArchived !== bArchived) return aArchived ? 1 : -1;
-
-    const nameCompare = (a.supplierName ?? '').localeCompare(
-      b.supplierName ?? '',
-      undefined,
-      { numeric: true, sensitivity: 'base' },
-    );
-    if (nameCompare !== 0) return nameCompare;
-
-    const aCreated = a.createdAt ? Date.parse(a.createdAt) : 0;
-    const bCreated = b.createdAt ? Date.parse(b.createdAt) : 0;
-    return bCreated - aCreated;
-  });
 
 export const managerSuppliersReducer = createReducer(
   initialManagerSuppliersState,
@@ -31,29 +17,23 @@ export const managerSuppliersReducer = createReducer(
     suppliersSearchQuery: query,
   })),
 
-  on(ManagerSuppliersActions.loadSuppliers, (state, { page }) => ({
-    ...state,
-    suppliersLoading: true,
-    suppliersError: null,
-    suppliersPage: page,
-  })),
+  on(
+    ManagerSuppliersActions.loadSuppliers,
+    (state, { page, limit, sort, direction }) => ({
+      ...state,
+      suppliersLoading: true,
+      suppliersError: null,
+      suppliersPage: page,
+      suppliersLimit: limit ?? state.suppliersLimit,
+      suppliersSort: sort ?? state.suppliersSort,
+      suppliersDirection: direction ?? state.suppliersDirection,
+    }),
+  ),
 
   on(ManagerSuppliersActions.loadSuppliersSuccess, (state, { result }) => ({
     ...state,
     suppliersLoading: false,
-    suppliers: sortSuppliersForList(
-      result.page > 1
-        ? [
-            ...state.suppliers,
-            ...(result.items ?? []).filter(
-              (s) =>
-                !state.suppliers.some(
-                  (existing) => existing.supplierId === s.supplierId,
-                ),
-            ),
-          ]
-        : (result.items ?? []),
-    ),
+    suppliers: result.items ?? [],
     suppliersPage: result.page,
     suppliersLimit: result.limit,
     suppliersTotal: result.total,
@@ -173,7 +153,7 @@ export const managerSuppliersReducer = createReducer(
     return {
       ...state,
       suppliersLoading: false,
-      suppliers: sortSuppliersForList(next),
+      suppliers: next,
       suppliersViewMode: 'form' as const,
       editingSupplierId: supplier.supplierId,
       supplierFormTab: state.editingSupplierId
@@ -194,21 +174,23 @@ export const managerSuppliersReducer = createReducer(
     suppliersError: null,
   })),
 
-  on(ManagerSuppliersActions.removeSupplierSuccess, (state, { supplierId, action }) => ({
-    ...state,
-    suppliersLoading: false,
-    suppliers: sortSuppliersForList(
-      action === 'deleted'
-        ? state.suppliers.filter((s) => s.supplierId !== supplierId)
-        : state.suppliers.map((s) =>
-            s.supplierId === supplierId ? { ...s, status: 'archived' } : s,
-          ),
-    ),
-    suppliersTotal:
-      action === 'deleted'
-        ? Math.max(0, state.suppliersTotal - 1)
-        : state.suppliersTotal,
-  })),
+  on(
+    ManagerSuppliersActions.removeSupplierSuccess,
+    (state, { supplierId, action }) => ({
+      ...state,
+      suppliersLoading: false,
+      suppliers:
+        action === 'deleted'
+          ? state.suppliers.filter((s) => s.supplierId !== supplierId)
+          : state.suppliers.map((s) =>
+              s.supplierId === supplierId ? { ...s, status: 'archived' } : s,
+            ),
+      suppliersTotal:
+        action === 'deleted'
+          ? Math.max(0, state.suppliersTotal - 1)
+          : state.suppliersTotal,
+    }),
+  ),
 
   on(ManagerSuppliersActions.removeSupplierFailure, (state, { error }) => ({
     ...state,

@@ -1,12 +1,12 @@
 <ng-template #friendlyLink let-row>
   @if (row.publicationToken && row.friendlyUrl) {
     <div class="friendly-link">
-      <a [href]="row.friendlyUrl" target="_blank" rel="noopener noreferrer"
-        [attr.aria-label]="'Open ' + row.name + ' in a new tab'">{{ row.friendlyUrl }}</a>
       <button class="btn icon-btn" type="button" (click)="copyFriendlyUrl(row)"
         title="Copy friendly URL" [attr.aria-label]="'Copy friendly URL for ' + row.name">
         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2" /><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3" /></svg>
       </button>
+      <a [href]="row.friendlyUrl" target="_blank" rel="noopener noreferrer"
+        [attr.aria-label]="'Open ' + row.name + ' in a new tab'">{{ row.friendlyUrl }}</a>
     </div>
   } @else {
     <span class="muted">{{ row.publicationToken ? 'No friendly URL configured' : 'Not published' }}</span>

@@ -1,5 +1,5 @@
 import {TestBed,ComponentFixture} from '@angular/core/testing';
-import {of,Subject} from 'rxjs';
+import {of,Subject,throwError} from 'rxjs';
 import {CollegeMatchingComponent} from './college-matching.component';
 import {StudentOperationsService} from '../student-operations.service';
 
@@ -41,6 +41,33 @@ describe('PTY college matching',()=>{
     api.xeroCollegeMatches.and.returnValue(of({...result,colleges:[{collegeId:'college',name:'Legal Education Holdings Pty Ltd',tradingName:'English Unlimited',acronym:'EU'}]}));
     const c=fixture.componentInstance;c.load();const options=c.options;fixture.detectChanges();fixture.detectChanges();
     expect(c.options).toBe(options);expect(c.options[0]).toEqual({value:'college',label:'Legal Education Holdings Pty Ltd — English Unlimited — EU'});
+  });
+  it('opens review in a dialog and switches to supplier matching',()=>{
+    const c=fixture.componentInstance;c.review(row);fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]')).not.toBeNull();
+    expect(c.kind.value).toBe('college');c.kind.setValue('supplier');fixture.detectChanges();
+    const dialog=fixture.nativeElement.querySelector('[role="dialog"]');
+    expect(dialog.textContent).toContain('Confirm supplier');expect(dialog.textContent).not.toContain('Other business customer');
+    c.supplierOptions=[{value:'supplier',label:'Supplier'}];c.supplier.setValue('supplier');c.save('supplier');
+    expect(api.resolveXeroCollege.calls.mostRecent().args[2]).toEqual({classification:'supplier',collegeId:null,supplierId:'supplier',expectedRevision:0});
+  });
+  it('prefills creation and requires a name, then creates a closed college',()=>{
+    const c=fixture.componentInstance;c.review(row);c.startCreate(true);
+    expect(c.creation.controls.email.value).toBe(row.email);c.creation.controls.name.setValue('');c.save('college',true);
+    expect(api.resolveXeroCollege).not.toHaveBeenCalled();c.creation.controls.name.setValue('New college');c.save('college',true);
+    expect(api.resolveXeroCollege.calls.mostRecent().args[2].create).toEqual(jasmine.objectContaining({name:'New college',closed:true}));
+  });
+  it('keeps the modal and entered details on failure and shows the error inside it',()=>{
+    api.resolveXeroCollege.and.returnValue(throwError(()=>({status:500})));
+    const c=fixture.componentInstance;c.review(row);c.startCreate();c.save('college',true);fixture.detectChanges();
+    expect(c.selected).toBe(row);expect(c.creation.controls.name.value).toBe(row.name);expect(c.creation.enabled).toBeTrue();
+    expect(fixture.nativeElement.querySelector('[role="dialog"]').textContent).toContain('Your entries have been kept');
+  });
+  it('closes with Escape and refreshes the current page after saving',()=>{
+    const c=fixture.componentInstance;c.review(row);fixture.detectChanges();
+    fixture.nativeElement.querySelector('[role="dialog"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    expect(c.selected).toBeNull();c.data={...result,page:3,total:100};c.review(row);c.save('other');
+    expect(api.xeroCollegeMatches.calls.mostRecent().args[1].page).toBe(3);
   });
   for(const width of [390,1440])for(const dark of [false,true])it(`keeps contact review usable at ${width}px in ${dark?'dark':'light'} mode`,()=>{
     fixture.componentInstance.review(row);fixture.detectChanges();const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='1000px';document.body.appendChild(frame);

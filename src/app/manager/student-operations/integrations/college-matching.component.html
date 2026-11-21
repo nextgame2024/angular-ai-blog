@@ -1,6 +1,6 @@
 <section aria-label="PTY college matching">
   <h4>Review college contacts</h4><p>College names and trading names are used to match PTY contacts. Review unclear matches, or keep other business customers separate from colleges.</p>
-  @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}
+  @if(message&&!selected){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}
   @if(data?.summary;as summary){<div class="summary" aria-label="College sync totals">
     <div><strong>{{summary.pendingSalesContacts}}</strong><span>Pending match · active sales contacts</span></div>
     <div><strong>{{summary.linkedTransactions}} / {{summary.salesTransactions}}</strong><span>Sales transactions linked to colleges</span></div>
@@ -8,12 +8,44 @@
     <div><strong>{{summary.archivedContacts}}</strong><span>Archived contacts</span></div>
   </div>}
   <div class="filters"><app-manager-select [formControl]="scope" [options]="scopes" ariaLabel="Contact scope" /><input [formControl]="search" placeholder="Search Xero contact name or email" aria-label="Search contacts" (keydown.enter)="load()" /><app-manager-select [formControl]="status" [options]="statuses" ariaLabel="Mapping status" /><button class="btn" type="button" (click)="load()" [disabled]="loading||busy">Search</button></div>
-  @if(selected;as row){<div class="review"><strong>{{row.name}}</strong><label>College<app-manager-select [formControl]="college" [options]="options" [searchable]="true" placeholder="Select a college" ariaLabel="College" [attr.aria-invalid]="college.touched&&!college.value" /></label><p>For new commissions, confirm the contact that should receive the invoice.</p>
-    <div class="actions"><button class="btn primary" type="button" (click)="save('college')" [disabled]="busy">Confirm college recipient</button><button class="btn" type="button" (click)="save('other')" [disabled]="busy">Other business customer</button><button class="btn" type="button" (click)="save('unresolved')" [disabled]="busy">Leave unresolved</button><button class="btn" type="button" (click)="selected=null" [disabled]="busy">Cancel</button></div></div>}
   <div class="records">@if(loading){<app-manager-list-loader label="Loading college mappings…" [overlay]="!!data" />}
-  @if(data){<table><thead><tr><th [attr.aria-sort]="direction==='asc'?'ascending':'descending'"><button type="button" class="sort-button" (click)="sort()" [disabled]="busy">Xero contact <span class="sort-indicator" aria-hidden="true"></span></button></th><th>College / classification</th><th>Transactions</th><th>Action</th></tr></thead><tbody>
-    @for(row of data.items;track row.contactId){<tr><td data-label="Xero contact"><strong>{{row.name}}</strong><small>{{row.contactStatus==='ARCHIVED'?'Archived contact':''}}</small><small>{{row.email||'—'}}</small></td><td data-label="College / classification">{{row.collegeName||(row.classification==='other'?'Other business customer':row.classification==='college'?'College unavailable — review':'Unresolved')}}</td><td data-label="Transactions">{{row.invoiceCount}}</td><td data-label="Action"><button class="btn" type="button" (click)="review(row)" [disabled]="busy">Review</button></td></tr>}
+  @if(data){<table><thead><tr><th [attr.aria-sort]="direction==='asc'?'ascending':'descending'"><button type="button" class="sort-button" (click)="sort()" [disabled]="busy">Xero contact <span class="sort-indicator" aria-hidden="true"></span></button></th><th>College / supplier / classification</th><th>Transactions</th><th>Action</th></tr></thead><tbody>
+    @for(row of data.items;track row.contactId){<tr><td data-label="Xero contact"><strong>{{row.name}}</strong><small>{{row.contactStatus==='ARCHIVED'?'Archived contact':''}}</small><small>{{row.email||'—'}}</small></td><td data-label="College / supplier / classification">{{row.supplierName||row.collegeName||(row.classification==='supplier'?'Supplier unavailable — review':row.classification==='other'?'Other business customer':row.classification==='college'?'College unavailable — review':'Unresolved')}}</td><td data-label="Transactions">{{row.invoiceCount}}</td><td data-label="Action"><button class="btn" type="button" (click)="review(row)" [disabled]="busy">Review</button></td></tr>}
   </tbody></table>@if(!data.items.length){<p>No contacts match these filters.</p>}
   <footer><span>{{data.total}} contacts matching these filters</span><div class="actions"><app-manager-select [formControl]="pageSize" [options]="pageSizes" ariaLabel="Contacts per page" panelDirection="up" /><button class="btn" (click)="load(1)" [disabled]="loading||busy||data.page===1" aria-label="First page">«</button><button class="btn" (click)="load(data.page-1)" [disabled]="loading||busy||data.page===1" aria-label="Previous page">‹</button><app-page-jump [page]="data.page" [totalPages]="pages" [disabled]="loading||busy" (pageChange)="load($event)" /><button class="btn" (click)="load(data.page+1)" [disabled]="loading||busy||data.page>=pages" aria-label="Next page">›</button><button class="btn" (click)="load(pages)" [disabled]="loading||busy||data.page>=pages" aria-label="Last page">»</button></div></footer>}
   </div>
 </section>
+
+@if(selected;as row){
+ <div class="review-backdrop" (click)="close()">
+  <div class="review-modal" role="dialog" aria-modal="true" aria-labelledby="contact-review-title" tabindex="-1" cdkTrapFocus [cdkTrapFocusAutoCapture]="true" (click)="$event.stopPropagation()" (keydown.escape)="close()">
+   <header><h2 id="contact-review-title">Review contact</h2><button class="btn" aria-label="Close review" (click)="close()" [disabled]="busy">✕</button></header>
+   <div class="review-body">
+    @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}
+    <dl class="contact-details"><div><dt>Xero contact</dt><dd>{{row.name}}</dd></div><div><dt>Email</dt><dd>{{row.email||'Not provided'}}</dd></div><div><dt>Contact status</dt><dd>{{row.contactStatus||'Not provided'}}</dd></div><div><dt>Sales transactions</dt><dd>{{row.invoiceCount}}</dd></div></dl>
+    <fieldset class="record-kind"><legend>Link contact as</legend><label><input type="radio" [formControl]="kind" value="college" /> College</label><label><input type="radio" [formControl]="kind" value="supplier" /> Supplier</label></fieldset>
+    @if(!creating){
+     @if(kind.value==='college'){<label class="field">College<app-manager-select [formControl]="college" [options]="options" [searchable]="true" placeholder="Search existing colleges" ariaLabel="College" [attr.aria-invalid]="college.touched&&!college.value" /></label><p>Confirm the contact that should receive college commission invoices.</p>}
+     @else{<label class="field">Supplier<app-manager-select [formControl]="supplier" [options]="supplierOptions" [searchable]="true" placeholder="Search existing suppliers" ariaLabel="Supplier" [attr.aria-invalid]="supplier.touched&&!supplier.value" /></label>}
+     <p>Can't find an existing {{kind.value}}?</p><div class="actions"><button class="btn" (click)="startCreate()" [disabled]="busy">Create {{kind.value}}</button><button class="btn" (click)="startCreate(true)" [disabled]="busy">Create and close</button></div>
+    }@else{
+     <h3>Create {{createClosed?'closed / inactive ':''}}{{kind.value}}</h3>
+     @if(createClosed){<p>This creates an archived record and links this contact. It will not be available for new active work.</p>}
+     <div [formGroup]="creation" class="create-fields">
+      <label class="field">Name *<input formControlName="name" maxlength="200" [attr.aria-invalid]="creation.controls.name.touched&&(creation.controls.name.invalid||!creation.controls.name.value.trim())" /></label>
+      <label class="field">Email<input formControlName="email" type="email" [attr.aria-invalid]="creation.controls.email.touched&&creation.controls.email.invalid" /></label>
+      <label class="field">Phone<input formControlName="phone" maxlength="50" /></label>
+      @if(kind.value==='supplier'){<label class="field">Type<app-manager-select formControlName="supplierType" [options]="supplierTypes" ariaLabel="Supplier type" /></label>}
+      <label class="field">Notes<textarea formControlName="notes" maxlength="4000" rows="3"></textarea></label>
+     </div>
+    }
+   </div>
+   <footer class="actions">
+    @if(creating){<button class="btn primary" (click)="save(kind.value,true)" [disabled]="busy">{{busy?'Saving…':createClosed?'Create and close':'Create and link'}}</button><button class="btn" (click)="creating=false" [disabled]="busy">Back to matching</button>}
+    @else if(kind.value==='supplier'){<button class="btn primary" (click)="save('supplier')" [disabled]="busy">Confirm supplier</button>}
+    @else{<button class="btn primary" (click)="save('college')" [disabled]="busy">Confirm college recipient</button><button class="btn" (click)="save('other')" [disabled]="busy">Other business customer</button><button class="btn" (click)="save('unresolved')" [disabled]="busy">Leave unresolved</button>}
+    <button class="btn" (click)="close()" [disabled]="busy">Cancel</button>
+   </footer>
+  </div>
+ </div>
+}

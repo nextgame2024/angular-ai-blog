@@ -11,6 +11,8 @@ export type SupplierMaterialsViewMode = 'list' | 'form';
 
 export interface ManagerSuppliersState {
   suppliersSearchQuery: string;
+  suppliersSort: string;
+  suppliersDirection: 'asc' | 'desc';
 
   suppliers: BmSupplier[];
   suppliersLoading: boolean;
@@ -45,12 +47,14 @@ export interface ManagerSuppliersState {
 
 export const initialManagerSuppliersState: ManagerSuppliersState = {
   suppliersSearchQuery: '',
+  suppliersSort: 'name',
+  suppliersDirection: 'asc',
 
   suppliers: [],
   suppliersLoading: false,
   suppliersError: null,
   suppliersPage: 1,
-  suppliersLimit: 20,
+  suppliersLimit: 25,
   suppliersTotal: 0,
   suppliersViewMode: 'list',
   editingSupplierId: null,

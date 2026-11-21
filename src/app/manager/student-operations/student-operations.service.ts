@@ -476,7 +476,7 @@ export class StudentOperationsService {
     return this.http.get<import('./student-operations.types').XeroCollegeMatchResult>(`${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/college-matching`,{headers:this.headers(),params:query});
   }
 
-  resolveXeroCollege(connectionId:string,contactId:string,body:{classification:'college'|'other'|'unresolved';collegeId:string|null;expectedRevision:number}){
+  resolveXeroCollege(connectionId:string,contactId:string,body:{classification:'college'|'supplier'|'other'|'unresolved';collegeId:string|null;supplierId?:string|null;expectedRevision:number;create?:{name:string;email:string;phone:string;notes:string;closed:boolean;supplierType:'services'|'products'}}){
     return this.http.post(`${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/college-matching/${encodeURIComponent(contactId)}`,body,{headers:this.headers()});
   }
 

@@ -1,6 +1,10 @@
 export type SupplierStatus = 'active' | 'archived' | string;
 
+export type SupplierType = 'services' | 'products';
+export type SupplierSort = 'name' | 'email' | 'mobile' | 'type' | 'status';
+
 export interface BmSupplier {
+  supplierType?: SupplierType;
   supplierId: string;
   userId?: string | null;
   companyId?: string | null;

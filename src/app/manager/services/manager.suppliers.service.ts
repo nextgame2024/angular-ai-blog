@@ -24,11 +24,16 @@ export class ManagerSuppliersService {
     limit: number;
     q?: string;
     status?: string;
+    sort?: string;
+    direction?: string;
   }): Observable<PagedResult<BmSupplier>> {
     let httpParams = new HttpParams()
       .set('page', String(params.page ?? 1))
       .set('limit', String(params.limit ?? 20));
     if (params.q) httpParams = httpParams.set('q', params.q);
+    if (params.sort) httpParams = httpParams.set('sort', params.sort);
+    if (params.direction)
+      httpParams = httpParams.set('direction', params.direction);
     if (params.status) httpParams = httpParams.set('status', params.status);
 
     return this.http
@@ -68,9 +73,10 @@ export class ManagerSuppliersService {
   removeSupplier(
     supplierId: string,
   ): Observable<{ supplierId: string; action: 'archived' | 'deleted' }> {
-    return this.http.delete<{ supplierId: string; action: 'archived' | 'deleted' }>(
-      `${this.suppliersBase}/${supplierId}`,
-    );
+    return this.http.delete<{
+      supplierId: string;
+      action: 'archived' | 'deleted';
+    }>(`${this.suppliersBase}/${supplierId}`);
   }
 
   // Contacts

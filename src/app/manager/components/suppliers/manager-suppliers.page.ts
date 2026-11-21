@@ -17,12 +17,12 @@ import {
 import { RouterModule } from '@angular/router';
 import { Actions, ofType } from '@ngrx/effects';
 import { Store } from '@ngrx/store';
-import { combineLatest, Observable, Subject, of } from 'rxjs';
+import { combineLatest, Observable, Subject } from 'rxjs';
 import {
   debounceTime,
   distinctUntilChanged,
   map,
-  switchMap,
+  skip,
   take,
   takeUntil,
 } from 'rxjs/operators';
@@ -50,37 +50,48 @@ import {
   selectManagerSuppliersError,
   selectManagerSuppliersLoading,
   selectManagerSuppliersPage,
+  selectManagerSuppliersState,
   selectManagerSuppliersSearchQuery,
   selectManagerSuppliersTotal,
   selectManagerSuppliersViewMode,
 } from '../../store/suppliers/manager.selectors';
 
 import { ManagerMaterialsService } from '../../services/manager.materials.service';
-import { TownPlannerV2Service } from '../../../townplanner/services/townplanner_v2.service';
-import { TownPlannerV2AddressSuggestion } from '../../../townplanner/store/townplanner_v2.state';
+import { ManagerAddressAutocompleteComponent } from '../shared/manager-address-autocomplete/manager-address-autocomplete.component';
+import { ManagerListLoaderComponent } from '../shared/manager-list-loader/manager-list-loader.component';
+import { ManagerToastComponent } from '../shared/manager-toast/manager-toast.component';
+import { PageJumpComponent } from '../../../shared/components/page-jump/page-jump.component';
 import { ManagerSelectComponent } from '../shared/manager-select/manager-select.component';
 import type { BmMaterial } from '../../types/materials.interface';
 import type {
   BmSupplier,
+  SupplierSort,
   BmSupplierContact,
   BmSupplierMaterial,
 } from '../../types/suppliers.interface';
 import type { SupplierFormTab } from '../../store/suppliers/manager.state';
 
 @Component({
-    selector: 'app-manager-suppliers-page',
-    imports: [CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent],
-    templateUrl: './manager-suppliers.page.html',
-    styleUrls: ['./manager-suppliers.page.css']
+  selector: 'app-manager-suppliers-page',
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterModule,
+    ManagerSelectComponent,
+    ManagerAddressAutocompleteComponent,
+    ManagerListLoaderComponent,
+    ManagerToastComponent,
+    PageJumpComponent,
+  ],
+  templateUrl: './manager-suppliers.page.html',
+  styleUrls: ['./manager-suppliers.page.css'],
 })
 export class ManagerSuppliersPageComponent
   implements OnInit, OnDestroy, AfterViewInit
 {
   private destroy$ = new Subject<void>();
-  private infiniteObserver?: IntersectionObserver;
   private contactsInfiniteObserver?: IntersectionObserver;
   private materialsInfiniteObserver?: IntersectionObserver;
-  private isLoadingMore = false;
   private isLoadingMoreContacts = false;
   private isLoadingMoreMaterials = false;
   private closeAfterSave = false;
@@ -115,7 +126,9 @@ export class ManagerSuppliersPageComponent
   materials$ = this.store.select(selectManagerSupplierMaterials);
   materialsLoading$ = this.store.select(selectManagerSupplierMaterialsLoading);
   materialsError$ = this.store.select(selectManagerSupplierMaterialsError);
-  materialsViewMode$ = this.store.select(selectManagerSupplierMaterialsViewMode);
+  materialsViewMode$ = this.store.select(
+    selectManagerSupplierMaterialsViewMode,
+  );
   editingMaterial$ = this.store.select(selectManagerEditingSupplierMaterial);
   materialsPage$ = this.store.select(selectManagerSupplierMaterialsPage);
   materialsTotal$ = this.store.select(selectManagerSupplierMaterialsTotal);
@@ -125,13 +138,11 @@ export class ManagerSuppliersPageComponent
 
   searchCtrl: FormControl<string>;
   materialsSearchCtrl: FormControl<string>;
-  canLoadMore$!: Observable<boolean>;
   contactsCanLoadMore$!: Observable<boolean>;
   materialsCanLoadMore$!: Observable<boolean>;
 
   @ViewChild('listHeader') listHeaderRef?: ElementRef<HTMLElement>;
   @ViewChild('suppliersList') suppliersListRef?: ElementRef<HTMLElement>;
-  @ViewChild('infiniteSentinel') infiniteSentinelRef?: ElementRef<HTMLElement>;
   @ViewChild('contactsList') contactsListRef?: ElementRef<HTMLElement>;
   @ViewChild('contactsInfiniteSentinel')
   contactsInfiniteSentinelRef?: ElementRef<HTMLElement>;
@@ -139,8 +150,27 @@ export class ManagerSuppliersPageComponent
   @ViewChild('materialsInfiniteSentinel')
   materialsInfiniteSentinelRef?: ElementRef<HTMLElement>;
 
-  private currentPage = 1;
-  private canLoadMore = false;
+  currentPage = 1;
+  pageLimit = 25;
+  totalSuppliers = 0;
+  supplierSort: SupplierSort = 'name';
+  supplierDirection: 'asc' | 'desc' = 'asc';
+  pageSizeCtrl = new FormControl('25', { nonNullable: true });
+  readonly pageSizeOptions = [25, 50, 100].map((n) => ({
+    value: String(n),
+    label: `${n} per page`,
+  }));
+  readonly supplierColumns: { key: SupplierSort; label: string }[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'email', label: 'Email' },
+    { key: 'mobile', label: 'Mobile' },
+    { key: 'type', label: 'Type' },
+    { key: 'status', label: 'Status' },
+  ];
+  readonly supplierTypeOptions = [
+    { value: 'services', label: 'Services' },
+    { value: 'products', label: 'Products' },
+  ];
   private isLoading = false;
   private currentContactsPage = 1;
   private canLoadMoreContacts = false;
@@ -152,9 +182,6 @@ export class ManagerSuppliersPageComponent
   dismissedErrors = new Set<string>();
   dismissedWarnings = new Set<string>();
   formToastMessage: string | null = null;
-  formToastClosing = false;
-  private formToastTimer: ReturnType<typeof setTimeout> | null = null;
-  private formToastCloseTimer: ReturnType<typeof setTimeout> | null = null;
   isConfirmModalOpen = false;
   confirmModalTitle = '';
   confirmModalMessage = '';
@@ -172,18 +199,13 @@ export class ManagerSuppliersPageComponent
   showMaterialSuggestions = false;
   materialActiveIndex = -1;
 
-  addressSuggestions: TownPlannerV2AddressSuggestion[] = [];
-  showAddressSuggestions = false;
-  addressActiveIndex = -1;
-  private addressSessionToken: string | null = null;
-  private addressHasFocus = false;
-
   statusOptions = [
     { value: 'active', label: 'active' },
     { value: 'archived', label: 'archived' },
   ];
 
   supplierForm = this.fb.group({
+    supplier_type: ['services', Validators.required],
     supplier_name: ['', [Validators.required, Validators.maxLength(140)]],
     address: [''],
     email: ['', [Validators.email]],
@@ -213,29 +235,18 @@ export class ManagerSuppliersPageComponent
     private store: Store,
     private fb: FormBuilder,
     private materialsApi: ManagerMaterialsService,
-    private townPlanner: TownPlannerV2Service,
     private actions$: Actions,
   ) {
     this.searchCtrl = this.fb.control('', { nonNullable: true });
     this.materialsSearchCtrl = this.fb.control('', { nonNullable: true });
     this.materialSearchCtrl = this.fb.control('', { nonNullable: true });
 
-    this.canLoadMore$ = combineLatest([
-      this.total$,
-      this.suppliersRaw$,
-      this.loading$,
-    ]).pipe(
-      map(([total, suppliers, loading]) => !loading && suppliers.length < total),
-    );
     this.contactsCanLoadMore$ = combineLatest([
       this.contactsTotal$,
       this.contacts$,
       this.contactsLoading$,
     ]).pipe(
-      map(
-        ([total, contacts, loading]) =>
-          !loading && contacts.length < total,
-      ),
+      map(([total, contacts, loading]) => !loading && contacts.length < total),
     );
     this.materialsCanLoadMore$ = combineLatest([
       this.materialsTotal$,
@@ -243,26 +254,35 @@ export class ManagerSuppliersPageComponent
       this.materialsLoading$,
     ]).pipe(
       map(
-        ([total, materials, loading]) =>
-          !loading && materials.length < total,
+        ([total, materials, loading]) => !loading && materials.length < total,
       ),
     );
 
     this.page$.pipe(takeUntil(this.destroy$)).subscribe((page) => {
       this.currentPage = page || 1;
     });
-    this.canLoadMore$.pipe(takeUntil(this.destroy$)).subscribe((canLoad) => {
-      this.canLoadMore = canLoad;
-    });
-    this.loading$.pipe(takeUntil(this.destroy$)).subscribe((loading) => {
-      this.isLoading = loading;
-      if (!loading) this.isLoadingMore = false;
-    });
-    this.contactsPage$
+    this.loading$
       .pipe(takeUntil(this.destroy$))
-      .subscribe((page) => {
-        this.currentContactsPage = page || 1;
+      .subscribe((loading) => {
+        this.isLoading = loading;
+        if (loading) this.pageSizeCtrl.disable({ emitEvent: false });
+        else this.pageSizeCtrl.enable({ emitEvent: false });
       });
+    this.store
+      .select(selectManagerSuppliersState)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((state) => {
+        this.pageLimit = state.suppliersLimit;
+        this.totalSuppliers = state.suppliersTotal;
+        this.supplierSort = state.suppliersSort as SupplierSort;
+        this.supplierDirection = state.suppliersDirection;
+        this.pageSizeCtrl.setValue(String(this.pageLimit), {
+          emitEvent: false,
+        });
+      });
+    this.contactsPage$.pipe(takeUntil(this.destroy$)).subscribe((page) => {
+      this.currentContactsPage = page || 1;
+    });
     this.contactsCanLoadMore$
       .pipe(takeUntil(this.destroy$))
       .subscribe((canLoad) => {
@@ -274,11 +294,9 @@ export class ManagerSuppliersPageComponent
         this.isLoadingContacts = loading;
         if (!loading) this.isLoadingMoreContacts = false;
       });
-    this.materialsPage$
-      .pipe(takeUntil(this.destroy$))
-      .subscribe((page) => {
-        this.currentMaterialsPage = page || 1;
-      });
+    this.materialsPage$.pipe(takeUntil(this.destroy$)).subscribe((page) => {
+      this.currentMaterialsPage = page || 1;
+    });
     this.materialsCanLoadMore$
       .pipe(takeUntil(this.destroy$))
       .subscribe((canLoad) => {
@@ -301,9 +319,14 @@ export class ManagerSuppliersPageComponent
       )
       .subscribe((action) => {
         if (action.type === ManagerSuppliersActions.saveSupplierSuccess.type) {
-          if (this.dispatchNextPendingChildSave(action.supplier.supplierId)) return;
+          if (this.dispatchNextPendingChildSave(action.supplier.supplierId))
+            return;
         } else {
-          if (this.closeAfterSave || this.hasPendingContactSave() || this.hasPendingMaterialSave()) {
+          if (
+            this.closeAfterSave ||
+            this.hasPendingContactSave() ||
+            this.hasPendingMaterialSave()
+          ) {
             this.showFormToast(
               (action as { error?: string })?.error ||
                 'Could not save supplier details. Please review required fields and try again.',
@@ -330,7 +353,10 @@ export class ManagerSuppliersPageComponent
       .subscribe((action) => {
         if (!this.closeAfterContactSave) return;
         this.closeAfterContactSave = false;
-        if (action.type !== ManagerSuppliersActions.saveSupplierContactSuccess.type) {
+        if (
+          action.type !==
+          ManagerSuppliersActions.saveSupplierContactSuccess.type
+        ) {
           this.showFormToast(
             (action as { error?: string })?.error ||
               'Could not save contact. Please review required fields and try again.',
@@ -344,7 +370,8 @@ export class ManagerSuppliersPageComponent
           .pipe(take(1))
           .subscribe((supplier) => {
             const supplierId = supplier?.supplierId ?? null;
-            if (supplierId && this.dispatchNextPendingChildSave(supplierId)) return;
+            if (supplierId && this.dispatchNextPendingChildSave(supplierId))
+              return;
             this.store.dispatch(ManagerSuppliersActions.closeSupplierForm());
           });
       });
@@ -360,7 +387,10 @@ export class ManagerSuppliersPageComponent
       .subscribe((action) => {
         if (!this.closeAfterMaterialSave) return;
         this.closeAfterMaterialSave = false;
-        if (action.type !== ManagerSuppliersActions.saveSupplierMaterialSuccess.type) {
+        if (
+          action.type !==
+          ManagerSuppliersActions.saveSupplierMaterialSuccess.type
+        ) {
           this.showFormToast(
             (action as { error?: string })?.error ||
               'Could not save material. Please review required fields and try again.',
@@ -374,15 +404,14 @@ export class ManagerSuppliersPageComponent
           .pipe(take(1))
           .subscribe((supplier) => {
             const supplierId = supplier?.supplierId ?? null;
-            if (supplierId && this.dispatchNextPendingChildSave(supplierId)) return;
+            if (supplierId && this.dispatchNextPendingChildSave(supplierId))
+              return;
             this.store.dispatch(ManagerSuppliersActions.closeSupplierForm());
           });
       });
   }
 
   ngOnInit(): void {
-    this.store.dispatch(ManagerSuppliersActions.loadSuppliers({ page: 1 }));
-
     this.searchQuery$.pipe(takeUntil(this.destroy$)).subscribe((query) => {
       if (this.searchCtrl.value !== (query || '')) {
         this.searchCtrl.setValue(query || '', { emitEvent: false });
@@ -391,14 +420,12 @@ export class ManagerSuppliersPageComponent
     });
 
     this.searchCtrl.valueChanges
-      .pipe(
-        debounceTime(250),
-        distinctUntilChanged(),
-        takeUntil(this.destroy$),
-      )
+      .pipe(debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((query) =>
         this.store.dispatch(
-          ManagerSuppliersActions.setSuppliersSearchQuery({ query: query || '' }),
+          ManagerSuppliersActions.setSuppliersSearchQuery({
+            query: query || '',
+          }),
         ),
       );
 
@@ -424,11 +451,7 @@ export class ManagerSuppliersPageComponent
       });
 
     this.materialsSearchCtrl.valueChanges
-      .pipe(
-        debounceTime(250),
-        distinctUntilChanged(),
-        takeUntil(this.destroy$),
-      )
+      .pipe(debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$))
       .subscribe((query) =>
         this.store.dispatch(
           ManagerSuppliersActions.setSupplierMaterialsSearchQuery({
@@ -438,11 +461,11 @@ export class ManagerSuppliersPageComponent
       );
 
     this.viewMode$
-      .pipe(takeUntil(this.destroy$))
+      .pipe(distinctUntilChanged(), skip(1), takeUntil(this.destroy$))
       .subscribe((mode) => {
         if (mode !== 'list') return;
         setTimeout(() => this.updateHeaderOffset(), 0);
-        setTimeout(() => this.setupInfiniteScroll(), 0);
+        this.refreshSuppliers(Math.min(this.currentPage, this.totalPages));
       });
 
     this.tab$.pipe(takeUntil(this.destroy$)).subscribe((tab) => {
@@ -460,6 +483,7 @@ export class ManagerSuppliersPageComponent
       .subscribe((s: BmSupplier | null) => {
         if (!s) return;
         this.supplierForm.patchValue({
+          supplier_type: s.supplierType ?? 'services',
           supplier_name: s.supplierName ?? '',
           address: s.address ?? '',
           email: s.email ?? '',
@@ -501,19 +525,51 @@ export class ManagerSuppliersPageComponent
       });
 
     this.loadMaterialsCatalog();
-    this.setupAddressAutocomplete();
+    this.pageSizeCtrl.valueChanges
+      .pipe(distinctUntilChanged(), takeUntil(this.destroy$))
+      .subscribe((value) => {
+        this.store.dispatch(
+          ManagerSuppliersActions.loadSuppliers({
+            page: 1,
+            limit: Number(value),
+          }),
+        );
+      });
+    this.supplierForm.controls.supplier_type.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((type) => {
+        if (type !== 'products') {
+          this.store.dispatch(
+            ManagerSuppliersActions.closeSupplierMaterialForm(),
+          );
+          if (this.currentTabValue === 'materials') {
+            this.currentTabValue = 'details';
+            this.store.dispatch(
+              ManagerSuppliersActions.setSupplierFormTab({ tab: 'details' }),
+            );
+          }
+        }
+      });
+    this.actions$
+      .pipe(
+        ofType(ManagerSuppliersActions.removeSupplierSuccess),
+        takeUntil(this.destroy$),
+      )
+      .subscribe(() =>
+        this.refreshSuppliers(Math.min(this.currentPage, this.totalPages)),
+      );
+    this.error$.pipe(takeUntil(this.destroy$)).subscribe((error) => {
+      if (error) this.showFormToast(error);
+    });
   }
 
   ngAfterViewInit(): void {
     this.updateHeaderOffset();
-    this.setupInfiniteScroll();
   }
 
   ngOnDestroy(): void {
-    this.infiniteObserver?.disconnect();
     this.contactsInfiniteObserver?.disconnect();
     this.materialsInfiniteObserver?.disconnect();
-    this.clearFormToastTimers();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -537,7 +593,6 @@ export class ManagerSuppliersPageComponent
   @HostListener('window:resize')
   onResize(): void {
     this.updateHeaderOffset();
-    this.setupInfiniteScroll();
   }
 
   trackBySupplier = (_: number, s: BmSupplier) => s.supplierId;
@@ -547,6 +602,7 @@ export class ManagerSuppliersPageComponent
   openCreate(): void {
     this.currentTabValue = 'details';
     this.supplierForm.reset({
+      supplier_type: 'services',
       supplier_name: '',
       address: '',
       email: '',
@@ -560,7 +616,9 @@ export class ManagerSuppliersPageComponent
 
   openEdit(s: BmSupplier): void {
     this.currentTabValue = 'details';
-    this.store.dispatch(ManagerSuppliersActions.openSupplierEdit({ supplierId: s.supplierId }));
+    this.store.dispatch(
+      ManagerSuppliersActions.openSupplierEdit({ supplierId: s.supplierId }),
+    );
   }
 
   closeForm(): void {
@@ -571,6 +629,9 @@ export class ManagerSuppliersPageComponent
   saveSupplier(): void {
     if (this.supplierForm.invalid) {
       this.supplierForm.markAllAsTouched();
+      this.showFormToast(
+        'Complete the required supplier details before saving.',
+      );
       return;
     }
 
@@ -586,7 +647,9 @@ export class ManagerSuppliersPageComponent
   saveSupplierAndClose(): void {
     if (this.supplierForm.invalid) {
       this.supplierForm.markAllAsTouched();
-      this.showFormToast('Please complete required supplier fields before using Save & Finish.');
+      this.showFormToast(
+        'Please complete required supplier fields before using Save & Finish.',
+      );
       return;
     }
 
@@ -601,7 +664,9 @@ export class ManagerSuppliersPageComponent
       if (contactsMode === 'form') {
         if (this.contactForm.invalid) {
           this.contactForm.markAllAsTouched();
-          this.showFormToast('Please complete required contact fields before using Save & Finish.');
+          this.showFormToast(
+            'Please complete required contact fields before using Save & Finish.',
+          );
           this.currentTabValue = 'contacts';
           this.store.dispatch(
             ManagerSuppliersActions.setSupplierFormTab({ tab: 'contacts' }),
@@ -611,10 +676,12 @@ export class ManagerSuppliersPageComponent
         contactPayload = this.contactForm.getRawValue();
       }
 
-      if (materialsMode === 'form') {
+      if (materialsMode === 'form' && this.isProductSupplier) {
         materialPayload = this.buildSupplierMaterialPayload();
         if (!materialPayload) {
-          this.showFormToast('Please complete required material fields before using Save & Finish.');
+          this.showFormToast(
+            'Please complete required material fields before using Save & Finish.',
+          );
           this.currentTabValue = 'materials';
           this.store.dispatch(
             ManagerSuppliersActions.setSupplierFormTab({ tab: 'materials' }),
@@ -679,6 +746,7 @@ export class ManagerSuppliersPageComponent
   // Tabs
   setTab(tab: SupplierFormTab, supplier: BmSupplier | null): void {
     if (tab !== 'details' && !supplier?.supplierId) return;
+    if (tab === 'materials' && !this.isProductSupplier) return;
 
     this.currentTabValue = tab;
     this.store.dispatch(ManagerSuppliersActions.setSupplierFormTab({ tab }));
@@ -716,7 +784,9 @@ export class ManagerSuppliersPageComponent
 
   openContactEdit(contact: BmSupplierContact): void {
     this.store.dispatch(
-      ManagerSuppliersActions.openSupplierContactEdit({ contactId: contact.contactId }),
+      ManagerSuppliersActions.openSupplierContactEdit({
+        contactId: contact.contactId,
+      }),
     );
   }
 
@@ -772,7 +842,9 @@ export class ManagerSuppliersPageComponent
 
   openMaterialEdit(material: BmSupplierMaterial): void {
     this.store.dispatch(
-      ManagerSuppliersActions.openSupplierMaterialEdit({ materialId: material.materialId }),
+      ManagerSuppliersActions.openSupplierMaterialEdit({
+        materialId: material.materialId,
+      }),
     );
   }
 
@@ -875,31 +947,58 @@ export class ManagerSuppliersPageComponent
   }
 
   private showFormToast(message: string): void {
-    this.clearFormToastTimers();
     this.formToastMessage = message;
-    this.formToastClosing = false;
-
-    this.formToastTimer = window.setTimeout(() => {
-      this.formToastClosing = true;
-      this.formToastCloseTimer = window.setTimeout(() => {
-        this.formToastMessage = null;
-        this.formToastClosing = false;
-      }, 220);
-    }, 3200);
   }
 
-  private clearFormToastTimers(): void {
-    if (this.formToastTimer) {
-      clearTimeout(this.formToastTimer);
-      this.formToastTimer = null;
-    }
-    if (this.formToastCloseTimer) {
-      clearTimeout(this.formToastCloseTimer);
-      this.formToastCloseTimer = null;
-    }
+  get isProductSupplier(): boolean {
+    return this.supplierForm.controls.supplier_type.value === 'products';
+  }
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.totalSuppliers / this.pageLimit));
+  }
+  get pageStart(): number {
+    return this.totalSuppliers
+      ? (this.currentPage - 1) * this.pageLimit + 1
+      : 0;
+  }
+  get pageEnd(): number {
+    return Math.min(this.currentPage * this.pageLimit, this.totalSuppliers);
+  }
+  refreshSuppliers(page = 1): void {
+    this.store.dispatch(ManagerSuppliersActions.loadSuppliers({ page }));
+  }
+  sortSuppliersBy(sort: SupplierSort): void {
+    if (this.isLoading) return;
+    this.supplierDirection =
+      this.supplierSort === sort && this.supplierDirection === 'asc'
+        ? 'desc'
+        : 'asc';
+    this.supplierSort = sort;
+    this.store.dispatch(
+      ManagerSuppliersActions.loadSuppliers({
+        page: 1,
+        sort,
+        direction: this.supplierDirection,
+      }),
+    );
+  }
+  supplierSortAria(sort: SupplierSort): 'ascending' | 'descending' | 'none' {
+    return this.supplierSort !== sort
+      ? 'none'
+      : this.supplierDirection === 'asc'
+        ? 'ascending'
+        : 'descending';
+  }
+  goToPage(page: number): void {
+    if (this.isLoading) return;
+    const target = Math.max(1, Math.min(page, this.totalPages));
+    if (target !== this.currentPage) this.refreshSuppliers(target);
   }
 
-  removeSupplierMaterial(supplier: BmSupplier, material: BmSupplierMaterial): void {
+  removeSupplierMaterial(
+    supplier: BmSupplier,
+    material: BmSupplierMaterial,
+  ): void {
     this.openConfirmModal({
       title: 'Delete Material?',
       message: `Are you sure you want to delete this material from the supplier?`,
@@ -920,39 +1019,51 @@ export class ManagerSuppliersPageComponent
     return this.materialsMap.get(materialId)?.materialName || materialId;
   }
 
-  getMaterialQuantity(materialId?: string | null, fallback?: number | null): number | null {
+  getMaterialQuantity(
+    materialId?: string | null,
+    fallback?: number | null,
+  ): number | null {
     if (fallback !== null && fallback !== undefined) return fallback;
     if (!materialId) return null;
     return this.materialsMap.get(materialId)?.quantity ?? null;
   }
 
-  getMaterialUnit(materialId?: string | null, fallback?: string | null): string | null {
+  getMaterialUnit(
+    materialId?: string | null,
+    fallback?: string | null,
+  ): string | null {
     if (fallback !== null && fallback !== undefined) return fallback;
     if (!materialId) return null;
     return this.materialsMap.get(materialId)?.unit ?? null;
   }
 
   getSelectedMaterialQuantity(): string {
-    const materialId = this.supplierMaterialForm.controls.material_id.value || null;
+    const materialId =
+      this.supplierMaterialForm.controls.material_id.value || null;
     const quantity = this.getMaterialQuantity(materialId);
     if (quantity === null || quantity === undefined) return '';
     return String(quantity);
   }
 
   getSelectedMaterialUnit(): string {
-    const materialId = this.supplierMaterialForm.controls.material_id.value || null;
+    const materialId =
+      this.supplierMaterialForm.controls.material_id.value || null;
     const unit = this.getMaterialUnit(materialId);
     return unit ?? '';
   }
 
-  private formatMoney(value: number | string | null | undefined): number | null {
+  private formatMoney(
+    value: number | string | null | undefined,
+  ): number | null {
     if (value === null || value === undefined || value === '') return null;
     const num = Number(value);
     if (Number.isNaN(num)) return null;
     return Math.round(num * 100) / 100;
   }
 
-  private formatMoneyInput(value: number | string | null | undefined): string | null {
+  private formatMoneyInput(
+    value: number | string | null | undefined,
+  ): string | null {
     if (value === null || value === undefined || value === '') return null;
     const num = Number(value);
     if (Number.isNaN(num)) return null;
@@ -1001,7 +1112,9 @@ export class ManagerSuppliersPageComponent
     } else if (event.key === 'Enter') {
       if (this.materialActiveIndex >= 0) {
         event.preventDefault();
-        this.onMaterialSelect(this.materialSuggestions[this.materialActiveIndex]);
+        this.onMaterialSelect(
+          this.materialSuggestions[this.materialActiveIndex],
+        );
       }
     } else if (event.key === 'Escape') {
       this.showMaterialSuggestions = false;
@@ -1013,79 +1126,20 @@ export class ManagerSuppliersPageComponent
     const query = (value || '').trim();
     this.supplierMaterialForm.controls.material_id.setValue('');
     this.updateMaterialSuggestions(query);
-    this.showMaterialSuggestions = query.length > 0 && this.materialSuggestions.length > 0;
+    this.showMaterialSuggestions =
+      query.length > 0 && this.materialSuggestions.length > 0;
   }
 
   onMaterialSelect(material: BmMaterial): void {
-    this.supplierMaterialForm.controls.material_id.setValue(material.materialId);
-    this.materialSearchCtrl.setValue(material.materialName, { emitEvent: false });
+    this.supplierMaterialForm.controls.material_id.setValue(
+      material.materialId,
+    );
+    this.materialSearchCtrl.setValue(material.materialName, {
+      emitEvent: false,
+    });
     this.materialSuggestions = [];
     this.showMaterialSuggestions = false;
     this.materialActiveIndex = -1;
-  }
-
-  onAddressFocus(): void {
-    this.addressHasFocus = true;
-    const current = (this.supplierForm.controls.address.value || '').trim();
-    if (current.length >= 3 && this.addressSuggestions.length) {
-      this.showAddressSuggestions = true;
-    }
-  }
-
-  onAddressBlur(): void {
-    this.addressHasFocus = false;
-    window.setTimeout(() => {
-      this.showAddressSuggestions = false;
-      this.addressActiveIndex = -1;
-    }, 120);
-  }
-
-  onAddressKeydown(event: KeyboardEvent): void {
-    if (!this.addressSuggestions.length) return;
-
-    if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      this.addressActiveIndex = Math.min(
-        this.addressActiveIndex + 1,
-        this.addressSuggestions.length - 1,
-      );
-    } else if (event.key === 'ArrowUp') {
-      event.preventDefault();
-      this.addressActiveIndex = Math.max(this.addressActiveIndex - 1, 0);
-    } else if (event.key === 'Enter') {
-      if (this.addressActiveIndex >= 0) {
-        event.preventDefault();
-        this.onAddressSelect(this.addressSuggestions[this.addressActiveIndex]);
-      }
-    } else if (event.key === 'Escape') {
-      this.showAddressSuggestions = false;
-      this.addressActiveIndex = -1;
-    }
-  }
-
-  onAddressSelect(suggestion: TownPlannerV2AddressSuggestion): void {
-    this.supplierForm.controls.address.setValue(suggestion.description, {
-      emitEvent: false,
-    });
-    this.addressSuggestions = [];
-    this.showAddressSuggestions = false;
-    this.addressActiveIndex = -1;
-
-    const token = this.addressSessionToken;
-    this.addressSessionToken = null;
-
-    this.townPlanner
-      .getPlaceDetails(suggestion.placeId, token)
-      .pipe(take(1))
-      .subscribe((details) => {
-        const next =
-          details?.formattedAddress || suggestion.description || '';
-        if (next) {
-          this.supplierForm.controls.address.setValue(next, {
-            emitEvent: false,
-          });
-        }
-      });
   }
 
   private loadMaterialsCatalog(): void {
@@ -1100,7 +1154,8 @@ export class ManagerSuppliersPageComponent
         const currentId = this.supplierMaterialForm.controls.material_id.value;
         if (currentId) {
           const name = this.getMaterialName(currentId);
-          if (name) this.materialSearchCtrl.setValue(name, { emitEvent: false });
+          if (name)
+            this.materialSearchCtrl.setValue(name, { emitEvent: false });
         }
       });
   }
@@ -1134,49 +1189,6 @@ export class ManagerSuppliersPageComponent
     );
   }
 
-  private setupAddressAutocomplete(): void {
-    this.supplierForm.controls.address.valueChanges
-      .pipe(
-        debounceTime(200),
-        distinctUntilChanged(),
-        switchMap((query) => {
-          const q = (query || '').toString().trim();
-          if (!this.addressHasFocus) {
-            this.addressSuggestions = [];
-            this.showAddressSuggestions = false;
-            this.addressActiveIndex = -1;
-            return of([]);
-          }
-          if (q.length < 3) {
-            this.addressSuggestions = [];
-            this.showAddressSuggestions = false;
-            this.addressActiveIndex = -1;
-            return of([]);
-          }
-
-          if (!this.addressSessionToken) {
-            this.addressSessionToken = this.createSessionToken();
-          }
-
-          return this.townPlanner.suggestAddresses(q, this.addressSessionToken);
-        }),
-        takeUntil(this.destroy$),
-      )
-      .subscribe((sugs) => {
-        this.addressSuggestions = sugs || [];
-        const shouldShow =
-          this.addressHasFocus && this.addressSuggestions.length > 0;
-        this.showAddressSuggestions = shouldShow;
-        this.addressActiveIndex = shouldShow ? 0 : -1;
-      });
-  }
-
-  private createSessionToken(): string {
-    const cryptoObj = globalThis.crypto as Crypto | undefined;
-    if (cryptoObj?.randomUUID) return cryptoObj.randomUUID();
-    return Math.random().toString(36).slice(2);
-  }
-
   private updateHeaderOffset(): void {
     const header = this.listHeaderRef?.nativeElement;
     const list = this.suppliersListRef?.nativeElement;
@@ -1184,37 +1196,6 @@ export class ManagerSuppliersPageComponent
 
     const height = Math.ceil(header.getBoundingClientRect().height);
     list.style.setProperty('--list-header-height', `${height}px`);
-  }
-
-  private setupInfiniteScroll(): void {
-    const sentinel = this.infiniteSentinelRef?.nativeElement;
-    const list = this.suppliersListRef?.nativeElement;
-    if (!sentinel || !list) return;
-
-    this.infiniteObserver?.disconnect();
-
-    const scrollRoot = list.closest('.content') as HTMLElement | null;
-
-    this.infiniteObserver = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (!entry?.isIntersecting) return;
-        this.tryLoadMore();
-      },
-      {
-        root: scrollRoot,
-        rootMargin: '200px 0px',
-        threshold: 0.1,
-      },
-    );
-
-    this.infiniteObserver.observe(sentinel);
-  }
-
-  private tryLoadMore(): void {
-    if (!this.canLoadMore || this.isLoading || this.isLoadingMore) return;
-    this.isLoadingMore = true;
-    this.store.dispatch(ManagerSuppliersActions.loadSuppliers({ page: this.currentPage + 1 }));
   }
 
   private setupContactsInfiniteScroll(): void {
