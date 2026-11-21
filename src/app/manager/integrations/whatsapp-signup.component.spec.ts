@@ -62,4 +62,25 @@ describe('WhatsApp existing-number authorization', () => {
       expect(element.querySelector('button')!.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     }
   });
+  it('shows activation progress without starting a second authorization and refreshes ready state',()=>{
+    api.settings.and.returnValue(of({...settings,connection:{state:'syncing',phoneNumber:'+61 400 388 532',historyProgress:50}}));
+    fixture.componentInstance.checkStatus();fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Keep WhatsApp Business open');
+    expect(fixture.nativeElement.textContent).not.toContain('Prepare connection');
+    api.settings.and.returnValue(of({...settings,connection:{state:'ready',phoneNumber:'+61 400 388 532'}}));
+    const emit=spyOn(fixture.componentInstance.connectionReady,'emit');
+    fixture.componentInstance.checkStatus();fixture.detectChanges();
+    expect(emit).toHaveBeenCalledTimes(1);expect(api.start).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('is connected');
+  });
+  it('explains unavailable onboarding and wraps at narrow and desktop widths in both themes',()=>{
+    api.settings.and.returnValue(of({...settings,available:false}));fixture.componentInstance.checkStatus();fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('not available for this company');
+    api.settings.and.returnValue(of({...settings,connection:{state:'syncing',phoneNumber:'+61 400 388 532'}}));fixture.componentInstance.checkStatus();
+    for(const width of [320,1200])for(const dark of [false,true]){
+      document.documentElement.classList.toggle('dark',dark);fixture.nativeElement.style.display='block';fixture.nativeElement.style.width=width+'px';fixture.detectChanges();
+      expect(fixture.nativeElement.scrollWidth).toBeLessThanOrEqual(width);expect(fixture.nativeElement.querySelector('button').getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+    }
+  });
+
 });

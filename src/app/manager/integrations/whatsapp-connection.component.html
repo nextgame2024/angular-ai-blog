@@ -26,7 +26,7 @@
         <button class="btn" type="button" (click)="load()">Retry</button>
       }
       @if (state) {
-        <app-whatsapp-signup />
+        <app-whatsapp-signup (connectionReady)="load()" />
         <p class="muted">
           @if (state.mode === "receive_only") {
             Receive only. Sending is not configured.

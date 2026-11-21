@@ -6,7 +6,7 @@ export interface SignupSettings {
   appId?: string;
   configId?: string;
   graphVersion?: string;
-  connection: { state: string; phoneNumber: string | null } | null;
+  connection: { state: string; phoneNumber: string | null; failureCode?: string | null; historyProgress?: number; historyDeclined?: boolean } | null;
 }
 export interface SignupAttempt { signupId: string; nonce: string }
 interface MetaSdk {

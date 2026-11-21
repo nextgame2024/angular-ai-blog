@@ -1,4 +1,4 @@
-import { Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, OnInit, inject, EventEmitter, Output } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ManagerToastComponent } from '../components/shared/manager-toast/manager-toast.component';
 import { WhatsAppSignupService, SignupSettings, SignupAttempt, signupEvent } from './whatsapp-signup.service';
@@ -10,17 +10,30 @@ import { WhatsAppSignupService, SignupSettings, SignupAttempt, signupEvent } fro
     @if (settings?.available) {
       <div class="signup">
         <strong>Connect your business number</strong>
-        @if (settings?.connection?.state === 'verified') {
+        @if (settings?.connection?.state === 'ready') {
+          <p>{{ settings?.connection?.phoneNumber }} is connected. Use Refresh below to load the new number, then configure Sophia replies after testing the connection.</p>
+        } @else if (settings?.connection?.state === 'activating' || settings?.connection?.state === 'syncing') {
+          <p>Connecting {{ settings?.connection?.phoneNumber }} and synchronizing the data you chose to share. Keep WhatsApp Business open on your phone.</p>
+        } @else if (settings?.connection?.state === 'attention') {
+          <p>The connection needs administrator attention. Please keep WhatsApp Business available while we check its activation. Your mobile app can still be used.</p>
+        } @else if (settings?.connection?.state === 'disconnected') {
+          <p>The business number was disconnected from Meta. Use Prepare connection to authorize it again.</p>
+        } @else if (settings?.connection?.state === 'verified') {
           <p>Meta authorization verified for {{ settings?.connection?.phoneNumber }}. Activation and message synchronization are still pending.</p>
         } @else {
           <p>Authorize your existing WhatsApp Business app number through Meta. You can keep using the mobile app.</p>
         }
+        @if (settings?.connection && settings?.connection?.state !== 'failed' && settings?.connection?.state !== 'started' && settings?.connection?.state !== 'disconnected') {
+          <button class="btn" type="button" [disabled]="busy" (click)="checkStatus()">Check connection</button>
+        } @else {
         <button class="btn" type="button" [disabled]="busy" (click)="attempt ? connect() : prepare()">
           {{ busy ? 'Connecting…' : attempt ? 'Continue with Meta' : 'Prepare connection' }}
         </button>
+        }
         @if (attempt && !busy) { <p>Continue with Meta to select and authorize your existing business number.</p> }
       </div>
     }
+    @if (settings && !settings.available) { <p>Business-number connection is not available for this company yet. Your existing receiving connection is unchanged.</p> }
     @if (notice) { <app-manager-toast [message]="notice" [tone]="tone" (closed)="notice = ''" /> }
   `,
   styles: `
@@ -37,6 +50,7 @@ import { WhatsAppSignupService, SignupSettings, SignupAttempt, signupEvent } fro
 export class WhatsAppSignupComponent implements OnInit {
   private readonly api = inject(WhatsAppSignupService);
   private readonly destroyRef = inject(DestroyRef);
+  @Output() connectionReady = new EventEmitter<void>();
   settings: SignupSettings | null = null;
   attempt: SignupAttempt | null = null;
   busy = false;
@@ -53,6 +67,11 @@ export class WhatsAppSignupComponent implements OnInit {
       next: settings => this.settings = settings,
       error: error => { if (![403,404].includes(error.status)) this.fail('WhatsApp onboarding settings could not be loaded. Refresh and try again.'); },
     });
+  }
+  checkStatus() {
+    if(this.busy) return;
+    this.busy=true;
+    this.api.settings().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({next:settings=>{this.settings=settings;this.busy=false;if(settings.connection?.state==='ready')this.connectionReady.emit();},error:()=>this.fail('Connection status could not be loaded. Try again.')});
   }
   prepare() {
     if (this.busy || !this.settings?.available) return;
@@ -99,7 +118,7 @@ export class WhatsAppSignupComponent implements OnInit {
       next: result => {
         this.cleanup?.(); this.attempt = null; this.busy = false;
         if (this.settings) this.settings = { ...this.settings, connection: { state: result.state, phoneNumber: result.phoneNumber } };
-        this.tone = 'success'; this.notice = 'Meta authorization verified. Number activation is pending.';
+        this.tone = 'success'; this.notice = result.state==='activating' ? 'Meta authorization completed. Connecting your number and synchronizing your shared data.' : 'Meta authorization verified. Number activation is pending.';
       },
       error: () => this.fail('Meta has not verified the expected business number. Prepare the connection again.'),
     });
