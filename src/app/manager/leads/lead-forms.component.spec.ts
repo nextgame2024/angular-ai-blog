@@ -46,6 +46,25 @@ describe('Lead form builder', () => {
     page.canManage = true;
     fixture.detectChanges();
   });
+  it('shows and copies the published friendly link in both layouts', async () => {
+    const row = { id: 'form', name: 'Discovery', typeId: 'type', typeName: 'Marketing',
+      version: 1, updatedAt: '', publicationToken: 'tenant.publication',
+      friendlyUrl: 'https://example.test/forms/discovery' };
+    page.rows = [row];
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('.friendly-link a').length).toBe(2);
+    expect(page.publicationUrl(row)).toBe(row.friendlyUrl);
+    const copy = spyOn(navigator.clipboard, 'writeText').and.resolveTo();
+    await page.copyFriendlyUrl(row);
+    expect(copy).toHaveBeenCalledWith(row.friendlyUrl);
+    expect(page.toast).toBe('Friendly URL copied.');
+    copy.and.rejectWith(new Error('denied'));
+    await page.copyFriendlyUrl(row);
+    expect(page.tone).toBe('error');
+    row.publicationToken = '';
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('.friendly-link')).toBeNull();
+  });
   it('requires valid comma-separated notification emails', () => {
     page.create();
     expect(page.validEmails()).toBeFalse();
@@ -359,6 +378,8 @@ describe('Lead form builder', () => {
         typeName: 'Technical',
         version: 1,
         updatedAt: '2026-11-15',
+        publicationToken: 'tenant.publication',
+        friendlyUrl: 'https://sophiaai.com.au/forms/prepare-for-your-meeting',
       },
     ];
     fixture.detectChanges();

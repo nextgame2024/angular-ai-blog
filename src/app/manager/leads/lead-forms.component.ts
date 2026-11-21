@@ -307,8 +307,17 @@ export class LeadFormsComponent implements OnInit {
   }
   publicationUrl(row: FormRow) {
     return row.publicationToken
-      ? window.location.origin + '/forms/' + row.publicationToken
+      ? row.friendlyUrl || window.location.origin + '/forms/' + row.publicationToken
       : '';
+  }
+  async copyFriendlyUrl(row: FormRow) {
+    if (!row.publicationToken || !row.friendlyUrl) return;
+    try {
+      await navigator.clipboard.writeText(row.friendlyUrl);
+      this.notify('Friendly URL copied.');
+    } catch {
+      this.notify('Could not copy the link. Select the URL and copy it manually.', 'error');
+    }
   }
   publishRow(row: FormRow) {
     if (this.busy || !this.canManage) return;
@@ -322,6 +331,7 @@ export class LeadFormsComponent implements OnInit {
           row.publicationToken = p.token;
           row.publishedVersion = row.version;
           this.notify('Form published. Use the website icon to open it.');
+          this.refresh();
         },
         error: (e) => {
           this.busy = false;
@@ -345,6 +355,7 @@ export class LeadFormsComponent implements OnInit {
             next: () => {
               this.busy = false;
               row.publicationToken = null;
+              row.friendlyUrl = null;
               row.publishedVersion = null;
               this.notify('Form unpublished.');
             },

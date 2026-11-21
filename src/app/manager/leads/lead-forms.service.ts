@@ -33,6 +33,7 @@ export interface LeadForm {
   version: number;
 }
 export interface FormRow {
+  friendlyUrl?: string | null;
   publicationToken?: string | null;
   publishedVersion?: number | null;
   id: string;

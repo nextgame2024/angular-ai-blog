@@ -1,3 +1,17 @@
+<ng-template #friendlyLink let-row>
+  @if (row.publicationToken && row.friendlyUrl) {
+    <div class="friendly-link">
+      <a [href]="row.friendlyUrl" target="_blank" rel="noopener noreferrer"
+        [attr.aria-label]="'Open ' + row.name + ' in a new tab'">{{ row.friendlyUrl }}</a>
+      <button class="btn icon-btn" type="button" (click)="copyFriendlyUrl(row)"
+        title="Copy friendly URL" [attr.aria-label]="'Copy friendly URL for ' + row.name">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="13" rx="2" /><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3" /></svg>
+      </button>
+    </div>
+  } @else {
+    <span class="muted">{{ row.publicationToken ? 'No friendly URL configured' : 'Not published' }}</span>
+  }
+</ng-template>
 <ng-template #answerOptions let-answer>
   @for (option of answer.options; track $index; let j = $index) {
     <div class="option-row">
@@ -218,6 +232,7 @@
                   </button>
                 </th>
               }
+              <th scope="col">Friendly URL</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -231,6 +246,7 @@
                   <span class="badge">{{ row.typeName }}</span>
                 </td>
                 <td>{{ row.updatedAt | date: "mediumDate" }}</td>
+                <td><ng-container *ngTemplateOutlet="friendlyLink; context: { $implicit: row }" /></td>
                 <td>
                   <ng-container
                     *ngTemplateOutlet="rowActions; context: { $implicit: row }"
@@ -247,7 +263,10 @@
             <span class="lead-card-title"
               >{{ row.name }}<span class="badge">{{ row.typeName }}</span></span
             ><small>Updated {{ row.updatedAt | date: "mediumDate" }}</small
-            ><ng-container
+            >
+            <p class="muted">Friendly URL</p>
+            <ng-container *ngTemplateOutlet="friendlyLink; context: { $implicit: row }" />
+            <ng-container
               *ngTemplateOutlet="rowActions; context: { $implicit: row }"
             ></ng-container>
           </article>

@@ -227,3 +227,7 @@ app-manager-rich-text-editor {
     grid-template-columns: 1fr;
   }
 }
+
+.friendly-link { display: flex; align-items: center; gap: .5rem; }
+.friendly-link a { overflow-wrap: anywhere; min-width: 0; max-width: 24rem; }
+.friendly-link .btn { flex-shrink: 0; }
