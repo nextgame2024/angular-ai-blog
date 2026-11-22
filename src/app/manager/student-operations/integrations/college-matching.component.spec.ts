@@ -11,6 +11,19 @@ describe('PTY college matching',()=>{
   beforeEach(async()=>{api={xeroCollegeMatches:jasmine.createSpy().and.returnValue(of(result)),resolveXeroCollege:jasmine.createSpy().and.returnValue(of({}))};
     await TestBed.configureTestingModule({imports:[CollegeMatchingComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
     fixture=TestBed.createComponent(CollegeMatchingComponent);fixture.componentRef.setInput('connectionId','pty');fixture.detectChanges();});
+  it('offers student linking and keeps unmatched contacts pending',()=>{
+    const c=fixture.componentInstance;c.review({...row,name:'C30 Laura Garcia Lopez'});c.kind.setValue('student');
+    expect(c.kinds.map(x=>x.value)).toEqual(['college','supplier','student']);
+    c.save('student');expect(api.resolveXeroCollege).not.toHaveBeenCalled();
+    c.studentOptions=[{value:'student',label:'Laura Garcia Lopez'}];c.student.setValue('student');c.save('student');
+    expect(api.resolveXeroCollege).toHaveBeenCalledWith('pty','contact',{classification:'student',collegeId:null,studentUserId:'student',expectedRevision:0});
+  });
+  it('strips contact prefixes when creating a student and requires email',()=>{
+    const c=fixture.componentInstance;c.review({...row,name:'C30 Laura Garcia Lopez',email:''});c.kind.setValue('student');c.startCreate();
+    expect(c.creation.controls.name.value).toBe('Laura Garcia Lopez');c.save('student',true);expect(api.resolveXeroCollege).not.toHaveBeenCalled();
+    c.creation.controls.email.setValue('laura@example.invalid');c.save('student',true);
+    expect(api.resolveXeroCollege.calls.mostRecent().args[2]).toEqual(jasmine.objectContaining({classification:'student',create:jasmine.objectContaining({name:'Laura Garcia Lopez',email:'laura@example.invalid',closed:false})}));
+  });
   it('requires an explicit college and retains the provider contact identity when saving',()=>{
     const c=fixture.componentInstance;c.review(row);c.save('college');expect(api.resolveXeroCollege).not.toHaveBeenCalled();
     c.college.setValue('college');c.save('college');expect(api.resolveXeroCollege).toHaveBeenCalledOnceWith('pty','contact',{classification:'college',collegeId:'college',expectedRevision:0});

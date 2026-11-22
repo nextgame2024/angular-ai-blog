@@ -342,6 +342,7 @@ export type XeroStudentInvoiceSort = 'invoiceNumber' | 'reference' | 'student' |
   | 'dueDate' | 'paid' | 'due' | 'status' | 'sent' | 'advisor' | 'paymentTrack';
 
 export interface XeroStudentInvoice {
+  linkedStudentUserId?:string|null;linkedCaseId?:string|null;
   organisationRole?:'trust'|'operating';
   contactName?:string;
   collegeId?:string|null;
@@ -392,9 +393,10 @@ export interface XeroStudentInvoiceDetail extends XeroStudentInvoice {
 
 export interface XeroCollegeMatch {
   contactId:string;name:string;email:string|null;contactStatus:string|null;collegeId:string|null;collegeName:string|null;
-  supplierId?:string|null;supplierName?:string|null;classification:'college'|'supplier'|'other'|'unresolved';revision:number;invoiceCount:number;
+  supplierId?:string|null;supplierName?:string|null;studentUserId?:string|null;studentName?:string|null;classification:'college'|'supplier'|'student'|'other'|'unresolved';revision:number;invoiceCount:number;
 }
-export interface XeroCollegeMatchResult {items:XeroCollegeMatch[];total:number;page:number;limit:number;suppliers?:Array<{supplierId:string;name:string;status?:string}>;colleges?:Array<{collegeId:string;status?:string;tradingName?:string|null;acronym?:string|null;name:string}>;summary?:{importedContacts:number;activeContacts:number;archivedContacts:number;salesContacts:number;pendingSalesContacts:number;salesTransactions:number;linkedTransactions:number};}
+export interface InvoiceStudentOption {studentUserId:string;name:string;email:string|null;reference:string;cases:Array<{caseId:string;label:string}>}
+export interface XeroCollegeMatchResult {students?:InvoiceStudentOption[];items:XeroCollegeMatch[];total:number;page:number;limit:number;suppliers?:Array<{supplierId:string;name:string;status?:string}>;colleges?:Array<{collegeId:string;status?:string;tradingName?:string|null;acronym?:string|null;name:string}>;summary?:{importedContacts:number;activeContacts:number;archivedContacts:number;salesContacts:number;pendingSalesContacts:number;salesTransactions:number;linkedTransactions:number};}
 
 export interface XeroStudentInvoiceResult {
   invoices: XeroStudentInvoice[];

@@ -1,3 +1,4 @@
+@if(studentLinkInvoice;as invoice){@if(xeroConnection;as connection){<app-invoice-student-link [connectionId]="connection.connectionId" [invoice]="invoice" (closed)="studentLinkInvoice=null" (linked)="studentLinked()" />}}
 <section class="students-shell" #studentsList aria-labelledby="students-title">
   <div class="list-header">
     <nav class="breadcrumb" aria-label="Breadcrumb">
@@ -109,6 +110,7 @@
         <div class="candidate-heading">
           <div class="candidate-title-row">
             <h4 id="xero-invoices-title">{{isPty?'PTY':'TRUST'}} sales transactions ({{ xeroInvoices.total }})</h4>
+            @if(isPty){<button type="button" class="btn small" (click)="matchStudents()" [disabled]="matchingStudents||loadingInvoices">{{matchingStudents?'Matching…':'Match students'}}</button>}
             @if (xeroConnection?.tenantName) { <span class="source-badge">{{ xeroConnection?.tenantName }}</span> }
           </div>
           <p>Imported sales invoices, customer credit notes, prepayments and overpayments. Deleted and voided transactions are excluded.</p>
@@ -145,7 +147,7 @@
                     @if (invoice.documentType === 'prepayment') { <small>Prepayment</small> }
                     @if (invoice.documentType === 'overpayment') { <small>Overpayment</small> }
                   </td>
-                  <td [attr.data-label]="isPty?'Ref / Student':'Ref / College'">{{ invoice.reference || '—' }}</td>
+                  <td [attr.data-label]="isPty?'Ref / Student':'Ref / College'">{{ invoice.reference || '—' }}@if(isPty&&invoice.linkedStudentUserId){<small class="muted">{{invoice.studentName}}</small>}</td>
                   <td data-label="To" class="student"><strong>{{ isPty?invoice.contactName:invoice.studentName }}</strong><small>{{isPty?(invoice.collegeName||(invoice.matchingStatus==='other'?'Other business customer':'College mapping unresolved')):(invoice.studentEmail || 'Email requires review')}}</small></td>
                   <td data-label="Date">{{ formatDate(invoice.invoiceDate) }}</td>
                   <td data-label="Due date">{{ formatDate(invoice.dueDate) }}</td>
@@ -157,7 +159,8 @@
                   <td data-label="Payment track">{{ invoice.paymentTrack || '—' }}</td>
                   <td data-label="Actions" class="invoice-actions">
                     <button type="button" class="btn small" (click)="openInvoiceDetail(invoice)">Details</button>
-                    @if (isPty) {@if(invoice.matchingStatus==='college'||invoice.matchingStatus==='other'){<span class="reviewed-label">{{invoice.matchingStatus==='college'?'College linked':'Other customer'}}</span>}@else{<a class="btn" routerLink="/manager/sync-colleges">Review college</a>}}
+                    @if(isPty){@if(!invoice.linkedCaseId){<button type="button" class="btn small" (click)="studentLinkInvoice=invoice">Link student</button>}@else{<span class="reviewed-label">Student linked</span>}}
+                    @if (isPty) {@if(invoice.matchingStatus==='college'||invoice.matchingStatus==='other'||invoice.matchingStatus==='student'||invoice.matchingStatus==='supplier'){<span class="reviewed-label">{{invoice.matchingStatus==='college'?'College linked':invoice.matchingStatus==='student'?'Student contact':invoice.matchingStatus==='supplier'?'Supplier linked':'Other customer'}}</span>}@else{<a class="btn" routerLink="/manager/sync-colleges">Review college</a>}}
                     @else if ((!invoice.documentType || invoice.documentType === 'invoice') && invoice.reviewStatus === 'pending' && invoice.status !== 'voided' && invoice.status !== 'deleted') {
                       <button type="button" class="btn small secondary" (click)="reviewXeroInvoice(invoice)">Review student</button>
                     } @else if (invoice.reviewStatus === 'accepted') {

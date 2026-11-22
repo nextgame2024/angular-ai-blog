@@ -476,8 +476,18 @@ export class StudentOperationsService {
     return this.http.get<import('./student-operations.types').XeroCollegeMatchResult>(`${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/college-matching`,{headers:this.headers(),params:query});
   }
 
-  resolveXeroCollege(connectionId:string,contactId:string,body:{classification:'college'|'supplier'|'other'|'unresolved';collegeId:string|null;supplierId?:string|null;expectedRevision:number;create?:{name:string;email:string;phone:string;notes:string;closed:boolean;supplierType:'services'|'products'}}){
+  resolveXeroCollege(connectionId:string,contactId:string,body:{classification:'college'|'supplier'|'student'|'other'|'unresolved';studentUserId?:string|null;collegeId:string|null;supplierId?:string|null;expectedRevision:number;create?:{name:string;email:string;phone:string;notes:string;closed:boolean;supplierType:'services'|'products'}}){
     return this.http.post(`${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/college-matching/${encodeURIComponent(contactId)}`,body,{headers:this.headers()});
+  }
+
+  invoiceStudentOptions(connectionId:string){
+    return this.http.get<{students:import('./student-operations.types').InvoiceStudentOption[]}>(`${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-link-options`,{headers:this.headers()});
+  }
+  linkInvoiceStudent(connectionId:string,invoiceId:string,body:{studentUserId:string;caseId?:string}){
+    return this.http.post(`${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/invoices/${encodeURIComponent(invoiceId)}/student-link`,body,{headers:this.headers()});
+  }
+  matchInvoiceStudents(connectionId:string){
+    return this.http.post<{linked:number}>(`${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/match-students`,{},{headers:this.headers()});
   }
 
   private accessToken(): string | null {

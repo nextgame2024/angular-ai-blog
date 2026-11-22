@@ -1,3 +1,4 @@
+import { InvoiceStudentLinkComponent } from './invoice-student-link.component';
 import { PageJumpComponent } from '../../../shared/components/page-jump/page-jump.component';
 import { ListNavigationStateService } from '../../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
@@ -32,7 +33,7 @@ import type {
 
 @Component({
   selector: 'app-student-operations-students-page',
-  imports: [ PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
+  imports: [ InvoiceStudentLinkComponent, PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
   templateUrl: './student-operations-students.page.html',
   styleUrls: ['./student-operations-students.page.css'],
 })
@@ -62,6 +63,12 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   @ViewChild('studentsList') studentsList?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinel?: ElementRef<HTMLElement>;
 
+  studentLinkInvoice:XeroStudentInvoice|null=null;
+  matchingStudents=false;
+  studentLinked(){this.studentLinkInvoice=null;this.xeroNotice='Invoice linked to student case.';this.loadXeroInvoices(this.xeroInvoices?.page??1);}
+  matchStudents(){if(!this.xeroConnection||this.matchingStudents)return;this.matchingStudents=true;
+    this.api.matchInvoiceStudents(this.xeroConnection.connectionId).pipe(takeUntil(this.organisationStop$),takeUntil(this.destroy$)).subscribe({next:r=>{this.matchingStudents=false;this.xeroNotice=`${r.linked} transactions linked to student cases. Unmatched names remain available for manual linking.`;this.loadXeroInvoices(this.xeroInvoices?.page??1);},error:()=>{this.matchingStudents=false;this.xeroError='Student matching failed. Try again.';}});
+  }
   readonly search = new FormControl('', { nonNullable: true });
   readonly organisation = new FormControl('',{nonNullable:true});
   xeroConnections:XeroConnectionSummary[]=[];
@@ -73,7 +80,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     if(this.xeroConnection)this.navigationState.save('payments-and-control:'+this.xeroConnection.connectionId,{
       search:this.search.value,status:this.invoiceStatus.value,track:this.paymentTrack.value,from:this.appliedInvoiceDateFrom,to:this.appliedInvoiceDateTo,limit:this.invoicePageSize.value,sort:this.invoiceSort,direction:this.invoiceSortDirection,
     });
-    this.organisationStop$.next();this.stopXeroPolling();this.invoiceRequestSubscription?.unsubscribe();this.invoiceRequestVersion++;
+    this.studentLinkInvoice=null;this.matchingStudents=false;this.organisationStop$.next();this.stopXeroPolling();this.invoiceRequestSubscription?.unsubscribe();this.invoiceRequestVersion++;
     this.requestVersion++;this.students=[];this.total=0;this.loadingInitial=this.loadingMore=false;
     this.closeInvoiceDetail();this.xeroConnection=connection;this.xeroInvoices=null;this.xeroSync=null;
     this.paymentTrackOptions=[{value:'',label:'All payment tracks'}];
