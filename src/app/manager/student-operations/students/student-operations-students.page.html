@@ -90,6 +90,7 @@
         }
         @if (xeroNotice) { <span class="xero-notice">{{ xeroNotice }}</span> }
         @if (xeroPause) { <span class="xero-pause">{{ xeroPause }}</span> }
+        @if (invoiceLoadError && xeroInvoices) { <span class="xero-error" role="alert">{{ invoiceLoadError }}</span><button type="button" (click)="retryInvoices()">Try again</button> }
         @if (xeroError) { <span class="xero-error" role="alert">{{ xeroError }}</span> }
       </div>
       <button type="button" class="btn primary" (click)="refreshStudentsFromXero()"
@@ -216,6 +217,8 @@
     </div>
   } @else if (loadingInitial || loadingXeroContext || (loadingInvoices && !xeroInvoices)) {
     <app-manager-list-loader label="Loading records…"></app-manager-list-loader>
+  } @else if (invoiceLoadError && !xeroInvoices) {
+    <div class="state state-error" role="alert"><strong>Invoices unavailable</strong><span>{{ invoiceLoadError }}</span><button type="button" (click)="retryInvoices()">Try again</button></div>
   } @else if (!students.length && !xeroInvoices) {
     <div class="state" data-testid="student-operations-students-empty">
       <strong>No students found</strong><span>No records match the current filters.</span>

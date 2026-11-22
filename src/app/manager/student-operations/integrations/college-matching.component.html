@@ -26,9 +26,8 @@
     <label class="field">Link contact as<app-manager-select [formControl]="kind" [options]="kinds" ariaLabel="Link contact as" /></label>
     @if(!creating){
      @if(kind.value==='college'){<label class="field">College<app-manager-select [formControl]="college" [options]="options" [searchable]="true" placeholder="Search existing colleges" ariaLabel="College" [attr.aria-invalid]="college.touched&&!college.value" /></label><p>Confirm the contact that should receive college commission invoices.</p>}
-     @else if(kind.value==='student'){<button class="btn primary" (click)="save('student')" [disabled]="busy">Confirm student</button><button class="btn" (click)="save('unresolved')" [disabled]="busy">Leave unresolved</button>}
     @else if(kind.value==='supplier'){<label class="field">Supplier<app-manager-select [formControl]="supplier" [options]="supplierOptions" [searchable]="true" placeholder="Search existing suppliers" ariaLabel="Supplier" [attr.aria-invalid]="supplier.touched&&!supplier.value" /></label>}
-     @else{<label class="field">Student<app-manager-select [formControl]="student" [options]="studentOptions" [searchable]="true" placeholder="Search existing students" ariaLabel="Student" /></label><p>Link this contact’s sales transactions to the student. Unclear matches can remain pending.</p>}
+     @else{<label class="field">Student<app-manager-select [formControl]="student" [options]="studentOptions" [searchable]="true" placeholder="Search existing students" ariaLabel="Student" [attr.aria-invalid]="student.touched&&!student.value" /></label><p>Link this contact’s sales transactions to the student. Unclear matches can remain pending.</p>}
      <p>Can't find an existing {{kind.value}}?</p><div class="actions"><button class="btn" (click)="startCreate()" [disabled]="busy">Create {{kind.value}}</button>@if(kind.value!=='student'){<button class="btn" (click)="startCreate(true)" [disabled]="busy">Create and close</button>}</div>
     }@else{
      <h3>Create {{createClosed?'closed / inactive ':''}}{{kind.value}}</h3>

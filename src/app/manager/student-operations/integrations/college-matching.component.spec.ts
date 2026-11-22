@@ -18,6 +18,23 @@ describe('PTY college matching',()=>{
     c.studentOptions=[{value:'student',label:'Laura Garcia Lopez'}];c.student.setValue('student');c.save('student');
     expect(api.resolveXeroCollege).toHaveBeenCalledWith('pty','contact',{classification:'student',collegeId:null,studentUserId:'student',expectedRevision:0});
   });
+  it('renders a searchable student selector and only one set of confirmation actions',()=>{
+    const c=fixture.componentInstance;c.review(row);c.kind.setValue('student');
+    c.studentOptions=[{value:'student',label:'Laura Garcia Lopez — STD-30 — laura@example.invalid'},{value:'other',label:'Another student'}];
+    fixture.detectChanges();
+    const dialog:HTMLElement=fixture.nativeElement.querySelector('[role="dialog"]');
+    const buttons=(label:string)=>Array.from(dialog.querySelectorAll('button')).filter(button=>button.textContent?.trim()===label);
+    expect(buttons('Confirm student').length).toBe(1);
+    expect(buttons('Leave unresolved').length).toBe(1);
+    (dialog.querySelector('button[aria-label="Student"]') as HTMLButtonElement).click();fixture.detectChanges();
+    const search=dialog.querySelector('input[type="search"]') as HTMLInputElement;
+    expect(search).toBeTruthy();search.value='laura@example.invalid';search.dispatchEvent(new Event('input'));fixture.detectChanges();
+    const options=dialog.querySelectorAll<HTMLButtonElement>('.select-option');
+    expect(options.length).toBe(1);expect(options[0].textContent).toContain('Laura Garcia Lopez');
+    options[0].click();fixture.detectChanges();
+    expect(c.student.value).toBe('student');buttons('Confirm student')[0].click();
+    expect(api.resolveXeroCollege).toHaveBeenCalledOnceWith('pty','contact',{classification:'student',collegeId:null,studentUserId:'student',expectedRevision:0});
+  });
   it('strips contact prefixes when creating a student and requires email',()=>{
     const c=fixture.componentInstance;c.review({...row,name:'C30 Laura Garcia Lopez',email:''});c.kind.setValue('student');c.startCreate();
     expect(c.creation.controls.name.value).toBe('Laura Garcia Lopez');c.save('student',true);expect(api.resolveXeroCollege).not.toHaveBeenCalled();

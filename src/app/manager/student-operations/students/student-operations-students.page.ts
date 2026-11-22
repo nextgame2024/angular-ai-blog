@@ -84,7 +84,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.requestVersion++;this.students=[];this.total=0;this.loadingInitial=this.loadingMore=false;
     this.closeInvoiceDetail();this.xeroConnection=connection;this.xeroInvoices=null;this.xeroSync=null;
     this.paymentTrackOptions=[{value:'',label:'All payment tracks'}];
-    this.checkingXeroStatus=this.loadingXero=this.loadingInvoices=false;this.xeroError=this.xeroNotice=this.xeroPause='';
+    this.checkingXeroStatus=this.loadingXero=this.loadingInvoices=false;this.invoiceLoadError=this.xeroError=this.xeroNotice=this.xeroPause='';
     this.search.reset('',{emitEvent:false});this.invoiceStatus.reset('',{emitEvent:false});this.paymentTrack.reset('',{emitEvent:false});
     this.invoiceDateRange.reset(null,{emitEvent:false});this.appliedInvoiceDateFrom=this.appliedInvoiceDateTo='';
     this.invoiceSort='date';this.invoiceSortDirection='desc';this.invoicePageSize.setValue('25',{emitEvent:false});
@@ -173,6 +173,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   loadingXero = false;
   checkingXeroStatus = false;
   xeroError = '';
+  invoiceLoadError = '';
   xeroPause = '';
   xeroNotice = '';
   invoiceFilterError = '';
@@ -774,6 +775,8 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     return 'The Xero refresh failed. Existing student information remains available.';
   }
 
+  retryInvoices(): void { this.loadXeroInvoices(this.xeroInvoices?.page ?? 1); }
+
   private loadXeroInvoices(page: number): void {
     if (!this.xeroConnection || this.xeroNeedsReconnect) return;
     this.invoiceRequestSubscription?.unsubscribe();
@@ -788,7 +791,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
         if (version !== this.invoiceRequestVersion) return;
         this.loadingInvoices = false;
         this.loadingXeroContext = false;
-        this.xeroError = 'Stored Xero invoices could not be loaded.';
+        this.invoiceLoadError = 'Stored Xero invoices could not be loaded. Please try again.';
       },
     });
   }
@@ -810,6 +813,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private applyXeroInvoices(result: XeroStudentInvoiceResult): void {
     const lastPage = Math.max(1, result.totalPages);
     if (result.page > lastPage) { this.loadXeroInvoices(lastPage); return; }
+    this.invoiceLoadError = '';
     this.xeroInvoices = result;
     this.loadingInvoices = false;
     this.loadingXeroContext = false;

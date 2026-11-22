@@ -89,6 +89,19 @@ describe('StudentOperationsStudentsPageComponent', () => {
 
   afterEach(() => { globalThis.IntersectionObserver = nativeIntersectionObserver; });
 
+  it('retains invoice errors after successful sync status and clears them on retry success',()=>{
+    const c=fixture.componentInstance;
+    c.xeroConnection={connectionId:'pty',organisationRole:'operating',missingStudentDiscoveryScopes:[]} as never;
+    api.xeroStudentInvoices.and.returnValue(throwError(()=>({status:500})));
+    c.retryInvoices();
+    expect(c.invoiceLoadError).toContain('could not be loaded');
+    (c as any).applyXeroSyncFeedback({configured:true,latestRun:null});
+    expect(c.invoiceLoadError).toContain('could not be loaded');
+    api.xeroStudentInvoices.and.returnValue(of({invoices:[],page:1,limit:25,total:0,totalPages:0}));
+    c.retryInvoices();
+    expect(c.invoiceLoadError).toBe('');
+  });
+
   it('switches organisation without accepting late details from Trust or offering student review for PTY',()=>{
     const c=fixture.componentInstance;
     const trust={connectionId:'trust',tenantName:'Trust',organisationRole:'trust',missingStudentDiscoveryScopes:[]} as never;
