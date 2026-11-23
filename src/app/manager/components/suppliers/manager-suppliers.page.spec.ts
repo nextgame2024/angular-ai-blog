@@ -1,3 +1,4 @@
+import { StudentOperationsService } from '../../student-operations/student-operations.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Actions } from '@ngrx/effects';
@@ -17,6 +18,7 @@ describe('Supplier register and types', () => {
   function state(extra: object = {}) { store.setState({managerSuppliers:{...initialManagerSuppliersState,...extra}}); fixture.detectChanges(); }
   beforeEach(async () => {
     await TestBed.configureTestingModule({imports:[ManagerSuppliersPageComponent], providers:[
+      {provide:StudentOperationsService,useValue:{xeroStatus:()=>of({connections:[]})}},
       provideRouter([]), provideMockStore({initialState:{managerSuppliers:initialManagerSuppliersState}}),
       {provide:Actions,useValue:new Actions(of())},
       {provide:ManagerMaterialsService,useValue:{listMaterials:()=>of({items:[]})}},
@@ -32,16 +34,34 @@ describe('Supplier register and types', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Materials');
     expect(fixture.nativeElement.textContent).toContain('Save this supplier to access the other tabs.');
     page.supplierForm.controls.supplier_type.setValue('products');fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('.form-tabs .tab').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('.form-tabs .tab').length).toBe(4);
     state({suppliersViewMode:'form',suppliers:[supplier],editingSupplierId:'s1'});
     expect(page.isProductSupplier).toBeTrue();
-    expect(fixture.nativeElement.querySelectorAll('.form-tabs .tab').length).toBe(3);
+    expect(fixture.nativeElement.querySelectorAll('.form-tabs .tab').length).toBe(4);
     page.supplierForm.controls.supplier_type.setValue('services');fixture.detectChanges();
-    expect(fixture.nativeElement.querySelectorAll('.form-tabs .tab').length).toBe(2);
+    expect(fixture.nativeElement.querySelectorAll('.form-tabs .tab').length).toBe(3);
     spyOn(store,'dispatch');page.supplierForm.controls.supplier_name.setValue('Example');page.saveSupplier();
     expect(store.dispatch).toHaveBeenCalledWith(A.saveSupplier({payload:jasmine.objectContaining({supplier_type:'services'})}));
     page.setTab('materials',supplier);
     expect(store.dispatch).not.toHaveBeenCalledWith(A.setSupplierFormTab({tab:'materials'}));
+  });
+  it('only enables the invoices tab for a saved supplier with related invoices',()=>{
+    state({suppliersViewMode:'form',suppliers:[supplier],editingSupplierId:'s1'});
+    const tab=()=>Array.from(fixture.nativeElement.querySelectorAll('button.tab') as NodeListOf<HTMLButtonElement>).find(b=>b.textContent?.includes('Invoices'))!;
+    expect(tab().disabled).toBeTrue();spyOn(store,'dispatch');page.setTab('invoices',supplier);
+    expect(store.dispatch).not.toHaveBeenCalledWith(A.setSupplierFormTab({tab:'invoices'}));
+    page.invoicesAvailable(5);fixture.detectChanges();expect(tab().disabled).toBeFalse();expect(tab().textContent).toContain('(5)');
+    tab().click();expect(store.dispatch).toHaveBeenCalledWith(A.setSupplierFormTab({tab:'invoices'}));
+    state({suppliersViewMode:'form',suppliers:[supplier,{...supplier,supplierId:'s2'}],editingSupplierId:'s2'});
+    expect(page.invoiceCount).toBe(0);expect(tab().disabled).toBeTrue();
+  });
+  it('keeps all four supplier tabs visible on narrow screens',()=>{
+    state({suppliersViewMode:'form',suppliers:[supplier],editingSupplierId:'s1'});
+    const frame=document.createElement('iframe');frame.style.width='390px';frame.style.height='700px';document.body.appendChild(frame);
+    try{const doc=frame.contentDocument!;document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));doc.body.style.margin='0';doc.body.appendChild(fixture.nativeElement.cloneNode(true));
+      const tabs=doc.querySelector('.form-tabs') as HTMLElement;expect(tabs.scrollWidth).toBeLessThanOrEqual(tabs.clientWidth+1);
+      doc.querySelectorAll('.form-tabs button').forEach(button=>expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44));
+    }finally{frame.remove();}
   });
   it('replaces pages and preserves server sorting, and sends sorting and page-size changes',()=>{
     let s=managerSuppliersReducer(initialManagerSuppliersState,A.loadSuppliers({page:1,sort:'email',direction:'desc',limit:50}));

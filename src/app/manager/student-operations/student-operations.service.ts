@@ -421,6 +421,7 @@ export class StudentOperationsService {
 
   private invoiceParams(input: XeroStudentInvoiceQuery): HttpParams {
     let params = new HttpParams().set('page', String(input.page)).set('limit', String(input.limit));
+    if (input.supplierId) params = params.set('supplierId', input.supplierId);
     if (input.q) params = params.set('q', input.q);
     if (input.status) params = params.set('status', input.status);
     if (input.dateFrom) params = params.set('dateFrom', input.dateFrom);

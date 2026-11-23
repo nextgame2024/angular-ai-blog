@@ -1,5 +1,5 @@
 import {A11yModule} from '@angular/cdk/a11y';
-import {Component,EventEmitter,Input,Output,OnChanges,OnDestroy,inject} from '@angular/core';
+import {Component,ElementRef,ViewChild,EventEmitter,Input,Output,OnChanges,OnDestroy,inject} from '@angular/core';
 import {PageJumpComponent} from '../../../shared/components/page-jump/page-jump.component';
 import {FormControl,FormGroup,Validators,ReactiveFormsModule} from '@angular/forms';
 import {Subject,takeUntil} from 'rxjs';
@@ -12,6 +12,9 @@ import {ManagerListLoaderComponent} from '../../components/shared/manager-list-l
 @Component({selector:'app-college-matching',imports:[A11yModule,PageJumpComponent,ReactiveFormsModule,ManagerSelectComponent,ManagerToastComponent,ManagerListLoaderComponent],
   templateUrl:'./college-matching.component.html',styleUrls:['./college-matching.component.css']})
 export class CollegeMatchingComponent implements OnChanges,OnDestroy {
+  @ViewChild('reviewDialog') set reviewDialog(ref:ElementRef<HTMLDialogElement>|undefined){
+    if(ref&&!ref.nativeElement.open)ref.nativeElement.showModal();
+  }
   @Input() connectionId='';
   @Output() changed=new EventEmitter<void>();
   readonly pageSize=new FormControl('25',{nonNullable:true});

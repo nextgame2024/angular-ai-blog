@@ -135,6 +135,10 @@
         </span>
         Contacts
       </button>
+      <button type="button" class="tab" [class.active]="(tab$ | async) === 'invoices'" [disabled]="!supplier?.supplierId || !invoiceCount" (click)="setTab('invoices', supplier)" [title]="invoiceCount ? 'View related invoices' : 'Enabled when this supplier has related invoices'">
+        <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 10h6M9 14h6M9 18h4"></path></svg></span>
+        Invoices @if(invoiceCount){<span>({{invoiceCount}})</span>}
+      </button>
       @if (isProductSupplier) {
       <button
         type="button"
@@ -231,6 +235,8 @@
     </div>
     }
   </div>
+  <app-supplier-invoices #supplierInvoices [supplierId]="supplier.supplierId" [hidden]="(tab$ | async) !== 'invoices'" (availability)="invoicesAvailable($event)" (failed)="invoicesFailed($event)" />
+  @if(invoiceError){<button type="button" class="btn" (click)="supplierInvoices.initialise()">Retry loading invoices</button>}
   @if ((tab$ | async) === 'details') {
   <section class="card">
     <form class="form" [formGroup]="supplierForm" autocomplete="off">
@@ -825,6 +831,10 @@
           </svg>
         </span>
         Contacts
+      </button>
+      <button type="button" class="tab" disabled title="Save and link this supplier to related invoices">
+        <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 10h6M9 14h6M9 18h4"></path></svg></span>
+        Invoices
       </button>
       @if (isProductSupplier) {
       <button type="button" class="tab" disabled>

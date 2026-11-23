@@ -5,7 +5,7 @@ import type {
 } from '../../types/suppliers.interface';
 
 export type SuppliersViewMode = 'list' | 'form';
-export type SupplierFormTab = 'details' | 'contacts' | 'materials';
+export type SupplierFormTab = 'details' | 'contacts' | 'materials' | 'invoices';
 export type SupplierContactsViewMode = 'list' | 'form';
 export type SupplierMaterialsViewMode = 'list' | 'form';
 

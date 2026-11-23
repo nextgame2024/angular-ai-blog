@@ -95,15 +95,17 @@ describe('PTY college matching',()=>{
   });
   it('closes with Escape and refreshes the current page after saving',()=>{
     const c=fixture.componentInstance;c.review(row);fixture.detectChanges();
-    fixture.nativeElement.querySelector('[role="dialog"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+    fixture.nativeElement.querySelector('[role="dialog"]').dispatchEvent(new Event('cancel',{cancelable:true}));
     expect(c.selected).toBeNull();c.data={...result,page:3,total:100};c.review(row);c.save('other');
     expect(api.xeroCollegeMatches.calls.mostRecent().args[1].page).toBe(3);
   });
   for(const width of [390,1440])for(const dark of [false,true])it(`keeps contact review usable at ${width}px in ${dark?'dark':'light'} mode`,()=>{
-    fixture.componentInstance.review(row);fixture.detectChanges();const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='1000px';document.body.appendChild(frame);
+    fixture.componentInstance.review(row);fixture.componentInstance.kind.setValue('supplier');fixture.componentInstance.startCreate();fixture.detectChanges();const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='650px';document.body.appendChild(frame);
     try{const doc=frame.contentDocument!,win=frame.contentWindow!;document.querySelectorAll('style').forEach(s=>doc.head.appendChild(s.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);doc.body.style.margin='0';
-      const host=fixture.nativeElement.cloneNode(true) as HTMLElement;doc.body.appendChild(host);const section=doc.querySelector('section') as HTMLElement;
+      const host=fixture.nativeElement.cloneNode(true) as HTMLElement;host.style.cssText='transform:translateZ(0);height:400px;overflow:hidden';doc.body.appendChild(host);const modal=doc.querySelector('dialog') as HTMLDialogElement;modal.close();modal.showModal();const section=doc.querySelector('section') as HTMLElement;
       expect(section.scrollWidth).toBeLessThanOrEqual(section.clientWidth+1);expect(win.getComputedStyle(section).backgroundColor).toBe(dark?'rgb(17, 24, 39)':'rgb(255, 255, 255)');
+      const footer=doc.querySelector('.review-modal footer') as HTMLElement;const bounds=footer.getBoundingClientRect();expect(bounds.top).toBeGreaterThanOrEqual(0);expect(bounds.bottom).toBeLessThanOrEqual(650);
+      expect((doc.querySelector('.review-body') as HTMLElement).scrollHeight).toBeGreaterThan((doc.querySelector('.review-body') as HTMLElement).clientHeight);
       const button=doc.querySelector('.primary') as HTMLElement;expect(button.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
       expect(win.getComputedStyle(doc.querySelector('thead')!).display).toBe(width===390?'none':'table-header-group');
     }finally{frame.remove();}

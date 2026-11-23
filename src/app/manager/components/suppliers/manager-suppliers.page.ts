@@ -1,3 +1,4 @@
+import { SupplierInvoicesComponent } from './supplier-invoices.component';
 import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
@@ -74,6 +75,7 @@ import type { SupplierFormTab } from '../../store/suppliers/manager.state';
 @Component({
   selector: 'app-manager-suppliers-page',
   imports: [
+    SupplierInvoicesComponent,
     CommonModule,
     ReactiveFormsModule,
     RouterModule,
@@ -89,6 +91,9 @@ import type { SupplierFormTab } from '../../store/suppliers/manager.state';
 export class ManagerSuppliersPageComponent
   implements OnInit, OnDestroy, AfterViewInit
 {
+  invoiceCount=0;
+  invoiceError='';
+  private invoiceSupplierId:string|null=null;
   private destroy$ = new Subject<void>();
   private contactsInfiniteObserver?: IntersectionObserver;
   private materialsInfiniteObserver?: IntersectionObserver;
@@ -481,6 +486,7 @@ export class ManagerSuppliersPageComponent
     this.editingSupplier$
       .pipe(takeUntil(this.destroy$))
       .subscribe((s: BmSupplier | null) => {
+        if(this.invoiceSupplierId!==s?.supplierId){this.invoiceCount=0;this.invoiceError='';this.invoiceSupplierId=s?.supplierId??null;}
         if (!s) return;
         this.supplierForm.patchValue({
           supplier_type: s.supplierType ?? 'services',
@@ -747,6 +753,7 @@ export class ManagerSuppliersPageComponent
   setTab(tab: SupplierFormTab, supplier: BmSupplier | null): void {
     if (tab !== 'details' && !supplier?.supplierId) return;
     if (tab === 'materials' && !this.isProductSupplier) return;
+    if (tab === 'invoices' && !this.invoiceCount) return;
 
     this.currentTabValue = tab;
     this.store.dispatch(ManagerSuppliersActions.setSupplierFormTab({ tab }));
@@ -769,6 +776,9 @@ export class ManagerSuppliersPageComponent
       );
     }
   }
+
+  invoicesAvailable(count:number){this.invoiceCount=count;this.invoiceError='';}
+  invoicesFailed(message:string){this.invoiceError=message;this.showFormToast(message);}
 
   // Contacts
   openContactCreate(): void {

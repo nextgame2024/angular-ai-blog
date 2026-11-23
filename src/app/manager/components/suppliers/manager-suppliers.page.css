@@ -1386,3 +1386,5 @@
 
 /* Keep header fields aligned with the register without overflowing narrow containers. */
 .list-header, .form-header { margin-left: 0; margin-right: 0; padding-left: 0; padding-right: 0; }
+
+@media(max-width:640px){.form-tabs{flex-wrap:wrap}.form-tabs .tab{flex:1 1 calc(50% - .4rem);min-width:0;min-height:44px}}

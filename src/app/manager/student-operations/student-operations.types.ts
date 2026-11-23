@@ -425,6 +425,7 @@ export interface PaymentsRegisterBootstrap {
 }
 
 export interface XeroStudentInvoiceQuery {
+  supplierId?: string;
   page: number;
   limit: number;
   q?: string;

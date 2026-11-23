@@ -1,0 +1,120 @@
+<section class="supplier-invoices" aria-label="Supplier invoices">
+<h3>Invoices</h3>
+<p>Sales transactions linked to this supplier. Select an invoice number to view its details.</p>
+@if(invoiceLoadError){<p role="alert">{{invoiceLoadError}}</p><button class="btn" type="button" (click)="load()">Retry</button>}
+@if(loadingInvoices&&!xeroInvoices){<app-manager-list-loader label="Loading supplier invoices…" />}
+@if(xeroInvoices){
+        <div class="invoice-table-scroll">
+          <table class="invoice-table">
+            <thead><tr>
+              <th [attr.aria-sort]="invoiceSortAria('invoiceNumber')"><button class="sort-button" type="button" (click)="sortXeroInvoices('invoiceNumber')">Number <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('reference')"><button class="sort-button" type="button" (click)="sortXeroInvoices('reference')">{{isPty?'Ref / Student':'Ref / College'}} <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('student')"><button class="sort-button" type="button" (click)="sortXeroInvoices('student')">To <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('date')"><button class="sort-button" type="button" (click)="sortXeroInvoices('date')">Date <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('dueDate')"><button class="sort-button" type="button" (click)="sortXeroInvoices('dueDate')">Due date <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th class="money" [attr.aria-sort]="invoiceSortAria('paid')"><button class="sort-button" type="button" (click)="sortXeroInvoices('paid')">Paid <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th class="money" [attr.aria-sort]="invoiceSortAria('due')"><button class="sort-button" type="button" (click)="sortXeroInvoices('due')">Due <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('status')"><button class="sort-button" type="button" (click)="sortXeroInvoices('status')">Status <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('sent')"><button class="sort-button" type="button" (click)="sortXeroInvoices('sent')">Sent <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('advisor')"><button class="sort-button" type="button" (click)="sortXeroInvoices('advisor')">Advisor <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th [attr.aria-sort]="invoiceSortAria('paymentTrack')"><button class="sort-button" type="button" (click)="sortXeroInvoices('paymentTrack')">Payment track <span class="sort-indicator" aria-hidden="true"></span></button></th>
+              <th>Actions</th>
+            </tr></thead>
+            <tbody>
+              @for (invoice of xeroInvoices.invoices; track invoice.xeroInvoiceId) {
+                <tr>
+                  <td data-label="Number">
+                    <button type="button" class="invoice-link" (click)="openInvoiceDetail(invoice)">{{ invoice.invoiceNumber || '—' }}</button>
+                    @if (invoice.documentType === 'credit_note') { <small>Credit note</small> }
+                    @if (invoice.documentType === 'prepayment') { <small>Prepayment</small> }
+                    @if (invoice.documentType === 'overpayment') { <small>Overpayment</small> }
+                  </td>
+                  <td [attr.data-label]="isPty?'Ref / Student':'Ref / College'">{{ invoice.reference || '—' }}@if(isPty&&invoice.linkedStudentUserId){<small class="muted">{{invoice.studentName}}</small>}</td>
+                  <td data-label="To" class="student"><strong>{{ isPty?invoice.contactName:invoice.studentName }}</strong><small>Supplier linked</small></td>
+                  <td data-label="Date">{{ formatDate(invoice.invoiceDate) }}</td>
+                  <td data-label="Due date">{{ formatDate(invoice.dueDate) }}</td>
+                  <td data-label="Paid" class="money">{{ formatMoney(invoice.amountPaid, invoice.currencyCode) }}</td>
+                  <td data-label="Due" class="money">{{ formatMoney(invoice.amountDue, invoice.currencyCode) }}</td>
+                  <td data-label="Status"><span class="status invoice-status-{{ invoice.status }}">{{ invoiceStatusLabel(invoice.status) }}</span></td>
+                  <td data-label="Sent">{{ invoice.sentToContact ? 'Yes' : 'No' }}</td>
+                  <td data-label="Advisor">{{ invoice.advisorName || '—' }}</td>
+                  <td data-label="Payment track">{{ invoice.paymentTrack || '—' }}</td>
+                  <td data-label="Actions"><button type="button" class="invoice-detail-button" (click)="openInvoiceDetail(invoice)" [attr.aria-label]="'View invoice '+invoice.invoiceNumber" title="View invoice details"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+          @if (loadingInvoices) { <app-manager-list-loader label="Updating records…" [overlay]="true"></app-manager-list-loader> }
+        </div>
+        <footer class="invoice-pagination" aria-label="Xero invoice pagination">
+          <span>Showing {{ invoicePageStart }}–{{ invoicePageEnd }} of {{ xeroInvoices.total }}</span>
+          <div class="page-buttons">
+          <app-manager-select panelDirection="up" ariaLabel="Records per page" class="page-size" [formControl]="invoicePageSize" [options]="invoicePageSizeOptions"></app-manager-select>
+            <button type="button" (click)="goToInvoicePage(1)" [disabled]="xeroInvoices.page <= 1 || loadingInvoices" aria-label="First page">«</button>
+            <button type="button" (click)="goToInvoicePage(xeroInvoices.page - 1)" [disabled]="xeroInvoices.page <= 1 || loadingInvoices" aria-label="Previous page">‹</button>
+            <app-page-jump [page]="xeroInvoices.page" [totalPages]="xeroInvoices.totalPages" [disabled]="loadingInvoices" label="Page number" (pageChange)="goToInvoicePage($event)"></app-page-jump>
+            <button type="button" (click)="goToInvoicePage(xeroInvoices.page + 1)" [disabled]="xeroInvoices.page >= xeroInvoices.totalPages || loadingInvoices" aria-label="Next page">›</button>
+            <button type="button" (click)="goToInvoicePage(xeroInvoices.totalPages)" [disabled]="xeroInvoices.page >= xeroInvoices.totalPages || loadingInvoices" aria-label="Last page">»</button>
+          </div>
+        </footer>
+@if(!xeroInvoices.invoices.length){<p>No invoices are linked to this supplier.</p>}
+}
+</section>
+@if (loadingInvoiceDetail || invoiceDetailError || selectedXeroInvoice) {
+  <dialog #invoiceDialog class="invoice-dialog-backdrop" aria-labelledby="invoice-dialog-title" (cancel)="$event.preventDefault(); closeInvoiceDetail()">
+    <section class="invoice-dialog" >
+      <header>
+        <div>
+          <span class="dialog-eyebrow">Xero invoice</span>
+          <h3 id="invoice-dialog-title">{{ selectedXeroInvoice?.invoiceNumber || (selectedXeroInvoice?.documentType === 'credit_note' ? 'Credit note details' : selectedXeroInvoice?.documentType === 'prepayment' ? 'Prepayment details' : selectedXeroInvoice?.documentType === 'overpayment' ? 'Overpayment details' : 'Invoice details') }}</h3>
+        </div>
+        <button type="button" class="dialog-close" (click)="closeInvoiceDetail()" aria-label="Close invoice details">×</button>
+      </header>
+      <div class="invoice-detail-body">
+      @if (loadingInvoiceDetail) {
+        <div class="dialog-state">Loading invoice details…</div>
+      } @else if (invoiceDetailError) {
+        <div class="dialog-state error" role="alert">{{ invoiceDetailError }}</div>
+      } @else if (selectedXeroInvoice) {
+        <div class="invoice-summary">
+          <div><span>Supplier / Customer</span><strong>{{ isPty?selectedXeroInvoice.contactName:selectedXeroInvoice.studentName }}</strong></div>
+          <div><span>{{isPty?'Student / Reference':'College / Reference'}}</span><strong>{{ selectedXeroInvoice.reference || '—' }}</strong></div>
+          <div><span>Issue date</span><strong>{{ formatDate(selectedXeroInvoice.invoiceDate) }}</strong></div>
+          <div><span>Due date</span><strong>{{ formatDate(selectedXeroInvoice.dueDate) }}</strong></div>
+          <div><span>Advisor</span><strong>{{ selectedXeroInvoice.advisorName || '—' }}</strong></div>
+          <div><span>Payment track</span><strong>{{ selectedXeroInvoice.paymentTrack || '—' }}</strong></div>
+        </div>
+        @if(selectedXeroInvoice.relatedInvoices?.length){<div class="invoice-summary" aria-label="Related invoices">@for(related of selectedXeroInvoice.relatedInvoices;track related.connectionId+related.invoiceId){<div><span>INV-{{related.sequence}} ({{related.role==='trust'?'TRUST':'PTY'}})</span><button type="button" class="invoice-link" (click)="openRelatedInvoice(related)" [disabled]="!related.indexed">{{related.invoiceNumber||'Awaiting synchronisation'}}</button><small>{{related.status||'Created in Xero'}} · Due {{formatMoney(related.amountDue,selectedXeroInvoice.currencyCode)}}</small></div>}</div>}
+        @if(selectedXeroInvoice.settlement;as settlement){<div class="invoice-summary" aria-label="Payments and allocations"><div><span>Fully paid on</span><strong>{{formatDate(settlement.fullyPaidOnDate)}}</strong></div>@for(entry of settlement.entries;track entry.kind+entry.id){<div><span>{{entry.kind.replace('_',' ')}}</span><strong>{{formatDate(entry.date)}} · {{formatMoney(entry.amount,selectedXeroInvoice.currencyCode)}}</strong></div>}</div>}
+        <div class="invoice-lines-wrap">
+          <table class="invoice-lines">
+            <thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Disc.</th><th>Account</th><th>Tax</th><th>Tracking</th><th>Amount</th></tr></thead>
+            <tbody>
+              @for (line of selectedXeroInvoice.lineItems; track line.lineItemId || $index) {
+                <tr>
+                  <td data-label="Item">{{ line.itemCode || '—' }}</td>
+                  <td data-label="Description">{{ line.description || '—' }}</td>
+                  <td data-label="Qty">{{ line.quantity ?? '—' }}</td>
+                  <td data-label="Price">{{ formatMoney(line.unitAmount, selectedXeroInvoice.currencyCode) }}</td>
+                  <td data-label="Discount">{{ line.discountRate === null ? '—' : line.discountRate + '%' }}</td>
+                  <td data-label="Account">{{ line.accountCode || '—' }}</td>
+                  <td data-label="Tax">{{ formatMoney(line.taxAmount, selectedXeroInvoice.currencyCode) }}</td>
+                  <td data-label="Tracking"><span class="tracking-list">@for (track of line.tracking; track track.name) { <small>{{ track.name }}: {{ track.option }}</small> }</span></td>
+                  <td data-label="Amount">{{ formatMoney(line.lineAmount, selectedXeroInvoice.currencyCode) }}</td>
+                </tr>
+              } @empty {
+                <tr><td colspan="9">No line items are available for this invoice.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <footer class="invoice-totals">
+          <span>Total <strong>{{ formatMoney(selectedXeroInvoice.total, selectedXeroInvoice.currencyCode) }}</strong></span>
+          <span>Paid <strong>{{ formatMoney(selectedXeroInvoice.amountPaid, selectedXeroInvoice.currencyCode) }}</strong></span>
+          <span>Due <strong>{{ formatMoney(selectedXeroInvoice.amountDue, selectedXeroInvoice.currencyCode) }}</strong></span>
+        </footer>
+      }
+      </div>
+    </section>
+  </dialog>
+}
