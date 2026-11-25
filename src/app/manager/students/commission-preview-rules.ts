@@ -1,7 +1,7 @@
 // Browser preview only. The server independently validates and recalculates before persistence.
 import type {CommissionContext,CommissionConfiguration,PreviewCommissionRule as CommissionRule} from '../student-operations/student-commission.types';
 type SourceLine={kind?:unknown;amountMinor?:unknown;itemCode?:unknown};
-export type CommissionComponent={key:string;kind:'commission'|'cashback';sourceLineIndexes:number[];baseMinor:number;amountMinor:number;rateNumerator:number;rateDenominator:number;itemId?:string;taxMinor?:number};
+export type CommissionComponent={key:string;kind:'commission'|'cashback'|'bonus';itemCode?:string;saleName?:string;advisorName?:string;sourceLineIndexes:number[];baseMinor:number;amountMinor:number;rateNumerator:number;rateDenominator:number;itemId?:string;taxMinor?:number};
 const normal=(v:unknown)=>String(v??'').normalize('NFKC').trim().toLowerCase();
 
 export function configuredRule(rule:CommissionRule):CommissionConfiguration {
@@ -74,6 +74,15 @@ export function calculateCommission(rule:CommissionRule,lines:SourceLine[],facts
   if(!l.amountMinor)continue;
   const amountMinor=c.cashback.mode==='fixed_net'?c.cashback.amountMinor:rationalMinor(Number(l.amountMinor),10,11);
   if(amountMinor>0)components.push({key:`enrolment:${index}`,kind:'cashback',sourceLineIndexes:[index],baseMinor:Number(l.amountMinor),amountMinor,rateNumerator:c.cashback.mode==='fixed_net'?0:10,rateDenominator:c.cashback.mode==='fixed_net'?1:11});
+ }
+ for(const benefit of c.benefits??[]){
+  for(const [index,line] of lines.entries()){
+   if(line.kind!==benefit.source)continue;
+   if(!Number.isSafeInteger(line.amountMinor)||Number(line.amountMinor)<0)throw new Error('Check the eligible benefit fee.');
+   if(!line.amountMinor)continue;
+   const amountMinor=rationalMinor(Number(line.amountMinor),benefit.percentageBasisPoints,benefit.gstInclusive?11000:10000);
+   if(amountMinor>0)components.push({key:`${benefit.source}:${index}`,kind:benefit.source==='enrolment'?'cashback':'bonus',sourceLineIndexes:[index],baseMinor:Number(line.amountMinor),amountMinor,rateNumerator:benefit.percentageBasisPoints,rateDenominator:benefit.gstInclusive?11000:10000,itemCode:benefit.itemCode,saleName:benefit.saleName,advisorName:benefit.advisorName??undefined});
+  }
  }
  const subtotalMinor=components.reduce((n,c)=>n+c.amountMinor,0);
  if(subtotalMinor>1_000_000_000)throw new Error('Commission exceeds the supported amount.');

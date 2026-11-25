@@ -56,13 +56,19 @@ describe('CollegeCommissionsComponent',()=>{
     expect(payload.configuration).toEqual(jasmine.objectContaining({rateNumerator:3500,rateDenominator:11000,cashback:{mode:'enrolment_gross',amountMinor:0}}));
     expect(payload.commission_basis_points).toBe(3182);
   });
+  it('saves materials support as numeric configuration and rejects duplicate source fees',()=>{
+    const c=setup().componentInstance;c.open({...rule,configuration});c.addBenefit();
+    c.benefits.at(0).patchValue({source:'materials',percentage:'100',gstInclusive:true,itemCode:'MARKETING VET',saleName:'Marketing',advisorName:'O10 Open for Australia'});c.save();
+    expect((api.updateCommission.calls.mostRecent().args[2] as any).configuration.benefits).toEqual([{source:'materials',percentageBasisPoints:10000,gstInclusive:true,itemCode:'MARKETING VET',saleName:'Marketing',advisorName:'O10 Open for Australia'}]);
+    api.updateCommission.calls.reset();c.addBenefit();c.benefits.at(1).patchValue(c.benefits.at(0).getRawValue());c.save();expect(api.updateCommission).not.toHaveBeenCalled();
+  });
   it('requires a later-month rate and stores exact two-decimal percentages',()=>{
     const c=setup().componentInstance;c.open();c.form.patchValue({percentage:'20',method:'first_month',laterPercentage:''});c.save();expect(api.createCommission).not.toHaveBeenCalled();
     c.form.patchValue({laterPercentage:'15.25'});c.save();expect((api.createCommission.calls.mostRecent().args[1] as any).configuration.laterRateNumerator).toBe(1525);
   });
-  it('keeps unresolved source records blocked in the editor',()=>{
+  it('allows a reviewed blocked configuration to be corrected in the editor',()=>{
     const f=setup(),c=f.componentInstance;c.open({...rule,configuration:{...configuration,state:'blocked',blockedReason:'Confirm the benefit eligibility.'}});f.detectChanges();c.save();
-    expect(f.nativeElement.textContent).toContain('Confirm the benefit eligibility.');expect(api.updateCommission).not.toHaveBeenCalled();
+    expect(f.nativeElement.textContent).toContain('Confirm the benefit eligibility.');expect(api.updateCommission).toHaveBeenCalled();
   });
   it('does not present a failed request as an empty rule list and supports retry',()=>{
     api.commissions.and.returnValue(throwError(()=>({})));
@@ -95,14 +101,12 @@ describe('CollegeCommissionsComponent',()=>{
         expect(win.getComputedStyle(table).display).toBe(width<900?'none':'block');
         expect(win.getComputedStyle(cards).display).toBe(width<900?'grid':'none');
         expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(width+1);
-        fixture.componentInstance.open({...rule,configuration});fixture.detectChanges();doc.body.replaceChildren(fixture.nativeElement.cloneNode(true));
+        fixture.componentInstance.open({...rule,configuration});fixture.componentInstance.addBenefit();fixture.detectChanges();doc.body.replaceChildren(fixture.nativeElement.cloneNode(true));
         expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(width+1);
         const grid=win.getComputedStyle(doc.querySelector('.commission-form-grid')!);
         expect(grid.gridTemplateColumns.split(' ').length).toBe(width<700?1:3);
         const form=doc.querySelector('form')!;
-        expect(form.querySelector('.calculation-note')?.previousElementSibling?.classList.contains('commission-form-grid')).toBeTrue();
-        const note=win.getComputedStyle(doc.querySelector('.calculation-note')!);
-        expect(note.backgroundColor).toBe(dark?'rgb(27, 42, 61)':'rgb(247, 249, 252)');
+        expect(form.textContent).toContain('Additional PTY items');
       } finally {iframe.remove();}
     });
   }

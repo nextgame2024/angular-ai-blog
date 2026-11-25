@@ -11,3 +11,13 @@ describe('Immediate PTY preview',()=>{
  it('blocks unresolved rules and invalid tax mappings',()=>{const o=structuredClone(options);o.previewRules![0].configuration={...config,state:'blocked',blockedReason:'Confirm benefits'};expect(()=>previewCommission(o,lines,{},'inst','A')).toThrowError('Confirm benefits');expect(()=>previewCommission({...options,taxRates:[]},lines,{},'inst','A')).toThrowError(/tax default/);});
  it('supports genuine zero revenue and requires conditional course facts',()=>{const o=structuredClone(options);o.previewRules![0].configuration={...config,rateMethod:'trimester',rateNumerator:2,cashback:{mode:'none',amountMinor:0}};expect(()=>previewCommission(o,lines,{},'inst','A')).toThrowError(/trimester/);const result=previewCommission(o,lines,{trimester:5},'inst','A');expect(result.noRevenue).toBeTrue();expect(result.totalMinor).toBe(0);});
 });
+
+describe('East Coast materials support',()=>{
+ it('matches the historical Xero total and uses the agency representative for marketing only',()=>{
+  const o=structuredClone(options);o.previewRules![0].configuration.benefits=[{source:'materials',percentageBasisPoints:10000,gstInclusive:true,itemCode:'MARKETING VET',saleName:'Marketing',advisorName:'O10 Open for Australia'}];
+  o.accounts!.push({code:'210',name:'Marketing Support',taxType:'OUTPUT'});o.items!.push({...o.items![0],itemId:'marketing',code:'MARKETING VET',accountCode:'210'});o.typeOfSaleOptions!.push({value:'marketing',label:'Marketing'});
+  o.trackingCategories=[{name:'Sales Representative',trackingCategoryId:'rep',options:[{name:'Advisor',trackingOptionId:'a'},{name:'O10 Open for Australia',trackingOptionId:'o'}]}];
+  const s=previewCommission(o,[...lines,{kind:'materials',amountMinor:5000,itemCode:'Materials fee',quantity:'1',description:'Materials'}],{},'inst','Advisor');
+  expect(s.totalMinor).toBe(48760);expect(s.taxMinor).toBe(4433);expect(s.calculation.components!.map(c=>c.amountMinor)).toEqual([21600,18182,4545]);expect(s.value.lines[2].tracking![1].option).toBe('O10 Open for Australia');expect(s.value.lines[0].tracking![1].option).toBe('Advisor');
+ });
+});

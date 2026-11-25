@@ -17,12 +17,15 @@ export function previewCommission(options:CommissionOptions,lines:PreviewLine[],
  const revenue=calculation.components.map(component=>{
   const codes=[...new Set(lines.filter(l=>l.kind==='tuition').map(l=>l.itemCode.trim().toLowerCase()))];
   if(component.kind==='commission'&&(codes.length!==1||!codes[0]))throw new Error('Select one matching TRUST tuition item.');
-  const code=component.kind==='cashback'?'cash back':codes[0],items=options.items?.filter(i=>i.code.trim().toLowerCase()===code&&options.accounts?.some(a=>a.code===i.accountCode))??[];
+  const code=component.itemCode?.trim().toLowerCase()??(component.kind==='cashback'?'cash back':codes[0]),items=options.items?.filter(i=>i.code.trim().toLowerCase()===code&&options.accounts?.some(a=>a.code===i.accountCode))??[];
   if(items.length!==1)throw new Error(`Configure one PTY “${code}” item with a valid sales account.`);
   const item=items[0],taxes=options.taxRates?.filter(t=>t.taxType===item.taxType&&t.rate!==null)??[];
   if(taxes.length!==1)throw new Error(`Configure a valid tax default for PTY item “${item.code}”.`);
-  const sale=options.typeOfSaleOptions?.filter(o=>component.kind==='cashback'?o.label.trim().toLowerCase()==='cash back':o.value===saleId)??[];
+  if(component.itemCode&&component.rateDenominator===11000&&Number(taxes[0].rate)!==10)throw new Error('GST-inclusive benefits require a PTY item with 10% GST.');
+  const sale=options.typeOfSaleOptions?.filter(o=>component.saleName?o.label.trim().toLowerCase()===component.saleName.trim().toLowerCase():component.kind==='cashback'?o.label.trim().toLowerCase()==='cash back':o.value===saleId)??[];
   if(sale.length!==1)throw new Error('Select an available Type of Sale for every PTY component.');
+  const lineReps=component.advisorName?rep[0]?.options.filter(o=>o.name.trim().toLowerCase()===component.advisorName!.trim().toLowerCase())??[]:reps;
+  if(component.advisorName&&lineReps.length!==1)throw new Error('Map the benefit representative to one active PTY Sales Representative option.');
   let quantity='1',unitAmount=(component.amountMinor/100).toFixed(2);
   if(component.kind==='commission'){
    const q=lines.filter(l=>l.kind==='tuition'&&l.amountMinor>0).reduce((n,l)=>n+scale(l.quantity),0n);
@@ -32,7 +35,7 @@ export function previewCommission(options:CommissionOptions,lines:PreviewLine[],
    quantity=decimal(q);unitAmount=decimal(price);
   }
   component.taxMinor=rationalMinor(component.amountMinor,Number(scale(taxes[0].rate!)),1000000);taxMinor+=component.taxMinor;
-  return {itemCode:item.code,accountCode:item.accountCode!,taxType:item.taxType!,quantity,unitAmount,description:component.kind==='commission'?lines.filter(l=>l.kind==='tuition').map(l=>l.description).join('\n'):`Enrolment cashback: ${lines[component.sourceLineIndexes[0]].description}`,tracking:[{name:'Type of Sale',option:sale[0].label},...(rep.length?[{name:rep[0].name,option:reps[0].name}]:[])]};
+  return {itemCode:item.code,accountCode:item.accountCode!,taxType:item.taxType!,quantity,unitAmount,description:component.kind==='commission'?lines.filter(l=>l.kind==='tuition').map(l=>l.description).join('\n'):`${component.kind==='bonus'?'Materials marketing support':'Enrolment cashback'}: ${lines[component.sourceLineIndexes[0]].description}`,tracking:[{name:'Type of Sale',option:sale[0].label},...(rep.length?[{name:rep[0].name,option:lineReps[0].name}]:[])]};
  });
  if(calculation.subtotalMinor+taxMinor>1000000000)throw new Error('Commission total exceeds the supported limit.');
  return {calculation,taxMinor,totalMinor:calculation.subtotalMinor+taxMinor,value:{lines:revenue},noRevenue:calculation.noRevenue,warnings};

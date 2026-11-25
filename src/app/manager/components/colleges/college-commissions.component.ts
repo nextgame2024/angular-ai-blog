@@ -41,6 +41,10 @@ export class CollegeCommissionsComponent implements OnChanges, OnDestroy, OnInit
   ];
   readonly classificationOptions = [{value:'',label:'Any classification'},...['ELICOS','VET','HE'].map(value=>({value,label:value}))];
   readonly locationOptions = [{value:'',label:'Any location'},...['ON-SHORE','OFF-SHORE'].map(value=>({value,label:value}))];
+  readonly benefitSources=[{value:'enrolment',label:'Enrolment fee'},{value:'materials',label:'Materials fee'}];
+  readonly benefits=this.fb.array<ReturnType<CollegeCommissionsComponent['benefitForm']>>([]);
+  private benefitForm(b?:import('../../student-operations/student-commission.types').CommissionBenefit){return this.fb.nonNullable.group({source:[b?.source??'materials'],percentage:[String((b?.percentageBasisPoints??10000)/100),[Validators.required,Validators.min(0.01),Validators.max(100),Validators.pattern(/^\d+(?:\.\d{1,2})?$/)]],gstInclusive:[b?.gstInclusive??true],itemCode:[b?.itemCode??'',[Validators.required,Validators.maxLength(100)]],saleName:[b?.saleName??'',[Validators.required,Validators.maxLength(100)]],advisorName:[b?.advisorName??'',[Validators.maxLength(200)]]});}
+  addBenefit(){if(this.benefits.length<2)this.benefits.push(this.benefitForm());}
   readonly methodOptions=[{value:'percentage',label:'Net tuition percentage'},{value:'gross_percentage',label:'Gross percentage ÷ 1.10'},{value:'trimester',label:'Trimester: 20% / 15% / 0%'},{value:'first_month',label:'First month / later months'}];
   readonly cashbackModes=[{value:'none',label:'No cashback'},{value:'enrolment_gross',label:'Enrolment fee ÷ 1.10'},{value:'fixed_net',label:'Fixed net per enrolment fee line'}];
   get usesConfiguration(){return !this.editing||!!this.editing.configuration;}
@@ -106,7 +110,7 @@ export class CollegeCommissionsComponent implements OnChanges, OnDestroy, OnInit
   benefitLabel(status:string): string {return this.benefitOptions.find(o=>o.value===status)?.label||status;}
   open(rule:BmCollegeCommissionRule|null=null): void {
     if(this.saving)return;
-    this.editing=rule;this.formOpen=true;
+    this.editing=rule;this.formOpen=true;this.benefits.clear();for(const b of rule?.configuration?.benefits??[])this.benefits.push(this.benefitForm(b));
     const c=rule?.configuration,gross=!!c&&c.rateMethod==='fixed'&&c.rateDenominator%11===0;
     this.form.reset({city:c?.city??'',effectiveFrom:c?.effectiveFrom??'',effectiveTo:c?.effectiveTo??'',method:c?.rateMethod==='trimester'?'trimester':c?.rateMethod==='first_month'?'first_month':gross?'gross_percentage':'percentage',laterPercentage:c?(c.laterRateNumerator*100/c.rateDenominator).toFixed(2):'',nonBulkOnly:c?.nonBulkOnly??false,cashbackMode:c?.cashback.mode??'none',classification:rule?.classification||'',location:rule?.location||'',program:rule?.program||'',
       percentage:c?(c.rateNumerator*(gross?110:100)/c.rateDenominator).toFixed(2):rule?(rule.commissionBasisPoints/100).toFixed(2):'',cashback_status:rule?.cashbackStatus||'not_recorded',
@@ -114,14 +118,16 @@ export class CollegeCommissionsComponent implements OnChanges, OnDestroy, OnInit
       bonus_status:rule?.bonusStatus||'not_applicable',bonus_description:rule?.bonusDescription||'',application_conditions:rule?.applicationConditions||''});
   }
   save(): void {
-    if(this.saving||this.blockedConfiguration)return;
+    if(this.saving)return;
     if(this.usesConfiguration){this.form.controls.cashback_status.setValue(this.form.controls.cashbackMode.value==='none'?'not_applicable':'specified',{emitEvent:false});this.form.controls.bonus_status.setValue('not_applicable',{emitEvent:false});}
     for(const benefit of ['cashback','bonus'] as const) {
       const control=this.form.controls[benefit==='cashback'?'cashback_calculation':'bonus_amount'];
       control.setValidators([Validators.pattern(/^\d{1,12}(?:\.\d{1,2})?$/),...((this.usesConfiguration?benefit==='cashback'&&this.form.controls.cashbackMode.value==='fixed_net':this.form.controls[`${benefit}_status`].value==='specified')?[Validators.required]:[])]);
       control.updateValueAndValidity();
     }
-    if(this.form.invalid){this.form.markAllAsTouched();this.notify('Enter a commission from 0% to 100% with up to two decimal places and complete the highlighted fields.','error');return;}
+    if(this.form.invalid||this.benefits.invalid){this.benefits.markAllAsTouched();this.form.markAllAsTouched();this.notify('Enter a commission from 0% to 100% with up to two decimal places and complete the highlighted fields.','error');return;}
+    const benefitValues=this.benefits.getRawValue().map(b=>({source:b.source,percentageBasisPoints:Math.round(Number(b.percentage)*100),gstInclusive:b.gstInclusive,itemCode:b.itemCode.trim(),saleName:b.saleName.trim(),advisorName:b.advisorName.trim()||null}));
+    if(new Set(benefitValues.map(b=>b.source)).size!==benefitValues.length||this.form.controls.cashbackMode.value!=='none'&&benefitValues.some(b=>b.source==='enrolment')){this.notify('Use only one calculation for each source fee.','error');return;}
     const {percentage,cashback_calculation,bonus_amount,city,effectiveFrom,effectiveTo,method,laterPercentage,nonBulkOnly,cashbackMode,...fields}=this.form.getRawValue();
     const [whole,fraction='']=percentage.split('.');
     const value={...fields,commission_basis_points:Number(whole)*100+Number(fraction.padEnd(2,'0')),
@@ -132,7 +138,7 @@ export class CollegeCommissionsComponent implements OnChanges, OnDestroy, OnInit
       const numerator=method==='trimester'?2000:Number(whole)*100+Number(fraction.padEnd(2,'0')),denominator=method==='gross_percentage'?11000:10000;
       const later=method==='first_month'&&/^(?:\d{1,2}(?:\.\d{1,2})?|100(?:\.0{1,2})?)$/.test(laterPercentage)?Math.round(Number(laterPercentage)*100):method==='first_month'?NaN:0;
       if(!Number.isSafeInteger(later)||later<0||later>10000||effectiveFrom&&effectiveTo&&effectiveFrom>effectiveTo){this.form.markAllAsTouched();this.notify('Check the later-month percentage and enrolment date range.','error');return;}
-      Object.assign(value,{commission_basis_points:Math.round(numerator*10000/denominator),configuration:{version:2,state:'ready',blockedReason:null,city:city.trim()||null,effectiveFrom:effectiveFrom||null,effectiveTo:effectiveTo||null,dateBasis:effectiveFrom||effectiveTo?'enrolment_date':null,rateNumerator:numerator,rateDenominator:denominator,rateMethod:method==='trimester'?'trimester':method==='first_month'?'first_month':'fixed',laterRateNumerator:later,nonBulkOnly,cashback:{mode:cashbackMode,amountMinor:cashbackMode==='fixed_net'?Math.round(Number(cashback_calculation)*100):0}},cashback_calculation:null,bonus_amount:null});
+      Object.assign(value,{commission_basis_points:Math.round(numerator*10000/denominator),configuration:{benefits:benefitValues,version:2,state:'ready',blockedReason:null,city:city.trim()||null,effectiveFrom:effectiveFrom||null,effectiveTo:effectiveTo||null,dateBasis:effectiveFrom||effectiveTo?'enrolment_date':null,rateNumerator:numerator,rateDenominator:denominator,rateMethod:method==='trimester'?'trimester':method==='first_month'?'first_month':'fixed',laterRateNumerator:later,nonBulkOnly,cashback:{mode:cashbackMode,amountMinor:cashbackMode==='fixed_net'?Math.round(Number(cashback_calculation)*100):0}},cashback_calculation:null,bonus_amount:null});
     }
     this.saving=true;
     const request=this.editing?this.api.updateCommission(this.collegeId,this.editing.ruleId,value):this.api.createCommission(this.collegeId,value);
