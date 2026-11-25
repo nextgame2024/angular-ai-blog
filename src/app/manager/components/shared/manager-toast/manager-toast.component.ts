@@ -15,13 +15,14 @@ import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output } from '@a
 })
 export class ManagerToastComponent implements OnChanges, OnDestroy {
   @Input({ required: true }) message = '';
+  @Input() duration=4000;
   @Input() tone: 'success' | 'error' = 'success';
   @Output() closed = new EventEmitter<void>();
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnChanges(): void {
     if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.dismiss(), 4000);
+    this.timer = setTimeout(() => this.dismiss(), this.duration);
   }
 
   dismiss(): void {

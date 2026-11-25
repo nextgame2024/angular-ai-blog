@@ -41,10 +41,15 @@ export class CollegeCommissionsComponent implements OnChanges, OnDestroy, OnInit
   ];
   readonly classificationOptions = [{value:'',label:'Any classification'},...['ELICOS','VET','HE'].map(value=>({value,label:value}))];
   readonly locationOptions = [{value:'',label:'Any location'},...['ON-SHORE','OFF-SHORE'].map(value=>({value,label:value}))];
+  readonly methodOptions=[{value:'percentage',label:'Net tuition percentage'},{value:'gross_percentage',label:'Gross percentage ÷ 1.10'},{value:'trimester',label:'Trimester: 20% / 15% / 0%'},{value:'first_month',label:'First month / later months'}];
+  readonly cashbackModes=[{value:'none',label:'No cashback'},{value:'enrolment_gross',label:'Enrolment fee ÷ 1.10'},{value:'fixed_net',label:'Fixed net per enrolment fee line'}];
+  get usesConfiguration(){return !this.editing||!!this.editing.configuration;}
+  get blockedConfiguration(){return this.editing?.configuration?.state==='blocked';}
   readonly benefitOptions = [{value:'not_recorded',label:'Not recorded'},{value:'not_applicable',label:'Not applicable'},{value:'specified',label:'Specified'}];
   readonly pageSizes = [25,50,100].map(value=>({value:String(value),label:`${value} per page`}));
   readonly pageSize = this.fb.nonNullable.control('25');
   readonly form = this.fb.nonNullable.group({
+    city:[''],effectiveFrom:[''],effectiveTo:[''],method:['percentage'],laterPercentage:[''],nonBulkOnly:[false],cashbackMode:['none'],
     classification: [''], location: [''], program: ['',Validators.maxLength(300)],
     percentage: ['', [Validators.required, Validators.pattern(/^(?:\d{1,2}(?:\.\d{1,2})?|100(?:\.0{1,2})?)$/)]],
     cashback_status: ['not_recorded'], cashback_description: ['',Validators.maxLength(2000)],
@@ -96,30 +101,39 @@ export class CollegeCommissionsComponent implements OnChanges, OnDestroy, OnInit
   sortBy(column:Sort): void {this.direction=this.sort===column&&this.direction==='asc'?'desc':'asc';this.sort=column;this.page=1;this.updatePage();}
   sortAria(column:Sort): string {return this.sort===column?(this.direction==='asc'?'ascending':'descending'):'none';}
   rate(rule:BmCollegeCommissionRule): string {return `${(rule.commissionBasisPoints/100).toFixed(2)}%`;}
-  isDefault(rule:BmCollegeCommissionRule): boolean {return !rule.classification&&!rule.location&&!rule.program;}
+  isDefault(rule:BmCollegeCommissionRule): boolean {return !rule.classification&&!rule.location&&!rule.program&&!rule.configuration?.city&&!rule.configuration?.effectiveFrom&&!rule.configuration?.effectiveTo;}
+  exactRate(rule:BmCollegeCommissionRule){const c=rule.configuration;return c?`${c.rateNumerator} / ${c.rateDenominator}`:this.rate(rule);}
   benefitLabel(status:string): string {return this.benefitOptions.find(o=>o.value===status)?.label||status;}
   open(rule:BmCollegeCommissionRule|null=null): void {
     if(this.saving)return;
     this.editing=rule;this.formOpen=true;
-    this.form.reset({classification:rule?.classification||'',location:rule?.location||'',program:rule?.program||'',
-      percentage:rule?(rule.commissionBasisPoints/100).toFixed(2):'',cashback_status:rule?.cashbackStatus||'not_recorded',
-      cashback_description:rule?.cashbackDescription||'',cashback_calculation:rule?.cashbackCalculation??'',bonus_amount:rule?.bonusAmount??'',
+    const c=rule?.configuration,gross=!!c&&c.rateMethod==='fixed'&&c.rateDenominator%11===0;
+    this.form.reset({city:c?.city??'',effectiveFrom:c?.effectiveFrom??'',effectiveTo:c?.effectiveTo??'',method:c?.rateMethod==='trimester'?'trimester':c?.rateMethod==='first_month'?'first_month':gross?'gross_percentage':'percentage',laterPercentage:c?(c.laterRateNumerator*100/c.rateDenominator).toFixed(2):'',nonBulkOnly:c?.nonBulkOnly??false,cashbackMode:c?.cashback.mode??'none',classification:rule?.classification||'',location:rule?.location||'',program:rule?.program||'',
+      percentage:c?(c.rateNumerator*(gross?110:100)/c.rateDenominator).toFixed(2):rule?(rule.commissionBasisPoints/100).toFixed(2):'',cashback_status:rule?.cashbackStatus||'not_recorded',
+      cashback_description:rule?.cashbackDescription||'',cashback_calculation:c?.cashback.mode==='fixed_net'?(c.cashback.amountMinor/100).toFixed(2):rule?.cashbackCalculation??'',bonus_amount:rule?.bonusAmount??'',
       bonus_status:rule?.bonusStatus||'not_applicable',bonus_description:rule?.bonusDescription||'',application_conditions:rule?.applicationConditions||''});
   }
   save(): void {
-    if(this.saving)return;
+    if(this.saving||this.blockedConfiguration)return;
+    if(this.usesConfiguration){this.form.controls.cashback_status.setValue(this.form.controls.cashbackMode.value==='none'?'not_applicable':'specified',{emitEvent:false});this.form.controls.bonus_status.setValue('not_applicable',{emitEvent:false});}
     for(const benefit of ['cashback','bonus'] as const) {
       const control=this.form.controls[benefit==='cashback'?'cashback_calculation':'bonus_amount'];
-      control.setValidators([Validators.pattern(/^\d{1,12}(?:\.\d{1,2})?$/),...(this.form.controls[`${benefit}_status`].value==='specified'?[Validators.required]:[])]);
+      control.setValidators([Validators.pattern(/^\d{1,12}(?:\.\d{1,2})?$/),...((this.usesConfiguration?benefit==='cashback'&&this.form.controls.cashbackMode.value==='fixed_net':this.form.controls[`${benefit}_status`].value==='specified')?[Validators.required]:[])]);
       control.updateValueAndValidity();
     }
     if(this.form.invalid){this.form.markAllAsTouched();this.notify('Enter a commission from 0% to 100% with up to two decimal places and complete the highlighted fields.','error');return;}
-    const {percentage,cashback_calculation,bonus_amount,...fields}=this.form.getRawValue();
+    const {percentage,cashback_calculation,bonus_amount,city,effectiveFrom,effectiveTo,method,laterPercentage,nonBulkOnly,cashbackMode,...fields}=this.form.getRawValue();
     const [whole,fraction='']=percentage.split('.');
     const value={...fields,commission_basis_points:Number(whole)*100+Number(fraction.padEnd(2,'0')),
       cashback_calculation:this.decimalValue(cashback_calculation),bonus_amount:this.decimalValue(bonus_amount),
       cashback_calculation_description:this.editing?.cashbackCalculationDescription??null,
       ...(this.editing?{expected_updated_at:this.editing.updatedAt}:{})};
+    if(this.usesConfiguration){
+      const numerator=method==='trimester'?2000:Number(whole)*100+Number(fraction.padEnd(2,'0')),denominator=method==='gross_percentage'?11000:10000;
+      const later=method==='first_month'&&/^(?:\d{1,2}(?:\.\d{1,2})?|100(?:\.0{1,2})?)$/.test(laterPercentage)?Math.round(Number(laterPercentage)*100):method==='first_month'?NaN:0;
+      if(!Number.isSafeInteger(later)||later<0||later>10000||effectiveFrom&&effectiveTo&&effectiveFrom>effectiveTo){this.form.markAllAsTouched();this.notify('Check the later-month percentage and enrolment date range.','error');return;}
+      Object.assign(value,{commission_basis_points:Math.round(numerator*10000/denominator),configuration:{version:2,state:'ready',blockedReason:null,city:city.trim()||null,effectiveFrom:effectiveFrom||null,effectiveTo:effectiveTo||null,dateBasis:effectiveFrom||effectiveTo?'enrolment_date':null,rateNumerator:numerator,rateDenominator:denominator,rateMethod:method==='trimester'?'trimester':method==='first_month'?'first_month':'fixed',laterRateNumerator:later,nonBulkOnly,cashback:{mode:cashbackMode,amountMinor:cashbackMode==='fixed_net'?Math.round(Number(cashback_calculation)*100):0}},cashback_calculation:null,bonus_amount:null});
+    }
     this.saving=true;
     const request=this.editing?this.api.updateCommission(this.collegeId,this.editing.ruleId,value):this.api.createCommission(this.collegeId,value);
     request.pipe(takeUntil(this.cancelled)).subscribe({

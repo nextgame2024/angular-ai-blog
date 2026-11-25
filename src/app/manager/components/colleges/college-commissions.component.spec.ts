@@ -36,17 +36,33 @@ describe('CollegeCommissionsComponent',()=>{
     expect(component.formOpen).toBeTrue();expect(component.message).toContain('changed');expect(component.saving).toBeFalse();
   });
   it('uses numeric two-decimal benefit fields and sends exact values including zero',()=>{
-    const fixture=setup(),c=fixture.componentInstance;c.open();fixture.detectChanges();
+    const fixture=setup(),c=fixture.componentInstance;c.open(rule);fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[formControlName="cashback_calculation"]').type).toBe('number');
     expect(fixture.nativeElement.querySelector('[formControlName="bonus_amount"]').step).toBe('0.01');
     c.form.patchValue({percentage:'30',cashback_status:'specified',bonus_status:'specified',cashback_calculation:'12.345',bonus_amount:'0'});
-    c.save();expect(api.createCommission).not.toHaveBeenCalled();
+    c.save();expect(api.updateCommission).not.toHaveBeenCalled();
     c.form.patchValue({cashback_calculation:'12.30'});c.save();
-    expect(api.createCommission).toHaveBeenCalledWith('college-1',jasmine.objectContaining({cashback_calculation:'12.30',bonus_amount:'0.00'}));
+    expect(api.updateCommission).toHaveBeenCalledWith('college-1',rule.ruleId,jasmine.objectContaining({cashback_calculation:'12.30',bonus_amount:'0.00'}));
   });
   it('round-trips numeric benefits and preserves legacy notes during edits',()=>{
     const fixture=setup(),c=fixture.componentInstance;c.open({...rule,cashbackStatus:'specified',cashbackCalculation:'15.25',bonusStatus:'specified',bonusAmount:'30.00'});
     c.save();expect(api.updateCommission).toHaveBeenCalledWith('college-1',rule.ruleId,jasmine.objectContaining({cashback_calculation:'15.25',bonus_amount:'30.00',cashback_calculation_description:'No aplica'}));
+  });
+  const configuration={version:2 as const,state:'ready' as const,blockedReason:null,city:null,effectiveFrom:null,effectiveTo:null,dateBasis:null,rateNumerator:7,rateDenominator:22,rateMethod:'fixed' as const,laterRateNumerator:0,nonBulkOnly:false,cashback:{mode:'enrolment_gross' as const,amountMinor:0}};
+  it('round-trips an exact gross-derived percentage and enrolment cashback',()=>{
+    const c=setup().componentInstance;c.open({...rule,configuration});
+    expect(c.form.controls.percentage.value).toBe('35.00');expect(c.form.controls.method.value).toBe('gross_percentage');c.save();
+    const payload=api.updateCommission.calls.mostRecent().args[2] as any;
+    expect(payload.configuration).toEqual(jasmine.objectContaining({rateNumerator:3500,rateDenominator:11000,cashback:{mode:'enrolment_gross',amountMinor:0}}));
+    expect(payload.commission_basis_points).toBe(3182);
+  });
+  it('requires a later-month rate and stores exact two-decimal percentages',()=>{
+    const c=setup().componentInstance;c.open();c.form.patchValue({percentage:'20',method:'first_month',laterPercentage:''});c.save();expect(api.createCommission).not.toHaveBeenCalled();
+    c.form.patchValue({laterPercentage:'15.25'});c.save();expect((api.createCommission.calls.mostRecent().args[1] as any).configuration.laterRateNumerator).toBe(1525);
+  });
+  it('keeps unresolved source records blocked in the editor',()=>{
+    const f=setup(),c=f.componentInstance;c.open({...rule,configuration:{...configuration,state:'blocked',blockedReason:'Confirm the benefit eligibility.'}});f.detectChanges();c.save();
+    expect(f.nativeElement.textContent).toContain('Confirm the benefit eligibility.');expect(api.updateCommission).not.toHaveBeenCalled();
   });
   it('does not present a failed request as an empty rule list and supports retry',()=>{
     api.commissions.and.returnValue(throwError(()=>({})));
@@ -79,7 +95,7 @@ describe('CollegeCommissionsComponent',()=>{
         expect(win.getComputedStyle(table).display).toBe(width<900?'none':'block');
         expect(win.getComputedStyle(cards).display).toBe(width<900?'grid':'none');
         expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(width+1);
-        fixture.componentInstance.open(rule);fixture.detectChanges();doc.body.replaceChildren(fixture.nativeElement.cloneNode(true));
+        fixture.componentInstance.open({...rule,configuration});fixture.detectChanges();doc.body.replaceChildren(fixture.nativeElement.cloneNode(true));
         expect(doc.documentElement.scrollWidth).toBeLessThanOrEqual(width+1);
         const grid=win.getComputedStyle(doc.querySelector('.commission-form-grid')!);
         expect(grid.gridTemplateColumns.split(' ').length).toBe(width<700?1:3);

@@ -206,6 +206,7 @@ export type StudentCaseInvoiceDetail=StudentCaseInvoices['invoices'][number]&{
   studentName:string;advisorName:string|null;lineItems:XeroStudentInvoiceLineItem[];updatedAt:string|null;
 };
 export interface CaseInvoiceDraft {
+  advisorId?:string;advisorLabel?:string;
   sequence:number;issueDate:string;dueDate:string;conditionalFeeApplies:boolean;conditionalFeeMinor:number;
   lines:CaseInvoiceDraftLine[];invoiceNumber:string;status:'DRAFT';paymentTrack:'PENDING';
   sourceTotalMinor:number;sourceDueDate:string|null;sourceDueTerm:string|null;sourceIncludedConditionalFeeMinor:number;

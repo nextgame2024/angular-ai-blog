@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { of,Subject,throwError } from 'rxjs';
 import { CaseInvoiceDraftsComponent } from './case-invoice-drafts.component';
 import { StudentOperationsService } from '../student-operations/student-operations.service';
@@ -378,6 +378,55 @@ describe('CaseInvoiceDraftsComponent',()=>{
   it('cancels stale college-option requests after a new selection',()=>{
     const first=new Subject<any>(),second=new Subject<any>();api.commissionOptions.and.returnValues(first,second);const c=setup().componentInstance;c.open();c.manualCollege.setValue('offer-college');
     second.next({...ptyOptions,collegeName:'Selected College'});first.next({...ptyOptions,collegeName:'Stale College'});expect(c.ptyOptions?.collegeName).toBe('Selected College');
+  });
+  const advancedOptions={...ptyOptions,advanced:true,taxRates:[{taxType:'OUTPUT',name:'GST on Income',rate:'10'}],previewRules:[{rule_id:'r',active:true,classification:null,location:null,program:null,configuration:{version:2,state:'ready',blockedReason:null,city:null,effectiveFrom:null,effectiveTo:null,dateBasis:null,rateNumerator:3,rateDenominator:10,rateMethod:'fixed',laterRateNumerator:0,nonBulkOnly:false,cashback:{mode:'enrolment_gross',amountMinor:0}}}],items:[...ptyOptions.items,{...ptyOptions.items[0],itemId:'cash',code:'CASH BACK'}],typeOfSaleOptions:[...ptyOptions.typeOfSaleOptions,{value:'cash',label:'Cash Back'}]};
+  function advancedData(){const d=savedData();d.preparation!.savedBatch!.snapshot.invoices[0].lines.push({...d.preparation!.savedBatch!.snapshot.invoices[0].lines[0],kind:'enrolment',amountMinor:2000,unitPrice:'20.00',unitAmountMinor:2000,description:'Enrolment'});return d;}
+  it('calculates immediately without saving and updates tuition before discounts',()=>{
+    api.caseInvoiceDrafts.and.returnValue(of(advancedData()));api.commissionOptions.and.returnValue(of(advancedOptions));
+    const f=setup(),c=f.componentInstance;c.open();c.selectPayment(0,true);f.detectChanges();
+    expect(c.ptyPreviewPending).toBeFalse();expect(c.ptySubtotal).toBe(4818);expect(api.prepareCommissions).not.toHaveBeenCalled();expect(api.prepareCaseInvoiceDrafts).not.toHaveBeenCalled();
+    c.activeInvoice.controls.lines.at(0).controls.price.setValue('200');expect(c.ptySubtotal).toBe(7818);expect(c.ptyTax).toBe(782);
+    c.activeInvoice.controls.lines.at(0).controls.price.setValue('');f.detectChanges();expect(c.ptyPreviewPending).toBeTrue();expect(f.nativeElement.querySelector('[aria-label="PTY subtotal"]').value).toBe('Awaiting calculation');
+  });
+  it('inherits the default advisor, preserves an invoice override and saves it',()=>{
+    const d=advancedData();d.preparation!.advisors.push({advisorId:'second',code:'S20',name:'Other Advisor'});
+    api.caseInvoiceDrafts.and.returnValue(of(d));api.commissionOptions.and.returnValue(of(advancedOptions));
+    const f=setup(),c=f.componentInstance;c.open();c.selectPayment(0,true);f.detectChanges();
+    expect(c.ptyComponentRows[0].advisor).toBe('S15 Fixture Advisor');
+    c.activeInvoice.controls.advisorId.setValue('second');expect(c.ptyComponentRows[0].advisor).toBe('S20 Other Advisor');
+    c.selectPayment(1,true);expect(c.advisorLabel).toBe('S15 Fixture Advisor');c.selectPayment(0,true);expect(c.advisorLabel).toBe('S20 Other Advisor');
+    complete(c);c.save();expect(api.prepareCaseInvoiceDrafts.calls.mostRecent().args[1].invoices[0].advisorId).toBe('second');
+  });
+  it('shows tax names and the editable Type of Sale inside the PTY table',()=>{
+    api.caseInvoiceDrafts.and.returnValue(of(advancedData()));api.commissionOptions.and.returnValue(of(advancedOptions));
+    const f=setup(),c=f.componentInstance;c.open();c.selectPayment(0,true);f.detectChanges();
+    const table=f.nativeElement.querySelector('.commission-lines');expect(table.textContent).toContain('GST on Income');expect(table.textContent).not.toContain('OUTPUT');expect(table.querySelector('[aria-label="Commission Type of Sale"]')).not.toBeNull();
+  });
+  it('dismisses the catalogue warning after six seconds without hiding the advisor',fakeAsync(()=>{
+    api.caseInvoiceDrafts.and.returnValue(of(advancedData()));api.commissionOptions.and.returnValue(of(advancedOptions));
+    const f=setup(),c=f.componentInstance;c.open();c.selectPayment(0,true);f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Sales Representative is not in');tick(5999);f.detectChanges();expect(f.nativeElement.textContent).toContain('Sales Representative is not in');tick(1);f.detectChanges();expect(f.nativeElement.textContent).not.toContain('Sales Representative is not in');expect(c.ptyComponentRows[0].advisor).toBe('S15 Fixture Advisor');f.destroy();
+  }));
+  function advancedDraft(){return {sequence:1,status:'not_attempted',calculationHash:'reviewed-hash',stale:false,adjustmentRequired:false,snapshot:{schemaVersion:2,context:{classification:'ELICOS',location:'ON-SHORE'},warnings:[],noRevenue:false,calculation:{tuitionMinor:10000,basisPoints:3000,commissionMinor:3000,subtotalMinor:4818,components:[{kind:'commission',amountMinor:3000,taxMinor:300},{kind:'cashback',amountMinor:1818,taxMinor:182}]},taxMinor:482,totalMinor:5300,value:{lines:[{itemCode:'ELICOS ON-SHORE',quantity:'1',unitAmount:'30.00',accountCode:'200',description:'Tuition commission',taxType:'OUTPUT',tracking:[{name:'Type of Sale',option:'Instalment',trackingOptionId:instalmentOptionId}]},{itemCode:'CASH BACK',quantity:'1',unitAmount:'18.18',accountCode:'200',description:'Enrolment cashback',taxType:'OUTPUT',tracking:[{name:'Type of Sale',option:'Cash Back'}]}]}}};}
+  it('shows immediate cashback totals and invalidates review when course facts change',()=>{
+    api.caseInvoiceDrafts.and.returnValue(of(advancedData()));api.commissionOptions.and.returnValue(of({...advancedOptions,requiredContext:{enrolmentDate:true}}));api.commissionDrafts.and.returnValue(of({items:[advancedDraft()]}));
+    const f=setup(),c=f.componentInstance;c.open();c.selectPayment(0,true);f.detectChanges();
+    expect(c.advancedPreviewReady).toBeTrue();expect(c.ptySubtotal).toBe(4818);expect(c.ptyTax).toBe(482);expect(f.nativeElement.textContent).toContain('Enrolment cashback');
+    c.activeCommissionContext.controls.enrolmentDate.setValue('2025-04-01');expect(c.advancedPreviewReady).toBeFalse();
+  });
+  it('does not overwrite course facts changed while the server draft was loading',()=>{
+    const response=new Subject<any>();api.caseInvoiceDrafts.and.returnValue(of(advancedData()));api.commissionOptions.and.returnValue(of({...advancedOptions}));api.commissionDrafts.and.returnValue(response);
+    const c=setup().componentInstance;c.open();c.selectPayment(0,true);c.activeCommissionContext.controls.enrolmentDate.setValue('2025-04-01');response.next({items:[advancedDraft()]});
+    expect(c.activeCommissionContext.controls.enrolmentDate.value).toBe('2025-04-01');expect(c.advancedPreviewReady).toBeFalse();
+  });
+  for(const width of [390,1440])for(const dark of [false,true])it(`renders multi-component PTY at ${width}px with dark=${dark}`,()=>{
+    api.caseInvoiceDrafts.and.returnValue(of(advancedData()));api.commissionOptions.and.returnValue(of({...advancedOptions,requiredContext:{enrolmentDate:true}}));api.commissionDrafts.and.returnValue(of({items:[advancedDraft()]}));
+    const f=setup(),c=f.componentInstance;c.open();c.selectPayment(0,true);f.detectChanges();
+    const frame=document.createElement('iframe');frame.style.width=`${width}px`;frame.style.height='900px';document.body.appendChild(frame);
+    try{const doc=frame.contentDocument!;document.querySelectorAll('style').forEach(style=>doc.head.appendChild(style.cloneNode(true)));doc.documentElement.classList.toggle('dark',dark);doc.body.appendChild(f.nativeElement.cloneNode(true));const dialog=doc.querySelector<HTMLDialogElement>('dialog')!;dialog.removeAttribute('open');dialog.showModal();
+      expect(dialog.scrollWidth).toBeLessThanOrEqual(dialog.clientWidth+1);const panel=dialog.querySelector<HTMLElement>('.commission-preview')!;expect(panel.scrollWidth).toBeLessThanOrEqual(panel.clientWidth+1);expect(panel.querySelectorAll('tbody tr').length).toBe(2);expect(panel.textContent).toContain('CASH BACK');
+      const footer=dialog.querySelector<HTMLElement>('footer')!;expect(footer.getBoundingClientRect().bottom).toBeLessThanOrEqual(900);
+    }finally{frame.remove();}
   });
   for(const width of [390,1440])for(const dark of [false,true])it(`renders PTY at ${width}px with dark=${dark}`,()=>{
     api.commissionOptions.and.returnValue(of(ptyOptions));const f=setup(),c=f.componentInstance;c.open();complete(c);c.selectPayment(0,true);f.detectChanges();

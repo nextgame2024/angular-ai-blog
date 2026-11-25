@@ -13,6 +13,7 @@
 <dialog #modal (cancel)="close($event)" aria-label="Invoice preview">
   <header><div><h2 [class.invoice-title]="readonlyMode">{{readonlyMode?(detail?.invoiceNumber||'Invoice details'):editTarget?'Edit '+editTarget.invoiceNumber:manualMode?'Create invoice':'Prepare invoices'}}</h2><p>{{readonlyMode?'Invoice details · Read only':editTarget?'Update the invoice details and review them before saving.':manualMode?'Enter the invoice details and review them before creating.':'Review and save drafts, or create unsent draft invoices in Xero.'}}</p></div><div class="invoice-header-actions">@if(!readonlyMode&&activeInvoice){<span class="invoice-header-state" aria-live="polite">{{invoiceHeaderLabel}}</span>}<button type="button" class="btn close" (click)="close()" [disabled]="busy" aria-label="Close invoice preview">×</button></div></header>
   @if(busy){<app-manager-list-loader [label]="busyLabel" [overlay]="true" />}
+  @if(ptySide&&ptyWarning&&!ptyWarningDismissed){<app-manager-toast [message]="ptyWarning" [duration]="6000" (closed)="ptyWarningDismissed=true" />}
   @if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}
   @if(readonlyMode){
     <div class="scroll">
@@ -20,7 +21,7 @@
       @if(detailFailed){<p class="notice" role="alert">Invoice details could not be loaded. <button type="button" class="btn" (click)="reloadInvoice()">Retry</button></p>}
       @if(detail;as d){
       <dl class="details"><div><dt>Student</dt><dd>{{d.studentName}}</dd></div><div><dt>College / Reference</dt><dd>{{d.reference||'—'}}</dd></div><div><dt>Advisor</dt><dd>{{d.advisorName||'—'}}</dd></div><div><dt>Issue / Due</dt><dd>{{d.date | date:'d MMM y'}} / {{d.dueDate | date:'d MMM y'}}</dd></div><div><dt>Payment Track</dt><dd>{{d.paymentTrack||'—'}}</dd></div><div><dt>Status</dt><dd>{{d.status}}</dd></div></dl>
-      <div class="table-wrap"><table><thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Account</th><th>Tax</th><th>Payment tracking</th><th>Amount</th></tr></thead><tbody>
+      <div class="table-wrap"><table><thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Account</th><th>Tax rate</th><th>Payment tracking</th><th>Amount</th></tr></thead><tbody>
         @for(line of d.lineItems;track line.lineItemId||$index){<tr><td>{{line.itemCode||'—'}}</td><td class="line-description">{{line.description||'—'}}</td><td>{{line.quantity | number:'1.0-2'}}</td><td>{{invoiceMoney(line.unitAmount)}}</td><td>{{line.accountCode||'—'}}</td><td>{{line.taxType||'—'}}<small>{{invoiceMoney(line.taxAmount)}}</small></td><td>{{paymentTracking(line.tracking)}}</td><td>{{invoiceMoney(line.lineAmount)}}</td></tr>}
       </tbody></table></div>
       @if(!d.lineItems.length){<p class="muted">No line item details are available in the synchronized record.</p>}
@@ -38,34 +39,54 @@
         }
         @if(ptySide){@if(ptyLine;as line){
           <section class="commission-preview" aria-label="PTY commission preview">
-            <div class="invoice-meta fields"><label>To / College<input [value]="ptyReceipt?.snapshot?.collegeName||ptyOptions?.collegeName||''" readonly /></label><label>Reference / Student<input [value]="preparation?.student?.name||''" readonly /></label><label>Advisor<input [value]="advisorLabel" readonly /></label></div>
+            <div class="invoice-meta fields"><label>To / College<input [value]="ptyReceipt?.snapshot?.collegeName||ptyOptions?.collegeName||''" readonly /></label><label>Reference / Student<input [value]="preparation?.student?.name||''" readonly /></label><label>Invoice advisor<app-manager-select [formControl]="activeInvoice.controls.advisorId" [options]="invoiceAdvisorOptions" [searchable]="true" [placeholder]="advisorLabel" ariaLabel="Invoice advisor" /></label></div>
             <div class="invoice-dates fields"><label>Issue date<input type="date" [value]="(ptyReceipt?.providerDate||activeInvoice.controls.issueDate.value)|date:'yyyy-MM-dd':'UTC'" readonly /></label><label>Due date<input type="date" [value]="(ptyReceipt?.providerDueDate||activeInvoice.controls.dueDate.value)|date:'yyyy-MM-dd':'UTC'" readonly /></label><label>Branding theme<input value="PTY Open for Australia Account" readonly /></label></div>
             <p class="muted">Source TRUST invoice: INV-{{activeInvoiceNumber}} · {{isCreatedSequence(activeInvoice.controls.sequence.value)?'Created in Xero':'Create TRUST first'}} · Tax exclusive.</p>
             @if(ptyPreparationNotice;as notice){<p class="notice" [attr.role]="ptyReceipt?.stale||ptyReceipt?.adjustmentRequired?'alert':'status'">{{notice}}</p>}
+            @if(ptyOptions?.advanced){
+              <div class="fields commission-context" [formGroup]="activeCommissionContext">
+                @if(ptyOptions?.requiredContext?.classification){<label>Course classification<app-manager-select formControlName="classification" [options]="commissionClassifications" ariaLabel="Commission course classification" /></label>}
+                @if(ptyOptions?.requiredContext?.location){<label>Student location<app-manager-select formControlName="location" [options]="commissionLocations" ariaLabel="Commission student location" /></label>}
+                @if(ptyOptions?.requiredContext?.program){<label>Program / year<input formControlName="program" placeholder="Confirmed program or year" maxlength="300" /></label>}
+                @if(ptyOptions?.requiredContext?.city){<label>Campus city<input formControlName="city" maxlength="200" /></label>}
+                @if(ptyOptions?.requiredContext?.enrolmentDate){<label>Original enrolment date<input type="date" formControlName="enrolmentDate" /></label>}
+                @if(ptyOptions?.requiredContext?.trimester){<label>Trimester number<input type="number" min="1" max="100" step="1" formControlName="trimester" /></label>}
+                @if(ptyOptions?.requiredContext?.courseMonth){<label>Course month<input type="number" min="1" max="1000" step="1" formControlName="courseMonth" /></label>}
+                @if(ptyOptions?.requiredContext?.isBulk){<label>Enrolment type<app-manager-select formControlName="isBulk" [options]="commissionBulkOptions" ariaLabel="Commission enrolment type" /></label>}
+
+              </div>
+              @if(!ptyReceipt?.status||ptyReceipt?.status==='not_attempted'){<button type="button" class="btn" (click)="save()" [disabled]="busy||disabled||!!ptyOptions?.issue">Save and verify drafts</button>}
+              @if(displayedPtySnapshot){
+                <div class="table-wrap editor-wrap"><table class="line-editor commission-lines"><thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Account</th><th>Tax rate</th><th>Tax amount</th><th>Type of Sale</th><th>Advisor</th><th>Amount</th></tr></thead><tbody>
+                  @for(row of ptyComponentRows;track $index){<tr><td data-label="Item">{{row.itemCode}}</td><td data-label="Description" class="component-description">{{row.description}}</td><td data-label="Qty">{{row.quantity}}</td><td data-label="Price">{{row.unitAmount}}</td><td data-label="Account">{{row.accountCode}}</td><td data-label="Tax rate">{{row.taxLabel}}</td><td data-label="Tax amount">{{money(row.component?.taxMinor??0)}}</td><td data-label="Type of Sale">@if(row.component?.kind==='commission'){<app-manager-select [formControl]="activePtyTypeOfSale" [options]="activePtyTypeOfSaleOptions" ariaLabel="Commission Type of Sale" panelDirection="up" />}@else{ {{row.sale}} }</td><td data-label="Advisor">{{row.advisor}}</td><td data-label="Amount">{{money(row.component?.amountMinor??0)}}</td></tr>}
+                </tbody></table></div>
+              }
+            }@else{
             <div class="table-wrap editor-wrap"><table class="line-editor commission-lines"><thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Account</th><th>Tax rate</th><th>Tax amount</th><th>Type of Sale</th><th>Advisor</th><th>Amount</th></tr></thead><tbody><tr>
               <td data-label="Item"><input [value]="ptySalesItemLabel" readonly aria-label="PTY invoice item" placeholder="Select the item on TRUST" /></td>
               <td data-label="Description"><textarea rows="3" [value]="line.description" readonly aria-label="PTY line description"></textarea></td>
               <td data-label="Qty"><input [value]="line.quantity" readonly aria-label="PTY quantity" /></td>
               <td data-label="Price"><input [value]="line.unitAmount" readonly aria-label="PTY unit price" /></td>
-              <td data-label="Account">{{line.account}}</td><td data-label="Tax rate">{{line.tax}}</td><td data-label="Tax amount">{{money(ptyTax)}}</td><td data-label="Type of Sale"><app-manager-select [formControl]="activePtyTypeOfSale" [options]="activePtyTypeOfSaleOptions" [placeholder]="activePtyTypeOfSaleOptions.length?'Select Type of Sale':'Options pending'" ariaLabel="PTY Type of Sale" panelDirection="up" [attr.aria-invalid]="activePtyTypeOfSale.touched&&!!activePtySaleTypeIssue" /></td><td data-label="Advisor">{{advisorLabel}}</td><td data-label="Amount" class="amount">{{money(ptyCalculation.commissionMinor)}}</td>
+              <td data-label="Account">{{line.account}}</td><td data-label="Tax rate">{{line.tax}}</td><td data-label="Tax amount">{{ptyMoney(ptyTax)}}</td><td data-label="Type of Sale"><app-manager-select [formControl]="activePtyTypeOfSale" [options]="activePtyTypeOfSaleOptions" [placeholder]="activePtyTypeOfSaleOptions.length?'Select Type of Sale':'Options pending'" ariaLabel="PTY Type of Sale" panelDirection="up" [attr.aria-invalid]="activePtyTypeOfSale.touched&&!!activePtySaleTypeIssue" /></td><td data-label="Advisor">{{advisorLabel}}</td><td data-label="Amount" class="amount">{{money(ptyCalculation.commissionMinor)}}</td>
             </tr></tbody></table></div>
+            }
             <div class="invoice-summary">
               <div class="invoice-review">
-                <div class="fields commission-basis"><label>Tuition base<input [value]="money(ptyCalculation.tuitionMinor)" readonly /></label><label>Commission percentage<input [value]="(ptyCalculation.basisPoints/100)+'%'" readonly /></label></div>
-                <p class="muted">Commission uses tuition only, rounded once per instalment to two decimals. Enrolment, materials and other fees are excluded.</p>
+                <div class="fields commission-basis"><label>Tuition base<input [value]="ptyMoney(ptyCalculation.tuitionMinor)" readonly /></label><label>Commission percentage<input [value]="ptyRateLabel" readonly /></label></div>
+                <p class="muted">Commission uses invoiced tuition before discounts, rounded once per instalment. Eligible cashback is shown separately and does not reduce the tuition base.</p>
                 @if(ptyReceipt?.invoiceNumber){<p>Created as {{ptyReceipt?.invoiceNumber}}. Paid: {{invoiceMoney(ptyReceipt?.amountPaid)}} · Due: {{invoiceMoney(ptyReceipt?.amountDue)}}</p>}
-                @if(!ptyReceipt?.status||ptyReceipt?.status==='not_attempted'){<label class="check"><input type="checkbox" formControlName="confirmed" />I reviewed the TRUST tuition base, college rule, item, tax and dates.</label>}
+                @if(!ptyReceipt?.status||ptyReceipt?.status==='not_attempted'){<label class="check"><input type="checkbox" formControlName="confirmed" />I reviewed the tuition before discounts, course facts, all revenue lines, tracking, tax and dates, and checked that this revenue has not already been invoiced.</label>}
               </div>
-              <div class="invoice-totals detail-totals editor-totals"><label>Subtotal<input [value]="money(ptyCalculation.commissionMinor)" readonly aria-label="PTY subtotal" /></label><label>GST on Income<input [value]="money(ptyTax)" readonly aria-label="PTY tax total" /></label><div class="total-row"><span>Total</span><strong>{{money(ptyCalculation.commissionMinor+ptyTax)}}</strong></div></div>
+              <div class="invoice-totals detail-totals editor-totals"><label>Subtotal<input [value]="ptyMoney(ptySubtotal)" readonly aria-label="PTY subtotal" /></label><label>GST on Income<input [value]="ptyMoney(ptyTax)" readonly aria-label="PTY tax total" /></label><div class="total-row"><span>Total</span><strong>{{ptyMoney(ptySubtotal+ptyTax)}}</strong></div></div>
             </div>
             <div class="invoice-create-action">
               @if(ptyReceipt?.status==='creating'||ptyReceipt?.status==='review_required'){<button type="button" class="btn" (click)="reconcilePty()" [disabled]="busy">Check PTY in Xero</button>}
-              @else if(ptyReceipt?.status!=='created'){<button type="button" class="btn xero" (click)="createCurrent()" [disabled]="busy||disabled||conflict||!form.controls.confirmed.value||!canCreateCurrentPty">Create Xero Invoice</button>}
+              @else if(ptyReceipt?.status!=='created'&&!ptyReceipt?.snapshot?.noRevenue){<button type="button" class="btn xero" (click)="createCurrent()" [disabled]="busy||disabled||conflict||!form.controls.confirmed.value||!canCreateCurrentPty">Create Xero Invoice</button>}
             </div>
           </section>
         }}
         <div [hidden]="ptySide">
-        <div class="invoice-meta fields" [class.manual-meta]="manualMode"><label>{{editingPty?'To / College':'Student'}}<input [value]="editingPty?(editTarget?.contactName??''):(preparation?.student?.name??'')" readonly /></label><label>Advisor<app-manager-select formControlName="advisorId" [options]="advisors" [searchable]="true" placeholder="Select an advisor" [attr.aria-invalid]="form.controls.advisorId.touched&&form.controls.advisorId.invalid" /></label>@if(manualMode){
+        <div class="invoice-meta fields" [class.manual-meta]="manualMode"><label>{{editingPty?'To / College':'Student'}}<input [value]="editingPty?(editTarget?.contactName??''):(preparation?.student?.name??'')" readonly /></label><label>Default advisor<app-manager-select formControlName="advisorId" [options]="advisors" [searchable]="true" placeholder="Select an advisor" [attr.aria-invalid]="form.controls.advisorId.touched&&form.controls.advisorId.invalid" /></label>@if(!manualMode&&activeInvoice){<label>Invoice advisor<app-manager-select [formControl]="activeInvoice.controls.advisorId" [options]="invoiceAdvisorOptions" [searchable]="true" ariaLabel="Invoice advisor" /></label>}@if(manualMode){
           <div class="reference-field">@if(editingPty){<label for="pty-edit-reference">Reference / Student</label>}@if(!editingPty){<div class="reference-options" role="radiogroup" aria-label="Invoice reference type"><label><input type="radio" [formControl]="referenceMode" value="reference" />Reference</label><label><input type="radio" [formControl]="referenceMode" value="college" />College</label></div>}
             @if(referenceMode.value==='reference'){<input id="pty-edit-reference" [formControl]="manualReference" maxlength="500" aria-label="Invoice reference" [attr.aria-invalid]="manualReference.touched&&!manualReference.value.trim()" />}
             @else{<app-manager-select [formControl]="manualCollege" [options]="collegeOptions" [searchable]="true" placeholder="Select a college" ariaLabel="College" [attr.aria-invalid]="manualCollege.touched&&!manualCollege.value" />}
@@ -111,7 +132,7 @@
         }
         </div>
       </div>
-      <footer><div class="footer-total" aria-live="polite"><span>{{editTarget?editTarget.invoiceNumber:manualMode?'New invoice':'INV-'+activeInvoiceNumber}} · Total</span><strong class="grand-total">{{ptySide?money(ptyCalculation.commissionMinor+ptyTax):activeInvoice?money(total(activeInvoice)):'—'}}</strong>@if(activeInvoice&&(hasUnresolvedItems(activeInvoice)||activeInvoice.controls.feeApplies.value==='')){<small>Preview — confirm items and fees</small>}</div><div class="footer-actions"><button type="button" class="btn" (click)="close()" [disabled]="busy">Cancel</button>@if(!manualMode){<button type="submit" class="btn primary" [disabled]="busy||disabled||conflict||ptyLoading||!preparation?.catalogue">Save drafts</button>}@if(data?.canCreateXero||editTarget){<button type="button" class="btn xero" (click)="createAll()" [disabled]="busy||disabled||conflict||ptyLoading||!hasCreatableInvoices||!preparation?.catalogue||!form.controls.confirmed.value">{{editTarget?'Save changes':manualMode?'Create invoice':'Create Xero invoices'}}</button>}</div></footer>
+      <footer><div class="footer-total" aria-live="polite"><span>{{editTarget?editTarget.invoiceNumber:manualMode?'New invoice':'INV-'+activeInvoiceNumber}} · Total</span><strong class="grand-total">{{ptySide?ptyMoney(ptySubtotal+ptyTax):activeInvoice?money(total(activeInvoice)):'—'}}</strong>@if(activeInvoice&&(hasUnresolvedItems(activeInvoice)||activeInvoice.controls.feeApplies.value==='')){<small>Preview — confirm items and fees</small>}</div><div class="footer-actions"><button type="button" class="btn" (click)="close()" [disabled]="busy">Cancel</button>@if(!manualMode){<button type="submit" class="btn primary" [disabled]="busy||disabled||conflict||ptyLoading||!preparation?.catalogue">Save drafts</button>}@if(data?.canCreateXero||editTarget){<button type="button" class="btn xero" (click)="createAll()" [disabled]="busy||disabled||conflict||ptyLoading||!hasCreatableInvoices||!preparation?.catalogue||!form.controls.confirmed.value">{{editTarget?'Save changes':manualMode?'Create invoice':'Create Xero invoices'}}</button>}</div></footer>
     </form>
   }
 </dialog>

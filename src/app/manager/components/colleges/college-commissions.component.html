@@ -5,26 +5,39 @@
       <button class="btn primary" type="button" (click)="open()" [disabled]="loading || saving || loadFailed"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span>Add rule</button>
     }
   </div>
-  <p class="rule-help">All conditions on a rule must match. Blank conditions mean “Any.” The most specific matching rule takes precedence; a general rule is the fallback.</p>
+  <p class="rule-help">All conditions on a rule must match. Blank conditions mean “Any.” A more specific matching rule takes precedence. Missing required facts and conflicting rules block invoice generation.</p>
   @if (formOpen) {
     <form class="form commission-form" [formGroup]="form" (ngSubmit)="save()">
+      @if(blockedConfiguration){<p class="rule-help" role="status">{{editing?.configuration?.blockedReason}} Resolve the source record and re-import the reviewed configuration before enabling this rule.</p>}
       <div class="commission-form-grid">
         <label><span>Classification</span><app-manager-select formControlName="classification" [options]="classificationOptions" ariaLabel="Commission classification"/></label>
         <label><span>Location</span><app-manager-select formControlName="location" [options]="locationOptions" ariaLabel="Commission location"/></label>
         <label><span>Program</span><input formControlName="program" placeholder="Any program" maxlength="300"/></label>
+        @if(usesConfiguration){
+          <label><span>Campus city</span><input formControlName="city" maxlength="200" placeholder="Any campus city" /></label>
+          <label><span>Original enrolment from</span><input type="date" formControlName="effectiveFrom" /><small>Inclusive; uses the original enrolment date.</small></label>
+          <label><span>Original enrolment through</span><input type="date" formControlName="effectiveTo" /><small>Inclusive; leave blank for no end date.</small></label>
+          <label><span>Commission method</span><app-manager-select formControlName="method" [options]="methodOptions" ariaLabel="Commission method" /></label>
+          @if(form.controls.method.value==='first_month'){<label><span>Later months (%) *</span><input type="number" min="0" max="100" step="0.01" formControlName="laterPercentage" /></label>}
+          <label><span>Cashback method</span><app-manager-select formControlName="cashbackMode" [options]="cashbackModes" ariaLabel="Cashback calculation method" /></label>
+          @if(form.controls.cashbackMode.value==='fixed_net'){<label><span>Cashback per enrolment line (net) *</span><input type="number" min="0.01" step="0.01" formControlName="cashback_calculation" /></label>}
+          <label><span>Eligibility</span><span><input type="checkbox" formControlName="nonBulkOnly" /> Normal enrolments only; block bulk or unknown</span></label>
+        }
         <label><span>Commission (%) *</span><input type="text" inputmode="decimal" formControlName="percentage" placeholder="30.00" maxlength="6" [attr.aria-invalid]="form.controls.percentage.touched && form.controls.percentage.invalid"/><small>Between 0 and 100, with up to two decimal places.</small></label>
+        @if(!usesConfiguration){
         <label><span>Cashback status</span><app-manager-select formControlName="cashback_status" [options]="benefitOptions" ariaLabel="Cashback status"/></label>
         <label><span>Bonus status</span><app-manager-select formControlName="bonus_status" [options]="benefitOptions" ariaLabel="Bonus status"/></label>
         <label><span>Cashback calculation{{ form.controls.cashback_status.value === 'specified' ? ' *' : '' }}</span><input type="number" inputmode="decimal" min="0" max="999999999999.99" step="0.01" formControlName="cashback_calculation" placeholder="0.00" (blur)="formatBenefit('cashback_calculation')" [readOnly]="form.controls.cashback_status.value !== 'specified'" [attr.aria-invalid]="form.controls.cashback_calculation.touched && form.controls.cashback_calculation.invalid"/><small>Choose Specified to enter a value with two decimal places.</small></label>
         <label><span>Bonus{{ form.controls.bonus_status.value === 'specified' ? ' *' : '' }}</span><input type="number" inputmode="decimal" min="0" max="999999999999.99" step="0.01" formControlName="bonus_amount" placeholder="0.00" (blur)="formatBenefit('bonus_amount')" [readOnly]="form.controls.bonus_status.value !== 'specified'" [attr.aria-invalid]="form.controls.bonus_amount.touched && form.controls.bonus_amount.invalid"/><small>Choose Specified to enter a value with two decimal places.</small></label>
+        }
         <label><span>Cashback description</span><textarea formControlName="cashback_description" rows="2" maxlength="2000"></textarea></label>
         <label><span>Bonus description</span><textarea formControlName="bonus_description" rows="3" maxlength="2000"></textarea></label>
         <label class="conditions-field"><span>Application conditions</span><textarea formControlName="application_conditions" rows="3" maxlength="5000" placeholder="Explain the fees and conditions covered by this rule."></textarea></label>
       </div>
-      <div class="calculation-note"><strong>Calculation</strong><span>Tuition fee × commission percentage, rounded to 2 decimal places.</span></div>
+      <div class="calculation-note"><strong>Calculation</strong><span>Invoiced tuition before discounts. Exact rate and separately eligible cashback, rounded to two decimal places. Trimester rates are 20% for 1–2, 15% for 3–4, and 0% thereafter.</span></div>
       <div class="card-actions right-actions">
         <button class="btn" type="button" (click)="formOpen = false" [disabled]="saving">Cancel</button>
-        <button class="btn primary" type="submit" [disabled]="saving"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"/></svg></span>{{ saving ? 'Saving…' : 'Save rule' }}</button>
+        <button class="btn primary" type="submit" [disabled]="saving || blockedConfiguration"><span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 4h12l3 3v13H5zM8 4v6h8V4M8 20v-7h9v7"/></svg></span>{{ saving ? 'Saving…' : 'Save rule' }}</button>
       </div>
     </form>
   } @else {
@@ -61,6 +74,13 @@
   }
 </section>
 <ng-template #details let-rule>
+  @if(rule.configuration){
+    <p><strong>Status:</strong> {{rule.configuration.state==='blocked'?'Action required':'Ready'}} @if(rule.configuration.blockedReason){— {{rule.configuration.blockedReason}}}</p>
+    <p><strong>Exact rate:</strong> {{exactRate(rule)}} · {{rule.configuration.rateMethod}}</p>
+    @if(rule.configuration.effectiveFrom||rule.configuration.effectiveTo){<p><strong>Original enrolment:</strong> {{rule.configuration.effectiveFrom||'Any earlier date'}} — {{rule.configuration.effectiveTo||'No end date'}}</p>}
+    @if(rule.configuration.city){<p><strong>Campus city:</strong> {{rule.configuration.city}}</p>}
+  }
+
   <p><strong>Calculation:</strong> {{ rule.calculationDescription }}</p>
   <p><strong>Cashback:</strong> {{ benefitLabel(rule.cashbackStatus) }} @if (rule.cashbackDescription) { — {{ rule.cashbackDescription }} }</p>
   @if (rule.cashbackCalculation !== null) { <p><strong>Cashback calculation:</strong> {{ rule.cashbackCalculation | number:'1.2-2' }}</p> }

@@ -95,6 +95,8 @@ export type BmCollegeCourseSort = 'name' | 'code' | 'level' | 'duration' | 'cost
 export type BmCollegeSort = 'name' | 'tradingName' | 'acronym' | 'email' | 'mobile' | 'status';
 
 export interface BmCollegeCommissionRule {
+  configuration?: import('../student-operations/student-commission.types').CommissionConfiguration|null;
+  changedBy?: string|null;
   ruleId: string;
   collegeId: string;
   classification: 'ELICOS' | 'VET' | 'HE' | null;
