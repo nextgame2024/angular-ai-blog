@@ -45,6 +45,8 @@
             @if(ptyPreparationNotice;as notice){<p class="notice" [attr.role]="ptyReceipt?.stale||ptyReceipt?.adjustmentRequired?'alert':'status'">{{notice}}</p>}
             @if(ptyOptions?.advanced){
               <div class="fields commission-context" [formGroup]="activeCommissionContext">
+                @if(commissionRuleChoices.length>2 || ptyOptions?.previewRules?.[0]?.configuration?.choiceRequired){<label>College commission rule<app-manager-select formControlName="selectedRuleId" [options]="commissionRuleChoices" [searchable]="true" ariaLabel="College commission rule" /></label>}
+                @if(commissionEligibilityNotes.length){<label><span>@for(note of commissionEligibilityNotes;track note){ {{note}} }</span><span><input type="checkbox" formControlName="eligibilityConfirmed" /> I confirm these requirements are met</span></label>}
                 @if(ptyOptions?.requiredContext?.classification){<label>Course classification<app-manager-select formControlName="classification" [options]="commissionClassifications" ariaLabel="Commission course classification" /></label>}
                 @if(ptyOptions?.requiredContext?.location){<label>Student location<app-manager-select formControlName="location" [options]="commissionLocations" ariaLabel="Commission student location" /></label>}
                 @if(ptyOptions?.requiredContext?.program){<label>Program / year<input formControlName="program" placeholder="Confirmed program or year" maxlength="300" /></label>}

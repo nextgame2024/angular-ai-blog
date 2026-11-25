@@ -32,6 +32,13 @@ export function selectCommissionRule(rules:CommissionRule[],facts:CommissionCont
   if(c.effectiveFrom||c.effectiveTo){if(!facts.enrolmentDate)unknown=true;else if(c.effectiveFrom&&facts.enrolmentDate<c.effectiveFrom||c.effectiveTo&&facts.enrolmentDate>c.effectiveTo)matches=false;}
   return {rule,c,unknown,matches};
  });
+ if(facts.selectedRuleId){
+  const selected=states.find(s=>s.rule.rule_id===facts.selectedRuleId);
+  if(!selected||!selected.matches)throw new Error('The selected rule is unavailable or conflicts with the confirmed course facts.');
+  if(selected.c.state==='blocked')throw new Error(selected.c.blockedReason!);
+  return selected.rule;
+ }
+ if(states.some(s=>s.matches&&s.c.choiceRequired))throw new Error('Select the applicable college rule for this invoice.');
  if(states.some(s=>s.matches&&s.unknown))throw new Error('Complete the course classification, student location, program and original enrolment date required by the college rules.');
  const matched=states.filter(s=>s.matches&&!s.unknown);
  if(!matched.length)throw new Error('No college commission rule matches these course facts. Review the college configuration.');
@@ -41,7 +48,7 @@ export function selectCommissionRule(rules:CommissionRule[],facts:CommissionCont
   return contained&&(aa.some((v,i)=>Boolean(v)&&!bb[i])||a.c.effectiveFrom!==b.c.effectiveFrom||a.c.effectiveTo!==b.c.effectiveTo);
  };
  const winners=matched.filter(a=>!matched.some(b=>a!==b&&narrower(b,a)));
- if(winners.length!==1)throw new Error('Multiple college commission rules match. Resolve the conflicting conditions before creating PTY.');
+ if(winners.length!==1)throw new Error('Multiple college commission rules match. Select the applicable rule for this invoice.');
  if(winners[0].c.state==='blocked')throw new Error(winners[0].c.blockedReason!);
  return winners[0].rule;
 }
@@ -56,6 +63,8 @@ export function rationalMinor(base:number,numerator:number,denominator:number):n
 export function calculateCommission(rule:CommissionRule,lines:SourceLine[],facts:CommissionContext){
  const c=configuredRule(rule);
  if(c.state==='blocked')throw new Error(c.blockedReason!);
+ if(c.eligibilityNote&&facts.eligibilityConfirmed!==true)throw new Error(c.eligibilityNote);
+ if(c.maxTrimester&&facts.trimester&&facts.trimester>c.maxTrimester)throw new Error('No agreed commission rate is configured for this trimester.');
  if(c.nonBulkOnly&&facts.isBulk!==false)throw new Error('Confirm this is a normal, non-bulk enrolment before calculating commission.');
  let numerator=c.rateNumerator,denominator=c.rateDenominator;
  if(c.rateMethod==='trimester'){
@@ -76,11 +85,13 @@ export function calculateCommission(rule:CommissionRule,lines:SourceLine[],facts
   if(amountMinor>0)components.push({key:`enrolment:${index}`,kind:'cashback',sourceLineIndexes:[index],baseMinor:Number(l.amountMinor),amountMinor,rateNumerator:c.cashback.mode==='fixed_net'?0:10,rateDenominator:c.cashback.mode==='fixed_net'?1:11});
  }
  for(const benefit of c.benefits??[]){
+  if(benefit.classification&&!facts.classification)throw new Error('Confirm the course classification for this benefit.');
+  if(benefit.classification&&benefit.classification!==facts.classification)continue;
   for(const [index,line] of lines.entries()){
    if(line.kind!==benefit.source)continue;
    if(!Number.isSafeInteger(line.amountMinor)||Number(line.amountMinor)<0)throw new Error('Check the eligible benefit fee.');
    if(!line.amountMinor)continue;
-   const amountMinor=rationalMinor(Number(line.amountMinor),benefit.percentageBasisPoints,benefit.gstInclusive?11000:10000);
+   const amountMinor=benefit.fixedAmountMinor!==undefined?rationalMinor(benefit.fixedAmountMinor,benefit.gstInclusive?10:1,benefit.gstInclusive?11:1):rationalMinor(Number(line.amountMinor),benefit.percentageBasisPoints,benefit.gstInclusive?11000:10000);
    if(amountMinor>0)components.push({key:`${benefit.source}:${index}`,kind:benefit.source==='enrolment'?'cashback':'bonus',sourceLineIndexes:[index],baseMinor:Number(line.amountMinor),amountMinor,rateNumerator:benefit.percentageBasisPoints,rateDenominator:benefit.gstInclusive?11000:10000,itemCode:benefit.itemCode,saleName:benefit.saleName,advisorName:benefit.advisorName??undefined});
   }
  }

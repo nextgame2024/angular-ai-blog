@@ -22,7 +22,7 @@ const lineForm=(kind:CaseInvoiceDraftLine['kind'],label:string,value:number)=>ne
   quantity:new FormControl('1',{nonNullable:true,validators:[Validators.required,Validators.pattern(/^\d{1,6}(\.\d{1,4})?$/),c=>Number(c.value)>0?null:{positive:true}]}),
   price:new FormControl((value/100).toFixed(2),{nonNullable:true,validators:[Validators.required,Validators.pattern(signedDecimal4)]}),accountCode:text('',false),taxType:text('',false)});
 type DraftLineForm=ReturnType<typeof lineForm>;
-const contextForm=()=>new FormGroup({classification:text('',false),location:text('',false),program:text('',false),city:text('',false),enrolmentDate:text('',false),trimester:text('',false),courseMonth:text('',false),isBulk:text('',false)});
+const contextForm=()=>new FormGroup({eligibilityConfirmed:new FormControl(false,{nonNullable:true}),selectedRuleId:text('',false),classification:text('',false),location:text('',false),program:text('',false),city:text('',false),enrolmentDate:text('',false),trimester:text('',false),courseMonth:text('',false),isBulk:text('',false)});
 const paymentForm=(sequence:number,date:string,dueDate:string,fee:number,lines:DraftLineForm[])=>new FormGroup({advisorId:text('',false),sequence:new FormControl(sequence,{nonNullable:true}),issueDate:text(date),dueDate:text(dueDate),
   feeApplies:text(),fee:amount((fee/100).toFixed(2)),lines:new FormArray(lines)});
 
@@ -62,10 +62,12 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   readonly commissionClassifications=[{value:'',label:'From TRUST tuition item'},...['ELICOS','VET','HE'].map(value=>({value,label:value}))];
   readonly commissionLocations=[{value:'',label:'From TRUST tuition item'},...['ON-SHORE','OFF-SHORE'].map(value=>({value,label:value}))];
   readonly commissionBulkOptions=[{value:'',label:'Not confirmed'},{value:'false',label:'Normal enrolment'},{value:'true',label:'Bulk enrolment'}];
+  get commissionEligibilityNotes(){return [...new Set((this.ptyOptions?.previewRules??[]).filter(r=>!this.activeCommissionContext.controls.selectedRuleId.value||r.rule_id===this.activeCommissionContext.controls.selectedRuleId.value).map(r=>r.configuration.eligibilityNote).filter(Boolean))];}
+  get commissionRuleChoices(){return [{value:'',label:'Automatic — use course and invoice facts'},...(this.ptyOptions?.previewRules??[]).filter(r=>r.active).map(r=>({value:r.rule_id,label:`${r.configuration.label||[r.classification,r.location,r.program].filter(Boolean).join(' · ')||'General rule'} — ${(r.configuration.rateNumerator*100/r.configuration.rateDenominator).toFixed(2)}%${r.configuration.state==='blocked'?' (needs review)':''}`}))];}
   get activeCommissionContext(){return this.ptyContexts.get(this.activeInvoice?.controls.sequence.value)??this.emptyContext;}
   private commissionContextFor(sequence:number):CommissionContext{
     const c=this.ptyContexts.get(sequence)?.getRawValue();if(!c)return {};
-    return {...c.classification?{classification:c.classification as CommissionContext['classification']}:{},...c.location?{location:c.location as CommissionContext['location']}:{},
+    return {...c.eligibilityConfirmed?{eligibilityConfirmed:true}:{},...c.selectedRuleId?{selectedRuleId:c.selectedRuleId}:{},...c.classification?{classification:c.classification as CommissionContext['classification']}:{},...c.location?{location:c.location as CommissionContext['location']}:{},
       ...c.program.trim()?{program:c.program.trim()}:{},...c.city.trim()?{city:c.city.trim()}:{},...c.enrolmentDate?{enrolmentDate:c.enrolmentDate}:{},
       ...c.trimester?{trimester:Number(c.trimester)}:{},...c.courseMonth?{courseMonth:Number(c.courseMonth)}:{},...c.isBulk?{isBulk:c.isBulk==='true'}:{}};
   }
@@ -229,7 +231,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       }
       for(const row of r.items){
         const facts=this.ptyContexts.get(row.sequence),payment=this.form.controls.invoices.controls.find(i=>i.controls.sequence.value===row.sequence);
-        if(facts&&row.snapshot.context&&requestedContexts.get(row.sequence)===JSON.stringify(this.commissionContextFor(row.sequence))){const c=row.snapshot.context;facts.patchValue({classification:c.classification??'',location:c.location??'',program:c.program??'',city:c.city??'',enrolmentDate:c.enrolmentDate??'',trimester:c.trimester===undefined?'':String(c.trimester),courseMonth:c.courseMonth===undefined?'':String(c.courseMonth),isBulk:c.isBulk===undefined?'':String(c.isBulk)},{emitEvent:false});facts.markAsPristine();}
+        if(facts&&row.snapshot.context&&requestedContexts.get(row.sequence)===JSON.stringify(this.commissionContextFor(row.sequence))){const c=row.snapshot.context;facts.patchValue({eligibilityConfirmed:c.eligibilityConfirmed??false,selectedRuleId:c.selectedRuleId??'',classification:c.classification??'',location:c.location??'',program:c.program??'',city:c.city??'',enrolmentDate:c.enrolmentDate??'',trimester:c.trimester===undefined?'':String(c.trimester),courseMonth:c.courseMonth===undefined?'':String(c.courseMonth),isBulk:c.isBulk===undefined?'':String(c.isBulk)},{emitEvent:false});facts.markAsPristine();}
         if(payment&&requested.get(row.sequence)===JSON.stringify(payment.getRawValue())&&JSON.stringify(this.commissionContextFor(row.sequence))===JSON.stringify(row.snapshot.context??{}))this.ptyReviewedInputs.set(row.sequence,this.commissionReviewInput(payment));
         // Context inferred from tuition items is also restored on first load.
         else if(payment&&facts&&!facts.dirty&&requested.get(row.sequence)===JSON.stringify(payment.getRawValue()))this.ptyReviewedInputs.set(row.sequence,this.commissionReviewInput(payment));

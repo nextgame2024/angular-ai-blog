@@ -10,6 +10,7 @@
     <form class="form commission-form" [formGroup]="form" (ngSubmit)="save()">
       @if(blockedConfiguration){<p class="rule-help" role="status">{{editing?.configuration?.blockedReason}} Review and complete the calculation fields below before saving this rule.</p>}
       <div class="commission-form-grid">
+        @if(usesConfiguration){<label><span>Rule name</span><input formControlName="label" maxlength="300" /></label><label><span>Rule selection</span><span><input type="checkbox" formControlName="choiceRequired" /> Require the user to choose this rule</span></label>}
         <label><span>Classification</span><app-manager-select formControlName="classification" [options]="classificationOptions" ariaLabel="Commission classification"/></label>
         <label><span>Location</span><app-manager-select formControlName="location" [options]="locationOptions" ariaLabel="Commission location"/></label>
         <label><span>Program</span><input formControlName="program" placeholder="Any program" maxlength="300"/></label>
@@ -36,6 +37,8 @@
         <p class="rule-help">Apply a percentage of the source fee on this invoice. Select GST inclusive when the benefit includes GST; the net amount is divided by 1.10. Account and tax rate come from the PTY item. A blank representative uses the invoice advisor.</p>
         @for(benefit of benefits.controls;track benefit;let i=$index){
           <div class="commission-form-grid" [formGroup]="benefit">
+            <label><span>Benefit course classification</span><app-manager-select formControlName="classification" [options]="classificationOptions" ariaLabel="Benefit classification" /></label>
+            <label><span>Fixed amount (optional)</span><input formControlName="fixedAmount" inputmode="decimal" placeholder="Otherwise use percentage" /><small>Once per positive source fee line; replaces the percentage.</small></label>
             <label><span>Source fee</span><app-manager-select formControlName="source" [options]="benefitSources" ariaLabel="Benefit source fee" /></label>
             <label><span>Percentage of fee *</span><input formControlName="percentage" inputmode="decimal" [attr.aria-invalid]="benefit.controls.percentage.touched && benefit.controls.percentage.invalid" /></label>
             <label><span>GST treatment</span><span><input type="checkbox" formControlName="gstInclusive" /> Benefit includes 10% GST</span></label>
@@ -87,6 +90,7 @@
 </section>
 <ng-template #details let-rule>
   @if(rule.configuration){
+    <p><strong>Rule:</strong> {{rule.configuration.label || 'General rule'}}</p>
     <p><strong>Status:</strong> {{rule.configuration.state==='blocked'?'Action required':'Ready'}} @if(rule.configuration.blockedReason){— {{rule.configuration.blockedReason}}}</p>
     <p><strong>Commission:</strong> {{rate(rule)}} · {{rule.configuration.rateMethod}}</p>
     @if(rule.configuration.effectiveFrom||rule.configuration.effectiveTo){<p><strong>Original enrolment:</strong> {{rule.configuration.effectiveFrom||'Any earlier date'}} — {{rule.configuration.effectiveTo||'No end date'}}</p>}

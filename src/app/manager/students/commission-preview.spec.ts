@@ -21,3 +21,18 @@ describe('East Coast materials support',()=>{
   expect(s.totalMinor).toBe(48760);expect(s.taxMinor).toBe(4433);expect(s.calculation.components!.map(c=>c.amountMinor)).toEqual([21600,18182,4545]);expect(s.value.lines[2].tracking![1].option).toBe('O10 Open for Australia');expect(s.value.lines[0].tracking![1].option).toBe('Advisor');
  });
 });
+
+describe('Workbook rule selection preview',()=>{
+ it('requires a choice and uses the selected named rate',()=>{
+  const o=structuredClone(options);o.previewRules=[{...rule,rule_id:'a',configuration:{...config,label:'Undergraduate',choiceRequired:true}},{...rule,rule_id:'b',configuration:{...config,label:'Postgraduate',choiceRequired:true,rateNumerator:15,rateDenominator:100}}];
+  expect(()=>previewCommission(o,lines,{},'inst','Advisor')).toThrowError(/Select/);
+  expect(previewCommission(o,lines,{selectedRuleId:'b'},'inst','Advisor').calculation.commissionMinor).toBe(10800);
+  o.previewRules[1].classification='VET';expect(()=>previewCommission(o,lines,{selectedRuleId:'b'},'inst','Advisor')).toThrowError(/conflicts/);
+ });
+ it('applies fixed Abbey materials support only to eligible invoices',()=>{
+  const o=structuredClone(options);o.previewRules![0].configuration.benefits=[{source:'materials',fixedAmountMinor:4545,classification:'ELICOS',percentageBasisPoints:10000,gstInclusive:false,itemCode:'MARKETING VET',saleName:'Marketing',advisorName:null}];
+  o.items!.push({...o.items![0],code:'MARKETING VET'});o.typeOfSaleOptions!.push({value:'marketing',label:'Marketing'});
+  const s=previewCommission(o,[...lines,{kind:'materials',amountMinor:10000,itemCode:'Materials fee',quantity:'1',description:'Materials'}],{},'inst','Advisor');
+  expect(s.calculation.components!.at(-1)!.amountMinor).toBe(4545);expect(s.totalMinor).toBe(48760);
+ });
+});
