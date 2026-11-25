@@ -98,7 +98,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   get ptyPreviewPending(){return !!this.ptyOptions?.advanced&&!this.displayedPtySnapshot;}
   ptyMoney(value:number){return this.ptyPreviewPending?'Awaiting calculation':this.money(value);}
   get ptySubtotal(){return this.ptyCalculation.subtotalMinor??this.ptyCalculation.commissionMinor;}
-  get ptyRateLabel(){if(this.ptyPreviewPending)return '—';const c=this.ptyCalculation;return c.rateNumerator!==undefined&&c.rateDenominator?`${c.rateNumerator} / ${c.rateDenominator} (${(c.basisPoints/100).toFixed(5).replace(/0+$/,'').replace(/\.$/,'')}%)`:`${c.basisPoints/100}%`;}
+  get ptyRateLabel(){if(this.ptyPreviewPending)return '—';return `${(this.ptyCalculation.basisPoints/100).toFixed(2).replace(/0+$/,'').replace(/\.$/,'')}%`;}
   get ptyComponentRows(){return (this.displayedPtySnapshot?.value.lines??[]).map((line,index)=>({...line,component:this.displayedPtySnapshot?.calculation.components?.[index],sale:line.tracking?.find(t=>t.name.toLowerCase()==='type of sale')?.option,taxLabel:this.taxName(line.taxType),advisor:line.tracking?.find(t=>t.name.toLowerCase()==='sales representative')?.option??this.advisorLabel}));}
   private readonly ptyItemsByCode=new Map<string,NonNullable<CommissionOptions['items']>>();
   readonly ptyTypeOfSaleOptions:Array<{value:string;label:string}>=[];
