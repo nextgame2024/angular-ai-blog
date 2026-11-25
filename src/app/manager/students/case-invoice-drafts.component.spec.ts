@@ -388,6 +388,21 @@ describe('CaseInvoiceDraftsComponent',()=>{
     c.activeInvoice.controls.lines.at(0).controls.price.setValue('200');expect(c.ptySubtotal).toBe(7818);expect(c.ptyTax).toBe(782);
     c.activeInvoice.controls.lines.at(0).controls.price.setValue('');f.detectChanges();expect(c.ptyPreviewPending).toBeTrue();expect(f.nativeElement.querySelector('[aria-label="PTY subtotal"]').value).toBe('Awaiting calculation');
   });
+  it('shows only one Advisor selector and inherits the case advisor',()=>{
+    const d=structuredClone(data);d.preparation!.student.advisorId='advisor';api.caseInvoiceDrafts.and.returnValue(of(d));
+    const f=setup(),c=f.componentInstance;c.open();f.detectChanges();
+    expect(f.nativeElement.querySelectorAll('[aria-label="Advisor"]').length).toBe(1);
+    expect(f.nativeElement.textContent).not.toContain('Default advisor');expect(f.nativeElement.textContent).not.toContain('Invoice advisor');
+    expect(c.form.controls.invoices.controls.every(p=>p.controls.advisorId.value==='advisor')).toBeTrue();
+  });
+  it('copies the first selection to unassigned invoices while keeping later changes independent',()=>{
+    const d=structuredClone(data);d.preparation!.advisors.push({advisorId:'second',code:'S20',name:'Other Advisor'});api.caseInvoiceDrafts.and.returnValue(of(d));
+    const c=setup().componentInstance;c.open();c.activeInvoice.controls.advisorId.setValue('advisor');
+    expect(c.form.controls.invoices.controls.every(p=>p.controls.advisorId.value==='advisor')).toBeTrue();
+    c.selectPayment(1);c.activeInvoice.controls.advisorId.setValue('second');c.selectPayment(0);expect(c.advisorLabel).toBe('S15 Fixture Advisor');
+    complete(c);api.prepareCaseInvoiceDrafts.and.returnValue(of({batchId:'batch',revision:1,count:8,caseVersion:4,assignedAdvisorId:'advisor'}));c.save();
+    expect(api.prepareCaseInvoiceDrafts.calls.mostRecent().args[1].invoices[1].advisorId).toBe('second');expect(c.preparation!.student.advisorId).toBe('advisor');expect(c.preparation!.caseVersion).toBe(4);
+  });
   it('inherits the default advisor, preserves an invoice override and saves it',()=>{
     const d=advancedData();d.preparation!.advisors.push({advisorId:'second',code:'S20',name:'Other Advisor'});
     api.caseInvoiceDrafts.and.returnValue(of(d));api.commissionOptions.and.returnValue(of(advancedOptions));

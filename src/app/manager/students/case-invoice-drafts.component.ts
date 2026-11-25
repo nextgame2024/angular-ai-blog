@@ -256,9 +256,10 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   get activeInvoiceNumber():number|string{return this.activeInvoice?.getRawValue().sequence??'—';}
   get activeNeedsReview(){return Boolean(this.activeInvoice&&this.isReviewSequence(this.activeInvoice.controls.sequence.value));}
   get hasCreatableInvoices(){return this.form.controls.invoices.controls.some(payment=>!this.isFrozenSequence(payment.controls.sequence.value))||Boolean(this.ptyPending);}
+  get activeAdvisorControl(){const invoice=this.activeInvoice;return !this.manualMode&&invoice?invoice.controls.advisorId:this.form.controls.advisorId;}
   get advisorLabel(){return this.advisorLabelFor(this.activeInvoice);}
   private advisorLabelFor(payment?:ReturnType<typeof paymentForm>){return this.advisors.find(a=>a.value===(payment?.controls.advisorId.value||this.form.controls.advisorId.value))?.label??'Select an advisor';}
-  get invoiceAdvisorOptions(){return [{value:'',label:'Default: '+(this.advisors.find(a=>a.value===this.form.controls.advisorId.value)?.label??'Select an advisor')},...this.advisors];}
+
   ptyWarningDismissed=false;
   get ptyWarning(){return this.displayedPtySnapshot?.warnings?.join(' ')??'';}
   private taxName(code:string|undefined){return this.ptyOptions?.taxRates?.find(t=>t.taxType===code)?.name??(this.ptyOptions?.tax?.taxType===code?this.ptyOptions?.tax?.name:code??'—');}
@@ -297,7 +298,10 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   hasUnresolvedItems(payment:ReturnType<typeof paymentForm>){return payment.controls.lines.controls.some(l=>this.lineAmount(l)!==0&&(!this.editTarget&&!l.controls.itemId.value||!l.controls.accountCode.value||this.taxRate(l)?.rate==null));}
   private bindFeeChoice(payment:ReturnType<typeof paymentForm>){
     payment.controls.advisorId.valueChanges.pipe(takeUntil(this.previewStop$),takeUntil(this.scope$)).subscribe(value=>{
-      if(value&&!this.form.controls.advisorId.value)this.form.controls.advisorId.setValue(value);
+      if(value&&!this.form.controls.advisorId.value&&this.form.controls.invoices.at(0)===payment){
+        this.form.controls.advisorId.setValue(value);
+        for(const other of this.form.controls.invoices.controls)if(!other.controls.advisorId.value&&!this.isFrozenSequence(other.controls.sequence.value))other.controls.advisorId.setValue(value,{emitEvent:false});
+      }
       this.form.controls.confirmed.setValue(false,{emitEvent:false});
     });
     payment.controls.feeApplies.valueChanges.pipe(takeUntil(this.previewStop$),takeUntil(this.scope$)).subscribe(choice=>{
@@ -390,7 +394,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       const stored=saved?.snapshot.invoices.find(invoice=>invoice.sequence===source.sequence);
       if(stored){
         const payment=paymentForm(stored.sequence,stored.issueDate,stored.dueDate,stored.conditionalFeeMinor,[]);
-        payment.controls.advisorId.setValue(stored.advisorId??'',{emitEvent:false});
+        payment.controls.advisorId.setValue(stored.advisorId??saved?.advisorId??p.student.advisorId??'',{emitEvent:false});
         payment.controls.feeApplies.setValue(stored.conditionalFeeApplies?'yes':'no',{emitEvent:false});
         this.form.controls.invoices.push(payment);this.bindFeeChoice(payment);
         for(const savedLine of stored.lines){
@@ -420,6 +424,8 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       if(material>0)this.addLine(payment,'materials','Materials fee',material);
       if(source.agencyDiscountMinor)this.addLine(payment,'agency_discount','Agency discount',-source.agencyDiscountMinor);
     }
+    for(const payment of this.form.controls.invoices.controls)if(!payment.controls.advisorId.value)payment.controls.advisorId.setValue(this.form.controls.advisorId.value,{emitEvent:false});
+    this.form.controls.advisorId.valueChanges.pipe(takeUntil(this.previewStop$),takeUntil(this.scope$)).subscribe(value=>{for(const payment of this.form.controls.invoices.controls)if(!payment.controls.advisorId.value)payment.controls.advisorId.setValue(value,{emitEvent:false});});
     const firstEditable=this.form.controls.invoices.controls.findIndex(payment=>!this.isFrozenSequence(payment.controls.sequence.value));
     const firstUnresolved=this.form.controls.invoices.controls.findIndex(payment=>!this.isCreatedSequence(payment.controls.sequence.value));
     this.activePayment=Math.max(0,firstEditable>=0?firstEditable:firstUnresolved);
@@ -619,7 +625,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
       },error:error=>{this.busy=false;this.enableEditor();this.message=typeof error?.error?.message==='string'?error.error.message:'The invoice update could not be confirmed. Retry the same changes.';this.tone='error';}});
       return;
     }
-    const invoices=this.form.controls.invoices.controls.map(i=>{const invoice=i.getRawValue();return {...invoice.advisorId&&!this.manualMode?{advisorId:invoice.advisorId}:{},sequence:invoice.sequence,issueDate:invoice.issueDate,dueDate:invoice.dueDate,
+    const invoices=this.form.controls.invoices.controls.map(i=>{const invoice=i.getRawValue();return {...invoice.advisorId&&!this.manualMode&&(invoice.advisorId!==v.advisorId||p.savedBatch?.snapshot.invoices.find(saved=>saved.sequence===invoice.sequence)?.advisorId)?{advisorId:invoice.advisorId}:{},sequence:invoice.sequence,issueDate:invoice.issueDate,dueDate:invoice.dueDate,
       conditionalFeeApplies:invoice.feeApplies==='yes',conditionalFeeMinor:invoice.feeApplies==='yes'?offerMoneyInput(invoice.fee)!:0,
       lines:i.controls.lines.controls.filter(l=>this.lineAmount(l)!==0).map(l=>{const line=l.getRawValue();return {kind:line.kind,description:line.description,itemCode:line.itemCode,itemId:line.itemId,
         quantity:line.quantity,unitPrice:line.price,amountMinor:this.lineAmount(l),accountCode:line.accountCode,taxType:line.taxType};})};});
@@ -632,6 +638,8 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const saveRequest=allTrustFrozen&&wantsPty?of({...this.draftIdentity!,count:invoices.length}):this.manualMode?this.api.prepareManualCaseInvoice(this.caseId,value,this.request!.key):this.api.prepareCaseInvoiceDrafts(this.caseId,value,this.request!.key);
     saveRequest.pipe(takeUntil(this.scope$)).subscribe({next:result=>{
       this.draftIdentity={batchId:result.batchId,revision:result.revision};
+      if('caseVersion' in result&&typeof result.caseVersion==='number')p.caseVersion=result.caseVersion;
+      if('assignedAdvisorId' in result&&typeof result.assignedAdvisorId==='string')p.student.advisorId=result.assignedAdvisorId;
       if(wantsPty){
         const pending=invoices.filter(i=>{const status=this.ptyDrafts.find(d=>d.sequence===i.sequence)?.status;return !status||status==='not_attempted';});
         const targets=action==='current'?pending.filter(i=>i.sequence===invoices[this.activePayment].sequence):pending;
