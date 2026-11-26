@@ -30,6 +30,29 @@ describe('CaseOfferReviewComponent',()=>{
     const c=setup({...result,extraction:{...source,instalments:[],statedTotalMinor:100}}).componentInstance;c.payInFull();expect(c.form.controls.instalments.length).toBe(0);
     const scheduled=setup().componentInstance;scheduled.payInFull();expect(scheduled.form.controls.instalments.length).toBe(2);
   });
+  it('defaults to full payment without a schedule and keeps both radio choices available',()=>{
+    const f=setup({...result,extraction:{...source,instalments:[]}}),c=f.componentInstance;
+    expect(c.paymentMode).toBe('full');expect(c.form.controls.instalments.length).toBe(1);
+    const radios=f.nativeElement.querySelectorAll('.payment-options input');
+    expect(radios.length).toBe(2);expect(radios[0].checked).toBeTrue();
+    radios[1].click();f.detectChanges();expect(c.paymentMode).toBe('scheduled');
+    c.form.controls.instalments.at(0).controls.dueTerm.setValue('Next month');
+    radios[0].click();f.detectChanges();expect(c.form.controls.instalments.at(0).controls.dueTerm.value).toBe('Payment in full');
+    radios[1].click();f.detectChanges();expect(c.form.controls.instalments.at(0).controls.dueTerm.value).toBe('Next month');
+  });
+  it('preserves recorded scheduled payments when switching to full payment and back',()=>{
+    const c=setup().componentInstance,rows=[...c.form.controls.instalments.controls];
+    expect(c.paymentMode).toBe('scheduled');c.setPaymentMode('full');expect(c.form.controls.instalments.length).toBe(1);
+    c.setPaymentMode('scheduled');expect(c.form.controls.instalments.controls).toEqual(rows);
+    c.form.controls.instalments.clear();expect(c.paymentColumnCount).toBe(8);
+  });
+  it('shows the course description above a concise tuition header without changing the source label',()=>{
+    const label='General English, Commences 23 Feb 2026 - Finishes 15 May 2026, Length 12 weeks, CRICOS 0101937';
+    const f=setup({...result,extraction:{...source,instalments:[],fees:[{label,amountMinor:904000,conditional:false,condition:null}]}}),c=f.componentInstance;
+    expect(f.nativeElement.querySelector('.tuition-description').textContent).toBe(label);
+    expect(Array.from(f.nativeElement.querySelectorAll('.instalment-table th')).map((th:any)=>th.textContent)).toContain('Tuition fee');
+    expect(c.form.controls.instalments.at(0).controls.components.at(0).controls.label.value).toBe(label);
+  });
   it('replaces a differing student name only with explicit confirmation',()=>{
     const f=setup(),c=f.componentInstance;c.analysis={...result,offer:{...result.offer!,currentStudentName:'Example StudenP'}};f.detectChanges();
     expect(f.nativeElement.textContent).toContain('Replace the current student name');
@@ -135,7 +158,7 @@ describe('CaseOfferReviewComponent',()=>{
   it('renders instalments as a table with dynamic payment columns and accessible row removal',()=>{
     const f=setup(),c=f.componentInstance;c.selectTab('instalments');f.detectChanges();
     const table=f.nativeElement.querySelector('.instalment-table') as HTMLTableElement;
-    expect(Array.from(table.querySelectorAll('th')).map(th=>th.textContent!.trim())).toEqual(['Instalment','Due date','Payment term','Material','Agency discount','Tuition','International transfer','Payment TRUST','Payment PTY','Type of Sale','Action']);
+    expect(Array.from(table.querySelectorAll('th')).map(th=>th.textContent!.trim())).toEqual(['Instalment','Due date','Payment term','Material','Agency discount','Tuition fee','International transfer','Payment TRUST','Payment PTY','Type of Sale','Action']);
     expect(Array.from(table.querySelectorAll('th')).every(th=>th.scope==='col')).toBeTrue();expect(table.querySelectorAll('.payment-entry').length).toBe(2);
     expect((table.querySelector('[aria-label="Instalment 1 Material amount"]') as HTMLInputElement).value).toBe('50.00');
     const missing=table.querySelector('[aria-label="Instalment 2 Material amount"]') as HTMLInputElement;expect(missing.value).toBe('0.00');missing.value='120.00';missing.dispatchEvent(new Event('input'));f.detectChanges();expect(c.componentFor(c.form.controls.instalments.at(1),'Material')?.controls.amount.value).toBe('120.00');

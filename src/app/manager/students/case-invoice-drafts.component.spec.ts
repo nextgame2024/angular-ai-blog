@@ -37,6 +37,20 @@ describe('CaseInvoiceDraftsComponent',()=>{
     await TestBed.configureTestingModule({imports:[CaseInvoiceDraftsComponent],providers:[{provide:StudentOperationsService,useValue:api}]}).compileComponents();
   });
   function setup(){const f=TestBed.createComponent(CaseInvoiceDraftsComponent);f.componentRef.setInput('caseId','case');f.detectChanges();return f;}
+  it('uses a course-named full-payment fee as tuition and derives the weekly price',()=>{
+    const fixture=structuredClone(data),source=fixture.preparation!.source;
+    const label='General English (Daytime), Commences 23 Feb 2026 - Finishes 15 May 2026, Length 12 weeks, CRICOS 0101937';
+    source.courses=[{name:'GENERAL ENGLISH (DAYTIME)',code:'0101937',startsOn:'2026-02-23',endsOn:'2026-05-15',duration:'12 weeks'}];
+    source.statedTotalMinor=437000;
+    source.fees=[{label,amountMinor:384000,conditional:false,condition:null},{label:'Enrolment fee 2026',amountMinor:29000,conditional:false,condition:null},{label:'Materials 1-23 weeks 2026',amountMinor:24000,conditional:false,condition:null}];
+    source.instalments=[{sequence:1,dueOn:null,dueTerm:'Payment in full',totalMinor:437000,includedConditionalFeeMinor:0,components:source.fees.map(f=>({label:f.label,amountMinor:f.amountMinor}))}];
+    api.caseInvoiceDrafts.and.returnValue(of(fixture));const c=setup().componentInstance;c.open();
+    const payment=c.form.controls.invoices.at(0),tuition=payment.controls.lines.at(0);
+    expect(c.lineAmount(tuition)).toBe(384000);c.selectItem(payment,tuition,'item');
+    expect(Number(tuition.controls.quantity.value)).toBe(12);expect(Number(tuition.controls.price.value)).toBe(320);
+    expect(payment.controls.lines.controls.reduce((sum,line)=>sum+c.lineAmount(line),0)).toBe(437000);
+    expect((c as any).commissionBase(payment)).toBe(384000);
+  });
   it('opens the affected TRUST instalment when the server requires a review note',()=>{
     api.prepareCaseInvoiceDrafts.and.returnValue(throwError(()=>({status:400,error:{errorCode:'invoice_review_note_required',sequence:2,message:'INV-2 (TRUST): Explain the difference.'}})));
     const c=setup().componentInstance;c.open();complete(c);c.save();

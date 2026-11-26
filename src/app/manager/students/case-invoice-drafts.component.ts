@@ -1,3 +1,4 @@
+import { isOfferTuition } from '../student-operations/offer-tuition';
 import {previewCommission,PreviewSnapshot} from './commission-preview';
 import { CommonModule } from '@angular/common';
 import { Component,ElementRef,EventEmitter,Input,OnChanges,OnDestroy,Output,ViewChild,inject } from '@angular/core';
@@ -143,7 +144,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
   }
   private commissionBase(payment:ReturnType<typeof paymentForm>){
     const source=this.preparation?.source.instalments.find(i=>i.sequence===payment.controls.sequence.value);
-    if((source?.agencyDiscountMinor??0)>0)return (source?.components??[]).filter(c=>/tuition/i.test(c.label)).reduce((n,c)=>n+c.amountMinor,0);
+    if((source?.agencyDiscountMinor??0)>0)return (source?.components??[]).filter(c=>isOfferTuition(c.label,this.preparation?.source.courses??[])).reduce((n,c)=>n+c.amountMinor,0);
     return payment.controls.lines.controls.filter(l=>l.controls.kind.value==='tuition').reduce((n,l)=>n+this.lineAmount(l),0);
   }
   private ptyPricingFor(payment:ReturnType<typeof paymentForm>){
@@ -331,12 +332,12 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
     const countMatch=duration.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${basis.replace(/s$/,'')}s?\\b`));
     let countScaled=countMatch?BigInt(Math.round(Number(countMatch[1])*10000)):0n;
     if(!countScaled&&(basis==='terms'||basis==='semesters')){
-      const tuitionPayments=source.instalments.filter(payment=>payment.components?.some(component=>/tuition/i.test(component.label))).length;
+      const tuitionPayments=source.instalments.filter(payment=>payment.components?.some(component=>isOfferTuition(component.label,source.courses))).length;
       countScaled=BigInt(tuitionPayments)*10000n;
     }
     if(countScaled<=0n)return null;
     const explicit=source.fees.find(fee=>!fee.conditional&&/^(total\s+)?tuition(\s+fee)?$/i.test(fee.label.trim()))?.amountMinor;
-    const components=source.instalments.reduce((total,payment)=>total+(payment.components??[]).filter(component=>/tuition/i.test(component.label)).reduce((n,component)=>n+component.amountMinor,0),0);
+    const components=source.instalments.reduce((total,payment)=>total+(payment.components??[]).filter(component=>isOfferTuition(component.label,source.courses)).reduce((n,component)=>n+component.amountMinor,0),0);
     const tuitionTotal=explicit??(components>0?components:null);if(tuitionTotal===null)return null;
     const numerator=BigInt(tuitionTotal)*1_000_000n;
     if(numerator%countScaled!==0n)return null;
@@ -413,7 +414,7 @@ export class CaseInvoiceDraftsComponent implements OnChanges,OnDestroy {
         }
         continue;
       }
-      const tuition=(source.components??[]).filter(c=>/tuition/i.test(c.label)).reduce((n,c)=>n+c.amountMinor,0);
+      const tuition=(source.components??[]).filter(c=>isOfferTuition(c.label,this.preparation?.source.courses??[])).reduce((n,c)=>n+c.amountMinor,0);
       const material=source.components?.find(c=>/material/i.test(c.label))?.amountMinor??0;
       const enrolment=source.sequence===first?p.source.fees.find(f=>!f.conditional&&/enrol/i.test(f.label))?.amountMinor??0:0;
       const course=this.courseDescription();

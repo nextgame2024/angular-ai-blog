@@ -1,3 +1,4 @@
+import { isOfferTuition } from '../student-operations/offer-tuition';
 import { Component,ElementRef,Input,Output,EventEmitter,OnInit,OnDestroy,inject } from '@angular/core';
 import { FormArray,FormControl,FormGroup,ReactiveFormsModule,Validators } from '@angular/forms';
 import { of,Subject,takeUntil,switchMap } from 'rxjs';
@@ -70,17 +71,35 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
     for(const course of source.courses)this.addCourse(course);
     for(const fee of source.fees)this.addFee(fee);
     for(const item of source.instalments)this.addInstalment(item);
+    if(!source.instalments.length){this.paymentMode='full';this.payInFull(false);}
   }
   addCourse(v?:StudentOfferExtraction['courses'][number]){if(this.busy||this.form.controls.courses.length>=30)return;this.form.controls.courses.push(new FormGroup({name:control(v?.name??'',true),code:control(v?.code??''),startsOn:control(v?.startsOn??''),endsOn:control(v?.endsOn??''),duration:control(v?.duration??'')}));}
   addFee(v?:StudentOfferExtraction['fees'][number]){if(this.busy||this.form.controls.fees.length>=100)return;this.form.controls.fees.push(new FormGroup({label:control(v?.label??'',true),amount:amountControl(this.money(v?.amountMinor??null)),conditional:new FormControl(v?.conditional??false,{nonNullable:true}),condition:control(v?.condition??'')}));}
-  payInFull(){
+  paymentMode:'full'|'scheduled'='scheduled';
+  private paymentRows:{full:InstalmentForm[];scheduled:InstalmentForm[]}={full:[],scheduled:[]};
+  setPaymentMode(mode:'full'|'scheduled'){
+    if(this.busy||mode===this.paymentMode)return;
+    this.paymentRows[this.paymentMode]=[...this.form.controls.instalments.controls];
+    this.form.controls.instalments.clear();
+    this.paymentMode=mode;
+    for(const row of this.paymentRows[mode])this.form.controls.instalments.push(row);
+    if(!this.form.controls.instalments.length){
+      if(mode==='full')this.payInFull();else this.addInstalment();
+    }
+  }
+  paymentColumnLabel(label:string){
+    return this.isTuition(label)?'Tuition fee':label;
+  }
+  get tuitionDescriptions(){return this.componentLabels.filter(label=>this.paymentColumnLabel(label)==='Tuition fee'&&!/^tuition(?: fee)?$/i.test(label));}
+  get paymentColumnCount(){return 8+this.componentLabels.length+this.componentLabels.filter(label=>this.isTuition(label)).length;}
+  payInFull(navigate=true){
     if(this.busy||this.form.controls.instalments.length)return;
     const fees=this.form.controls.fees.getRawValue().filter(f=>!f.conditional),total=offerMoneyInput(this.form.controls.total.value);
     if(!fees.length||total===null||total<=0||fees.some(f=>!f.label.trim()||offerMoneyInput(f.amount)===null)||fees.reduce((n,f)=>n+(offerMoneyInput(f.amount)??0),0)!==total){
-      this.showProblem('Check the fee breakdown and total before creating a single payment. Non-conditional fees must add up to the total.','fees');return;
+      if(navigate)this.showProblem('Check the fee breakdown and total before creating a single payment. Non-conditional fees must add up to the total.','fees');return;
     }
     this.addInstalment({sequence:1,dueTerm:'Payment in full',dueOn:null,totalMinor:total,includedConditionalFeeMinor:0,components:fees.map(f=>({label:f.label.trim(),amountMinor:offerMoneyInput(f.amount)!}))});
-    this.activeTab='instalments';
+    if(navigate)this.activeTab='instalments';
   }
   addInstalment(v?:StudentOfferExtraction['instalments'][number]){
     if(this.busy||this.form.controls.instalments.length>=200)return;
@@ -92,7 +111,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
     payment.controls.components.valueChanges.pipe(takeUntil(this.stop$)).subscribe(recalculate);
     payment.controls.includedFee.valueChanges.pipe(takeUntil(this.stop$)).subscribe(recalculate);
   }
-  isTuition(label:string){return /tuition/i.test(label);}
+  isTuition(label:string){return isOfferTuition(label,this.form.controls.courses.getRawValue());}
   trustPayment(payment:InstalmentForm){return this.money(Math.max(0,(offerMoneyInput(payment.controls.total.value)??0)-(offerMoneyInput(payment.controls.agencyDiscount.value)??0)));}
   get componentLabels(){
     const labels:string[]=[];
