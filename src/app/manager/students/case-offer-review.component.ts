@@ -29,7 +29,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   private readonly api=inject(StudentOperationsService);private readonly colleges=inject(ManagerCollegesService);private readonly stop$=new Subject<void>();
   private request:{fingerprint:string;key:string}|null=null;
   private readonly host=inject<ElementRef<HTMLElement>>(ElementRef);
-  readonly tabs=[{key:'details',label:'Details'},{key:'fees',label:'Fee details'},{key:'instalments',label:'Instalment schedule'},{key:'review',label:'Evidence & review note'}] as const;
+  readonly tabs=[{key:'details',label:'Details'},{key:'fees',label:'Fee details'},{key:'instalments',label:'Payment schedule'},{key:'review',label:'Evidence & review note'}] as const;
   activeTab:'details'|'fees'|'instalments'|'review'='details';
   private focusTimer:ReturnType<typeof setTimeout>|null=null;
   selectTab(tab:typeof this.activeTab){if(!this.busy)this.activeTab=tab;}
@@ -73,6 +73,15 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
   }
   addCourse(v?:StudentOfferExtraction['courses'][number]){if(this.busy||this.form.controls.courses.length>=30)return;this.form.controls.courses.push(new FormGroup({name:control(v?.name??'',true),code:control(v?.code??''),startsOn:control(v?.startsOn??''),endsOn:control(v?.endsOn??''),duration:control(v?.duration??'')}));}
   addFee(v?:StudentOfferExtraction['fees'][number]){if(this.busy||this.form.controls.fees.length>=100)return;this.form.controls.fees.push(new FormGroup({label:control(v?.label??'',true),amount:amountControl(this.money(v?.amountMinor??null)),conditional:new FormControl(v?.conditional??false,{nonNullable:true}),condition:control(v?.condition??'')}));}
+  payInFull(){
+    if(this.busy||this.form.controls.instalments.length)return;
+    const fees=this.form.controls.fees.getRawValue().filter(f=>!f.conditional),total=offerMoneyInput(this.form.controls.total.value);
+    if(!fees.length||total===null||total<=0||fees.some(f=>!f.label.trim()||offerMoneyInput(f.amount)===null)||fees.reduce((n,f)=>n+(offerMoneyInput(f.amount)??0),0)!==total){
+      this.showProblem('Check the fee breakdown and total before creating a single payment. Non-conditional fees must add up to the total.','fees');return;
+    }
+    this.addInstalment({sequence:1,dueTerm:'Payment in full',dueOn:null,totalMinor:total,includedConditionalFeeMinor:0,components:fees.map(f=>({label:f.label.trim(),amountMinor:offerMoneyInput(f.amount)!}))});
+    this.activeTab='instalments';
+  }
   addInstalment(v?:StudentOfferExtraction['instalments'][number]){
     if(this.busy||this.form.controls.instalments.length>=200)return;
     const payment:InstalmentForm=new FormGroup({sequence:control(String(v?.sequence??this.form.controls.instalments.length+1),true),typeOfSaleOptionId:control(v?.typeOfSaleOptionId??this.analysis.offer?.defaultTypeOfSaleOptionId??''),dueTerm:control(v?.dueTerm??''),dueOn:control(v?.dueOn??''),total:amountControl(this.money(v?.totalMinor??null)),includedFee:amountControl(this.money(v?.includedConditionalFeeMinor??0)),agencyDiscount:amountControl(this.money(v?.agencyDiscountMinor??0)),components:new FormArray<ComponentForm>((v?.components??[]).map(c=>new FormGroup({label:control(c.label,true),amount:amountControl(this.money(c.amountMinor))})))});
@@ -151,6 +160,7 @@ export class CaseOfferReviewComponent implements OnInit,OnDestroy {
     this.form.markAllAsTouched();const v=this.form.getRawValue();
     let corrections:StudentOfferExtraction|null=null;
     if(decision==='confirmed'){
+      if(!v.instalments.length){this.showProblem('Choose Pay in full for one payment, or add a scheduled payment.','instalments');return;}
       const rows=v.instalments??[],courses=v.courses??[],fees=v.fees??[];
       if(this.form.invalid||!courses.length||!fees.length||!rows.length||!v.name.trim()||!v.collegeName.trim()||!v.collegeId||!/^[A-Z]{3}$/.test(v.currency)||offerMoneyInput(v.total)===null||
         fees.some(f=>offerMoneyInput(f.amount)===null)||rows.some(r=>offerMoneyInput(r.total)===null||offerMoneyInput(r.includedFee)===null||!/^\d+$/.test(r.sequence)||Number(r.sequence)<1||(!r.dueOn&&!r.dueTerm))){

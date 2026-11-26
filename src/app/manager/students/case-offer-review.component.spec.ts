@@ -20,6 +20,16 @@ describe('CaseOfferReviewComponent',()=>{
     await TestBed.configureTestingModule({imports:[CaseOfferReviewComponent],providers:[{provide:StudentOperationsService,useValue:api},{provide:TownPlannerV2Service,useValue:{suggestAddresses:()=>of([]),getPlaceDetails:()=>of(null)}}]}).overrideComponent(CaseOfferReviewComponent,{set:{providers:[{provide:ManagerCollegesService,useValue:colleges}]}}).compileComponents();
   });
   function setup(input=result){const f=TestBed.createComponent(CaseOfferReviewComponent);f.componentRef.setInput('analysis',structuredClone(input));f.componentRef.setInput('caseId','case');f.componentRef.setInput('documentId','doc');f.detectChanges();return f;}
+  it('confirms one full payment from the reviewed Navitas fee breakdown without an instalment schedule',()=>{
+    const f=setup({...result,extraction:{...source,statedTotalMinor:437000,instalments:[],fees:[{label:'Tuition',amountMinor:384000,conditional:false,condition:null},{label:'Enrolment fee',amountMinor:29000,conditional:false,condition:null},{label:'Materials fee',amountMinor:24000,conditional:false,condition:null}]}}),c=f.componentInstance;
+    c.payInFull();expect(c.form.controls.instalments.length).toBe(1);c.save('confirmed');
+    const payments=api.reviewDocumentAnalysis.calls.mostRecent().args[2].corrections.instalments;
+    expect(payments.length).toBe(1);expect(payments[0]).toEqual(jasmine.objectContaining({sequence:1,totalMinor:437000,dueTerm:'Payment in full',includedConditionalFeeMinor:0}));expect(payments[0].components.map((v:any)=>v.amountMinor)).toEqual([384000,29000,24000]);
+  });
+  it('does not invent a fee allocation or replace an existing schedule for full payment',()=>{
+    const c=setup({...result,extraction:{...source,instalments:[],statedTotalMinor:100}}).componentInstance;c.payInFull();expect(c.form.controls.instalments.length).toBe(0);
+    const scheduled=setup().componentInstance;scheduled.payInFull();expect(scheduled.form.controls.instalments.length).toBe(2);
+  });
   it('replaces a differing student name only with explicit confirmation',()=>{
     const f=setup(),c=f.componentInstance;c.analysis={...result,offer:{...result.offer!,currentStudentName:'Example StudenP'}};f.detectChanges();
     expect(f.nativeElement.textContent).toContain('Replace the current student name');
@@ -202,7 +212,7 @@ describe('CaseOfferReviewComponent',()=>{
   it('switches accessible tabs without losing edits and keeps both actions outside the panels',()=>{
     const f=setup(),c=f.componentInstance;c.form.controls.name.setValue('Edited student');
     const tabs=Array.from(f.nativeElement.querySelectorAll('[role="tab"]')) as HTMLButtonElement[];
-    expect(tabs.map(t=>t.textContent?.trim())).toEqual(['Details','Fee details','Instalment schedule','Evidence & review note']);
+    expect(tabs.map(t=>t.textContent?.trim())).toEqual(['Details','Fee details','Payment schedule','Evidence & review note']);
     for(const tab of tabs){tab.click();f.detectChanges();expect(tab.getAttribute('aria-selected')).toBe('true');expect(f.nativeElement.querySelectorAll('[role="tabpanel"]:not([hidden])').length).toBe(1);expect(f.nativeElement.querySelector('.offer-footer').closest('[role="tabpanel"]')).toBeNull();}
     tabs[0].click();f.detectChanges();expect(c.form.controls.name.value).toBe('Edited student');
     tabs[0].dispatchEvent(new KeyboardEvent('keydown',{key:'End',bubbles:true}));f.detectChanges();expect(c.activeTab).toBe('review');

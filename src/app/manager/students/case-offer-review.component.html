@@ -88,7 +88,8 @@
         @if(totalsDiffer){<label class="checkbox notice"><input type="checkbox" formControlName="acknowledgeTotals" />I reviewed the difference between the offer total and instalments.</label>}
       </section>
       <section role="tabpanel" [id]="'offer-panel-'+documentId+'-instalments'" [attr.aria-labelledby]="'offer-tab-'+documentId+'-instalments'" [hidden]="activeTab!=='instalments'">
-        <div class="schedule-heading"><div><h3>Instalment schedule</h3><p>Keep payment terms such as “Immediately” when the offer does not give a calendar date.</p></div><button type="button" class="btn" (click)="openAddPayment()" [disabled]="busy||!form.controls.instalments.length||componentLabels.length>=20">+ Add payment</button></div>
+        @if(!form.controls.instalments.length){<div class="row-actions"><button type="button" class="btn primary" (click)="payInFull()" [disabled]="busy">Pay in full</button><button type="button" class="btn" (click)="addInstalment()" [disabled]="busy">Add scheduled payment</button></div>}
+        <div class="schedule-heading"><div><h3>Payment schedule</h3><p>Keep payment terms such as “Immediately” when the offer does not give a calendar date.</p></div><button type="button" class="btn" (click)="openAddPayment()" [disabled]="busy||!form.controls.instalments.length||componentLabels.length>=20">+ Add payment</button></div>
         <div class="instalment-table-wrap"><table class="instalment-table">
           <thead><tr><th scope="col">Instalment</th><th scope="col">Due date</th><th scope="col">Payment term</th>@for(label of componentLabels;track label){@if(isTuition(label)){<th scope="col">Agency discount</th>}<th scope="col">{{label}}</th>}<th scope="col">{{conditionalFeeLabel}}</th><th scope="col">Payment TRUST</th><th scope="col">Payment PTY</th><th scope="col" class="sale-type-column">Type of Sale</th><th scope="col">Action</th></tr></thead>
           <tbody formArrayName="instalments">@for(payment of form.controls.instalments.controls;track payment;let i=$index){
@@ -103,7 +104,7 @@
               <td><label><span class="payment-cell-label">Type of Sale</span><app-manager-select formControlName="typeOfSaleOptionId" [options]="saleTypeOptions" [attr.aria-label]="'Instalment '+(i+1)+' Type of Sale'" ariaLabel="Type of Sale" placeholder="Select Type of Sale" /></label></td>
               <td class="payment-action-cell"><span class="payment-cell-label">Action</span><button type="button" class="btn danger payment-remove" (click)="remove(form.controls.instalments,i)" [disabled]="busy" [attr.aria-label]="'Remove payment '+(i+1)" [title]="'Remove payment '+(i+1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/></svg></button></td>
             </tr>
-          }@empty{<tr><td class="empty-schedule" [attr.colspan]="componentLabels.length+9">No instalments remain in this schedule.</td></tr>}</tbody>
+          }@empty{<tr><td class="empty-schedule" [attr.colspan]="componentLabels.length+9">No payment schedule recorded. Choose Pay in full if the course is paid in one payment.</td></tr>}</tbody>
         </table></div>
         <p class="totals">Printed instalment total — all payments: <strong>{{form.controls.currency.value}} {{money(paymentTotals.total)}}</strong><br />Conditional fees already included in those payments: <strong>{{form.controls.currency.value}} {{money(paymentTotals.included)}}</strong></p>
       </section>
