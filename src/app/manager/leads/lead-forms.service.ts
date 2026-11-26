@@ -85,13 +85,13 @@ export class LeadFormsService {
     });
   }
   publish(form: Pick<LeadForm, 'id' | 'version'>) {
-    return this.http.post<{ token: string }>(
+    return this.http.post<{ token: string; friendlyUrl?: string | null }>(
       `${this.base}/forms/${form.id}/publish`,
       { expectedVersion: form.version },
     );
   }
   publication(id: string) {
-    return this.http.get<{ token: string | null; version: number | null }>(
+    return this.http.get<{ token: string | null; version: number | null; friendlyUrl?: string | null }>(
       `${this.base}/forms/${id}/publication`,
     );
   }

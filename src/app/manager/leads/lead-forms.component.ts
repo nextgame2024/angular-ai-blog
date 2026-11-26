@@ -290,7 +290,7 @@ export class LeadFormsComponent implements OnInit {
             .subscribe({
               next: (p) =>
                 (this.publicUrl = p.token
-                  ? window.location.origin + '/forms/' + p.token
+                  ? p.friendlyUrl || window.location.origin + '/forms/' + p.token
                   : ''),
               error: () => {},
             });
@@ -383,7 +383,7 @@ export class LeadFormsComponent implements OnInit {
       .subscribe({
         next: (p) => {
           this.busy = false;
-          this.publicUrl = window.location.origin + '/forms/' + p.token;
+          this.publicUrl = p.friendlyUrl || window.location.origin + '/forms/' + p.token;
           this.notify('Form published. Share the public link.');
         },
         error: (e) => {

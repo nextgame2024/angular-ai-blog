@@ -284,6 +284,16 @@ describe('Lead form builder', () => {
     page.unpublish();
     expect(page.publicUrl).toBe('');
   });
+  it('uses the stored friendly URL when publishing or reopening a form', () => {
+    const friendlyUrl='https://sophiaai.com.au/forms/business-discovery';
+    page.create();page.editor!.version=1;page.dirty=false;
+    api.publish.and.returnValue(of({token:'tenant.publication',friendlyUrl}));
+    page.publish();expect(page.publicUrl).toBe(friendlyUrl);
+    api.detail.and.returnValue(of(page.editor!));
+    api.publication.and.returnValue(of({token:'tenant.publication',version:1,friendlyUrl}));
+    page.open({id:'form',name:'Business Discovery',version:1,typeId:'type',typeName:'Marketing',updatedAt:''});
+    expect(page.publicUrl).toBe(friendlyUrl);
+  });
   it('preserves edited content after a conflict', () => {
     page.create();
     page.editor!.name = 'Discovery';
