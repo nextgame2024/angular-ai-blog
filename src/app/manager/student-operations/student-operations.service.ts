@@ -541,6 +541,11 @@ export class StudentOperationsService {
     return this.http.post<{id:string}>(url,body,{headers:this.headers()});
   }
 
+  checkTrustDispatchInvoice(connection:string,invoice:string,receipt:string,dispatch:string) {
+    const url=this.trustReceiptUrl(connection,invoice)+'/'+encodeURIComponent(receipt)+'/dispatch/'+encodeURIComponent(dispatch)+'/check-invoice';
+    return this.http.post<{issue:string|null;checkedAt:string}>(url,{},{headers:this.headers()});
+  }
+
   cancelTrustDispatch(connection:string,invoice:string,receipt:string,body:{reason:string;dispatchId:string}) {
     const url=this.trustReceiptUrl(connection,invoice)+'/'+encodeURIComponent(receipt)+'/dispatch/cancel';
     return this.http.post<{id:string}>(url,body,{headers:this.headers()});

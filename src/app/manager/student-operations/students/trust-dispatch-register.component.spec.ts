@@ -6,7 +6,7 @@ import { TrustDispatchRegister } from './trust-dispatch-register.component';
 describe('TRUST payment dispatch register',()=>{
   function setup() {
     const read=jasmine.createSpy().and.returnValue(of({count:30,rows:[{id:'key',invoice:'inv',invoiceNumber:'INV-1',bankId:'B1',
-      queuedAt:'2026-11-28T01:00:00Z',amount:'3000.00',status:'recorded',reviewer:'Reviewer'}]}));
+      queuedAt:'2026-11-28T01:00:00Z',amount:'3000.00',status:'recorded',workerCheck:{status:'matched',attempt:2,at:'2026-11-28T01:00:00Z'},reviewer:'Reviewer'}]}));
     TestBed.configureTestingModule({imports:[TrustDispatchRegister],providers:[{provide:StudentOperationsService,useValue:{trustDispatches:read}}]});
     const fixture=TestBed.createComponent(TrustDispatchRegister);fixture.componentRef.setInput('connection','trust');fixture.detectChanges();
     return {fixture,read,panel:fixture.componentInstance};
@@ -14,6 +14,7 @@ describe('TRUST payment dispatch register',()=>{
   it('loads on demand and preserves scoped search, ordering and pagination',()=>{
     const {read,fixture,panel}=setup();expect(read).not.toHaveBeenCalled();
     panel.toggle();fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Invoice check 2 · Matched at check time');
     const review=jasmine.createSpy();panel.review.subscribe(review);fixture.nativeElement.querySelector('.invoice-link').click();
     expect(review).toHaveBeenCalledWith('inv');
     panel.query=' B1 ';panel.status='cancelled';panel.search();panel.sortDate();panel.load(2);

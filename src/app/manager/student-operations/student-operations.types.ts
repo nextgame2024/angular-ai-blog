@@ -663,6 +663,7 @@ export interface TrustProposalSnapshot {
 }
 export type TrustProposalAction='prepare'|'approve'|'withdraw';
 export interface TrustDispatchRow {
+  workerCheck?:{attempt:number;at:string;detail:string|null;status:'matched'|'review'|'retry'|'checking'|'exhausted'}|null;
   id:string;invoice:string;invoiceNumber:string|null;bankId:string;amount:string;queuedAt:string;approver:string;reviewer:string;
   status:'recorded'|'expired'|'cancelled';
 }

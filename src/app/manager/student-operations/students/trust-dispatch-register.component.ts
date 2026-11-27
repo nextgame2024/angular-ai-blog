@@ -33,7 +33,12 @@ import { StudentOperationsService } from '../student-operations.service';
               <tr><td data-label="Queued">{{row.queuedAt | date:'medium'}}</td>
                 <td data-label="Invoice"><button type="button" class="invoice-link" (click)="review.emit(row.invoice)">{{row.invoiceNumber || row.invoice}}</button></td>
                 <td data-label="Bank transaction">{{row.bankId}}</td><td data-label="Amount AUD">{{row.amount}}</td>
-                <td data-label="Status">{{labels[row.status]}}</td><td data-label="Release reviewer">{{row.reviewer}}</td></tr>
+                <td data-label="Status">{{labels[row.status]}}
+                  @if (row.workerCheck; as check) {
+                    <div>Invoice check {{check.attempt}} · {{checks[check.status]}} · {{check.at | date:'short'}}</div>
+                    @if (check.detail) { <div>{{check.detail}}</div> }
+                  }
+                </td><td data-label="Release reviewer">{{row.reviewer}}</td></tr>
             }
           </tbody></table></div>
         } @else { <p>No dispatches match this search.</p> }
@@ -53,6 +58,7 @@ export class TrustDispatchRegister implements OnChanges {
   @Input({required:true}) connection!:string;
   readonly review=output<string>();
   readonly labels={recorded:'Recorded locally',cancelled:'Cancelled',expired:'Expired'};
+  readonly checks={matched:'Matched at check time',review:'Review required',retry:'Retry available',checking:'Checking',exhausted:'Attempts exhausted'};
   readonly statuses=[{value:'all',label:'All dispatches'},...Object.entries(this.labels).map(([value,label])=>({value,label}))];
   readonly sizes=['25','50','100'].map(value=>({value,label:value}));
   open=false;loading=false;error=false;query='';status='all';direction='desc';page=1;pages=1;limit='25';

@@ -13,14 +13,15 @@ describe('Verified TRUST receipt proposals',()=>{
     const write=jasmine.createSpy().and.returnValues(throwError(()=>({status:503})),of({revision:1}),of({revision:2}));
     const enqueue=jasmine.createSpy().and.returnValues(throwError(()=>({status:503})),of({id:'payment-key'}));
     const cancel=jasmine.createSpy().and.returnValue(of({id:'payment-key'}));
+    const verify=jasmine.createSpy().and.returnValue(of({issue:null,checkedAt:"2026-11-28T01:00:00Z"}));
     TestBed.configureTestingModule({imports:[TrustReceiptProposalPanel],providers:[{provide:StudentOperationsService,
-      useValue:{enqueueTrustPayment:enqueue,cancelTrustDispatch:cancel,trustReceiptProposal:read,changeTrustProposal:write}}]});
+      useValue:{checkTrustDispatchInvoice:verify,enqueueTrustPayment:enqueue,cancelTrustDispatch:cancel,trustReceiptProposal:read,changeTrustProposal:write}}]});
     const fixture=TestBed.createComponent(TrustReceiptProposalPanel);
     fixture.componentRef.setInput('connection','trust');fixture.componentRef.setInput('invoice','inv');fixture.componentRef.setInput('receipt',{id:'receipt'});
     fixture.detectChanges();
     const click=(label:string)=>{Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'))
       .find(b=>b.textContent?.trim()===label)!.click();fixture.detectChanges();};
-    return {read,write,enqueue,cancel,fixture,click,panel:fixture.componentInstance};
+    return {verify,read,write,enqueue,cancel,fixture,click,panel:fixture.componentInstance};
   }
   it('requires an explicit review, replays an uncertain save and binds approval to the reviewed revision',()=>{
     const {read,write,fixture,click,panel}=setup();
@@ -45,8 +46,17 @@ describe('Verified TRUST receipt proposals',()=>{
     expect(cancel.calls.first().args[3]).toEqual({dispatchId:'payment-key',reason:'Correction'});expect(panel.canQueue).toBeFalse();
   });
 
+  it('checks the selected dispatch only on demand and clears the observation on refresh',()=>{
+    const {read,verify,fixture,click}=setup();
+    read.and.returnValue(of({...prepared,state:'approved',dispatch:{id:'dispatch',revision:1}}));
+    click('Payment proposal');expect(verify).not.toHaveBeenCalled();
+    click('Check invoice in Xero');expect(verify).toHaveBeenCalledOnceWith('trust','inv','receipt','dispatch');
+    expect(fixture.nativeElement.textContent).toContain('match the approval');
+    click('Refresh proposal');expect(fixture.nativeElement.textContent).not.toContain('match the approval');
+  });
+
   it('keeps review controls visible on narrow and desktop screens in both themes',()=>{
-    const {fixture,click}=setup();click('Payment proposal');
+    const {read,fixture,click}=setup();read.and.returnValue(of({...prepared,state:'approved',dispatch:{id:'dispatch',revision:1}}));click('Payment proposal');
     const frame=document.createElement('iframe');document.body.appendChild(frame);
     try {
       const doc=frame.contentDocument!;

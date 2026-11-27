@@ -27,6 +27,13 @@ import type { TrustReceiptProposal, TrustProposalAction, TrustReceiptVerificatio
         @else if (d.state==='approved') { <p>Local release checks passed. Posting to Xero is disabled.</p> }
         @if (d.dispatch; as entry) {
           <p>Dispatch {{entry.id}} · {{entry.cancelledAt ? 'Cancelled' : entry.expired ? 'Expired' : 'Recorded locally'}} · {{entry.queuedAt | date:'medium'}} · {{entry.actor}} · {{entry.reason}}</p>
+          @if (d.state==='approved' && !d.accountIssue && !entry.expired && !entry.cancelledAt && entry.revision===d.revision) {
+            <button type="button" class="btn small" [disabled]="saving" (click)="checkInvoice()">Check invoice in Xero</button>
+            @if (checking) { <p role="status">Checking the Xero invoice…</p> }
+            @if (invoiceCheck; as result) {
+              <p role="status">{{result.issue || 'Invoice balance, payments and revision match the approval.'}} · {{result.checkedAt | date:'medium'}}</p>
+            }
+          }
           @if (entry.cancelledAt) { <p>{{entry.cancelledBy}} · {{entry.cancelReason}}</p> }
         }
         @if (d.blocked) { <p>{{d.blocked}}</p> }
@@ -61,6 +68,8 @@ export class TrustReceiptProposalPanel implements OnChanges {
   readonly labels={new:'Awaiting preparation',prepared:'Awaiting approval',approved:'Approved in Sophia',stale:'Evidence changed',
     expired:'Expired',withdrawn:'Withdrawn'};
   readonly actions={prepare:'Prepared',approve:'Approved',withdraw:'Withdrawn'};
+  invoiceCheck?:{issue:string|null;checkedAt:string};
+  checking=false;
   open=false;loading=false;saving=false;reason='';message='';
   detail?:TrustReceiptProposal;
   canQueue=false;canPrepare=false;canApprove=false;canWithdraw=false;
@@ -72,11 +81,11 @@ export class TrustReceiptProposalPanel implements OnChanges {
     const same=changes['receipt']?.previousValue?.id===this.receipt.id && !changes['connection'] && !changes['invoice'];
     if (same) { if (this.open && !this.saving) this.load(); return; }
     this.read?.unsubscribe();this.write?.unsubscribe();this.retry=undefined;this.detail=undefined;
-    this.open=this.loading=this.saving=false;this.reason=this.message='';
+    this.invoiceCheck=undefined;this.checking=false;this.open=this.loading=this.saving=false;this.reason=this.message='';
   }
   toggle() {this.open=!this.open;if (this.open) this.load();else this.read?.unsubscribe();}
   load() {
-    this.read?.unsubscribe();this.detail=undefined;this.loading=true;this.reason='';
+    this.read?.unsubscribe();this.invoiceCheck=undefined;this.detail=undefined;this.loading=true;this.reason='';
     this.read=this.api.trustReceiptProposal(this.connection,this.invoice,this.receipt.id).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next:d=>{
         this.detail=d;this.loading=false;
@@ -87,6 +96,20 @@ export class TrustReceiptProposalPanel implements OnChanges {
       },
       error:()=>{this.loading=false;this.message='Could not load the proposal. Refresh to retry.';},
     });
+  }
+  checkInvoice() {
+    const dispatch=this.detail?.dispatch;
+    if (!dispatch || this.saving || this.loading) return;
+    this.invoiceCheck=undefined;this.message='';this.saving=this.checking=true;
+    this.write=this.api.checkTrustDispatchInvoice(this.connection,this.invoice,this.receipt.id,dispatch.id)
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe({
+        next:result=>{this.saving=this.checking=false;this.invoiceCheck=result;},
+        error:err=>{
+          this.saving=this.checking=false;
+          if (err.status===409) {this.message='The dispatch changed. Review the refreshed proposal.';this.load();}
+          else this.message='Could not verify the Xero invoice. Retry the check.';
+        },
+      });
   }
   record(action:TrustProposalAction|'queue'|'cancel') {
     const d=this.detail,reason=this.reason.trim();
