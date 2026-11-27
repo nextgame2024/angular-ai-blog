@@ -1,3 +1,4 @@
+import { TrustReceiptProposalPanel } from './trust-receipt-proposal.component';
 import { TrustMatchHistory } from './trust-match-history.component';
 import { TrustStagedDeposits } from './trust-staged-deposits.component';
 import { TrustStatementSourceCheck } from './trust-statement-source-check.component';
@@ -42,7 +43,7 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
 @Component({
   selector: 'app-trust-receipt-form',
   host: {'(document:visibilitychange)': 'onVisibilityChange()'},
-  imports: [TrustMatchHistory, TrustStagedDeposits, TrustStatementSourceCheck, TrustStatementPreview, ManagerSelectComponent, FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe, TrustClaimHistory, TrustPaymentHistory, ReceiptPaymentCandidatesPipe],
+  imports: [TrustReceiptProposalPanel,TrustMatchHistory, TrustStagedDeposits, TrustStatementSourceCheck, TrustStatementPreview, ManagerSelectComponent, FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe, TrustClaimHistory, TrustPaymentHistory, ReceiptPaymentCandidatesPipe],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section aria-label="TRUST bank verification">
@@ -69,6 +70,7 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
           <small>Verified by {{ receipt.verifiedByName || 'Staff member unavailable' }} · {{ receipt.verifiedAt | date:'medium' }} · Invoice balance at verification AUD {{ receipt.invoiceDue | number:'1.2-2' }}</small>
           @if (receipt.hasEvidence) { <button class="invoice-link" type="button" (click)="download(receipt.id)">Download screenshot</button> }
         </p>
+        <app-trust-receipt-proposal [connection]="connection" [invoice]="invoice.xeroInvoiceId" [receipt]="receipt" />
         @if (receipt.reviewedDepositId; as depositId) {
           <app-trust-match-history [connection]="connection" [depositId]="depositId" />
         }

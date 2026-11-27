@@ -1,4 +1,4 @@
-import type { TrustResidualRow, TrustResidualDetail, TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
+import type { TrustProposalAction, TrustReceiptProposal, TrustResidualRow, TrustResidualDetail, TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { finalize, of, shareReplay, tap } from 'rxjs';
@@ -521,6 +521,16 @@ export class StudentOperationsService {
 
   private trustReceiptUrl(connection: string, invoice: string): string {
     return this.workspaceBase + '/trust-receipts/' + encodeURIComponent(connection) + '/' + encodeURIComponent(invoice);
+  }
+
+  trustReceiptProposal(connection:string,invoice:string,receipt:string) {
+    const url=this.trustReceiptUrl(connection,invoice)+'/'+encodeURIComponent(receipt)+'/proposal';
+    return this.http.get<TrustReceiptProposal>(url,{headers:this.headers()});
+  }
+
+  changeTrustProposal(connection:string,invoice:string,receipt:string,body:{action:TrustProposalAction;reason:string;requestId:string;revision:number;token:string}) {
+    const url=this.trustReceiptUrl(connection,invoice)+'/'+encodeURIComponent(receipt)+'/proposal';
+    return this.http.post<{revision:number}>(url,body,{headers:this.headers()});
   }
 
   trustReceipts(connection: string, invoice: string) {

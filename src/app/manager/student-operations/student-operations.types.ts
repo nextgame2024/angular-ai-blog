@@ -648,3 +648,16 @@ export interface TrustResidualDetail {
   choices:{id:string;name:string;reference:string}[];
   history:{revision:number;studentId:string|null;student:string|null;reason:string;reviewer:string;recordedAt:string}[];
 }
+
+export interface TrustProposalSnapshot {
+  organisation:string;organisationId:string;
+  invoice:string;invoiceNumber:string|null;contactId:string|null;contactName:string|null;receipt:string;connection:string;
+  date:string;account:string;amount:string;due:string|null;currency:string|null;bankId:string|null;reference:string;
+}
+export type TrustProposalAction='prepare'|'approve'|'withdraw';
+export interface TrustReceiptProposal {
+  state:'new'|'prepared'|'approved'|'withdrawn'|'stale'|'expired';blocked:string|null;
+  revision:number;token:string;snapshot:TrustProposalSnapshot;
+  history:{revision:number;actor:string;reason:string;action:TrustProposalAction;token:string;snapshot:TrustProposalSnapshot;
+    recordedAt:string;expiresAt:string}[];
+}
