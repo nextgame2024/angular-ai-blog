@@ -60,7 +60,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
         @if (data.invoices.length) {
           <div class="invoice-table-scroll"><table class="invoice-table">
             <thead><tr><th>Document</th><th>Recipient</th>@if (queue === 'reconciliation_review') {
-              <th>Oldest pending link</th><th>Awaiting confirmation</th><th>Manager checks</th>
+              <th>Oldest pending link</th><th>Awaiting confirmation</th><th>Xero payment status</th><th>Manager checks</th><th>Unassigned follow-ups</th>
             } @else { <th>Due date</th><th>{{ queue === 'excess_receipts' ? 'Receipt excess' : 'Balance due' }}</th> }</tr></thead>
             <tbody>@for (row of data.invoices; track row.xeroInvoiceId) {
               <tr><td data-label="Document"><button type="button" class="invoice-link" (click)="review.emit(row)">{{ row.invoiceNumber || 'Review document' }}</button></td>
@@ -68,7 +68,16 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
                 @if (queue === 'reconciliation_review') {
                   <td data-label="Oldest pending link">{{ (row.reconciliation?.oldestLinkedAt | date:'mediumDate') || 'Unknown' }}</td>
                   <td data-label="Awaiting confirmation">{{ row.currencyCode }} {{ row.reconciliation?.amount | number:'1.2-2' }}</td>
+                  <td data-label="Xero payment status">
+                    @if (row.reconciliation; as summary) {
+                      @if (summary.linkMismatch) { <div>{{ summary.linkMismatch }} · Link no longer matches</div> }
+                      @if (summary.statusUnknown) { <div>{{ summary.statusUnknown }} · Status unavailable</div> }
+                      @if (summary.xeroPending) { <div>{{ summary.xeroPending }} · Pending reconciliation</div> }
+                      @if (summary.xeroPending == null) { <span>Open invoice for details</span> }
+                    } @else { <span>Open invoice for details</span> }
+                  </td>
                   <td data-label="Manager checks">{{ row.reconciliation?.managerChecks }} of {{ row.reconciliation?.payments }}</td>
+                  <td data-label="Unassigned follow-ups">{{ row.reconciliation?.unassigned ?? '—' }}</td>
                 } @else {
                 <td data-label="Due date">{{ (row.dueDate | date:'dd MMM yyyy':'UTC') || 'Unknown' }}</td>
                 <td [attr.data-label]="queue === 'excess_receipts' ? 'Receipt excess' : 'Balance due'">{{ row.currencyCode || 'Currency unknown' }} {{ (queue === 'excess_receipts' ? row.receiptExcess : row.amountDue) | number:'1.2-4' }}</td> }</tr>
