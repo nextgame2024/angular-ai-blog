@@ -9,13 +9,18 @@
       <div class="title">
         <h3 id="students-title">{{ viewMode === 'form' ? (editingStudent ? 'Edit Student' : 'Create Student') : 'Payments and Control' }}</h3>
         <p class="sub">
-          {{ viewMode === 'form' ? 'Maintain the operational student record.' : isPty?'Review PTY transactions and associated colleges.':'Review TRUST transactions and associated student records.' }}
+          {{ viewMode === 'form' ? 'Maintain the operational student record.' : operationsOpen?'Review outstanding Xero documents across accounting organisations.': isPty?'Review PTY transactions and associated colleges.':'Review TRUST transactions and associated student records.' }}
         </p>
       </div>
       <div class="toolbar-actions">
-        @if(viewMode==='list'&&isChiefExecutive&&xeroConnections.length){<app-manager-select [formControl]="organisation" [options]="organisationOptions" ariaLabel="Accounting organisation" placeholder="Select organisation" />}
+        @if (viewMode === 'list' && isChiefExecutive && xeroConnections.length) {
+          <button type="button" class="btn" [attr.aria-pressed]="operationsOpen" (click)="operationsOpen = !operationsOpen">
+            {{ operationsOpen ? 'Invoice register' : 'Payment operations' }}
+          </button>
+        }
+        @if(!operationsOpen&&viewMode==='list'&&isChiefExecutive&&xeroConnections.length){<app-manager-select [formControl]="organisation" [options]="organisationOptions" ariaLabel="Accounting organisation" placeholder="Select organisation" />}
         @if (viewMode === 'list' && workspace) { <span class="role-badge">{{ formatLabel(workspace.role) }}</span> }
-        @if (viewMode === 'list' && canManage && !isPty) {
+        @if (viewMode === 'list' && !operationsOpen && canManage && !isPty) {
           <button type="button" class="btn primary" (click)="openCreate()">
             <span class="btn-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg></span>
             Create
@@ -33,7 +38,7 @@
         }
       </div>
     </header>
-    @if (viewMode === 'list') {
+    @if (viewMode === 'list' && !operationsOpen) {
       <div id="payment-summary-filters" class="overview-sections">
       <div id="payment-summary" class="overview" [attr.aria-label]="isPty?'PTY transaction summary':'TRUST transaction summary'" [hidden]="sectionsCollapsed">
         <div class="metrics">
@@ -101,11 +106,25 @@
     </div>
   </ng-template>
 
-  @if (viewMode === 'list' && !xeroInvoices && isChiefExecutive) {
+  @if (operationsOpen && viewMode === 'list' && isChiefExecutive) {
+    <section aria-label="Payment operations">
+      <h3>Payment operations</h3>
+      <label class="search-field">
+        <input type="search" [formControl]="operationsSearch" aria-label="Search outstanding invoices across organisations"
+          placeholder="Search invoice, reference or recipient" maxlength="100" />
+      </label>
+      @for (connection of xeroConnections; track connection.connectionId) {
+        <app-payment-operations-panel [connection]="connection" [search]="operationsQuery()"
+          (review)="reviewOperationsInvoice(connection.connectionId, $event)" />
+      }
+    </section>
+  }
+
+  @if (!operationsOpen && viewMode === 'list' && !xeroInvoices && isChiefExecutive) {
     <ng-container [ngTemplateOutlet]="xeroSyncPanel"></ng-container>
   }
 
-  @if (viewMode === 'list' && xeroInvoices) {
+  @if (!operationsOpen && viewMode === 'list' && xeroInvoices) {
     <section class="xero-candidates" aria-labelledby="xero-invoices-title">
       <header class="candidate-header">
         <div class="candidate-heading">
@@ -191,6 +210,7 @@
     </section>
   }
 
+  @if (!operationsOpen) {
   @if (viewMode === 'form') {
     @if (formError) { <div class="form-error" role="alert">{{ formError }}</div> }
     @if (loadingForm) {
@@ -247,6 +267,7 @@
     </div>
     <footer class="list-footer"><span>Showing {{ students.length }} of {{ total }}</span>@if (loadingMore) { <span class="loading-more">Loading more…</span> }</footer>
   }
+  }
   <div #infiniteSentinel class="infinite-sentinel" aria-hidden="true"></div>
 </section>
 @if (loadingInvoiceDetail || invoiceDetailError || selectedXeroInvoice) {
@@ -254,7 +275,7 @@
     <section class="invoice-dialog" role="dialog" aria-modal="true" aria-labelledby="invoice-dialog-title">
       <header>
         <div>
-          <span class="dialog-eyebrow">Xero invoice</span>
+          <span class="dialog-eyebrow">{{ isPty ? 'PTY' : 'TRUST' }} · Xero invoice</span>
           <h3 id="invoice-dialog-title">{{ selectedXeroInvoice?.invoiceNumber || (selectedXeroInvoice?.documentType === 'credit_note' ? 'Credit note details' : selectedXeroInvoice?.documentType === 'prepayment' ? 'Prepayment details' : selectedXeroInvoice?.documentType === 'overpayment' ? 'Overpayment details' : 'Invoice details') }}</h3>
         </div>
         <button type="button" class="dialog-close" (click)="closeInvoiceDetail()" aria-label="Close invoice details">×</button>
@@ -272,8 +293,11 @@
           <div><span>Advisor</span><strong>{{ selectedXeroInvoice.advisorName || '—' }}</strong></div>
           <div><span>Payment track</span><strong>{{ selectedXeroInvoice.paymentTrack || '—' }}</strong></div>
         </div>
-        @if(selectedXeroInvoice.relatedInvoices?.length){<div class="invoice-summary" aria-label="Related invoices">@for(related of selectedXeroInvoice.relatedInvoices;track related.connectionId+related.invoiceId){<div><span>INV-{{related.sequence}} ({{related.role==='trust'?'TRUST':'PTY'}})</span><button type="button" class="invoice-link" (click)="openRelatedInvoice(related)" [disabled]="!related.indexed">{{related.invoiceNumber||'Awaiting synchronisation'}}</button><small>{{related.status||'Created in Xero'}} · Due {{formatMoney(related.amountDue,selectedXeroInvoice.currencyCode)}}</small></div>}</div>}
-        @if(selectedXeroInvoice.settlement;as settlement){<div class="invoice-summary" aria-label="Payments and allocations"><div><span>Fully paid on</span><strong>{{formatDate(settlement.fullyPaidOnDate)}}</strong></div>@for(entry of settlement.entries;track entry.kind+entry.id){<div><span>{{entry.kind.replace('_',' ')}}</span><strong>{{formatDate(entry.date)}} · {{formatMoney(entry.amount,selectedXeroInvoice.currencyCode)}}</strong></div>}</div>}
+        @if (isChiefExecutive && xeroConnection?.organisationRole === 'trust' && selectedXeroInvoice.currencyCode === 'AUD' && selectedXeroInvoice.documentType === 'invoice') {
+          <app-trust-receipt-form [connection]="xeroConnection!.connectionId" [invoice]="selectedXeroInvoice" />
+        }
+        @if(selectedXeroInvoice.relatedInvoices?.length){<div class="invoice-summary" aria-label="Related invoices">@for(related of selectedXeroInvoice.relatedInvoices;track related.connectionId+related.invoiceId){<div><span>INV-{{related.sequence}} ({{related.role==='trust'?'TRUST':'PTY'}})</span><button type="button" class="invoice-link" (click)="openRelatedInvoice(related)" [disabled]="!related.indexed">{{related.invoiceNumber||'Awaiting synchronisation'}}</button><small>{{related.status||'Created in Xero'}} · Due {{related.currencyCode ? formatMoney(related.amountDue,related.currencyCode) : 'Unknown'}}</small></div>}</div>}
+        @if(selectedXeroInvoice.settlement;as settlement){<div class="invoice-summary" aria-label="Payments and allocations"><div><span>Fully paid on</span><strong>{{formatDate(settlement.fullyPaidOnDate)}}</strong></div>@for(entry of settlement.entries;track entry.kind+entry.id){<div><span>{{entry.kind.replace('_',' ')}}</span><strong>{{formatDate(entry.date)}} · {{formatMoney(entry.amount,selectedXeroInvoice.currencyCode)}}</strong>@if (entry.kind === 'payment') {<small>{{ entry.isReconciled === true ? 'Reconciled in Xero' : entry.isReconciled === false ? 'Pending Xero reconciliation' : 'Bank reconciliation unknown' }}</small>}</div>}</div>}
         <div class="invoice-lines-wrap">
           <table class="invoice-lines">
             <thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Disc.</th><th>Account</th><th>Tax</th><th>Tracking</th><th>Amount</th></tr></thead>

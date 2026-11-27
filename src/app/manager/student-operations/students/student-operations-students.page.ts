@@ -1,9 +1,11 @@
+import { TrustReceiptForm } from './trust-receipt-form.component';
+import { PaymentOperationsPanel } from './payment-operations-panel.component';
 import { InvoiceStudentLinkComponent } from './invoice-student-link.component';
 import { PageJumpComponent } from '../../../shared/components/page-jump/page-jump.component';
 import { ListNavigationStateService } from '../../../shared/services/list-navigation-state.service';
 import { CommonModule } from '@angular/common';
 import {
-  AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, inject,
+  AfterViewInit, Component, ElementRef, OnDestroy, OnInit, ViewChild, inject, signal,
 } from '@angular/core';
 import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -33,7 +35,7 @@ import type {
 
 @Component({
   selector: 'app-student-operations-students-page',
-  imports: [ InvoiceStudentLinkComponent, PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
+  imports: [ TrustReceiptForm, PaymentOperationsPanel, InvoiceStudentLinkComponent, PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
   templateUrl: './student-operations-students.page.html',
   styleUrls: ['./student-operations-students.page.css'],
 })
@@ -62,6 +64,16 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
 
   @ViewChild('studentsList') studentsList?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinel?: ElementRef<HTMLElement>;
+
+  operationsOpen = false;
+  readonly operationsSearch = new FormControl('', { nonNullable: true });
+  readonly operationsQuery = signal('');
+
+  reviewOperationsInvoice(connectionId: string, invoice: XeroStudentInvoice): void {
+    if (!this.xeroConnections.some(connection => connection.connectionId === connectionId)) return;
+    if (this.xeroConnection?.connectionId !== connectionId) this.organisation.setValue(connectionId);
+    this.openInvoiceDetail(invoice);
+  }
 
   studentLinkInvoice:XeroStudentInvoice|null=null;
   matchingStudents=false;
@@ -237,6 +249,9 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
       this.privacyToastCloseTimer = setTimeout(() => { this.privacyNoteVisible = false; }, 220);
     }, 4000);
     this.loadInitial();
+    this.operationsSearch.valueChanges.pipe(
+      map(value => value.trim()), debounceTime(250), distinctUntilChanged(), takeUntil(this.destroy$),
+    ).subscribe(value => this.operationsQuery.set(value));
     this.organisation.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(id=>this.switchOrganisation(id));
     this.search.valueChanges.pipe(
       debounceTime(300), distinctUntilChanged(), takeUntil(this.destroy$),

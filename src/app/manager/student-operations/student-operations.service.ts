@@ -1,3 +1,4 @@
+import type { TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { finalize, of, shareReplay, tap } from 'rxjs';
@@ -421,6 +422,7 @@ export class StudentOperationsService {
 
   private invoiceParams(input: XeroStudentInvoiceQuery): HttpParams {
     let params = new HttpParams().set('page', String(input.page)).set('limit', String(input.limit));
+    if (input.queue) params = params.set('queue', input.queue);
     if (input.supplierId) params = params.set('supplierId', input.supplierId);
     if (input.q) params = params.set('q', input.q);
     if (input.status) params = params.set('status', input.status);
@@ -437,6 +439,23 @@ export class StudentOperationsService {
       `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-invoices/payment-tracks`,
       { headers: this.headers() },
     );
+  }
+
+  private trustReceiptUrl(connection: string, invoice: string): string {
+    return this.workspaceBase + '/trust-receipts/' + encodeURIComponent(connection) + '/' + encodeURIComponent(invoice);
+  }
+
+  trustReceipts(connection: string, invoice: string) {
+    return this.http.get<TrustReceiptVerification[]>(this.trustReceiptUrl(connection, invoice), {headers: this.headers()});
+  }
+
+  verifyTrustReceipt(connection: string, invoice: string, receipt: FormData, key: string) {
+    return this.http.post<{id: string}>(this.trustReceiptUrl(connection, invoice), receipt, {headers: this.writeHeaders(key)});
+  }
+
+  trustReceiptEvidence(connection: string, invoice: string, id: string) {
+    return this.http.get(this.trustReceiptUrl(connection, invoice) + '/' + encodeURIComponent(id) + '/evidence',
+      {headers: this.headers(), responseType: 'blob'});
   }
 
   xeroStudentInvoice(connectionId: string, invoiceId: string): Observable<XeroStudentInvoiceDetail> {

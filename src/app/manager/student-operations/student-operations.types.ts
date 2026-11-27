@@ -388,8 +388,8 @@ export interface XeroStudentInvoiceLineItem {
 
 export interface XeroStudentInvoiceDetail extends XeroStudentInvoice {
   lineItems: XeroStudentInvoiceLineItem[];
-  settlement?:{fullyPaidOnDate:string|null;entries:Array<{kind:string;id:string;date:string|null;amount:number}>}|null;
-  relatedInvoices?:Array<{caseId:string;sequence:number;role:'trust'|'operating';connectionId:string;invoiceId:string;invoiceNumber:string|null;status:string|null;date:string|null;dueDate:string|null;amountPaid:string|number|null;amountDue:string|number|null;indexed:boolean}>;
+  settlement?:{fullyPaidOnDate:string|null;entries:Array<{kind:string;id:string;date:string|null;amount:number;isReconciled?:boolean}>}|null;
+  relatedInvoices?:Array<{caseId:string;sequence:number;role:'trust'|'operating';connectionId:string;invoiceId:string;invoiceNumber:string|null;status:string|null;date:string|null;dueDate:string|null;currencyCode?:string|null;amountPaid:string|number|null;amountDue:string|number|null;indexed:boolean}>;
 }
 
 export interface XeroCollegeMatch {
@@ -426,6 +426,7 @@ export interface PaymentsRegisterBootstrap {
 }
 
 export interface XeroStudentInvoiceQuery {
+  queue?: 'outstanding_invoices';
   supplierId?: string;
   page: number;
   limit: number;
@@ -494,4 +495,15 @@ export interface XeroConnectionTest {
     status: string | null;
     bankAccountType: string | null;
   }>;
+}
+
+export interface TrustReceiptVerification {
+  id: string;
+  receivedOn: string;
+  amount: string;
+  account: string;
+  reference: string;
+  invoiceDue: string;
+  verifiedAt: string;
+  hasEvidence: boolean;
 }
