@@ -1,3 +1,4 @@
+import { XeroReviewUrlPipe } from './xero-review-url.pipe';
 import type { Observable } from 'rxjs';
 import { Component, DestroyRef, Input, OnInit, inject, output } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
@@ -8,11 +9,14 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
 
 @Component({
   selector: 'app-trust-receipt-form',
-  imports: [FormsModule, DatePipe, DecimalPipe],
+  imports: [FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section aria-label="TRUST bank verification">
       <h4>Bank verification in Sophia</h4>
+      @if (invoice.xeroInvoiceId | xeroReviewUrl:'invoice':shortCode; as invoiceUrl) {
+        <a class="invoice-link" [href]="invoiceUrl" target="_blank" rel="noopener noreferrer">View TRUST invoice in Xero</a>
+      }
       @for (receipt of receipts; track receipt.id) {
         @let difference = balanceAfterReceipt(receipt.amount, receipt.invoiceDue);
         <p>Verified · AUD {{ receipt.amount }} · {{ receipt.receivedOn }} · {{ receipt.account }}
@@ -41,20 +45,36 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
         }
         @if (receipt.linkedPaymentId) {
           <p>Linked Xero invoice payment · AUD {{ receipt.linkedAmount }} · {{ receipt.linkedPaymentId }}</p>
+          @if (receipt.linkedPaymentId | xeroReviewUrl:'payment':shortCode; as paymentUrl) {
+            <a class="invoice-link" [href]="paymentUrl" target="_blank" rel="noopener noreferrer">View linked payment in Xero</a>
+          }
           @if (!receipt.candidateIds?.includes(receipt.linkedPaymentId)) {
             <p role="status">Review required. The linked payment no longer matches the imported invoice details.</p>
           } @else if (receipt.linkedPaymentReconciled === true) {
             <p>Bank reconciliation confirmed in the latest imported Xero payment.</p>
+          } @else if (receipt.reconciliationCheckedAt) {
+            <p>{{ receipt.linkedPaymentReconciled === false ? 'Latest Xero import shows this payment pending reconciliation. Review the discrepancy in Xero.' : 'Awaiting reconciliation confirmation from the Xero import.' }}</p>
           } @else if (receipt.linkedPaymentReconciled === false) {
-            <p>Pending bank reconciliation. In the TRUST account in Xero, use Find &amp; Match to select the existing payment for the statement line.</p>
+            <p>Latest Xero import shows this payment pending reconciliation. In the TRUST account in Xero, use Find &amp; Match to select the existing payment for the statement line.</p>
           } @else {
             <p>Bank reconciliation status unknown. Check the existing payment in the TRUST account in Xero.</p>
+          }
+          @if (receipt.reconciliationCheckedAt; as checkedAt) {
+            <p>Manager reported seeing this payment reconciled in Xero · {{ checkedAt | date:'medium' }}</p>
+          } @else if (receipt.candidateIds?.includes(receipt.linkedPaymentId) && receipt.linkedPaymentReconciled !== true) {
+            <details><summary>Record a manual reconciliation check</summary>
+              <p>Confirm after you have seen this payment marked Reconciled in the TRUST account in Xero.</p>
+              <button class="btn" type="button" [disabled]="saving || !ready" (click)="attest(receipt.id, receipt.linkedPaymentId)">I saw this payment reconciled in Xero</button>
+            </details>
           }
         } @else if (receipt.candidateIds; as candidates) {
           @if (candidates.length) {
             <details><summary>Review matching invoice payments ({{ candidates.length }})</summary>
               <p>Same TRUST invoice, payment date and invoice payment amount. Check the payment ID against your evidence before linking.</p>
               @for (payment of candidates; track payment) {
+                @if (payment | xeroReviewUrl:'payment':shortCode; as paymentUrl) {
+                  <a class="invoice-link" [href]="paymentUrl" target="_blank" rel="noopener noreferrer">Review payment {{ payment }} in Xero</a>
+                }
                 <button class="btn" type="button" [disabled]="saving || !ready" (click)="link(receipt.id, payment)">Confirm link · {{ payment }}</button>
               }
             </details>
@@ -90,6 +110,7 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
   `,
 })
 export class TrustReceiptForm implements OnInit {
+  @Input() shortCode: string | null = null;
   @Input({required:true}) connection!: string;
   @Input({required:true}) invoice!: XeroStudentInvoiceDetail;
   readonly receiptsChanged = output<void>();
@@ -157,6 +178,16 @@ export class TrustReceiptForm implements OnInit {
         this.message = error.status === 409 ? 'Check existing verifications, the date and invoice status before retrying.' : 'Could not confirm the save. Retry with the same receipt details.';
       },
     });
+  }
+
+  attest(receipt: string, payment: string) {
+    if (this.saving || !this.ready) return;
+    this.saving = true;
+    this.api.attestTrustReconciliation(this.connection, this.invoice.xeroInvoiceId, receipt, payment)
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe({
+        next: () => { this.saving = false; this.message = 'Manual reconciliation check recorded in Sophia.'; this.receiptsChanged.emit(); this.load(); },
+        error: () => { this.saving = false; this.message = 'Could not confirm the check. Review the refreshed payment details.'; this.load(); },
+      });
   }
 
   link(receipt: string, id: string, kind: 'payment' | 'overpayment' = 'payment') {

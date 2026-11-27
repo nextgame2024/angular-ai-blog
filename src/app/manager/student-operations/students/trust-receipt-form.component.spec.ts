@@ -4,6 +4,55 @@ import { StudentOperationsService } from '../student-operations.service';
 import { TrustReceiptForm } from './trust-receipt-form.component';
 
 describe('TRUST receipt form', () => {
+  it('opens invoice and payment records in the selected Xero organisation', () => {
+    const invoiceId = '00000000-0000-4000-8000-000000000001';
+    const paymentId = '00000000-0000-4000-8000-000000000002';
+    const receipt = {id:'r', amount:'100', invoiceDue:'100', candidateIds:[paymentId]};
+    const api = {trustReceipts:() => of([receipt]), linkTrustPayment:jasmine.createSpy()};
+    TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,useValue:api}]});
+    const fixture = TestBed.createComponent(TrustReceiptForm);
+    fixture.componentRef.setInput('connection','trust');
+    fixture.componentRef.setInput('invoice',{xeroInvoiceId:invoiceId,status:'PAID',amountDue:0});
+    fixture.detectChanges();
+    const anchors = (): HTMLAnchorElement[] => Array.from(fixture.nativeElement.querySelectorAll('a'));
+    expect(anchors().length).toBe(0);
+    fixture.componentRef.setInput('shortCode','!TRUST-1');
+    fixture.detectChanges();
+    expect(anchors()[0].href).toBe('https://go.xero.com/app/!TRUST-1/invoicing/view/' + invoiceId);
+    const candidate = new URL(anchors()[1].href);
+    expect(candidate.origin + candidate.pathname).toBe('https://go.xero.com/organisationlogin/default.aspx');
+    expect(candidate.searchParams.get('shortcode')).toBe('!TRUST-1');
+    expect(candidate.searchParams.get('redirecturl')).toBe('/Bank/ViewTransaction.aspx?bankTransactionID=' + paymentId);
+    fixture.componentInstance.receipts[0].linkedPaymentId = paymentId;
+    fixture.detectChanges();
+    expect(anchors()[1].textContent).toContain('View linked payment in Xero');
+    expect(anchors()[1].href).toBe(candidate.href);
+    expect(anchors()[1].target).toBe('_blank');
+    expect(api.linkTrustPayment).not.toHaveBeenCalled();
+    fixture.componentRef.setInput('shortCode','../another-org');
+    fixture.detectChanges();
+    expect(anchors().length).toBe(0);
+  });
+
+  it('records an explicit manager observation while awaiting imported confirmation', () => {
+    const receipt = {id:'receipt',amount:'10',invoiceDue:'10',linkedPaymentId:'payment',candidateIds:['payment']};
+    const checked = {...receipt,reconciliationCheckedAt:'2026-11-27T01:00:00Z'};
+    const api = {trustReceipts:jasmine.createSpy().and.returnValues(of([receipt]),of([checked])),
+      attestTrustReconciliation:jasmine.createSpy().and.returnValue(of({checkedAt:checked.reconciliationCheckedAt}))};
+    TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,useValue:api}]});
+    const fixture = TestBed.createComponent(TrustReceiptForm);
+    fixture.componentRef.setInput('connection','trust');
+    fixture.componentRef.setInput('invoice',{xeroInvoiceId:'invoice',status:'PAID',amountDue:0});
+    fixture.detectChanges();
+    expect(api.attestTrustReconciliation).not.toHaveBeenCalled();
+    fixture.nativeElement.querySelector('details button').click();
+    fixture.detectChanges();
+    expect(api.attestTrustReconciliation).toHaveBeenCalledWith('trust','invoice','receipt','payment');
+    expect(fixture.nativeElement.textContent).toContain('Manager reported seeing this payment reconciled');
+    expect(fixture.nativeElement.textContent).toContain('Awaiting reconciliation confirmation from the Xero import');
+    expect(fixture.nativeElement.querySelector('details button')).toBeNull();
+  });
+
   it('requires a manager click before linking and retains the excess after linking', () => {
     const receipt = {id:'receipt', amount:'2742.00', invoiceDue:'2741.80', receivedOn:'2026-11-13',
       account:'Trust', reference:'', verifiedAt:'2026-11-13', candidateIds:['payment']};

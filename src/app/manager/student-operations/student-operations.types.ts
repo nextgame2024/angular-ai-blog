@@ -344,6 +344,7 @@ export type XeroStudentInvoiceSort = 'invoiceNumber' | 'reference' | 'student' |
 
 export interface XeroStudentInvoice {
   receiptExcess?: number;
+  reconciliation?: { oldestLinkedAt: string; amount: number; payments: number; managerChecks: number };
   linkedStudentUserId?:string|null;linkedCaseId?:string|null;
   organisationRole?:'trust'|'operating';
   contactName?:string;
@@ -512,6 +513,7 @@ export interface TrustReceiptVerification {
   hasEvidence: boolean;
   candidateIds?: string[];
   linkedPaymentId?: string | null;
+  reconciliationCheckedAt?: string | null;
   linkedPaymentReconciled?: boolean | null;
   linkedAmount?: string | null;
 }

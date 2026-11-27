@@ -22,7 +22,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
     empty: 'No verified receipts exceeded the invoice balance.',
   },
   reconciliation_review: {
-    description: 'Linked invoice payments awaiting confirmation of bank reconciliation in Xero',
+    description: 'Linked invoice payments awaiting confirmation of bank reconciliation in Xero · oldest link first',
     empty: 'No linked invoice payments require reconciliation review.',
   },
 };
@@ -59,12 +59,19 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
       } @else if (result(); as data) {
         @if (data.invoices.length) {
           <div class="invoice-table-scroll"><table class="invoice-table">
-            <thead><tr><th>Document</th><th>Recipient</th><th>Due date</th><th>{{ queue === 'excess_receipts' ? 'Receipt excess' : 'Balance due' }}</th></tr></thead>
+            <thead><tr><th>Document</th><th>Recipient</th>@if (queue === 'reconciliation_review') {
+              <th>Oldest pending link</th><th>Awaiting confirmation</th><th>Manager checks</th>
+            } @else { <th>Due date</th><th>{{ queue === 'excess_receipts' ? 'Receipt excess' : 'Balance due' }}</th> }</tr></thead>
             <tbody>@for (row of data.invoices; track row.xeroInvoiceId) {
               <tr><td data-label="Document"><button type="button" class="invoice-link" (click)="review.emit(row)">{{ row.invoiceNumber || 'Review document' }}</button></td>
                 <td data-label="Recipient">{{ row.contactName || row.studentName }}</td>
+                @if (queue === 'reconciliation_review') {
+                  <td data-label="Oldest pending link">{{ (row.reconciliation?.oldestLinkedAt | date:'mediumDate') || 'Unknown' }}</td>
+                  <td data-label="Awaiting confirmation">{{ row.currencyCode }} {{ row.reconciliation?.amount | number:'1.2-2' }}</td>
+                  <td data-label="Manager checks">{{ row.reconciliation?.managerChecks }} of {{ row.reconciliation?.payments }}</td>
+                } @else {
                 <td data-label="Due date">{{ (row.dueDate | date:'dd MMM yyyy':'UTC') || 'Unknown' }}</td>
-                <td [attr.data-label]="queue === 'excess_receipts' ? 'Receipt excess' : 'Balance due'">{{ row.currencyCode || 'Currency unknown' }} {{ (queue === 'excess_receipts' ? row.receiptExcess : row.amountDue) | number:'1.2-4' }}</td></tr>
+                <td [attr.data-label]="queue === 'excess_receipts' ? 'Receipt excess' : 'Balance due'">{{ row.currencyCode || 'Currency unknown' }} {{ (queue === 'excess_receipts' ? row.receiptExcess : row.amountDue) | number:'1.2-4' }}</td> }</tr>
             }</tbody>
           </table></div>
           <footer class="invoice-pagination">
@@ -128,7 +135,8 @@ export class PaymentOperationsPanel implements OnChanges {
     this.error.set('');
     this.result.set(null);
     this.request = this.api.xeroStudentInvoices(this.connection.connectionId, {
-      page, limit: 25, ...(this.search ? { q: this.search } : {}), queue: this.queue, sort: 'dueDate', direction: 'asc',
+      page, limit: 25, ...(this.search ? { q: this.search } : {}), queue: this.queue,
+      ...(this.queue === 'reconciliation_review' ? {} : {sort: 'dueDate' as const, direction: 'asc' as const}),
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: result => {
         if (page > Math.max(1, result.totalPages)) {

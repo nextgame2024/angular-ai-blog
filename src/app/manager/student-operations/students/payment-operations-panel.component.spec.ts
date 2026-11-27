@@ -29,7 +29,8 @@ describe('PaymentOperationsPanel', () => {
 
   it('shows the verified excess even when the invoice balance is zero', () => {
     const page = {page:1, totalPages:1, total:1, invoices:[
-      {xeroInvoiceId:'invoice', invoiceNumber:'INV-10635', currencyCode:'AUD', amountDue:0, receiptExcess:0.20},
+      {xeroInvoiceId:'invoice', invoiceNumber:'INV-10635', currencyCode:'AUD', amountDue:0, receiptExcess:0.20,
+       reconciliation:{oldestLinkedAt:"2026-11-16T12:00:00Z",amount:2741.80,payments:2,managerChecks:1}},
     ]};
     const invoices = jasmine.createSpy().and.returnValue(of(page));
     TestBed.configureTestingModule({imports:[PaymentOperationsPanel], providers:[{provide:StudentOperationsService,
@@ -44,7 +45,10 @@ describe('PaymentOperationsPanel', () => {
     fixture.nativeElement.querySelectorAll('header button')[2].click();
     fixture.detectChanges();
     expect(invoices.calls.mostRecent().args[1].queue).toBe('reconciliation_review');
-    expect(fixture.nativeElement.querySelector('.invoice-link').textContent).toContain('INV-10635');
+    expect(invoices.calls.mostRecent().args[1].sort).toBeUndefined();
+    expect(fixture.nativeElement.querySelector('[data-label="Oldest pending link"]').textContent).toContain('2026');
+    expect(fixture.nativeElement.querySelector('[data-label="Awaiting confirmation"]').textContent).toContain('AUD 2,741.80');
+    expect(fixture.nativeElement.querySelector('[data-label="Manager checks"]').textContent).toContain('1 of 2');
   });
 
   it('discards a late response from the previous organisation', () => {
