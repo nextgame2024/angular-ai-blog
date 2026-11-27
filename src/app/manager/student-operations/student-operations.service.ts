@@ -422,6 +422,8 @@ export class StudentOperationsService {
 
   private invoiceParams(input: XeroStudentInvoiceQuery): HttpParams {
     let params = new HttpParams().set('page', String(input.page)).set('limit', String(input.limit));
+    if (input.paymentCandidateStatus) params = params.set('paymentCandidateStatus', input.paymentCandidateStatus);
+    if (input.excessLinkStatus) params = params.set('excessLinkStatus', input.excessLinkStatus);
     if (input.reconciliationStatus) params = params.set('reconciliationStatus', input.reconciliationStatus);
     if (input.followUpOwner) params = params.set('followUpOwner', input.followUpOwner);
     if (input.queue) params = params.set('queue', input.queue);
@@ -467,19 +469,19 @@ export class StudentOperationsService {
     return this.http.post<{claimId: string}>(base + action, {}, {headers: this.headers()});
   }
 
-  attestTrustReconciliation(connection: string, invoice: string, receipt: string, payment: string) {
+  attestTrustReconciliation(connection: string, invoice: string, receipt: string, payment: string, reportedReconciledOn?: string) {
     const url = this.trustReceiptUrl(connection, invoice) + '/' + encodeURIComponent(receipt) + '/reconciliation-check/' + encodeURIComponent(payment);
-    return this.http.post<{checkedAt: string}>(url, {}, {headers: this.headers()});
+    return this.http.post<{checkedAt: string; reportedReconciledOn?: string | null}>(url, {reportedReconciledOn}, {headers: this.headers()});
   }
 
-  linkTrustPayment(connection: string, invoice: string, receipt: string, payment: string) {
+  linkTrustPayment(connection: string, invoice: string, receipt: string, payment: string, decisionNote?: string) {
     const url = this.trustReceiptUrl(connection, invoice) + '/' + encodeURIComponent(receipt) + '/link/' + encodeURIComponent(payment);
-    return this.http.post<{paymentId: string}>(url, {}, {headers: this.headers()});
+    return this.http.post<{paymentId: string}>(url, {decisionNote}, {headers: this.headers()});
   }
 
-  linkTrustOverpayment(connection: string, invoice: string, receipt: string, overpayment: string) {
+  linkTrustOverpayment(connection: string, invoice: string, receipt: string, overpayment: string, decisionNote?: string) {
     const url = this.trustReceiptUrl(connection, invoice) + '/' + encodeURIComponent(receipt) + '/overpayments/' + encodeURIComponent(overpayment);
-    return this.http.post<{overpaymentId: string}>(url, {}, {headers: this.headers()});
+    return this.http.post<{overpaymentId: string}>(url, {decisionNote}, {headers: this.headers()});
   }
 
   trustReceiptEvidence(connection: string, invoice: string, id: string) {

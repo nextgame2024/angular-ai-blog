@@ -343,8 +343,11 @@ export type XeroStudentInvoiceSort = 'invoiceNumber' | 'reference' | 'student' |
   | 'dueDate' | 'paid' | 'due' | 'status' | 'sent' | 'advisor' | 'paymentTrack';
 
 export interface XeroStudentInvoice {
+  unlinkedReceipts?: {count: number; amount: number; withCandidates?: number; withMultipleCandidates?: number};
   receiptExcess?: number;
-  reconciliation?: { oldestLinkedAt: string; amount: number; payments: number; managerChecks: number; unassigned?: number; xeroPending?: number; statusUnknown?: number; linkMismatch?: number };
+  unlinkedExcess?: number;
+  unlinkedExcessDays?: number | null;
+  reconciliation?: { oldestLinkedAt: string; pendingDays?: number; amount: number; payments: number; managerChecks: number; latestReportedReconciledOn?: string | null; unassigned?: number; xeroPending?: number; statusUnknown?: number; linkMismatch?: number };
   linkedStudentUserId?:string|null;linkedCaseId?:string|null;
   organisationRole?:'trust'|'operating';
   contactName?:string;
@@ -390,7 +393,7 @@ export interface XeroStudentInvoiceLineItem {
 
 export interface XeroStudentInvoiceDetail extends XeroStudentInvoice {
   lineItems: XeroStudentInvoiceLineItem[];
-  settlement?:{fullyPaidOnDate:string|null;entries:Array<{kind:string;id:string;date:string|null;amount:number;isReconciled?:boolean}>}|null;
+  settlement?:{fullyPaidOnDate:string|null;entries:Array<{kind:string;id:string;date:string|null;amount:number;reference?:string;isReconciled?:boolean}>}|null;
   relatedInvoices?:Array<{caseId:string;sequence:number;role:'trust'|'operating';connectionId:string;invoiceId:string;invoiceNumber:string|null;status:string|null;date:string|null;dueDate:string|null;currencyCode?:string|null;amountPaid:string|number|null;amountDue:string|number|null;indexed:boolean}>;
 }
 
@@ -428,7 +431,9 @@ export interface PaymentsRegisterBootstrap {
 }
 
 export interface XeroStudentInvoiceQuery {
-  reconciliationStatus?: 'link_mismatch';
+  paymentCandidateStatus?: 'available' | 'multiple' | 'partial' | 'none';
+  excessLinkStatus?: 'needs_link' | 'fully_linked' | 'link_mismatch';
+  reconciliationStatus?: 'link_mismatch' | 'checked_pending' | 'checked_unknown';
   followUpOwner?: 'mine' | 'unassigned';
   queue?: 'outstanding_invoices' | 'receipts_awaiting_link' | 'excess_receipts' | 'reconciliation_review';
   supplierId?: string;
@@ -514,7 +519,9 @@ export interface TrustReceiptVerification {
   reviewOwnedByMe?: boolean | null;
   verifiedByName?: string | null;
   paymentLinkedAt?: string | null;
+  paymentLinkNote?: string | null;
   paymentLinkedByName?: string | null;
+  overpaymentLinkNote?: string | null;
   overpaymentLinkedByName?: string | null;
   reconciliationCheckedByName?: string | null;
   paymentPurpose?: string | null;
@@ -531,6 +538,7 @@ export interface TrustReceiptVerification {
   hasEvidence: boolean;
   candidateIds?: string[];
   linkedPaymentId?: string | null;
+  reportedReconciledOn?: string | null;
   reconciliationCheckedAt?: string | null;
   linkedPaymentReconciled?: boolean | null;
   linkedAmount?: string | null;

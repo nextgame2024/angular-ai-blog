@@ -4,6 +4,43 @@ import { StudentOperationsService } from '../student-operations.service';
 import { TrustReceiptForm } from './trust-receipt-form.component';
 
 describe('TRUST receipt form', () => {
+  it('shows the imported reference beside its candidate when multiple payments match', () => {
+    const receipt = {id:'r',amount:'100.00',invoiceDue:'100.00',reference:' TUITION transfer ',candidateIds:['older','with-reference','also-matches','different']};
+    const api = {trustReceipts:() => of([receipt]),linkTrustPayment:jasmine.createSpy()};
+    TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,useValue:api}]});
+    const fixture = TestBed.createComponent(TrustReceiptForm);
+    fixture.componentRef.setInput('connection','trust');
+    fixture.componentRef.setInput('invoice',{xeroInvoiceId:'invoice',status:'PAID',settlement:{entries:[
+      {kind:'payment',id:'with-reference',amount:100,reference:'Tuition transfer'},
+      {kind:'payment',id:'older',amount:100},
+      {kind:'payment',id:'also-matches',amount:100,reference:'Tuition transfer'},
+      {kind:'payment',id:'different',amount:100,reference:'Tuition-transfer'},
+      {kind:'credit_note',id:'older',reference:'Separate credit'}
+    ]}});
+    fixture.detectChanges();
+    const candidates = Array.from<HTMLElement>(fixture.nativeElement.querySelectorAll('details li'));
+    expect(candidates.map(item => item.querySelector('p')?.textContent?.trim())).toEqual([
+      'Xero payment reference · Tuition transfer','Xero payment reference · Tuition transfer',
+      'Xero payment reference · Unavailable','Xero payment reference · Tuition-transfer'
+    ]);
+    expect(candidates[0].querySelector('button')?.textContent).toContain('with-reference');
+    expect(candidates[1].querySelector('button')?.textContent).toContain('also-matches');
+    expect(candidates.filter(item => item.textContent?.includes('Matches bank reference')).length).toBe(2);
+    expect(fixture.nativeElement.textContent).toContain('Multiple payments match the bank reference.');
+    expect(candidates[2].textContent).not.toContain('Differs from bank reference');
+    expect(candidates[3].textContent).toContain('Differs from bank reference');
+    receipt.reference = '   ';
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Differs from bank reference');
+    expect(fixture.nativeElement.textContent).not.toContain('Multiple payments match the bank reference.');
+    receipt.reference = 'Tuition transfer';
+    fixture.componentRef.setInput('invoice',{xeroInvoiceId:'invoice',status:'PAID',settlement:{entries:[]}});
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Matches bank reference');
+    expect(fixture.nativeElement.querySelector('details li button').textContent).toContain('older');
+    expect(api.linkTrustPayment).not.toHaveBeenCalled();
+  });
+
   it('loads ownership history on demand and retries older claims without losing the current page', () => {
     const receipt = {id:'receipt',amount:'10',invoiceDue:'10',linkedPaymentId:'payment',linkedPaymentReconciled:true,candidateIds:['payment']};
     const entry = {id:'first',ownerName:'Fixture Reviewer',claimedAt:'2026-11-20T10:00:00Z',releasedAt:null};
@@ -124,7 +161,7 @@ describe('TRUST receipt form', () => {
 
   it('records an explicit manager observation while awaiting imported confirmation', () => {
     const receipt = {id:'receipt',amount:'10',invoiceDue:'10',linkedPaymentId:'payment',candidateIds:['payment']};
-    const checked = {...receipt,reconciliationCheckedByName:'Fixture Reviewer',reconciliationCheckedAt:'2026-11-27T01:00:00Z'};
+    const checked = {...receipt,reportedReconciledOn:'2026-11-16',reconciliationCheckedByName:'Fixture Reviewer',reconciliationCheckedAt:'2026-11-27T01:00:00Z'};
     const api = {trustReceipts:jasmine.createSpy().and.returnValues(of([receipt]),of([checked])),
       attestTrustReconciliation:jasmine.createSpy().and.returnValue(of({checkedAt:checked.reconciliationCheckedAt}))};
     TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,useValue:api}]});
@@ -133,9 +170,11 @@ describe('TRUST receipt form', () => {
     fixture.componentRef.setInput('invoice',{xeroInvoiceId:'invoice',status:'PAID',amountDue:0});
     fixture.detectChanges();
     expect(api.attestTrustReconciliation).not.toHaveBeenCalled();
+    fixture.nativeElement.querySelector('details input[type=date]').value = '2026-11-16';
     fixture.nativeElement.querySelector('details button').click();
     fixture.detectChanges();
-    expect(api.attestTrustReconciliation).toHaveBeenCalledWith('trust','invoice','receipt','payment');
+    expect(api.attestTrustReconciliation).toHaveBeenCalledWith('trust','invoice','receipt','payment','2026-11-16');
+    expect(fixture.nativeElement.textContent).toContain('Reconciliation date reported by manager · 2026-11-16');
     expect(fixture.nativeElement.textContent).toContain('Reported reconciled in Xero by Fixture Reviewer');
     expect(fixture.nativeElement.textContent).toContain('Awaiting reconciliation confirmation from the Xero import');
     expect(fixture.nativeElement.querySelector('details button')).toBeNull();
@@ -145,7 +184,7 @@ describe('TRUST receipt form', () => {
     const receipt = {id:'receipt', amount:'2742.00', invoiceDue:'2741.80', receivedOn:'2026-11-13',
       account:'Trust', reference:'', verifiedAt:'2026-11-13', candidateIds:['payment']};
     const api = {trustReceipts:jasmine.createSpy().and.returnValues(of([receipt]),
-      of([{...receipt,linkedPaymentId:'payment',linkedAmount:'2741.80'}])),
+      of([{...receipt,linkedPaymentId:'payment',linkedAmount:'2741.80',paymentLinkNote:'Compared bank evidence'}])),
       linkTrustPayment:jasmine.createSpy().and.returnValue(of({paymentId:'payment'}))};
     TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,useValue:api}]});
     const fixture=TestBed.createComponent(TrustReceiptForm);
@@ -153,10 +192,12 @@ describe('TRUST receipt form', () => {
     fixture.componentRef.setInput('invoice',{xeroInvoiceId:'invoice',status:'PAID',amountDue:0});
     fixture.detectChanges();
     expect(api.linkTrustPayment).not.toHaveBeenCalled();
+    fixture.nativeElement.querySelector('details textarea').value = ' Compared bank evidence ';
     const button=fixture.nativeElement.querySelector('details button') as HTMLButtonElement;
     button.click();
     fixture.detectChanges();
-    expect(api.linkTrustPayment).toHaveBeenCalledWith('trust','invoice','receipt','payment');
+    expect(api.linkTrustPayment).toHaveBeenCalledWith('trust','invoice','receipt','payment','Compared bank evidence');
+    expect(fixture.nativeElement.textContent).toContain('Payment link note · Compared bank evidence');
     expect(fixture.nativeElement.textContent).toContain('Linked Xero invoice payment');
     expect(fixture.nativeElement.textContent).toContain('Bank reconciliation status unknown');
     fixture.componentInstance.receipts[0].linkedPaymentReconciled = false;
@@ -190,7 +231,7 @@ describe('TRUST receipt form', () => {
   it('records the excess link on confirmation and flags a missing imported credit', () => {
     const receipt = {id:'r', amount:'100.20', invoiceDue:'100', possibleOverpaymentIds:['credit']};
     const api = {trustReceipts:jasmine.createSpy().and.returnValues(of([receipt]),
-      of([{...receipt,linkedOverpaymentId:'credit',possibleOverpaymentIds:[]}])),
+      of([{...receipt,linkedOverpaymentId:'credit',overpaymentLinkNote:'Checked excess',possibleOverpaymentIds:[]}])),
       linkTrustOverpayment:jasmine.createSpy().and.returnValue(of({overpaymentId:'credit'}))};
     TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,useValue:api}]});
     const fixture=TestBed.createComponent(TrustReceiptForm);
@@ -198,9 +239,11 @@ describe('TRUST receipt form', () => {
     fixture.componentRef.setInput('invoice',{xeroInvoiceId:'invoice',status:'PAID',amountDue:0});
     fixture.detectChanges();
     expect(api.linkTrustOverpayment).not.toHaveBeenCalled();
+    fixture.nativeElement.querySelector('details textarea').value = ' Checked excess ';
     fixture.nativeElement.querySelector('details button').click();
     fixture.detectChanges();
-    expect(api.linkTrustOverpayment).toHaveBeenCalledWith('trust','invoice','r','credit');
+    expect(api.linkTrustOverpayment).toHaveBeenCalledWith('trust','invoice','r','credit','Checked excess');
+    expect(fixture.nativeElement.textContent).toContain('Overpayment link note · Checked excess');
     expect(fixture.nativeElement.textContent).toContain('Linked Xero overpayment');
     expect(fixture.nativeElement.textContent).toContain('no longer matches');
   });
@@ -224,6 +267,48 @@ describe('TRUST receipt form', () => {
     for (const invalid of ['', '0.00', '1.234', '-1']) {
       expect(component.balanceAfterReceipt(invalid, 250)).toBeNull();
     }
+  });
+
+  it('removes an invalid screenshot and keeps valid evidence for retry until the receipt is saved', () => {
+    const verify = jasmine.createSpy().and.returnValues(throwError(() => new Error('offline')), of({id:'receipt'}));
+    TestBed.configureTestingModule({imports:[TrustReceiptForm], providers:[{provide:StudentOperationsService,
+      useValue:{trustReceipts:() => of([]), verifyTrustReceipt:verify}}]});
+    const fixture = TestBed.createComponent(TrustReceiptForm);
+    fixture.componentRef.setInput('connection','trust');
+    fixture.componentRef.setInput('invoice',{xeroInvoiceId:'invoice',amountDue:100,status:'AUTHORISED'});
+    fixture.detectChanges();
+    const form = fixture.componentInstance;
+    form.amount = '100.00';
+    form.date = '2026-11-13';
+    form.account = 'Fixture TRUST';
+    const input: HTMLInputElement = fixture.nativeElement.querySelector('input[type=file]');
+    const selectFile = (name: string, type: string) => {
+      const files = new DataTransfer();
+      files.items.add(new File(['fixture'], name, {type}));
+      input.files = files.files;
+      input.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+    };
+    selectFile('invalid.txt', 'text/plain');
+    form.save();
+    expect(verify).not.toHaveBeenCalled();
+    const remove = Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('fieldset button'))
+      .find(button => button.textContent?.trim() === 'Remove screenshot')!;
+    remove.click();
+    expect(input.files?.length).toBe(0);
+    expect(form.fileError).toBeFalse();
+    expect(form.amount).toBe('100.00');
+    selectFile('bank.png', 'image/png');
+    form.save();
+    expect(input.files?.item(0)?.name).toBe('bank.png');
+    form.save();
+    const [first, retry] = verify.calls.allArgs();
+    expect(retry[3]).toBe(first[3]);
+    expect(retry[2].get('file').name).toBe('bank.png');
+    expect(input.files?.length).toBe(0);
+    expect(form.file).toBeUndefined();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Remove screenshot');
   });
 
   it('keeps the full receipt for a partly excess payment and permits a blank bank reference', async () => {

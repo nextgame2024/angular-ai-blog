@@ -50,11 +50,19 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
               {{ queue === 'reconciliation_review' ? 'Show outstanding invoices' : 'Review bank reconciliation' }}
             </button>
           }
+          @if (queue === 'receipts_awaiting_link') {
+            <app-manager-select ariaLabel="Possible Xero payments" [options]="candidateOptions" [ngModel]="candidateStatus"
+              (ngModelChange)="candidateStatus = $event; load(1)" />
+          }
+          @if (queue === 'excess_receipts') {
+            <app-manager-select ariaLabel="Overpayment link status" [options]="excessOptions" [ngModel]="excessStatus"
+              (ngModelChange)="excessStatus = $event; load(1)" />
+          }
           @if (queue === 'reconciliation_review') {
             <app-manager-select ariaLabel="Follow-up owner" [options]="ownerOptions" [ngModel]="owner"
               (ngModelChange)="setOwner($event)" />
-            <label><input type="checkbox" [(ngModel)]="mismatchesOnly" (change)="load(1)" />
-              Only links that no longer match</label>
+            <app-manager-select ariaLabel="Reconciliation status" [options]="statusOptions" [ngModel]="status"
+              (ngModelChange)="status = $event; load(1)" />
           }
           <small>Last successful sync: {{ (lastSync() | date:'medium') || 'Unknown' }}</small>
         </div>
@@ -69,12 +77,21 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
           <div class="invoice-table-scroll"><table class="invoice-table">
             <thead><tr><th>Document</th><th>Recipient</th>@if (queue === 'reconciliation_review') {
               <th>Oldest pending link</th><th>Awaiting confirmation</th><th>Xero payment status</th><th>Manager checks</th><th>Unassigned follow-ups</th>
-            } @else { <th>Due date</th><th>{{ queue === 'excess_receipts' ? 'Receipt excess' : 'Balance due' }}</th> }</tr></thead>
+            } @else { <th>Due date</th><th>{{ queue === 'excess_receipts' ? 'Receipt excess' : 'Balance due' }}</th>
+              @if (queue === 'receipts_awaiting_link') { <th>Verified receipts awaiting a link</th> }
+              @if (queue === 'excess_receipts') { <th>Excess without a Xero link</th> }
+            }</tr></thead>
             <tbody>@for (row of data.invoices; track row.xeroInvoiceId) {
               <tr><td data-label="Document"><button type="button" class="invoice-link" (click)="review.emit(row)">{{ row.invoiceNumber || 'Review document' }}</button></td>
                 <td data-label="Recipient">{{ row.contactName || row.studentName }}</td>
                 @if (queue === 'reconciliation_review') {
-                  <td data-label="Oldest pending link">{{ (row.reconciliation?.oldestLinkedAt | date:'mediumDate') || 'Unknown' }}</td>
+                  <td data-label="Oldest pending link">
+                    {{ (row.reconciliation?.oldestLinkedAt | date:'mediumDate':'+1000') || 'Unknown' }}
+                    @let days = row.reconciliation?.pendingDays;
+                    @if (days != null) {
+                      <div>{{ days === 0 ? 'Linked today' : days === 1 ? '1 day ago' : days + ' days ago' }}</div>
+                    }
+                  </td>
                   <td data-label="Awaiting confirmation">{{ row.currencyCode }} {{ row.reconciliation?.amount | number:'1.2-2' }}</td>
                   <td data-label="Xero payment status">
                     @if (row.reconciliation; as summary) {
@@ -84,11 +101,41 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
                       @if (summary.xeroPending == null) { <span>Open invoice for details</span> }
                     } @else { <span>Open invoice for details</span> }
                   </td>
-                  <td data-label="Manager checks">{{ row.reconciliation?.managerChecks }} of {{ row.reconciliation?.payments }}</td>
+                  <td data-label="Manager checks">
+                    {{ row.reconciliation?.managerChecks }} of {{ row.reconciliation?.payments }}
+                    @if (row.reconciliation?.latestReportedReconciledOn; as reportedDate) {
+                      <small>Latest reported reconciliation date · {{ reportedDate | date:'dd MMM yyyy' }}</small>
+                    }
+                  </td>
                   <td data-label="Unassigned follow-ups">{{ row.reconciliation?.unassigned ?? '—' }}</td>
                 } @else {
                 <td data-label="Due date">{{ (row.dueDate | date:'dd MMM yyyy':'UTC') || 'Unknown' }}</td>
-                <td [attr.data-label]="queue === 'excess_receipts' ? 'Receipt excess' : 'Balance due'">{{ row.currencyCode || 'Currency unknown' }} {{ (queue === 'excess_receipts' ? row.receiptExcess : row.amountDue) | number:'1.2-4' }}</td> }</tr>
+                @if (queue === 'excess_receipts') {
+                  <td data-label="Receipt excess">AUD {{ row.receiptExcess | number:'1.2-2' }}</td>
+                  <td data-label="Excess without a Xero link">
+                    @if (row.unlinkedExcess != null) { AUD {{ row.unlinkedExcess | number:'1.2-2' }} }
+                    @else { Unknown }
+                    @let age = row.unlinkedExcessDays;
+                    @if (age != null) {
+                      <div>Oldest receipt · {{ age === 0 ? 'Today' : age === 1 ? '1 day ago' : age + ' days ago' }}</div>
+                    }
+                  </td>
+                } @else {
+                  <td data-label="Balance due">{{ row.currencyCode || 'Currency unknown' }} {{ row.amountDue | number:'1.2-4' }}</td>
+                }
+                @if (queue === 'receipts_awaiting_link') {
+                  <td data-label="Verified receipts awaiting a link">
+                    @if (row.unlinkedReceipts; as receipts) {
+                      AUD {{ receipts.amount | number:'1.2-2' }} · {{ receipts.count }} {{ receipts.count === 1 ? 'receipt' : 'receipts' }}
+                      @if (receipts.withCandidates != null) {
+                        <div>{{ receipts.withCandidates }} of {{ receipts.count }} with a possible Xero payment</div>
+                        @if (receipts.withMultipleCandidates) {
+                          <div>{{ receipts.withMultipleCandidates }} with multiple possible payments</div>
+                        }
+                      }
+                    } @else { Unknown }
+                  </td>
+                } }</tr>
             }</tbody>
           </table></div>
           <footer class="invoice-pagination">
@@ -96,7 +143,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
             <span>Page {{ data.page }} of {{ data.totalPages }} · {{ data.total }} documents</span>
             <button class="btn" type="button" [disabled]="data.page >= data.totalPages" (click)="load(data.page + 1)">Next</button>
           </footer>
-        } @else { <p class="candidate-empty">{{ search ? 'No invoices match this search.' : queue === 'reconciliation_review' && mismatchesOnly ? 'No mismatched links meet these filters.' : queue === 'reconciliation_review' && owner !== 'all' ? 'No follow-ups match this owner filter.' : queueText[queue].empty }}</p> }
+        } @else { <p class="candidate-empty">{{ search ? 'No invoices match this search.' : queue === 'receipts_awaiting_link' && candidateStatus !== 'all' ? 'No invoices match this payment filter.' : queue === 'excess_receipts' && excessStatus !== 'all' ? 'No invoices match this overpayment link status.' : queue === 'reconciliation_review' && status !== 'all' ? 'No follow-ups match these filters.' : queue === 'reconciliation_review' && owner !== 'all' ? 'No follow-ups match this owner filter.' : queueText[queue].empty }}</p> }
       }
     </section>
   `,
@@ -106,7 +153,28 @@ export class PaymentOperationsPanel implements OnChanges {
   @Input() search = '';
   @Input() receiptRevision = 0;
   readonly queueText = queueText;
-  mismatchesOnly = false;
+  status: 'all' | NonNullable<XeroStudentInvoiceQuery['reconciliationStatus']> = 'all';
+  excessStatus: 'all' | NonNullable<XeroStudentInvoiceQuery['excessLinkStatus']> = 'all';
+  candidateStatus: 'all' | NonNullable<XeroStudentInvoiceQuery['paymentCandidateStatus']> = 'all';
+  readonly candidateOptions = [
+    {value:'all', label:'All unlinked receipts'},
+    {value:'available', label:'Has a possible Xero payment'},
+    {value:'multiple', label:'Receipt with multiple possible payments'},
+    {value:'partial', label:'Only some receipts have a possible payment'},
+    {value:'none', label:'No possible Xero payments'},
+  ];
+  readonly excessOptions = [
+    {value:'all', label:'All excess receipts'},
+    {value:'needs_link', label:'Needs an overpayment link'},
+    {value:'fully_linked', label:'Fully linked'},
+    {value:'link_mismatch', label:'Overpayment link no longer matches'},
+  ];
+  readonly statusOptions = [
+    {value:'all', label:'All reconciliation statuses'},
+    {value:'link_mismatch', label:'Link no longer matches'},
+    {value:'checked_pending', label:'Manager reported reconciled · Xero pending'},
+    {value:'checked_unknown', label:'Manager reported reconciled · Xero status unavailable'},
+  ];
   owner: 'all' | NonNullable<XeroStudentInvoiceQuery['followUpOwner']> = 'all';
   readonly ownerOptions = [
     {value:'all',label:'All follow-ups'}, {value:'mine',label:'My follow-ups'}, {value:'unassigned',label:'Unassigned'},
@@ -127,7 +195,9 @@ export class PaymentOperationsPanel implements OnChanges {
     if (changes['connection']) {
       this.queue = 'outstanding_invoices';
       this.owner = 'all';
-      this.mismatchesOnly = false;
+      this.status = 'all';
+      this.excessStatus = 'all';
+      this.candidateStatus = 'all';
       this.loadFreshness();
     }
     if (Object.keys(changes).length === 1 && changes['receiptRevision']) {
@@ -165,9 +235,11 @@ export class PaymentOperationsPanel implements OnChanges {
     this.result.set(null);
     this.request = this.api.xeroStudentInvoices(this.connection.connectionId, {
       page, limit: 25, ...(this.search ? { q: this.search } : {}), queue: this.queue,
-      ...(this.queue === 'reconciliation_review' && this.mismatchesOnly ? {reconciliationStatus: 'link_mismatch' as const} : {}),
+      ...(this.queue === 'receipts_awaiting_link' && this.candidateStatus !== 'all' ? {paymentCandidateStatus:this.candidateStatus} : {}),
+      ...(this.queue === 'excess_receipts' && this.excessStatus !== 'all' ? {excessLinkStatus: this.excessStatus} : {}),
+      ...(this.queue === 'reconciliation_review' && this.status !== 'all' ? {reconciliationStatus: this.status} : {}),
       ...(this.queue === 'reconciliation_review' && this.owner !== 'all' ? {followUpOwner: this.owner} : {}),
-      ...(this.queue === 'reconciliation_review' ? {} : {sort: 'dueDate' as const, direction: 'asc' as const}),
+      ...(this.queue === 'reconciliation_review' || (this.queue === 'excess_receipts' && this.excessStatus === 'needs_link') ? {} : {sort: 'dueDate' as const, direction: 'asc' as const}),
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: result => {
         if (page > Math.max(1, result.totalPages)) {

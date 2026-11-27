@@ -1,17 +1,33 @@
 import { TrustClaimHistory } from './trust-claim-history.component';
 import { XeroReviewUrlPipe } from './xero-review-url.pipe';
 import { forkJoin, map, type Observable } from 'rxjs';
-import { Component, DestroyRef, Input, OnChanges, OnInit, SimpleChanges, inject, output } from '@angular/core';
+import { Component, DestroyRef, ElementRef, Input, OnChanges, OnInit, Pipe, PipeTransform, SimpleChanges, inject, output, viewChild } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StudentOperationsService } from '../student-operations.service';
 import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../student-operations.types';
 
+type ImportedPayment = NonNullable<XeroStudentInvoiceDetail['settlement']>['entries'][number];
+
+@Pipe({name: 'receiptPaymentCandidates'})
+class ReceiptPaymentCandidatesPipe implements PipeTransform {
+  transform(ids: string[], bankReference: string, payments: ReadonlyMap<string, ImportedPayment>) {
+    const reference = bankReference?.trim().toLowerCase();
+    const candidates = ids.map(id => {
+      const importedReference = payments.get(id)?.reference?.trim();
+      const comparable = !!reference && !!importedReference;
+      const matchesReference = comparable && reference === importedReference.toLowerCase();
+      return {id, importedReference, matchesReference, differsFromReference: comparable && !matchesReference};
+    });
+    return candidates.sort((a, b) => Number(b.matchesReference) - Number(a.matchesReference));
+  }
+}
+
 @Component({
   selector: 'app-trust-receipt-form',
   host: {'(document:visibilitychange)': 'onVisibilityChange()'},
-  imports: [FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe, TrustClaimHistory],
+  imports: [FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe, TrustClaimHistory, ReceiptPaymentCandidatesPipe],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section aria-label="TRUST bank verification">
@@ -28,7 +44,7 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
           @if (difference !== null && difference > 0) {
             · Partial payment · Expected balance after this receipt at verification AUD {{ difference | number:'1.2-2' }}
           }
-          @if (receipt.reference) { · {{ receipt.reference }} }
+          @if (receipt.reference) { · Bank reference · {{ receipt.reference }} }
           @if (receipt.paymentPurpose) { <small>Payment purpose · {{ receipt.paymentPurpose }}</small> }
           <small>Verified by {{ receipt.verifiedByName || 'Staff member unavailable' }} · {{ receipt.verifiedAt | date:'medium' }} · Invoice balance at verification AUD {{ receipt.invoiceDue | number:'1.2-2' }}</small>
           @if (receipt.hasEvidence) { <button class="invoice-link" type="button" (click)="download(receipt.id)">Download screenshot</button> }
@@ -36,12 +52,14 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
         @if (difference !== null && difference < 0 && receipt.possibleOverpaymentIds; as credits) {
           @if (receipt.linkedOverpaymentId; as linked) {
             <p>Linked Xero overpayment · {{ linked }} · Linked by {{ receipt.overpaymentLinkedByName || 'Staff member unavailable' }} · {{ receipt.overpaymentLinkedAt | date:'medium' }}</p>
+            @if (receipt.overpaymentLinkNote) { <p>Overpayment link note · {{ receipt.overpaymentLinkNote }}</p> }
             @if (!credits.includes(linked)) { <p role="status">Review required. The linked overpayment no longer matches the imported records.</p> }
           } @else if (credits.length) {
             <details><summary>Possible Xero overpayments ({{ credits.length }})</summary>
               <p>Check these records in Xero. Each matches the contact, receipt date and excess amount.</p>
+              <label>Reason for this overpayment link (optional)<textarea #creditNote maxlength="500" rows="2" [disabled]="saving"></textarea></label>
               @for (id of credits; track id) {
-                <button class="btn" type="button" [disabled]="saving || !ready" (click)="link(receipt.id, id, 'overpayment')">Confirm overpayment link · {{ id }}</button>
+                <button class="btn" type="button" [disabled]="saving || !ready" (click)="link(receipt.id, id, 'overpayment', creditNote.value)">Confirm overpayment link · {{ id }}</button>
               }
             </details>
           } @else { <p>No imported Xero overpayment matches this contact, date and excess amount.</p> }
@@ -50,6 +68,7 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
           <p>Linked Xero invoice payment · AUD {{ receipt.linkedAmount }} · {{ receipt.linkedPaymentId }}
             @if (receipt.paymentLinkedAt) { <small>Linked by {{ receipt.paymentLinkedByName || 'Staff member unavailable' }} · {{ receipt.paymentLinkedAt | date:'medium' }}</small> }
           </p>
+          @if (receipt.paymentLinkNote) { <p>Payment link note · {{ receipt.paymentLinkNote }}</p> }
           @if (receipt.linkedPaymentId | xeroReviewUrl:'payment':shortCode; as paymentUrl) {
             <a class="invoice-link" [href]="paymentUrl" target="_blank" rel="noopener noreferrer">View linked payment in Xero</a>
           }
@@ -85,10 +104,12 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
           }
           @if (receipt.reconciliationCheckedAt; as checkedAt) {
             <p>Reported reconciled in Xero by {{ receipt.reconciliationCheckedByName || 'Staff member unavailable' }} · {{ checkedAt | date:'medium' }}</p>
+            @if (receipt.reportedReconciledOn) { <p>Reconciliation date reported by manager · {{ receipt.reportedReconciledOn }}</p> }
           } @else if (receipt.candidateIds?.includes(receipt.linkedPaymentId) && receipt.linkedPaymentReconciled !== true) {
             <details><summary>Record a manual reconciliation check</summary>
               <p>Confirm after you have seen this payment marked Reconciled in the TRUST account in Xero.</p>
-              <button class="btn" type="button" [disabled]="saving || !ready" (click)="attest(receipt.id, receipt.linkedPaymentId)">I saw this payment reconciled in Xero</button>
+              <label>Reconciliation date shown in Xero (optional)<input type="date" #reconciledOn [disabled]="saving"></label>
+              <button class="btn" type="button" [disabled]="saving || !ready || !reconciledOn.validity.valid" (click)="attest(receipt.id, receipt.linkedPaymentId, reconciledOn.value)">I saw this payment reconciled in Xero</button>
             </details>
           }
           <app-trust-claim-history [connection]="connection" [invoiceId]="invoice.xeroInvoiceId"
@@ -97,12 +118,24 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
           @if (candidates.length) {
             <details><summary>Review matching invoice payments ({{ candidates.length }})</summary>
               <p>Same TRUST invoice, payment date and invoice payment amount. Check the payment ID against your evidence before linking.</p>
-              @for (payment of candidates; track payment) {
-                @if (payment | xeroReviewUrl:'payment':shortCode; as paymentUrl) {
-                  <a class="invoice-link" [href]="paymentUrl" target="_blank" rel="noopener noreferrer">Review payment {{ payment }} in Xero</a>
-                }
-                <button class="btn" type="button" [disabled]="saving || !ready" (click)="link(receipt.id, payment)">Confirm link · {{ payment }}</button>
+              <label>Reason for this link (optional)<textarea #decisionNote maxlength="500" rows="2" [disabled]="saving"></textarea></label>
+              @let ranked = candidates | receiptPaymentCandidates:receipt.reference:importedPayments;
+              @if (ranked.length > 1 && ranked[1].matchesReference) {
+                <p>Multiple payments match the bank reference. Compare their payment IDs in Xero before choosing one.</p>
               }
+              <ul>
+                @for (payment of ranked; track payment.id) {
+                  <li>
+                    <p>Xero payment reference · {{ payment.importedReference || 'Unavailable' }}</p>
+                    @if (payment.matchesReference) { <small>Matches bank reference</small> }
+                    @else if (payment.differsFromReference) { <small>Differs from bank reference</small> }
+                    @if (payment.id | xeroReviewUrl:'payment':shortCode; as paymentUrl) {
+                      <a class="invoice-link" [href]="paymentUrl" target="_blank" rel="noopener noreferrer">Review payment {{ payment.id }} in Xero</a>
+                    }
+                    <button class="btn" type="button" [disabled]="saving || !ready" (click)="link(receipt.id, payment.id, 'payment', decisionNote.value)">Confirm link · {{ payment.id }}</button>
+                  </li>
+                }
+              </ul>
             </details>
           } @else {
             <small>Awaiting a matching imported Xero invoice payment.</small>
@@ -124,7 +157,10 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
               <label>Receiving TRUST account name<input name="account" maxlength="120" required [(ngModel)]="account"></label>
               <label>Bank reference (if shown)<input name="reference" maxlength="150" [(ngModel)]="reference"></label>
               <label>Payment purpose (optional)<input name="paymentPurpose" maxlength="240" placeholder="e.g. Tuition instalment" [(ngModel)]="paymentPurpose"></label>
-              <label>Bank screenshot (optional, PNG or JPEG, up to 5 MB)<input type="file" accept="image/png,image/jpeg" (change)="selectFile($event)"></label>
+              <label>Bank screenshot (optional, PNG or JPEG, up to 5 MB)<input #screenshotInput type="file" accept="image/png,image/jpeg" (change)="selectFile($event)"></label>
+              @if (file) {
+                <button class="btn small" type="button" (click)="clearScreenshot()">Remove screenshot</button>
+              }
             </fieldset>
             @let difference = balanceAfterReceipt(amount, invoice.amountDue);
             @if (difference !== null && difference > 0) {
@@ -161,15 +197,16 @@ export class TrustReceiptForm implements OnInit, OnChanges {
   account = '';
   reference = '';
   paymentPurpose = '';
+  private readonly screenshotInput = viewChild<ElementRef<HTMLInputElement>>('screenshotInput');
   file?: File;
   fileError = false;
   private key = crypto.randomUUID();
 
-  importedPayments = new Map<string, NonNullable<XeroStudentInvoiceDetail['settlement']>['entries'][number]>();
+  importedPayments = new Map<string, ImportedPayment>();
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['invoice']) {
-      this.importedPayments.clear();
+      this.importedPayments = new Map<string, ImportedPayment>();
       for (const entry of this.invoice.settlement?.entries ?? []) {
         if (entry.kind === 'payment') this.importedPayments.set(entry.id, entry);
       }
@@ -226,6 +263,14 @@ export class TrustReceiptForm implements OnInit, OnChanges {
     this.message = this.fileError ? 'Select a PNG or JPEG up to 5 MB.' : '';
   }
 
+  clearScreenshot(): void {
+    const input = this.screenshotInput()?.nativeElement;
+    if (input) input.value = '';
+    this.file = undefined;
+    this.fileError = false;
+    this.message = '';
+  }
+
   save() {
     if (!this.ready || this.saving || this.fileError) return;
     const data = new FormData();
@@ -237,7 +282,7 @@ export class TrustReceiptForm implements OnInit, OnChanges {
       next: () => {
         this.saving = false;
         this.amount = this.date = this.reference = this.paymentPurpose = '';
-        this.file = undefined;
+        this.clearScreenshot();
         this.key = crypto.randomUUID();
         this.receiptsChanged.emit();
         this.message = 'Receipt verified in Sophia.';
@@ -260,20 +305,24 @@ export class TrustReceiptForm implements OnInit, OnChanges {
       });
   }
 
-  attest(receipt: string, payment: string) {
+  attest(receipt: string, payment: string, date?: string) {
     if (this.saving || !this.ready) return;
     this.saving = true;
-    this.api.attestTrustReconciliation(this.connection, this.invoice.xeroInvoiceId, receipt, payment)
+    this.api.attestTrustReconciliation(this.connection, this.invoice.xeroInvoiceId, receipt, payment, date || undefined)
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
         next: () => { this.saving = false; this.message = 'Manual reconciliation check recorded in Sophia.'; this.receiptsChanged.emit(); this.load(); },
-        error: () => { this.saving = false; this.message = 'Could not confirm the check. Review the refreshed payment details.'; this.load(); },
+        error: error => {
+          this.saving = false;
+          this.message = error.status === 400 ? 'Enter a valid reconciliation date on or before today in Brisbane.' : 'Could not confirm the check. Review the refreshed payment details.';
+          this.load();
+        },
       });
   }
 
-  link(receipt: string, id: string, kind: 'payment' | 'overpayment' = 'payment') {
+  link(receipt: string, id: string, kind: 'payment' | 'overpayment' = 'payment', decisionNote?: string) {
     if (this.saving || !this.ready) return;
     this.saving = true;
-    const args = [this.connection, this.invoice.xeroInvoiceId, receipt, id] as const;
+    const args = [this.connection, this.invoice.xeroInvoiceId, receipt, id, decisionNote?.trim() || undefined] as const;
     const request: Observable<unknown> = kind === 'payment' ? this.api.linkTrustPayment(...args) : this.api.linkTrustOverpayment(...args);
     request
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
