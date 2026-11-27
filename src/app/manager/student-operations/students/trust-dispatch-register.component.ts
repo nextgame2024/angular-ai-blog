@@ -24,7 +24,7 @@ import { StudentOperationsService } from '../student-operations.service';
       @if (loading) { <app-manager-list-loader label="Loading payment dispatches…" /> }
       @if (error) { <p role="alert">Could not load dispatches. Search and refresh to retry.</p> }
       @if (data; as result) {
-        <p>{{result.count}} local dispatch records · Posting to Xero is disabled.</p>
+        <p>{{result.count}} dispatch records</p>
         @if (result.rows.length) {
           <div class="invoice-table-scroll"><table class="invoice-table dispatch-table"><thead><tr>
             <th [attr.aria-sort]="direction==='asc'?'ascending':'descending'"><button type="button" class="sort-button" (click)="sortDate()">Queued <span class="sort-indicator" aria-hidden="true"></span></button></th>
@@ -34,6 +34,7 @@ import { StudentOperationsService } from '../student-operations.service';
                 <td data-label="Invoice"><button type="button" class="invoice-link" (click)="review.emit(row.invoice)">{{row.invoiceNumber || row.invoice}}</button></td>
                 <td data-label="Bank transaction">{{row.bankId}}</td><td data-label="Amount AUD">{{row.amount}}</td>
                 <td data-label="Status">{{labels[row.status]}}
+                  @if (row.paymentId) { <div>Xero payment {{row.paymentId}}</div> }
                   @if (row.workerCheck; as check) {
                     <div>Invoice check {{check.attempt}} · {{checks[check.status]}} · {{check.at | date:'short'}}</div>
                     @if (check.detail) { <div>{{check.detail}}</div> }
@@ -57,7 +58,7 @@ import { StudentOperationsService } from '../student-operations.service';
 export class TrustDispatchRegister implements OnChanges {
   @Input({required:true}) connection!:string;
   readonly review=output<string>();
-  readonly labels={recorded:'Recorded locally',cancelled:'Cancelled',expired:'Expired'};
+  readonly labels={recorded:'Recorded locally',cancelled:'Cancelled',expired:'Expired',submitted:'Awaiting Xero verification',confirmed:'Confirmed in Xero'};
   readonly checks={matched:'Matched at check time',review:'Review required',retry:'Retry available',checking:'Checking',exhausted:'Attempts exhausted'};
   readonly statuses=[{value:'all',label:'All dispatches'},...Object.entries(this.labels).map(([value,label])=>({value,label}))];
   readonly sizes=['25','50','100'].map(value=>({value,label:value}));

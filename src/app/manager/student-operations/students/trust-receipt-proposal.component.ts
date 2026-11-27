@@ -24,10 +24,11 @@ import type { TrustReceiptProposal, TrustProposalAction, TrustReceiptVerificatio
           <p>Mapped Xero bank · {{bank.name}} · {{bank.id}}</p>
         }
         @if (d.releaseCheck) { <p>Release check · {{d.releaseCheck}}</p> }
-        @else if (d.state==='approved') { <p>Local release checks passed. Posting to Xero is disabled.</p> }
+        @else if (d.state==='approved') { <p>Local release checks passed.</p> }
         @if (d.dispatch; as entry) {
-          <p>Dispatch {{entry.id}} · {{entry.cancelledAt ? 'Cancelled' : entry.expired ? 'Expired' : 'Recorded locally'}} · {{entry.queuedAt | date:'medium'}} · {{entry.actor}} · {{entry.reason}}</p>
-          @if (d.state==='approved' && !d.accountIssue && !entry.expired && !entry.cancelledAt && entry.revision===d.revision) {
+          <p>Dispatch {{entry.id}} · {{entry.paymentId ? 'Confirmed in Xero' : entry.submitted ? 'Awaiting Xero verification' : entry.cancelledAt ? 'Cancelled' : entry.expired ? 'Expired' : 'Recorded locally'}} · {{entry.queuedAt | date:'medium'}} · {{entry.actor}} · {{entry.reason}}</p>
+          @if (entry.paymentId) { <p>Xero payment {{entry.paymentId}}</p> }
+          @if (!entry.submitted && d.state==='approved' && !d.accountIssue && !entry.expired && !entry.cancelledAt && entry.revision===d.revision) {
             <button type="button" class="btn small" [disabled]="saving" (click)="checkInvoice()">Check invoice in Xero</button>
             @if (checking) { <p role="status">Checking the Xero invoice…</p> }
             @if (invoiceCheck; as result) {
@@ -41,7 +42,7 @@ import type { TrustReceiptProposal, TrustProposalAction, TrustReceiptVerificatio
           <p>Review records the decision in Sophia. Posting to Xero is a separate step.</p>
           <label>Reason for decision<textarea maxlength="500" [disabled]="saving" [(ngModel)]="reason" [ngModelOptions]="{standalone:true}"></textarea></label>
           @if (canQueue) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('queue')">Queue payment locally</button> }
-          @if (d.dispatch && !d.dispatch.cancelledAt) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('cancel')">Cancel queued payment</button> }
+          @if (d.dispatch && !d.dispatch.submitted && !d.dispatch.cancelledAt) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('cancel')">Cancel queued payment</button> }
           @if (canPrepare) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('prepare')">Prepare payment proposal</button> }
           @if (canApprove) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('approve')">Approve proposal in Sophia</button> }
           @if (canWithdraw) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('withdraw')">Withdraw proposal</button> }
@@ -90,9 +91,9 @@ export class TrustReceiptProposalPanel implements OnChanges {
       next:d=>{
         this.detail=d;this.loading=false;
         this.canQueue=d.state==='approved' && d.releaseCheck===null && d.dispatch?.revision!==d.revision;
-        this.canPrepare=!d.blocked && !['prepared','approved'].includes(d.state);
+        this.canPrepare=!d.dispatch?.submitted && !d.blocked && !['prepared','approved'].includes(d.state);
         this.canApprove=!d.blocked && d.state==='prepared';
-        this.canWithdraw=!!d.revision && d.state!=='withdrawn';
+        this.canWithdraw=!d.dispatch?.submitted && !!d.revision && d.state!=='withdrawn';
       },
       error:()=>{this.loading=false;this.message='Could not load the proposal. Refresh to retry.';},
     });
@@ -113,7 +114,7 @@ export class TrustReceiptProposalPanel implements OnChanges {
   }
   record(action:TrustProposalAction|'queue'|'cancel') {
     const d=this.detail,reason=this.reason.trim();
-    if (!d || !reason || this.saving || !({prepare:this.canPrepare,approve:this.canApprove,withdraw:this.canWithdraw,queue:this.canQueue,cancel:!!d.dispatch && !d.dispatch.cancelledAt}[action])) return;
+    if (!d || !reason || this.saving || !({prepare:this.canPrepare,approve:this.canApprove,withdraw:this.canWithdraw,queue:this.canQueue,cancel:!!d.dispatch && !d.dispatch.submitted && !d.dispatch.cancelledAt}[action])) return;
     const token=action==='withdraw'?d.history[0].token:d.token;
     const body={action,reason,revision:d.revision,token},key=JSON.stringify(body);
     if (this.retry?.key!==key) this.retry={key,id:crypto.randomUUID()};

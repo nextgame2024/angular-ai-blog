@@ -55,6 +55,15 @@ describe('Verified TRUST receipt proposals',()=>{
     click('Refresh proposal');expect(fixture.nativeElement.textContent).not.toContain('match the approval');
   });
 
+  it('shows the verified payment identity and removes decision controls after submission',()=>{
+    const {read,fixture,click}=setup();
+    read.and.returnValue(of({...prepared,state:'approved',dispatch:{id:'dispatch',submitted:true,paymentId:'payment-1',revision:1}}));
+    click('Payment proposal');
+    expect(fixture.nativeElement.textContent).toContain('Xero payment payment-1');
+    for (const label of ['Withdraw proposal','Cancel queued payment','Check invoice in Xero'])
+      expect(fixture.nativeElement.textContent).not.toContain(label);
+  });
+
   it('keeps review controls visible on narrow and desktop screens in both themes',()=>{
     const {read,fixture,click}=setup();read.and.returnValue(of({...prepared,state:'approved',dispatch:{id:'dispatch',revision:1}}));click('Payment proposal');
     const frame=document.createElement('iframe');document.body.appendChild(frame);

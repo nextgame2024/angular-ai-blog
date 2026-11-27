@@ -663,12 +663,13 @@ export interface TrustProposalSnapshot {
 }
 export type TrustProposalAction='prepare'|'approve'|'withdraw';
 export interface TrustDispatchRow {
+  submittedAt?:string|null;paymentId?:string|null;
   workerCheck?:{attempt:number;at:string;detail:string|null;status:'matched'|'review'|'retry'|'checking'|'exhausted'}|null;
   id:string;invoice:string;invoiceNumber:string|null;bankId:string;amount:string;queuedAt:string;approver:string;reviewer:string;
-  status:'recorded'|'expired'|'cancelled';
+  status:'recorded'|'expired'|'cancelled'|'submitted'|'confirmed';
 }
 export interface TrustReceiptProposal {
-  dispatch?:{id:string;revision:number;actor:string;reason:string;queuedAt:string;expired:boolean;
+  dispatch?:{id:string;submitted?:boolean;paymentId?:string|null;revision:number;actor:string;reason:string;queuedAt:string;expired:boolean;
     cancelledAt:string|null;cancelledBy:string|null;cancelReason:string|null}|null;
   accountIssue:string|null;releaseCheck:string|null;
   state:'new'|'prepared'|'approved'|'withdrawn'|'stale'|'expired';blocked:string|null;
