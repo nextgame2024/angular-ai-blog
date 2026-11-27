@@ -347,6 +347,9 @@ export interface XeroStudentInvoice {
   receiptExcess?: number;
   unlinkedExcess?: number;
   unlinkedExcessDays?: number | null;
+  receiptException?: {reason: 'voided' | 'deleted' | 'not_current'; count:number; amount:number; latestReceiptOn:string};
+  availablePayments?: {count:number; amount:number; latestDate:string};
+  confirmedPayments?: { count:number; amount:number };
   reconciliation?: { oldestLinkedAt: string; pendingDays?: number; amount: number; payments: number; managerChecks: number; latestReportedReconciledOn?: string | null; unassigned?: number; xeroPending?: number; statusUnknown?: number; linkMismatch?: number };
   linkedStudentUserId?:string|null;linkedCaseId?:string|null;
   organisationRole?:'trust'|'operating';
@@ -434,8 +437,11 @@ export interface XeroStudentInvoiceQuery {
   paymentCandidateStatus?: 'available' | 'multiple' | 'partial' | 'none';
   excessLinkStatus?: 'needs_link' | 'fully_linked' | 'link_mismatch';
   reconciliationStatus?: 'link_mismatch' | 'checked_pending' | 'checked_unknown' | 'unchecked_pending' | 'unchecked_unknown';
+  importedPaymentDate?: string;
+  importedPaymentAmount?: string;
+  minFollowUpDays?: number;
   followUpOwner?: 'mine' | 'unassigned';
-  queue?: 'outstanding_invoices' | 'receipts_awaiting_link' | 'excess_receipts' | 'reconciliation_review';
+  queue?: 'outstanding_invoices' | 'receipts_awaiting_link' | 'excess_receipts' | 'reconciliation_review' | 'reconciled_payments' | 'receipt_exceptions' | 'payments_without_receipts';
   supplierId?: string;
   page: number;
   limit: number;
@@ -536,6 +542,7 @@ export interface TrustReceiptVerification {
   account: string;
   reference: string;
   invoiceDue: string;
+  importedPaymentAmount?: string | null;
   linkedOverpaymentId?: string | null;
   overpaymentLinkedAt?: string | null;
   possibleOverpaymentIds?: string[];

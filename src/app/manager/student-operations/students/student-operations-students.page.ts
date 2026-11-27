@@ -17,7 +17,7 @@ import {
 } from '../../components/shared/manager-select/manager-select.component';
 import { ManagerListLoaderComponent } from '../../components/shared/manager-list-loader/manager-list-loader.component';
 import { StudentOperationsService } from '../student-operations.service';
-import { XERO_INVOICE_STATUS_OPTIONS, xeroInvoiceStatusLabel } from '../xero-invoice-display';
+import { XERO_PAGE_SIZE_OPTIONS, XERO_INVOICE_STATUS_OPTIONS, xeroInvoiceStatusLabel } from '../xero-invoice-display';
 import type {
   StudentOperationsStudentDetail,
   StudentOperationsStudentList,
@@ -54,6 +54,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   private requestVersion = 0;
   private invoiceRequestVersion = 0;
   private invoiceRequestSubscription?: Subscription;
+  private invoiceDetailRequest?: Subscription;
   private saveRequestKey = '';
   private saveFingerprint = '';
   private reviewingXeroContactId: string | null = null;
@@ -65,7 +66,11 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   @ViewChild('studentsList') studentsList?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinel?: ElementRef<HTMLElement>;
 
-  receiptRevision = 0;
+  readonly receiptRevisions = new Map<string,number>();
+  receiptChanged(connectionId:string): void {
+    this.receiptRevisions.set(connectionId,(this.receiptRevisions.get(connectionId) ?? 0) + 1);
+  }
+  readonly lastImportByConnection = new Map<string,string>();
   operationsOpen = false;
   readonly operationsSearch = new FormControl('', { nonNullable: true });
   readonly operationsQuery = signal('');
@@ -126,11 +131,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     ...XERO_INVOICE_STATUS_OPTIONS,
   ];
   paymentTrackOptions: ManagerSelectOption[] = [{ value: '', label: 'All payment tracks' }];
-  readonly invoicePageSizeOptions: ManagerSelectOption[] = [
-    { value: '25', label: '25 per page' },
-    { value: '50', label: '50 per page' },
-    { value: '100', label: '100 per page' },
-  ];
+  readonly invoicePageSizeOptions = XERO_PAGE_SIZE_OPTIONS;
   readonly stageOptions: ManagerSelectOption[] = [
     { value: 'new_application', label: 'New application' },
     { value: 'pre_payment_audit', label: 'Pre-payment audit' },
@@ -349,7 +350,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     this.loadingInvoiceDetail = true;
     this.invoiceDetailError = '';
     this.selectedXeroInvoice = null;
-    this.api.xeroStudentInvoice(this.xeroConnection.connectionId, invoice.xeroInvoiceId)
+    this.invoiceDetailRequest = this.api.xeroStudentInvoice(this.xeroConnection.connectionId, invoice.xeroInvoiceId, !!invoice.receiptException)
       .pipe(takeUntil(this.destroy$),takeUntil(this.organisationStop$)).subscribe({
         next: (detail) => {
           this.selectedXeroInvoice = detail;
@@ -363,6 +364,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
 
   closeInvoiceDetail(): void {
+    this.invoiceDetailRequest?.unsubscribe();
     this.selectedXeroInvoice = null;
     this.invoiceDetailError = '';
     this.loadingInvoiceDetail = false;
@@ -750,6 +752,9 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
 
   private applyXeroSyncFeedback(status: XeroStudentSyncStatus): void {
+    if (this.xeroConnection && status.lastSuccessfulSyncAt) {
+      this.lastImportByConnection.set(this.xeroConnection.connectionId,status.lastSuccessfulSyncAt);
+    }
     this.xeroError = '';
     this.xeroPause = '';
     if (status.latestRun?.status !== 'failed') return;
@@ -786,7 +791,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
       return `Xero is temporarily unavailable. ${this.xeroRetryEligibility(status)} Automatic imports run 01:00–06:00 Brisbane. Existing student information remains available.`;
     }
     if (code === 'xero_authorization_rejected') {
-      return 'The Xero authorization requires attention. Reconnect the TRUST organisation from Company.';
+      return 'The Xero authorization requires attention. Reconnect the selected organisation from Company.';
     }
     return 'The Xero refresh failed. Existing student information remains available.';
   }

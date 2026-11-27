@@ -425,6 +425,9 @@ export class StudentOperationsService {
     if (input.paymentCandidateStatus) params = params.set('paymentCandidateStatus', input.paymentCandidateStatus);
     if (input.excessLinkStatus) params = params.set('excessLinkStatus', input.excessLinkStatus);
     if (input.reconciliationStatus) params = params.set('reconciliationStatus', input.reconciliationStatus);
+    if (input.importedPaymentDate) params = params.set('importedPaymentDate', input.importedPaymentDate);
+    if (input.importedPaymentAmount) params = params.set('importedPaymentAmount', input.importedPaymentAmount);
+    if (input.minFollowUpDays) params = params.set('minFollowUpDays', input.minFollowUpDays);
     if (input.followUpOwner) params = params.set('followUpOwner', input.followUpOwner);
     if (input.queue) params = params.set('queue', input.queue);
     if (input.supplierId) params = params.set('supplierId', input.supplierId);
@@ -495,10 +498,10 @@ export class StudentOperationsService {
       {headers: this.headers(), responseType: 'blob'});
   }
 
-  xeroStudentInvoice(connectionId: string, invoiceId: string): Observable<XeroStudentInvoiceDetail> {
+  xeroStudentInvoice(connectionId: string, invoiceId: string, receiptHistory = false): Observable<XeroStudentInvoiceDetail> {
     return this.http.get<XeroStudentInvoiceDetail>(
       `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-invoices/${encodeURIComponent(invoiceId)}`,
-      { headers: this.headers() },
+      { headers: this.headers(), params: receiptHistory ? {receiptHistory:'true'} : undefined },
     );
   }
 

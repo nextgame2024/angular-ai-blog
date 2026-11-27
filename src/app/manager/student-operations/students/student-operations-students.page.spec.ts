@@ -102,6 +102,18 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(c.invoiceLoadError).toBe('');
   });
 
+  it('keeps the second invoice open when the first request finishes after the dialog was closed',()=>{
+    const c=fixture.componentInstance;
+    c.xeroConnection={connectionId:'trust',organisationRole:'trust'} as never;
+    const first=new Subject<never>();
+    api.xeroStudentInvoice.and.returnValues(first,of({xeroInvoiceId:'second'}));
+    c.openInvoiceDetail({xeroInvoiceId:'first'} as never);
+    c.closeInvoiceDetail();
+    c.openInvoiceDetail({xeroInvoiceId:'second'} as never);
+    first.next({xeroInvoiceId:'first'} as never);
+    expect(c.selectedXeroInvoice?.xeroInvoiceId).toBe('second');
+  });
+
   it('switches organisation without accepting late details from Trust or offering student review for PTY',()=>{
     const c=fixture.componentInstance;
     const trust={connectionId:'trust',tenantName:'Trust',organisationRole:'trust',missingStudentDiscoveryScopes:[]} as never;
@@ -122,7 +134,7 @@ describe('StudentOperationsStudentsPageComponent', () => {
   it('opens the related invoice using its explicit organisation',()=>{
     const c=fixture.componentInstance,trust={connectionId:'trust',tenantName:'Trust',organisationRole:'trust',missingStudentDiscoveryScopes:[]} as never,pty={connectionId:'pty',tenantName:'PTY',organisationRole:'operating',missingStudentDiscoveryScopes:[]} as never;
     c.xeroConnection=trust;c.xeroConnections=[trust,pty];api.xeroStudentInvoice.and.returnValue(of({invoiceNumber:'PTY-42',lineItems:[]}));
-    c.openRelatedInvoice({connectionId:'pty',invoiceId:'pty-invoice',indexed:true} as never);expect(c.xeroConnection).toBe(pty);expect(api.xeroStudentInvoice).toHaveBeenCalledWith('pty','pty-invoice');
+    c.openRelatedInvoice({connectionId:'pty',invoiceId:'pty-invoice',indexed:true} as never);expect(c.xeroConnection).toBe(pty);expect(api.xeroStudentInvoice).toHaveBeenCalledWith('pty','pty-invoice',false);
   });
   it('renders the production empty state with a create action for operations', () => {
     fixture.detectChanges();
@@ -953,6 +965,34 @@ describe('StudentOperationsStudentsPageComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('automatic retry is scheduled');
     expect(fixture.nativeElement.textContent).toContain('Existing student information remains available');
   });
+
+  it('refreshes PTY in payment operations and updates its queue when the import succeeds', fakeAsync(()=>{
+    const pty={connectionId:'pty',tenantName:'Test PTY',organisationRole:'operating',status:'active',missingStudentDiscoveryScopes:[]};
+    const trust={...pty,connectionId:'trust',tenantName:'Test TRUST',organisationRole:'trust'};
+    api.workspace.and.returnValue(of({role:'chief_executive'}));
+    api.xeroStatus.and.returnValue(of({configured:true,connections:[trust,pty]}));
+    fixture.detectChanges();
+    const c=fixture.componentInstance;
+    c.operationsOpen=true;
+    fixture.detectChanges();
+    c.organisation.setValue('pty');
+    fixture.detectChanges();
+    const run={...queuedRun('manual'),connectionId:'pty'};
+    api.refreshXeroStudents.and.returnValue(of(run));
+    const stamp='2026-11-27T05:00:00Z';
+    api.xeroStudentSyncStatus.and.returnValue(of({configured:true,organisationRole:'operating',lastSuccessfulSyncAt:stamp,
+      latestRun:{...run,status:'succeeded'}}));
+    const snapshots=()=>api.xeroStudentInvoices.calls.allArgs().filter(args=>args[1].queue==='outstanding_invoices');
+    const prior=snapshots().length;
+    fixture.nativeElement.querySelector('[aria-label="Payment operations"] .xero-sync button').click();
+    expect(api.refreshXeroStudents).toHaveBeenCalledOnceWith('pty');
+    tick(2000);
+    fixture.detectChanges();
+    expect(c.lastImportByConnection.get('pty')).toBe(stamp);
+    expect(snapshots().slice(prior).map(args=>args[0])).toEqual(['pty']);
+    expect(c.operationsOpen).toBeTrue();
+    fixture.destroy();
+  }));
 
   it('backs off status polling while a Xero refresh remains active', fakeAsync(() => {
     api.workspace.and.returnValue(of({
