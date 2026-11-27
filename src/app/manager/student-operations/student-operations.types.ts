@@ -343,6 +343,7 @@ export type XeroStudentInvoiceSort = 'invoiceNumber' | 'reference' | 'student' |
   | 'dueDate' | 'paid' | 'due' | 'status' | 'sent' | 'advisor' | 'paymentTrack';
 
 export interface XeroStudentInvoice {
+  receiptExcess?: number;
   linkedStudentUserId?:string|null;linkedCaseId?:string|null;
   organisationRole?:'trust'|'operating';
   contactName?:string;
@@ -426,7 +427,7 @@ export interface PaymentsRegisterBootstrap {
 }
 
 export interface XeroStudentInvoiceQuery {
-  queue?: 'outstanding_invoices';
+  queue?: 'outstanding_invoices' | 'receipts_awaiting_link' | 'excess_receipts';
   supplierId?: string;
   page: number;
   limit: number;
@@ -504,6 +505,9 @@ export interface TrustReceiptVerification {
   account: string;
   reference: string;
   invoiceDue: string;
+  linkedOverpaymentId?: string | null;
+  overpaymentLinkedAt?: string | null;
+  possibleOverpaymentIds?: string[];
   verifiedAt: string;
   hasEvidence: boolean;
   candidateIds?: string[];

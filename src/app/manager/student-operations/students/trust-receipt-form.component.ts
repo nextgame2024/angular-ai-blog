@@ -1,4 +1,5 @@
-import { Component, DestroyRef, Input, OnInit, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
+import { Component, DestroyRef, Input, OnInit, inject, output } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -21,6 +22,19 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
           <small>Recorded {{ receipt.verifiedAt | date:'medium' }} · Invoice balance at verification AUD {{ receipt.invoiceDue | number:'1.2-2' }}</small>
           @if (receipt.hasEvidence) { <button class="invoice-link" type="button" (click)="download(receipt.id)">Download screenshot</button> }
         </p>
+        @if (excess(receipt.amount, receipt.invoiceDue) > 0 && receipt.possibleOverpaymentIds; as credits) {
+          @if (receipt.linkedOverpaymentId; as linked) {
+            <p>Linked Xero overpayment · {{ linked }} · Confirmed {{ receipt.overpaymentLinkedAt | date:'medium' }}</p>
+            @if (!credits.includes(linked)) { <p role="status">Review required. The linked overpayment no longer matches the imported records.</p> }
+          } @else if (credits.length) {
+            <details><summary>Possible Xero overpayments ({{ credits.length }})</summary>
+              <p>Check these records in Xero. Each matches the contact, receipt date and excess amount.</p>
+              @for (id of credits; track id) {
+                <button class="btn" type="button" [disabled]="saving || !ready" (click)="link(receipt.id, id, 'overpayment')">Confirm overpayment link · {{ id }}</button>
+              }
+            </details>
+          } @else { <p>No imported Xero overpayment matches this contact, date and excess amount.</p> }
+        }
         @if (receipt.linkedPaymentId) {
           <p>Linked Xero invoice payment · AUD {{ receipt.linkedAmount }} · {{ receipt.linkedPaymentId }}</p>
           @if (!receipt.candidateIds?.includes(receipt.linkedPaymentId)) {
@@ -65,6 +79,7 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
 export class TrustReceiptForm implements OnInit {
   @Input({required:true}) connection!: string;
   @Input({required:true}) invoice!: XeroStudentInvoiceDetail;
+  readonly receiptsChanged = output<void>();
   private readonly api = inject(StudentOperationsService);
   private readonly destroy = inject(DestroyRef);
   receipts: TrustReceiptVerification[] = [];
@@ -113,6 +128,7 @@ export class TrustReceiptForm implements OnInit {
         this.amount = this.date = this.reference = '';
         this.file = undefined;
         this.key = crypto.randomUUID();
+        this.receiptsChanged.emit();
         this.message = 'Receipt verified in Sophia.';
         this.load();
       },
@@ -123,12 +139,14 @@ export class TrustReceiptForm implements OnInit {
     });
   }
 
-  link(receipt: string, payment: string) {
+  link(receipt: string, id: string, kind: 'payment' | 'overpayment' = 'payment') {
     if (this.saving || !this.ready) return;
     this.saving = true;
-    this.api.linkTrustPayment(this.connection,this.invoice.xeroInvoiceId,receipt,payment)
+    const args = [this.connection, this.invoice.xeroInvoiceId, receipt, id] as const;
+    const request: Observable<unknown> = kind === 'payment' ? this.api.linkTrustPayment(...args) : this.api.linkTrustOverpayment(...args);
+    request
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
-        next: () => { this.saving = false; this.message = 'Xero invoice payment linked in Sophia.'; this.load(); },
+        next: () => { this.saving = false; this.receiptsChanged.emit(); this.message = kind === 'payment' ? 'Xero invoice payment linked in Sophia.' : 'Xero overpayment linked in Sophia.'; this.load(); },
         error: () => { this.saving = false; this.message = 'Could not confirm the link. Review the refreshed payment details.'; this.load(); },
       });
   }

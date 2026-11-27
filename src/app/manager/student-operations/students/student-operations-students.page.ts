@@ -65,6 +65,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   @ViewChild('studentsList') studentsList?: ElementRef<HTMLElement>;
   @ViewChild('infiniteSentinel') infiniteSentinel?: ElementRef<HTMLElement>;
 
+  receiptRevision = 0;
   operationsOpen = false;
   readonly operationsSearch = new FormControl('', { nonNullable: true });
   readonly operationsQuery = signal('');

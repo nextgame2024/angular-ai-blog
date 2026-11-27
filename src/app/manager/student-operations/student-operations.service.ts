@@ -458,6 +458,11 @@ export class StudentOperationsService {
     return this.http.post<{paymentId: string}>(url, {}, {headers: this.headers()});
   }
 
+  linkTrustOverpayment(connection: string, invoice: string, receipt: string, overpayment: string) {
+    const url = this.trustReceiptUrl(connection, invoice) + '/' + encodeURIComponent(receipt) + '/overpayments/' + encodeURIComponent(overpayment);
+    return this.http.post<{overpaymentId: string}>(url, {}, {headers: this.headers()});
+  }
+
   trustReceiptEvidence(connection: string, invoice: string, id: string) {
     return this.http.get(this.trustReceiptUrl(connection, invoice) + '/' + encodeURIComponent(id) + '/evidence',
       {headers: this.headers(), responseType: 'blob'});
