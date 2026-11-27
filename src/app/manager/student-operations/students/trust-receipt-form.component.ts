@@ -484,6 +484,12 @@ export class TrustReceiptForm implements OnInit, OnChanges {
           this.duplicateReceipt = {invoiceNumber, invoiceId:invoiceId ?? '', receivedOn, amount};
           return;
         }
+        if (error.status === 409 && error.error?.errorCode === 'trust_active_split') {
+          const movement = error.error.bankTransactionId;
+          this.message = 'Under Deposits awaiting an invoice, review and release the active split' +
+            (movement ? ' for bank transaction ' + movement : '') + ' before verifying this receipt.';
+          return;
+        }
         if (error.status === 409 && this.selectedPayment) {
           this.message = 'Check the refreshed payment and existing verifications before retrying.';
           this.load(true);

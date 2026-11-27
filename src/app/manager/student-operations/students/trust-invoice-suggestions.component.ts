@@ -1,6 +1,6 @@
 import { TrustMatchHistory } from './trust-match-history.component';
 import { Component, DestroyRef, Input, OnChanges, inject, output } from '@angular/core';
-import { DecimalPipe } from '@angular/common';
+import { DatePipe, DecimalPipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
@@ -9,7 +9,7 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
 
 @Component({
   selector:'app-trust-invoice-suggestions',
-  imports:[TrustMatchHistory,FormsModule,DecimalPipe],
+  imports:[TrustMatchHistory,FormsModule,DatePipe,DecimalPipe],
   styleUrls:['./student-operations-students.page.css'],
   styles:[`:host {display:block; min-width:0; overflow-wrap:anywhere;} fieldset {min-inline-size:0; max-width:100%; box-sizing:border-box;} input {max-width:100%; box-sizing:border-box;}`],
   template:`
@@ -28,8 +28,17 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
       @if (error) {
         <p role="alert">{{ error }}</p><button type="button" class="btn small" (click)="load(page)">Retry invoice lookup</button>
       }
-      @if (split.length) {
-        <fieldset><legend>Preview a receipt split</legend>
+      @if (result?.reservation; as saved) {
+        <p>Split {{saved.action==='reserve' ? 'reserved' : 'released'}} · {{saved.recordedAt | date:'medium'}} · {{saved.actor}} · {{saved.reason}}</p>
+        @if (saved.plan; as plan) {
+          @for (row of plan.allocations; track row.invoiceId) {
+            <p>{{row.invoiceNumber || row.invoiceId}} · AUD {{row.amount}} reserved</p>
+          }
+          <p>AUD {{plan.allocated}} reserved · AUD {{plan.unassigned}} unassigned</p>
+        }
+      }
+      @if (split.length && result?.reservation?.action!=='reserve') {
+        <fieldset [disabled]="changing"><legend>Preview a receipt split</legend>
           <p>Use the payer’s remittance to enter each invoice amount. Check up to 20 invoices against imported balances. The preview expires when you leave the deposit.</p>
           @for (row of split; track row.invoiceId) {
             <label>{{row.label}} · {{row.contact || 'Contact unavailable'}} · AUD {{row.expectedBalance}} due
@@ -51,6 +60,14 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
           }
         </fieldset>
       }
+      @if (result && (result.reservation?.action==='reserve' || preview)) {
+        <label>Reason for {{result.reservation?.action==='reserve' ? 'release' : 'reservation'}}
+          <textarea maxlength="500" [(ngModel)]="reservationReason" [ngModelOptions]="{standalone:true}" [disabled]="changing"></textarea>
+        </label>
+        <button type="button" class="btn small" [disabled]="changing || !reservationReason.trim()" (click)="changeReservation()">
+          {{result.reservation?.action==='reserve' ? 'Release split reservation' : 'Reserve split in Sophia'}}
+        </button>
+      }
       @if (result; as data) {
         @for (candidate of data.invoices; track candidate.id) {
           <div class="candidate-heading">
@@ -68,7 +85,7 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
             @if (candidate.decision) {
               <p>Last review · {{ candidate.decision }} @if (candidate.evidenceChanged) { · Matching evidence has changed }</p>
             }
-            <button type="button" class="btn small" [disabled]="split.length>=20 || selectedForSplit.has(candidate.id)"
+            <button type="button" class="btn small" [disabled]="changing || data.reservation?.action==='reserve' || split.length>=20 || selectedForSplit.has(candidate.id)"
               (click)="addSplit(candidate)">Add to split</button>
             <button type="button" class="btn small" [disabled]="saving" (click)="startDecision(candidate)">Record match decision</button>
             @if (editing === candidate.id) {
@@ -146,6 +163,42 @@ export class TrustInvoiceSuggestionPanel implements OnChanges {
       });
   }
 
+  reservationReason='';
+  changing=false;
+  private reservationRetry?:{signature:string;id:string};
+  private reservationRequest?:Subscription;
+
+  changeReservation() {
+    const result=this.result, reason=this.reservationReason.trim();
+    if (!result || this.changing || !reason) return;
+    const release=result.reservation?.action==='reserve';
+    if (!release && !this.preview) return;
+    const revision=result.reservation?.revision ?? 0;
+    const command=release ? {action:'release' as const,revision,reason} : {
+      action:'reserve' as const,revision,reason,allocations:this.split.map(({invoiceId,amount,expectedBalance})=>({invoiceId,amount,expectedBalance})),
+    };
+    const signature=JSON.stringify(command);
+    if (this.reservationRetry?.signature!==signature) this.reservationRetry={signature,id:crypto.randomUUID()};
+    this.changing=true; this.feedback='';
+    this.reservationRequest=this.api.changeTrustSplit(this.connection,this.deposit.id,{...command,requestId:this.reservationRetry.id})
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe({
+        next:()=>{
+          this.changing=false; this.reservationReason=''; this.reservationRetry=undefined;
+          this.clearPreview(); this.split=[]; this.selectedForSplit.clear();
+          this.feedback=release?'Split reservation released.':'Split reserved in Sophia.';
+          this.load(this.page);
+        },
+        error:err=>{
+          this.changing=false;
+          if (err.status===409) {
+            this.clearPreview(); this.reservationRetry=undefined; this.reservationReason='';
+            this.feedback='Review the refreshed reservation, invoice balances and outstanding receipts before trying again.';
+            this.load(this.page);
+          } else this.feedback='Could not confirm the reservation change. Retry with the same details.';
+        },
+      });
+  }
+
   private retry?:{signature:string;id:string};
   private write?:Subscription;
   private request?:Subscription;
@@ -153,6 +206,7 @@ export class TrustInvoiceSuggestionPanel implements OnChanges {
   private readonly destroy=inject(DestroyRef);
 
   ngOnChanges() {
+    this.reservationRequest?.unsubscribe(); this.reservationRetry=undefined; this.reservationReason=''; this.changing=false;
     this.clearPreview(); this.split=[]; this.selectedForSplit.clear();
     this.request?.unsubscribe();
     this.write?.unsubscribe();

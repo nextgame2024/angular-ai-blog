@@ -121,6 +121,28 @@ describe('TRUST deposits awaiting an invoice',()=>{
     expect(panel.split).toEqual([]);
   });
 
+  it('saves a checked split, replays an uncertain save, and releases the persisted revision',()=>{
+    const candidate={id:'a',invoiceNumber:'INV-1',balance:'100.00'};
+    const plan={allocations:[{invoiceId:'a',invoiceNumber:'INV-1',amount:'75.00',remainingDue:'25.00'}],allocated:'75.00',unassigned:'25.00'};
+    const saved={action:'reserve',reason:'Remittance',revision:1,actor:'Manager',recordedAt:'2026-11-28T02:00:00Z',plan};
+    const lookup=jasmine.createSpy().and.returnValues(of({invoices:[candidate]}),of({invoices:[candidate],reservation:saved}),of({invoices:[candidate]}));
+    const write=jasmine.createSpy().and.returnValues(throwError(()=>({status:503})),of({revision:1}),of({revision:2}));
+    TestBed.configureTestingModule({imports:[TrustInvoiceSuggestionPanel],providers:[{provide:StudentOperationsService,
+      useValue:{trustInvoiceSuggestions:lookup,previewTrustSplit:()=>of(plan),changeTrustSplit:write}}]});
+    const fixture=TestBed.createComponent(TrustInvoiceSuggestionPanel);
+    fixture.componentRef.setInput('connection','trust'); fixture.componentRef.setInput('deposit',deposit); fixture.detectChanges();
+    const panel=fixture.componentInstance;
+    const click=(label:string)=>{Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'))
+      .find(b=>b.textContent?.trim()===label)!.click();fixture.detectChanges();};
+    click('Find possible invoices'); click('Add to split'); panel.split[0].amount='75'; click('Check split against imported balances');
+    click('Reserve split in Sophia'); expect(write).not.toHaveBeenCalled();
+    panel.reservationReason='Remittance'; fixture.detectChanges(); click('Reserve split in Sophia'); click('Reserve split in Sophia');
+    expect(write.calls.argsFor(0)).toEqual(write.calls.argsFor(1));
+    expect(fixture.nativeElement.textContent).toContain('AUD 75.00 reserved');
+    panel.reservationReason='Correction'; fixture.detectChanges(); click('Release split reservation');
+    expect(write.calls.mostRecent().args[2]).toEqual(jasmine.objectContaining({action:'release',reason:'Correction',revision:1}));
+  });
+
   it('records an explicit decision and reuses its key after an unconfirmed response',()=>{
     const candidate={id:'inv',invoiceNumber:'INV-1',balance:'100.00',evidenceToken:'a'.repeat(64),score:1,peers:1};
     const lookup=jasmine.createSpy().and.returnValue(of({page:1,revision:4,invoices:[candidate]}));

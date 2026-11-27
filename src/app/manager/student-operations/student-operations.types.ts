@@ -570,7 +570,11 @@ export interface TrustSplitPreview {
   unassigned:string;
 }
 
+export type TrustSplitCommand = {revision:number;reason:string;requestId:string} &
+  ({action:'reserve';allocations:TrustSplitInput[]} | {action:'release'});
+
 export interface TrustInvoiceSuggestions {
+  reservation?:{revision:number;action:'reserve'|'release';reason:string;actor:string;recordedAt:string;plan:TrustSplitPreview|null}|null;
   revision:number;
   ruleVersion:number;
   invoices:TrustInvoiceSuggestion[];
