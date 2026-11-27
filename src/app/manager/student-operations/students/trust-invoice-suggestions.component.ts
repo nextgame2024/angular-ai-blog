@@ -5,13 +5,13 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { StudentOperationsService } from '../student-operations.service';
-import type { StagedTrustDeposit, TrustMatchDecision, TrustInvoiceSuggestion, TrustInvoiceSuggestions } from '../student-operations.types';
+import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatchDecision, TrustInvoiceSuggestion, TrustInvoiceSuggestions } from '../student-operations.types';
 
 @Component({
   selector:'app-trust-invoice-suggestions',
   imports:[TrustMatchHistory,FormsModule,DecimalPipe],
   styleUrls:['./student-operations-students.page.css'],
-  styles:[`:host {display:block; min-width:0; overflow-wrap:anywhere;} input {max-width:100%;}`],
+  styles:[`:host {display:block; min-width:0; overflow-wrap:anywhere;} fieldset {min-inline-size:0; max-width:100%; box-sizing:border-box;} input {max-width:100%; box-sizing:border-box;}`],
   template:`
     <button type="button" class="btn small" [attr.aria-expanded]="open" (click)="toggle()">Find possible invoices</button>
     <app-trust-match-history [connection]="connection" [depositId]="deposit.id" [revision]="historyRevision" />
@@ -27,6 +27,29 @@ import type { StagedTrustDeposit, TrustMatchDecision, TrustInvoiceSuggestion, Tr
       @if (loading) { <p role="status">Checking imported TRUST invoices…</p> }
       @if (error) {
         <p role="alert">{{ error }}</p><button type="button" class="btn small" (click)="load(page)">Retry invoice lookup</button>
+      }
+      @if (split.length) {
+        <fieldset><legend>Preview a receipt split</legend>
+          <p>Use the payer’s remittance to enter each invoice amount. Check up to 20 invoices against imported balances. The preview expires when you leave the deposit.</p>
+          @for (row of split; track row.invoiceId) {
+            <label>{{row.label}} · {{row.contact || 'Contact unavailable'}} · AUD {{row.expectedBalance}} due
+              <input inputmode="decimal" maxlength="15" placeholder="Amount in AUD" [ngModel]="row.amount"
+                [ngModelOptions]="{standalone:true}" (ngModelChange)="clearPreview(); row.amount=$event">
+            </label>
+            <button class="btn small" type="button" (click)="removeSplit(row.invoiceId)">Remove {{row.label}}</button>
+          }
+          <button class="btn small" type="button" [disabled]="checkingSplit" (click)="checkSplit()">Check split against imported balances</button>
+          @if (checkingSplit) { <p role="status">Checking split…</p> }
+          @if (splitError) { <p role="alert">{{splitError}}</p> }
+          @if (preview; as plan) {
+            <div role="status">
+              @for (allocation of plan.allocations; track allocation.invoiceId) {
+                <p>{{allocation.invoiceNumber || allocation.invoiceId}} · AUD {{allocation.amount}} allocated · AUD {{allocation.remainingDue}} remaining due</p>
+              }
+              <p>AUD {{plan.allocated}} allocated · AUD {{plan.unassigned}} unassigned from this deposit</p>
+            </div>
+          }
+        </fieldset>
       }
       @if (result; as data) {
         @for (candidate of data.invoices; track candidate.id) {
@@ -45,6 +68,8 @@ import type { StagedTrustDeposit, TrustMatchDecision, TrustInvoiceSuggestion, Tr
             @if (candidate.decision) {
               <p>Last review · {{ candidate.decision }} @if (candidate.evidenceChanged) { · Matching evidence has changed }</p>
             }
+            <button type="button" class="btn small" [disabled]="split.length>=20 || selectedForSplit.has(candidate.id)"
+              (click)="addSplit(candidate)">Add to split</button>
             <button type="button" class="btn small" [disabled]="saving" (click)="startDecision(candidate)">Record match decision</button>
             @if (editing === candidate.id) {
               <label>Reason for this decision<textarea maxlength="500" [(ngModel)]="reason" [ngModelOptions]="{standalone:true}" [disabled]="saving"></textarea></label>
@@ -79,6 +104,48 @@ export class TrustInvoiceSuggestionPanel implements OnChanges {
   page=1;
   result?:TrustInvoiceSuggestions;
   editing=''; reason=''; feedback=''; saving=false; historyRevision=0;
+  split:(TrustSplitInput & {label:string;contact:string|null})[]=[];
+  selectedForSplit=new Set<string>();
+  preview?:TrustSplitPreview;
+  checkingSplit=false;
+  splitError='';
+  private splitRequest?:Subscription;
+
+  clearPreview() {
+    this.splitRequest?.unsubscribe();
+    this.preview=undefined; this.splitError=''; this.checkingSplit=false;
+  }
+  addSplit(candidate:TrustInvoiceSuggestion) {
+    if (this.split.length>=20 || this.selectedForSplit.has(candidate.id)) return;
+    this.clearPreview();
+    this.selectedForSplit.add(candidate.id);
+    this.split.push({invoiceId:candidate.id,expectedBalance:candidate.balance,
+      amount:'',label:candidate.invoiceNumber || candidate.id,contact:candidate.contact});
+  }
+  removeSplit(id:string) {
+    this.clearPreview();
+    this.selectedForSplit.delete(id);
+    this.split=this.split.filter(row=>row.invoiceId!==id);
+  }
+  checkSplit() {
+    if (!this.split.length || this.checkingSplit) return;
+    this.clearPreview();
+    this.checkingSplit=true;
+    const inputs=this.split.map(({invoiceId,expectedBalance,amount})=>({invoiceId,expectedBalance,amount}));
+    this.splitRequest=this.api.previewTrustSplit(this.connection,this.deposit.id,inputs)
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe({
+        next:result=>{this.checkingSplit=false; this.preview=result;},
+        error:err=>{
+          this.checkingSplit=false;
+          if (err.status===409 || err.status===404) {
+            this.splitError='Refresh the deposit and look up the invoices again. The deposit or an invoice may have changed.';
+          } else if (err.status===400) {
+            this.splitError='Check each amount is positive, has at most two decimal places and fits both the invoice balance and deposit total.';
+          } else this.splitError='Could not check the split. Try again.';
+        },
+      });
+  }
+
   private retry?:{signature:string;id:string};
   private write?:Subscription;
   private request?:Subscription;
@@ -86,6 +153,7 @@ export class TrustInvoiceSuggestionPanel implements OnChanges {
   private readonly destroy=inject(DestroyRef);
 
   ngOnChanges() {
+    this.clearPreview(); this.split=[]; this.selectedForSplit.clear();
     this.request?.unsubscribe();
     this.write?.unsubscribe();
     this.saving=false; this.editing=this.reason=this.feedback=''; this.retry=undefined;

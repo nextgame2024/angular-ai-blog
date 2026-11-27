@@ -22,6 +22,15 @@ describe('StudentOperationsService', () => {
   });
 
   afterEach(() => http.verify());
+  it('checks a receipt split in the authenticated deposit workspace',()=>{
+    const allocations=[{invoiceId:'invoice',expectedBalance:'3500.00',amount:'3000'}];
+    service.previewTrustSplit('trust/id','deposit/id',allocations).subscribe();
+    const req=http.expectOne(r=>r.url.endsWith('/trust-staged-deposits/trust%2Fid/deposit%2Fid/split-preview'));
+    expect(req.request.headers.get('Authorization')).toBe('Token business-manager-token');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({allocations});
+    req.flush({allocated:'3000.00',unassigned:'0.00',allocations:[]});
+  });
   it('reads case-authorized invoice details from the cached workspace endpoint',()=>{
     service.caseInvoiceDetail('case/id','connection/id','invoice/id').subscribe();
     const request=http.expectOne(r=>r.url.endsWith('/cases/case%2Fid/invoices/connection%2Fid/invoice%2Fid'));

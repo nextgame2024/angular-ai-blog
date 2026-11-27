@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { StudentOperationsService } from '../student-operations.service';
 import { TrustReceiptForm } from './trust-receipt-form.component';
 import { TrustInvoiceSuggestionPanel } from './trust-invoice-suggestions.component';
@@ -47,6 +47,7 @@ describe('TRUST deposits awaiting an invoice',()=>{
     fixture.componentInstance.toggle(); fixture.componentInstance.selected=deposit.id; fixture.detectChanges();
     fixture.debugElement.query(By.directive(TrustInvoiceSuggestionPanel)).componentInstance.toggle(); fixture.detectChanges();
     Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b=>b.textContent?.includes('Record match decision'))!.click(); fixture.detectChanges();
+    Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b=>b.textContent?.includes('Add to split'))!.click(); fixture.detectChanges();
     const frame=document.createElement('iframe');
     document.body.appendChild(frame);
     try {
@@ -57,7 +58,7 @@ describe('TRUST deposits awaiting an invoice',()=>{
         frame.style.width=width+'px';
         for (const dark of [false,true]) {
           doc.documentElement.classList.toggle('dark',dark);
-          for (const control of doc.querySelectorAll('button,input[type=search]')) {
+          for (const control of doc.querySelectorAll('button,input[type=search],input[inputmode=decimal]')) {
             const rect=control.getBoundingClientRect();
             expect(rect.width).toBeGreaterThan(0);
             expect(rect.right).toBeLessThanOrEqual(width);
@@ -88,6 +89,36 @@ describe('TRUST deposits awaiting an invoice',()=>{
     panel.search='Sponsor'; panel.find(); fixture.detectChanges();
     expect(lookup.calls.mostRecent().args).toEqual(['trust',deposit.id,'Sponsor',1]);
     expect(fixture.nativeElement.textContent).toContain('No open TRUST invoices match this search.');
+  });
+
+  it('retains the draft across searches, checks explicit amounts and clears obsolete results',()=>{
+    const a={id:'a',invoiceNumber:'INV-1',balance:'3500.00'}, b={id:'b',invoiceNumber:'INV-2',balance:'10.00'};
+    const pending=new Subject<any>();
+    const check=jasmine.createSpy().and.returnValues(of({allocations:[{invoiceId:'a',invoiceNumber:'INV-1',
+      amount:'3000.00',remainingDue:'500.00'}],allocated:'3000.00',unassigned:'2.00'}),pending);
+    const lookup=jasmine.createSpy().and.returnValues(of({invoices:[a]}),of({invoices:[b]}));
+    TestBed.configureTestingModule({imports:[TrustInvoiceSuggestionPanel],providers:[{provide:StudentOperationsService,
+      useValue:{trustInvoiceSuggestions:lookup,previewTrustSplit:check}}]});
+    const fixture=TestBed.createComponent(TrustInvoiceSuggestionPanel);
+    fixture.componentRef.setInput('connection','trust'); fixture.componentRef.setInput('deposit',{...deposit,amount:'3002.00'}); fixture.detectChanges();
+    const panel=fixture.componentInstance;
+    const button=(label:string)=>Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'))
+      .find(b=>b.textContent?.trim()===label)!;
+    panel.toggle(); fixture.detectChanges(); button('Add to split').click(); fixture.detectChanges();
+    expect(button('Add to split').disabled).toBeTrue();
+    panel.search='other'; panel.find(); fixture.detectChanges();
+    const input=fixture.nativeElement.querySelector('input[inputmode=decimal]') as HTMLInputElement;
+    input.value='3000'; input.dispatchEvent(new Event('input')); fixture.detectChanges();
+    button('Check split against imported balances').click(); fixture.detectChanges();
+    expect(check).toHaveBeenCalledOnceWith('trust',deposit.id,[{invoiceId:'a',expectedBalance:'3500.00',amount:'3000'}]);
+    expect(fixture.nativeElement.textContent).toContain('AUD 500.00 remaining due');
+    button('Add to split').click(); fixture.detectChanges();
+    expect(panel.preview).toBeUndefined();
+    button('Remove INV-2').click(); fixture.detectChanges();
+    button('Check split against imported balances').click();
+    fixture.componentRef.setInput('connection','other'); fixture.detectChanges();
+    expect(pending.observed).toBeFalse();
+    expect(panel.split).toEqual([]);
   });
 
   it('records an explicit decision and reuses its key after an unconfirmed response',()=>{

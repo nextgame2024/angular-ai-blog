@@ -559,6 +559,17 @@ export interface TrustInvoiceSuggestion {
   peers:number;
 }
 
+export interface TrustSplitInput {
+  invoiceId:string;
+  expectedBalance:string;
+  amount:string;
+}
+export interface TrustSplitPreview {
+  allocations:{invoiceId:string;invoiceNumber:string|null;amount:string;remainingDue:string}[];
+  allocated:string;
+  unassigned:string;
+}
+
 export interface TrustInvoiceSuggestions {
   revision:number;
   ruleVersion:number;
