@@ -1,4 +1,4 @@
-import type { TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
+import type { TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { finalize, of, shareReplay, tap } from 'rxjs';
@@ -464,6 +464,12 @@ export class StudentOperationsService {
     const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/'+encodeURIComponent(deposit)+'/decisions';
     return this.http.get<{entries:TrustMatchReview[];next:number|null}>(url,{headers:this.headers(),
       params:before?new HttpParams().set('before',before):undefined});
+  }
+
+  trustSplitLines(connection:string,deposit:string,invoice:string) {
+    const base=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection);
+    return this.http.get<{lines:TrustLineOption[]}>(base+'/'+encodeURIComponent(deposit)+'/invoice-lines/'+encodeURIComponent(invoice),
+      {headers:this.headers()});
   }
 
   changeTrustSplit(connection:string,deposit:string,body:TrustSplitCommand) {

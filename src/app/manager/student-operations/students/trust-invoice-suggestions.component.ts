@@ -1,3 +1,4 @@
+import { TrustLinePurposes } from './trust-line-purposes.component';
 import { TrustMatchHistory } from './trust-match-history.component';
 import { Component, DestroyRef, Input, OnChanges, inject, output } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
@@ -9,7 +10,7 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
 
 @Component({
   selector:'app-trust-invoice-suggestions',
-  imports:[TrustMatchHistory,FormsModule,DatePipe,DecimalPipe],
+  imports:[TrustLinePurposes,TrustMatchHistory,FormsModule,DatePipe,DecimalPipe],
   styleUrls:['./student-operations-students.page.css'],
   styles:[`:host {display:block; min-width:0; overflow-wrap:anywhere;} fieldset {min-inline-size:0; max-width:100%; box-sizing:border-box;} input {max-width:100%; box-sizing:border-box;}`],
   template:`
@@ -33,6 +34,8 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
         @if (saved.plan; as plan) {
           @for (row of plan.allocations; track row.invoiceId) {
             <p>{{row.invoiceNumber || row.invoiceId}} · AUD {{row.amount}} reserved</p>
+              @for (line of row.lines; track line.lineId) { <p>{{line.label}} · AUD {{line.amount}}</p> }
+              <p>AUD {{row.purposeUnassigned ?? row.amount}} without a line purpose</p>
           }
           <p>AUD {{plan.allocated}} reserved · AUD {{plan.unassigned}} unassigned</p>
         }
@@ -45,6 +48,8 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
               <input inputmode="decimal" maxlength="15" placeholder="Amount in AUD" [ngModel]="row.amount"
                 [ngModelOptions]="{standalone:true}" (ngModelChange)="clearPreview(); row.amount=$event">
             </label>
+            <app-trust-line-purposes [connection]="connection" [deposit]="deposit.id" [invoice]="row.invoiceId" [choices]="row.lines"
+              (changed)="clearPreview(); row.lines=$event" />
             <button class="btn small" type="button" (click)="removeSplit(row.invoiceId)">Remove {{row.label}}</button>
           }
           <button class="btn small" type="button" [disabled]="checkingSplit" (click)="checkSplit()">Check split against imported balances</button>
@@ -54,6 +59,8 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
             <div role="status">
               @for (allocation of plan.allocations; track allocation.invoiceId) {
                 <p>{{allocation.invoiceNumber || allocation.invoiceId}} · AUD {{allocation.amount}} allocated · AUD {{allocation.remainingDue}} remaining due</p>
+              @for (line of allocation.lines; track line.lineId) { <p>{{line.label}} · AUD {{line.amount}}</p> }
+              <p>AUD {{allocation.purposeUnassigned ?? allocation.amount}} without a line purpose</p>
               }
               <p>AUD {{plan.allocated}} allocated · AUD {{plan.unassigned}} unassigned from this deposit</p>
             </div>
@@ -144,20 +151,25 @@ export class TrustInvoiceSuggestionPanel implements OnChanges {
     this.selectedForSplit.delete(id);
     this.split=this.split.filter(row=>row.invoiceId!==id);
   }
+  private splitInputs():TrustSplitInput[] {
+    return this.split.map(({invoiceId,expectedBalance,amount,lines})=>({
+      invoiceId,expectedBalance,amount,...(lines?.length ? {lines} : {}),
+    }));
+  }
   checkSplit() {
     if (!this.split.length || this.checkingSplit) return;
     this.clearPreview();
     this.checkingSplit=true;
-    const inputs=this.split.map(({invoiceId,expectedBalance,amount})=>({invoiceId,expectedBalance,amount}));
+    const inputs=this.splitInputs();
     this.splitRequest=this.api.previewTrustSplit(this.connection,this.deposit.id,inputs)
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
         next:result=>{this.checkingSplit=false; this.preview=result;},
         error:err=>{
           this.checkingSplit=false;
           if (err.status===409 || err.status===404) {
-            this.splitError='Refresh the deposit and look up the invoices again. The deposit or an invoice may have changed.';
+            this.splitError='Refresh the invoice lines and look up the deposit and invoices again. The deposit or an invoice may have changed.';
           } else if (err.status===400) {
-            this.splitError='Check each amount is positive, has at most two decimal places and fits both the invoice balance and deposit total.';
+            this.splitError='Check each amount is positive, has at most two decimal places and fits its invoice and deposit. Line amounts must also fit the invoice allocation.';
           } else this.splitError='Could not check the split. Try again.';
         },
       });
@@ -175,7 +187,7 @@ export class TrustInvoiceSuggestionPanel implements OnChanges {
     if (!release && !this.preview) return;
     const revision=result.reservation?.revision ?? 0;
     const command=release ? {action:'release' as const,revision,reason} : {
-      action:'reserve' as const,revision,reason,allocations:this.split.map(({invoiceId,amount,expectedBalance})=>({invoiceId,amount,expectedBalance})),
+      action:'reserve' as const,revision,reason,allocations:this.splitInputs(),
     };
     const signature=JSON.stringify(command);
     if (this.reservationRetry?.signature!==signature) this.reservationRetry={signature,id:crypto.randomUUID()};

@@ -559,13 +559,17 @@ export interface TrustInvoiceSuggestion {
   peers:number;
 }
 
+export interface TrustLineChoice {lineId:string;token:string;amount:string}
+export interface TrustLineOption {lineId:string;token:string;label:string;gross:string;available:string}
+
 export interface TrustSplitInput {
+  lines?:TrustLineChoice[];
   invoiceId:string;
   expectedBalance:string;
   amount:string;
 }
 export interface TrustSplitPreview {
-  allocations:{invoiceId:string;invoiceNumber:string|null;amount:string;remainingDue:string}[];
+  allocations:{invoiceId:string;invoiceNumber:string|null;amount:string;remainingDue:string;lines?:{lineId:string;label:string;gross:string;amount:string}[];purposeUnassigned?:string}[];
   allocated:string;
   unassigned:string;
 }

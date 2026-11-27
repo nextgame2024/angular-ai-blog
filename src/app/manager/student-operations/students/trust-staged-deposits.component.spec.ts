@@ -40,6 +40,7 @@ describe('TRUST deposits awaiting an invoice',()=>{
 
   it('keeps open staging and pagination controls within mobile and desktop widths in both themes',()=>{
     TestBed.configureTestingModule({imports:[TrustStagedDeposits],providers:[{provide:StudentOperationsService,useValue:{
+      trustSplitLines:()=>of({lines:[{lineId:'id',token:'t',gross:'100.00',available:'90.00',label:'Materials fee'}]}),
       trustInvoiceSuggestions:()=>of({page:1,hasMore:true,invoices:[{id:'inv',invoiceNumber:'INV-1',balance:'100.00',difference:'2642.00',score:2,referenceMatch:true}]}),
       stagedTrustDeposits:()=>of({deposits:[deposit],hasMore:true})}}]});
     const fixture=TestBed.createComponent(TrustStagedDeposits);
@@ -48,6 +49,7 @@ describe('TRUST deposits awaiting an invoice',()=>{
     fixture.debugElement.query(By.directive(TrustInvoiceSuggestionPanel)).componentInstance.toggle(); fixture.detectChanges();
     Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b=>b.textContent?.includes('Record match decision'))!.click(); fixture.detectChanges();
     Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b=>b.textContent?.includes('Add to split'))!.click(); fixture.detectChanges();
+    Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b=>b.textContent?.includes('Choose invoice line purposes'))!.click(); fixture.detectChanges();
     const frame=document.createElement('iframe');
     document.body.appendChild(frame);
     try {
@@ -119,6 +121,31 @@ describe('TRUST deposits awaiting an invoice',()=>{
     fixture.componentRef.setInput('connection','other'); fixture.detectChanges();
     expect(pending.observed).toBeFalse();
     expect(panel.split).toEqual([]);
+  });
+
+  it('loads line purposes on demand, includes them in the preview, and clears a changed line',()=>{
+    const candidate={id:'inv',invoiceNumber:'INV',balance:'125.00'};
+    const line={lineId:'line',label:'Materials',gross:'25.00',available:'25.00',token:'old'};
+    const lines=jasmine.createSpy().and.returnValues(of({lines:[line]}),of({lines:[{...line,token:'new'}]}));
+    const preview=jasmine.createSpy().and.returnValue(of({allocations:[{invoiceId:'inv',amount:'30.00',remainingDue:'95.00',
+      lines:[{...line,amount:'20.00'}],purposeUnassigned:'10.00'}],allocated:'30.00',unassigned:'10.00'}));
+    TestBed.configureTestingModule({imports:[TrustInvoiceSuggestionPanel],providers:[{provide:StudentOperationsService,
+      useValue:{trustSplitLines:lines,trustInvoiceSuggestions:()=>of({invoices:[candidate]}),previewTrustSplit:preview}}]});
+    const fixture=TestBed.createComponent(TrustInvoiceSuggestionPanel);
+    fixture.componentRef.setInput('connection','trust'); fixture.componentRef.setInput('deposit',deposit); fixture.detectChanges();
+    const click=(label:string)=>{Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'))
+      .find(b=>b.textContent?.trim()===label)!.click();fixture.detectChanges();};
+    click('Find possible invoices'); click('Add to split'); expect(lines).not.toHaveBeenCalled();
+    fixture.componentInstance.split[0].amount='30';
+    click('Choose invoice line purposes');
+    const field=fixture.nativeElement.querySelector('input[placeholder="Amount for this line"]');
+    field.value='20';field.dispatchEvent(new Event('input'));fixture.detectChanges();
+    click('Check split against imported balances');
+    expect(preview.calls.first().args[2][0].lines).toEqual([{lineId:'line',token:'old',amount:'20'}]);
+    expect(fixture.nativeElement.textContent).toContain('AUD 10.00 without a line purpose');
+    click('Refresh invoice lines');
+    expect(fixture.componentInstance.preview).toBeUndefined();
+    expect(fixture.componentInstance.split[0].lines).toEqual([]);
   });
 
   it('saves a checked split, replays an uncertain save, and releases the persisted revision',()=>{
