@@ -1,3 +1,4 @@
+import type { StagedTrustDeposit } from '../student-operations.types';
 import { TrustReceiptForm } from './trust-receipt-form.component';
 import { PaymentOperationsPanel } from './payment-operations-panel.component';
 import { InvoiceStudentLinkComponent } from './invoice-student-link.component';
@@ -75,10 +76,10 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   readonly operationsSearch = new FormControl('', { nonNullable: true });
   readonly operationsQuery = signal('');
 
-  reviewOperationsInvoice(connectionId: string, invoice: XeroStudentInvoice): void {
+  reviewOperationsInvoice(connectionId: string, invoice: Pick<XeroStudentInvoice,'xeroInvoiceId'|'receiptException'>, deposit?:StagedTrustDeposit): void {
     if (!this.xeroConnections.some(connection => connection.connectionId === connectionId)) return;
     if (this.xeroConnection?.connectionId !== connectionId) this.organisation.setValue(connectionId);
-    this.openInvoiceDetail(invoice);
+    this.openInvoiceDetail(invoice,deposit);
   }
 
   studentLinkInvoice:XeroStudentInvoice|null=null;
@@ -345,8 +346,11 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
     if (target !== this.xeroInvoices.page) this.loadXeroInvoices(target);
   }
 
-  openInvoiceDetail(invoice: XeroStudentInvoice): void {
+  suggestedDeposit?:StagedTrustDeposit;
+
+  openInvoiceDetail(invoice: Pick<XeroStudentInvoice,'xeroInvoiceId'|'receiptException'>, deposit?:StagedTrustDeposit): void {
     if (!this.xeroConnection || this.loadingInvoiceDetail) return;
+    this.suggestedDeposit=deposit;
     this.loadingInvoiceDetail = true;
     this.invoiceDetailError = '';
     this.selectedXeroInvoice = null;
@@ -364,6 +368,7 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   }
 
   closeInvoiceDetail(): void {
+    this.suggestedDeposit=undefined;
     this.invoiceDetailRequest?.unsubscribe();
     this.selectedXeroInvoice = null;
     this.invoiceDetailError = '';

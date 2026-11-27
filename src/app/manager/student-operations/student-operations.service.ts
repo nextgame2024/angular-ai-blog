@@ -1,4 +1,4 @@
-import type { TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
+import type { TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { finalize, of, shareReplay, tap } from 'rxjs';
@@ -446,6 +446,44 @@ export class StudentOperationsService {
       `${this.workspaceBase}/integrations/xero/connections/${encodeURIComponent(connectionId)}/student-invoices/payment-tracks`,
       { headers: this.headers() },
     );
+  }
+
+  trustMatchOutcomes(connection:string,query:TrustOutcomeQuery) {
+    const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/outcomes';
+    return this.http.get<TrustMatchOutcomes>(url,{headers:this.headers(),params:{...query}});
+  }
+
+  recordTrustInvoiceDecision(connection:string,deposit:string,body:{
+    invoiceId:string; decision:TrustMatchDecision; reason:string; revision:number; evidenceToken:string; q:string; page:number; requestId:string;
+  }) {
+    const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/'+encodeURIComponent(deposit)+'/decisions';
+    return this.http.post<{revision:number}>(url,body,{headers:this.writeHeaders(body.requestId)});
+  }
+
+  trustInvoiceDecisionHistory(connection:string,deposit:string,before?:number) {
+    const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/'+encodeURIComponent(deposit)+'/decisions';
+    return this.http.get<{entries:TrustMatchReview[];next:number|null}>(url,{headers:this.headers(),
+      params:before?new HttpParams().set('before',before):undefined});
+  }
+
+  trustInvoiceSuggestions(connection:string,deposit:string,q:string,page:number) {
+    const base=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection);
+    return this.http.get<TrustInvoiceSuggestions>(base+'/'+encodeURIComponent(deposit)+'/invoices',
+      {headers:this.headers(),params:{q,page}});
+  }
+
+  stagedTrustDeposits(connection:string, q:string, page:number) {
+    return this.http.get<{deposits:StagedTrustDeposit[];page:number;hasMore:boolean}>(
+      this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection),
+      {headers:this.headers(),params:{q,page}});
+  }
+
+  stageTrustDeposit(connection:string, deposit:Omit<StagedTrustDeposit,'id'>) {
+    return this.http.post<{id:string;created:boolean}>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection),{
+      account:deposit.account,receivedOn:deposit.date,amount:deposit.amount,reference:deposit.reference,
+      bankTransactionId:deposit.transactionId,statementFileName:deposit.source.name,
+      statementFileSha256:deposit.source.sha256,statementRecord:String(deposit.source.record),
+    },{headers:this.headers()});
   }
 
   private trustReceiptUrl(connection: string, invoice: string): string {

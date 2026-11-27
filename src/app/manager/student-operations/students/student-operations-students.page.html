@@ -122,6 +122,7 @@
       @for (connection of xeroConnections; track connection.connectionId) {
         <app-payment-operations-panel [connection]="connection" [search]="operationsQuery()" [receiptRevision]="receiptRevisions.get(connection.connectionId) ?? 0"
           [importTimestamp]="lastImportByConnection.get(connection.connectionId)"
+          (reviewSuggested)="reviewOperationsInvoice(connection.connectionId, {xeroInvoiceId:$event.invoice}, $event.deposit)"
           (review)="reviewOperationsInvoice(connection.connectionId, $event)" />
       }
     </section>
@@ -302,7 +303,7 @@
         </div>
         @if (isChiefExecutive && xeroConnection?.organisationRole === 'trust' && selectedXeroInvoice.documentType === 'invoice') {
           @for (scope of [xeroConnection!.connectionId + selectedXeroInvoice.xeroInvoiceId]; track scope) {
-          <app-trust-receipt-form (invoiceRefreshed)="selectedXeroInvoice = $event" (receiptsChanged)="receiptChanged(xeroConnection!.connectionId)" [connection]="xeroConnection!.connectionId" [shortCode]="xeroConnection!.tenantShortCode" [invoice]="selectedXeroInvoice" />
+          <app-trust-receipt-form [reviewDeposit]="suggestedDeposit" (invoiceRefreshed)="selectedXeroInvoice = $event" (receiptsChanged)="receiptChanged(xeroConnection!.connectionId)" [connection]="xeroConnection!.connectionId" [shortCode]="xeroConnection!.tenantShortCode" [invoice]="selectedXeroInvoice" />
           }
         }
         @if (!selectedXeroInvoice.receiptException) {

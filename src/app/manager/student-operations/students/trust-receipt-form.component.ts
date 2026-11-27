@@ -1,3 +1,6 @@
+import { TrustMatchHistory } from './trust-match-history.component';
+import { TrustStagedDeposits } from './trust-staged-deposits.component';
+import { TrustStatementSourceCheck } from './trust-statement-source-check.component';
 import { TrustStatementPreview } from './trust-statement-preview.component';
 import type { StatementDeposit } from './trust-statement-preview';
 import { RECEIPT_EXCEPTION_LABELS } from '../xero-invoice-display';
@@ -11,7 +14,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { StudentOperationsService } from '../student-operations.service';
-import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../student-operations.types';
+import type { StagedTrustDeposit, TrustReceiptVerification, TrustStatementSource, XeroStudentInvoiceDetail } from '../student-operations.types';
 
 type ImportedPayment = NonNullable<XeroStudentInvoiceDetail['settlement']>['entries'][number];
 
@@ -39,7 +42,7 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
 @Component({
   selector: 'app-trust-receipt-form',
   host: {'(document:visibilitychange)': 'onVisibilityChange()'},
-  imports: [TrustStatementPreview, ManagerSelectComponent, FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe, TrustClaimHistory, TrustPaymentHistory, ReceiptPaymentCandidatesPipe],
+  imports: [TrustMatchHistory, TrustStagedDeposits, TrustStatementSourceCheck, TrustStatementPreview, ManagerSelectComponent, FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe, TrustClaimHistory, TrustPaymentHistory, ReceiptPaymentCandidatesPipe],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section aria-label="TRUST bank verification">
@@ -66,6 +69,10 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
           <small>Verified by {{ receipt.verifiedByName || 'Staff member unavailable' }} · {{ receipt.verifiedAt | date:'medium' }} · Invoice balance at verification AUD {{ receipt.invoiceDue | number:'1.2-2' }}</small>
           @if (receipt.hasEvidence) { <button class="invoice-link" type="button" (click)="download(receipt.id)">Download screenshot</button> }
         </p>
+        @if (receipt.reviewedDepositId; as depositId) {
+          <app-trust-match-history [connection]="connection" [depositId]="depositId" />
+        }
+        @if (receipt.statementSource) { <app-trust-statement-source-check [receipt]="receipt" /> }
         @if (difference !== null && difference < 0 && receipt.possibleOverpaymentIds; as credits) {
           @if (receipt.linkedOverpaymentId; as linked) {
             <p>Linked Xero overpayment · {{ linked }} · Linked by {{ receipt.overpaymentLinkedByName || 'Staff member unavailable' }} · {{ receipt.overpaymentLinkedAt | date:'medium' }}</p>
@@ -189,10 +196,22 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
         <details><summary>Verify a TRUST bank deposit</summary>
           <form (input)="duplicateReceipt = null" #form="ngForm" (ngSubmit)="form.valid && save()" class="student-form">
             <fieldset [disabled]="saving" class="form-grid">
-              <label>Receiving TRUST account name<input name="account" maxlength="120" required [(ngModel)]="account"></label>
+              <label>Receiving TRUST account name<input name="account" [readonly]="!!statementSource" maxlength="120" required [(ngModel)]="account"></label>
+              @if (reviewDeposit && !reviewDepositUsed) {
+                <button type="button" class="btn small" [disabled]="saving || !ready" (click)="useReviewDeposit()">
+                  Use reviewed deposit · {{ reviewDeposit.transactionId }} · AUD {{ reviewDeposit.amount }}
+                </button>
+              }
+              <app-trust-staged-deposits [connection]="connection" [picker]="true" [disabled]="saving || !ready"
+                [revision]="receipts.length" (picked)="account = $event.account; useStatementRow($event)" />
               <app-trust-statement-preview [account]="account" [today]="today" [receipts]="receipts"
                 [hasDraft]="!!(date || amount || reference || bankTransactionId || paymentPurpose || file || selectedPayment)" [disabled]="saving || !ready"
                 (useDeposit)="useStatementRow($event)" />
+              @if (statementSource; as source) {
+                <p>Selected CSV · {{ source.name }} · Record {{ source.record }}
+                  <button type="button" class="btn small" (click)="statementSource = undefined">Detach source to edit bank details</button>
+                </p>
+              }
               @if (paymentChoices.length || selectedPayment) {
                 <label>Invoice payment
                   <app-manager-select name="paymentSource" ariaLabel="Invoice payment" [options]="paymentChoices"
@@ -200,10 +219,10 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
                     [placeholder]="canVerify ? 'Verify before linking a payment' : 'Select the payment shown in Xero'" />
                 </label>
               }
-              <label>Payment date<input type="date" [max]="today" name="date" required [(ngModel)]="date"></label>
-              <label>Full bank receipt (AUD)<input type="text" inputmode="decimal" name="amount" pattern="(0|[1-9][0-9]{0,11})([.][0-9]{1,2})?" required [(ngModel)]="amount"></label>
-              <label>Bank reference (if shown)<input name="reference" maxlength="150" [(ngModel)]="reference"></label>
-              <label>Bank transaction ID (if shown)<input name="bankTransactionId" maxlength="150" [(ngModel)]="bankTransactionId"></label>
+              <label>Payment date<input type="date" [max]="today" name="date" [readonly]="!!statementSource" required [(ngModel)]="date"></label>
+              <label>Full bank receipt (AUD)<input type="text" inputmode="decimal" name="amount" [readonly]="!!statementSource" pattern="(0|[1-9][0-9]{0,11})([.][0-9]{1,2})?" required [(ngModel)]="amount"></label>
+              <label>Bank reference (if shown)<input name="reference" [readonly]="!!statementSource" maxlength="150" [(ngModel)]="reference"></label>
+              <label>Bank transaction ID (if shown)<input name="bankTransactionId" [readonly]="!!statementSource" maxlength="150" [(ngModel)]="bankTransactionId"></label>
               <label>Payment purpose (optional)<input name="paymentPurpose" maxlength="240" placeholder="e.g. Tuition instalment" [(ngModel)]="paymentPurpose"></label>
               <label>Bank screenshot (optional, PNG or JPEG, up to 5 MB)<input #screenshotInput type="file" accept="image/png,image/jpeg" (change)="selectFile($event)"></label>
               @if (file) {
@@ -249,6 +268,8 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
   `,
 })
 export class TrustReceiptForm implements OnInit, OnChanges {
+  @Input() reviewDeposit?:StagedTrustDeposit;
+  reviewDepositUsed=false;
   @Input() shortCode: string | null = null;
   @Input({required:true}) connection!: string;
   @Input({required:true}) invoice!: XeroStudentInvoiceDetail;
@@ -322,6 +343,7 @@ export class TrustReceiptForm implements OnInit, OnChanges {
   importedPayments = new Map<string, ImportedPaymentGroup>();
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['reviewDeposit']) this.reviewDepositUsed=false;
     if (changes['invoice']) {
       this.importedPayments = new Map<string, ImportedPaymentGroup>();
       for (const entry of this.invoice.settlement?.entries ?? []) {
@@ -388,8 +410,18 @@ export class TrustReceiptForm implements OnInit, OnChanges {
     });
   }
 
-  useStatementRow(row: StatementDeposit): void {
+  useReviewDeposit() {
+    if (!this.reviewDeposit || !this.ready || this.saving) return;
+    this.account=this.reviewDeposit.account;
+    this.useStatementRow(this.reviewDeposit);
+    this.reviewDepositUsed=true;
+  }
+
+  statementSource?: TrustStatementSource;
+
+  useStatementRow(row: Omit<StatementDeposit,'row'> & {source:TrustStatementSource}): void {
     if (!this.ready || this.saving) return;
+    this.statementSource = row.source;
     this.date = row.date;
     this.amount = row.amount;
     this.reference = row.reference;
@@ -419,6 +451,11 @@ export class TrustReceiptForm implements OnInit, OnChanges {
     this.duplicateReceipt = null;
     const data = new FormData();
     for (const [name,value] of Object.entries({receivedOn:this.date, amount:this.amount, account:this.account, reference:this.reference})) data.append(name,value);
+    if (this.statementSource) {
+      data.append('statementFileName',this.statementSource.name);
+      data.append('statementFileSha256',this.statementSource.sha256);
+      data.append('statementRecord',String(this.statementSource.record));
+    }
     if (this.bankTransactionId.trim()) data.append('bankTransactionId',this.bankTransactionId.trim());
     if (this.paymentPurpose.trim()) data.append('paymentPurpose',this.paymentPurpose.trim());
     if (this.selectedPayment) {
@@ -430,6 +467,7 @@ export class TrustReceiptForm implements OnInit, OnChanges {
     this.api.verifyTrustReceipt(this.connection,this.invoice.xeroInvoiceId,data,this.key).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: () => {
         this.saving = false;
+        this.statementSource = undefined;
         this.amount = this.date = this.reference = this.bankTransactionId = this.paymentPurpose = '';
         this.clearScreenshot();
         this.key = crypto.randomUUID();

@@ -523,7 +523,69 @@ export interface TrustPaymentObservation {
   id: string; firstSeenAt: string; paymentDate: string | null; amount: string; currency: string | null; isReconciled: boolean | null;
 }
 
+export type TrustMatchOutcome = 'unreviewed'|'dismissed'|'awaiting_receipt'|'same_invoice'|'different_invoice'|'no_acceptance'|'conflict';
+export interface TrustOutcomeQuery {
+  from:string; to:string; outcome:TrustMatchOutcome|'all'; page:number; limit:number; sort:'date'|'amount'; direction:'asc'|'desc';
+}
+export interface TrustMatchOutcomes {
+  total:number; reviewed:number; medianReviewMinutes:number|null; counts:Partial<Record<TrustMatchOutcome,number>>;
+  bands:{version:number;lookup:'manual'|'suggested';score:number;verified:number;agreed:number}[];
+  deposits:{id:string;date:string;transactionId:string;amount:string;acceptedId:string|null;acceptedNumber:string|null;
+    verifiedId:string|null;verifiedNumber:string|null;outcome:TrustMatchOutcome}[];
+  filteredTotal:number; page:number; limit:number;
+}
+
+export type TrustMatchDecision = 'accepted' | 'dismissed';
+export interface TrustMatchReview {
+  revision:number; decision:TrustMatchDecision; reason:string; reviewedAt:string; reviewer:string; ruleVersion:number;
+  evidence:Pick<TrustInvoiceSuggestion,'invoiceNumber'|'balance'|'score'|'peers'|'difference'|'numberMatch'|'numberInReference'|'referenceMatch'|'amountMatch'> & {lookup:'manual'|'suggested'; id:string};
+}
+
+export interface TrustInvoiceSuggestion {
+  decision:TrustMatchDecision | 'superseded' | null;
+  evidenceChanged:boolean;
+  evidenceToken:string;
+  id:string;
+  invoiceNumber:string | null;
+  reference:string | null;
+  contact:string | null;
+  balance:string;
+  numberMatch:boolean;
+  numberInReference:boolean;
+  referenceMatch:boolean;
+  amountMatch:boolean;
+  difference:string;
+  score:number;
+  peers:number;
+}
+
+export interface TrustInvoiceSuggestions {
+  revision:number;
+  ruleVersion:number;
+  invoices:TrustInvoiceSuggestion[];
+  hasMore:boolean;
+  page:number;
+}
+
+export interface StagedTrustDeposit {
+  id:string;
+  account:string;
+  date:string;
+  amount:string;
+  reference:string;
+  transactionId:string;
+  source:TrustStatementSource;
+}
+
+export interface TrustStatementSource {
+  name: string;
+  sha256: string;
+  record: number;
+}
+
 export interface TrustReceiptVerification {
+  reviewedDepositId?: string | null;
+  statementSource?: TrustStatementSource | null;
   reviewClaimId?: string | null;
   reviewOwnerName?: string | null;
   reviewOwnedByMe?: boolean | null;

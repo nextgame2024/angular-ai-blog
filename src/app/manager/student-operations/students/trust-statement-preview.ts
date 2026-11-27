@@ -9,6 +9,17 @@ export interface StatementDeposit {
 export const statementHeaders = ['Date', 'Amount', 'Currency', 'Status', 'Account', 'Transaction ID', 'Reference'];
 export const statementFileLimit = 512 * 1024;
 
+export async function readStatementFile(file: File) {
+  const name = file.name.trim();
+  if (!/^[^/\\\x00-\x1f\x7f]+\.csv$/i.test(name) || name.length > 255 || !file.size || file.size > statementFileLimit) {
+    throw new Error('Select a nonempty CSV file up to 512 KB with a filename of at most 255 characters.');
+  }
+  const bytes = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest('SHA-256',bytes);
+  const sha256 = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2,'0')).join('');
+  return {name, sha256, text:new TextDecoder('utf-8',{fatal:true}).decode(bytes)};
+}
+
 // Record numbers include the header. Newlines inside quoted fields belong to one record.
 function csvRecords(text: string): string[][] {
   const records: string[][] = [];

@@ -1,3 +1,5 @@
+import { TrustMatchOutcomesPanel } from './trust-match-outcomes.component';
+import { TrustStagedDeposits } from './trust-staged-deposits.component';
 import { Component, DestroyRef, Input, OnChanges, SimpleChanges, inject, output, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -5,7 +7,7 @@ import { FormsModule } from '@angular/forms';
 import { ManagerSelectComponent } from '../../components/shared/manager-select/manager-select.component';
 import { Subscription } from 'rxjs';
 import { StudentOperationsService } from '../student-operations.service';
-import { XeroConnectionSummary, XeroStudentInvoice, XeroStudentInvoiceResult, XeroStudentInvoiceQuery } from '../student-operations.types';
+import { StagedTrustDeposit, XeroConnectionSummary, XeroStudentInvoice, XeroStudentInvoiceResult, XeroStudentInvoiceQuery } from '../student-operations.types';
 import { ManagerListLoaderComponent } from '../../components/shared/manager-list-loader/manager-list-loader.component';
 
 import { PageJumpComponent } from '../../../shared/components/page-jump/page-jump.component';
@@ -46,7 +48,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
 
 @Component({
   selector: 'app-payment-operations-panel',
-  imports: [DatePipe, DecimalPipe, FormsModule, ManagerSelectComponent, ManagerListLoaderComponent, PageJumpComponent],
+  imports: [TrustMatchOutcomesPanel, TrustStagedDeposits, DatePipe, DecimalPipe, FormsModule, ManagerSelectComponent, ManagerListLoaderComponent, PageJumpComponent],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section class="xero-candidates">
@@ -104,6 +106,10 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
           <small>Last successful sync: {{ (lastSync() | date:'medium') || 'Unknown' }}</small>
         </div>
       </header>
+      @if (connection.organisationRole === 'trust') {
+        <app-trust-match-outcomes [connection]="connection.connectionId" [revision]="receiptRevision + outcomeRevision" />
+        <app-trust-staged-deposits (outcomesChanged)="outcomeRevision=outcomeRevision+1" [connection]="connection.connectionId" [revision]="receiptRevision" (review)="reviewSuggested.emit($event)" />
+      }
       @if (loading() && !result()) {
         <app-manager-list-loader label="Loading documents…" />
       }
@@ -255,6 +261,8 @@ export class PaymentOperationsPanel implements OnChanges {
     {value:'all',label:'All follow-ups'}, {value:'mine',label:'My follow-ups'}, {value:'unassigned',label:'Unassigned'},
   ];
   queue: PaymentQueue = 'outstanding_invoices';
+  outcomeRevision=0;
+  readonly reviewSuggested=output<{invoice:string;deposit:StagedTrustDeposit}>();
   readonly review = output<XeroStudentInvoice>();
   readonly result = signal<XeroStudentInvoiceResult | null>(null);
   readonly loading = signal(false);

@@ -3,6 +3,7 @@ import { By } from '@angular/platform-browser';
 import { of } from 'rxjs';
 import { StudentOperationsService } from '../student-operations.service';
 import { TrustReceiptForm } from './trust-receipt-form.component';
+import { TrustStatementSourceCheck } from './trust-statement-source-check.component';
 import { TrustStatementPreview } from './trust-statement-preview.component';
 import { previewStatement, statementHeaders } from './trust-statement-preview';
 
@@ -47,12 +48,12 @@ describe('TRUST statement preview', () => {
     fixture.componentRef.setInput('account','Test TRUST');
     fixture.detectChanges();
     const component=fixture.componentInstance;
-    let finish!: (text:string)=>void;
-    const file={name:'test.csv',size:100,text:()=>new Promise<string>(resolve=>finish=resolve)};
+    let finish!: (bytes:ArrayBuffer)=>void;
+    const file={name:'test.csv',size:100,arrayBuffer:()=>new Promise<ArrayBuffer>(resolve=>finish=resolve)};
     const task=component.read({target:{files:[file]}} as unknown as Event);
     fixture.componentRef.setInput('account','Another account');
     fixture.detectChanges();
-    finish(header+'\n'+row);
+    finish(new TextEncoder().encode(header+'\n'+row).buffer);
     await task;
     expect(component.preview).toBeUndefined();
   });
@@ -88,6 +89,24 @@ describe('TRUST statement preview', () => {
       }
     } finally {frame.remove();}
   });
+  it('checks a saved source against a renamed original, changed bytes and conflicting receipt details', async () => {
+    const fixture=TestBed.createComponent(TrustStatementSourceCheck);
+    const receipt={account:'Test TRUST',amount:'2742.00',receivedOn:'2026-11-13',reference:'Deposit',bankTransactionId:'tx-1',
+      statementSource:{name:'bank.csv',record:2,sha256:'8854cf5f5b6e1aac3e9ada3b139e9d6b86b6051dddde99025beae2a2f9d6823a'}};
+    fixture.componentRef.setInput('receipt',receipt);
+    fixture.detectChanges();
+    const compare=(contents:string)=>fixture.componentInstance.compare({target:{files:[new File([contents],'renamed.csv')]}} as unknown as Event);
+    const original=header+'\n'+row;
+    await compare(original);
+    expect(fixture.componentInstance.message).toContain('file and deposit details match');
+    await compare(original+'\n');
+    expect(fixture.componentInstance.message).toContain('file contents differ');
+    fixture.componentRef.setInput('receipt',{...receipt,amount:'2000.00'});
+    fixture.detectChanges();
+    await compare(original);
+    expect(fixture.componentInstance.message).toContain('deposit details differ');
+  });
+
   it('previews eligible rows locally, fills the draft and verifies only on explicit submission', async () => {
     const verify=jasmine.createSpy().and.returnValue(of({id:'new'}));
     TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,useValue:{
@@ -111,7 +130,19 @@ describe('TRUST statement preview', () => {
     expect(form.bankTransactionId).toBe('tx-1');
     expect(form.reference).toBe('Deposit');
     expect(verify).not.toHaveBeenCalled();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('input[name="amount"]').readOnly).toBeTrue();
+    const detach=Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b=>b.textContent?.includes('Detach source'))!;
+    detach.click(); fixture.detectChanges();
+    expect(form.statementSource).toBeUndefined();
+    expect(fixture.nativeElement.querySelector('input[name="amount"]').readOnly).toBeFalse();
+    await component.read({target:{files:[file]}} as unknown as Event);
+    component.selected='2'; component.apply();
     form.save();
+    expect(form.statementSource).toBeUndefined();
+    expect(verify.calls.first().args[2].get('statementFileName')).toBe('bank.csv');
+    expect(verify.calls.first().args[2].get('statementRecord')).toBe('2');
+    expect(verify.calls.first().args[2].get('statementFileSha256')).toBe('8854cf5f5b6e1aac3e9ada3b139e9d6b86b6051dddde99025beae2a2f9d6823a');
     expect(verify).toHaveBeenCalledTimes(1);
     expect(verify.calls.first().args[2].get('bankTransactionId')).toBe('tx-1');
   });
