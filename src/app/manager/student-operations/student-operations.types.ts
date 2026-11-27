@@ -393,7 +393,7 @@ export interface XeroStudentInvoiceLineItem {
 
 export interface XeroStudentInvoiceDetail extends XeroStudentInvoice {
   lineItems: XeroStudentInvoiceLineItem[];
-  settlement?:{fullyPaidOnDate:string|null;entries:Array<{kind:string;id:string;date:string|null;amount:number;reference?:string;isReconciled?:boolean}>}|null;
+  settlement?:{allocationListsOmitted?:boolean;omittedKinds?:string[];fullyPaidOnDate:string|null;entries:Array<{kind:string;id:string;date:string|null;amount:number;reference?:string;isReconciled?:boolean}>}|null;
   relatedInvoices?:Array<{caseId:string;sequence:number;role:'trust'|'operating';connectionId:string;invoiceId:string;invoiceNumber:string|null;status:string|null;date:string|null;dueDate:string|null;currencyCode?:string|null;amountPaid:string|number|null;amountDue:string|number|null;indexed:boolean}>;
 }
 
@@ -433,7 +433,7 @@ export interface PaymentsRegisterBootstrap {
 export interface XeroStudentInvoiceQuery {
   paymentCandidateStatus?: 'available' | 'multiple' | 'partial' | 'none';
   excessLinkStatus?: 'needs_link' | 'fully_linked' | 'link_mismatch';
-  reconciliationStatus?: 'link_mismatch' | 'checked_pending' | 'checked_unknown';
+  reconciliationStatus?: 'link_mismatch' | 'checked_pending' | 'checked_unknown' | 'unchecked_pending' | 'unchecked_unknown';
   followUpOwner?: 'mine' | 'unassigned';
   queue?: 'outstanding_invoices' | 'receipts_awaiting_link' | 'excess_receipts' | 'reconciliation_review';
   supplierId?: string;
@@ -513,6 +513,10 @@ export interface TrustClaimHistoryEntry {
   ownerName: string | null;
 }
 
+export interface TrustPaymentObservation {
+  id: string; firstSeenAt: string; paymentDate: string | null; amount: string; currency: string | null; isReconciled: boolean | null;
+}
+
 export interface TrustReceiptVerification {
   reviewClaimId?: string | null;
   reviewOwnerName?: string | null;
@@ -524,6 +528,7 @@ export interface TrustReceiptVerification {
   overpaymentLinkNote?: string | null;
   overpaymentLinkedByName?: string | null;
   reconciliationCheckedByName?: string | null;
+  bankTransactionId?: string | null;
   paymentPurpose?: string | null;
   id: string;
   receivedOn: string;
@@ -540,6 +545,8 @@ export interface TrustReceiptVerification {
   linkedPaymentId?: string | null;
   reportedReconciledOn?: string | null;
   reconciliationCheckedAt?: string | null;
+  paymentObservations?: TrustPaymentObservation[];
+  observationCursor?: string | null;
   linkedPaymentReconciled?: boolean | null;
   linkedAmount?: string | null;
 }

@@ -172,6 +172,8 @@ export class PaymentOperationsPanel implements OnChanges {
   readonly statusOptions = [
     {value:'all', label:'All reconciliation statuses'},
     {value:'link_mismatch', label:'Link no longer matches'},
+    {value:'unchecked_pending', label:'No manager check · Xero pending'},
+    {value:'unchecked_unknown', label:'No manager check · Xero status unavailable'},
     {value:'checked_pending', label:'Manager reported reconciled · Xero pending'},
     {value:'checked_unknown', label:'Manager reported reconciled · Xero status unavailable'},
   ];

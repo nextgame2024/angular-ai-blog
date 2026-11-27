@@ -136,6 +136,15 @@ describe('PaymentOperationsPanel', () => {
     expect(invoices.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({
       queue:'reconciliation_review', followUpOwner:'mine', reconciliationStatus:'link_mismatch', page:1
     }));
+    for (const [label,status] of [
+      ['No manager check · Xero pending','unchecked_pending'],
+      ['No manager check · Xero status unavailable','unchecked_unknown'],
+    ]) {
+      selectStatus(label);
+      expect(invoices.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({
+        queue:'reconciliation_review', followUpOwner:'mine', reconciliationStatus:status, page:1
+      }));
+    }
     selectStatus('Manager reported reconciled · Xero pending');
     expect(invoices.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({
       queue:'reconciliation_review', followUpOwner:'mine', reconciliationStatus:'checked_pending', page:1

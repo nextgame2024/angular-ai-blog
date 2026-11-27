@@ -110,8 +110,8 @@
     <section aria-label="Payment operations">
       <h3>Payment operations</h3>
       <label class="search-field">
-        <input type="search" [formControl]="operationsSearch" aria-label="Search outstanding invoices across organisations"
-          placeholder="Search invoice, reference or recipient" maxlength="100" />
+        <input type="search" [formControl]="operationsSearch" aria-label="Search payment operations by invoice, reference, recipient or exact bank transaction ID in receipt queues"
+          placeholder="Invoice, reference, recipient or bank transaction ID" maxlength="150" />
       </label>
       @for (connection of xeroConnections; track connection.connectionId) {
         <app-payment-operations-panel [connection]="connection" [search]="operationsQuery()" [receiptRevision]="receiptRevision"
@@ -297,7 +297,7 @@
           <app-trust-receipt-form (invoiceRefreshed)="selectedXeroInvoice = $event" (receiptsChanged)="receiptRevision = receiptRevision + 1" [connection]="xeroConnection!.connectionId" [shortCode]="xeroConnection!.tenantShortCode" [invoice]="selectedXeroInvoice" />
         }
         @if(selectedXeroInvoice.relatedInvoices?.length){<div class="invoice-summary" aria-label="Related invoices">@for(related of selectedXeroInvoice.relatedInvoices;track related.connectionId+related.invoiceId){<div><span>INV-{{related.sequence}} ({{related.role==='trust'?'TRUST':'PTY'}})</span><button type="button" class="invoice-link" (click)="openRelatedInvoice(related)" [disabled]="!related.indexed">{{related.invoiceNumber||'Awaiting synchronisation'}}</button><small>{{related.status||'Created in Xero'}} · Due {{related.currencyCode ? formatMoney(related.amountDue,related.currencyCode) : 'Unknown'}}</small></div>}</div>}
-        @if(selectedXeroInvoice.settlement;as settlement){<div class="invoice-summary" aria-label="Payments and allocations"><div><span>Fully paid on</span><strong>{{formatDate(settlement.fullyPaidOnDate)}}</strong></div>@for(entry of settlement.entries;track entry.kind+entry.id){<div><span>{{entry.kind.replace('_',' ')}}</span><strong>{{formatDate(entry.date)}} · {{formatMoney(entry.amount,selectedXeroInvoice.currencyCode)}}</strong>@if (entry.kind === 'payment') {<small>{{ entry.isReconciled === true ? 'Reconciled in Xero' : entry.isReconciled === false ? 'Pending Xero reconciliation' : 'Bank reconciliation unknown' }}</small>}</div>}</div>}
+        @if(selectedXeroInvoice.settlement;as settlement){<div class="invoice-summary" aria-label="Payments and allocations"><div><span>Fully paid on</span><strong>{{formatDate(settlement.fullyPaidOnDate)}}</strong></div>@if (settlement.allocationListsOmitted) {<p>The latest invoice import omitted allocation details. Any entries shown are from an earlier import.</p>}@for(entry of settlement.entries;track $index){<div><span>{{entry.kind.replace('_',' ')}}</span><strong>{{formatDate(entry.date)}} · {{formatMoney(entry.amount,selectedXeroInvoice.currencyCode)}}</strong>@if (!settlement.allocationListsOmitted && settlement.omittedKinds?.includes(entry.kind)) {<small>From an earlier import</small>}@if (entry.kind === 'payment') {<small>{{ entry.isReconciled === true ? 'Reconciled in Xero' : entry.isReconciled === false ? 'Pending Xero reconciliation' : 'Bank reconciliation unknown' }}</small>}</div>}</div>}
         <div class="invoice-lines-wrap">
           <table class="invoice-lines">
             <thead><tr><th>Item</th><th>Description</th><th>Qty</th><th>Price</th><th>Disc.</th><th>Account</th><th>Tax</th><th>Tracking</th><th>Amount</th></tr></thead>

@@ -1,3 +1,4 @@
+import { TrustPaymentHistory } from './trust-payment-history.component';
 import { TrustClaimHistory } from './trust-claim-history.component';
 import { XeroReviewUrlPipe } from './xero-review-url.pipe';
 import { forkJoin, map, type Observable } from 'rxjs';
@@ -10,15 +11,21 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
 
 type ImportedPayment = NonNullable<XeroStudentInvoiceDetail['settlement']>['entries'][number];
 
+interface ImportedPaymentGroup {
+  observations: Map<string, ImportedPayment>;
+  references: Map<string, string>;
+}
+
 @Pipe({name: 'receiptPaymentCandidates'})
 class ReceiptPaymentCandidatesPipe implements PipeTransform {
-  transform(ids: string[], bankReference: string, payments: ReadonlyMap<string, ImportedPayment>) {
+  transform(ids: string[], bankReference: string, payments: ReadonlyMap<string, ImportedPaymentGroup>) {
     const reference = bankReference?.trim().toLowerCase();
     const candidates = ids.map(id => {
-      const importedReference = payments.get(id)?.reference?.trim();
+      const references = Array.from(payments.get(id.toLowerCase())?.references.values() ?? []);
+      const importedReference = references.length === 1 ? references[0] : undefined;
       const comparable = !!reference && !!importedReference;
       const matchesReference = comparable && reference === importedReference.toLowerCase();
-      return {id, importedReference, matchesReference, differsFromReference: comparable && !matchesReference};
+      return {id, importedReference, references, matchesReference, differsFromReference: comparable && !matchesReference};
     });
     return candidates.sort((a, b) => Number(b.matchesReference) - Number(a.matchesReference));
   }
@@ -27,7 +34,7 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
 @Component({
   selector: 'app-trust-receipt-form',
   host: {'(document:visibilitychange)': 'onVisibilityChange()'},
-  imports: [FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe, TrustClaimHistory, ReceiptPaymentCandidatesPipe],
+  imports: [FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe, TrustClaimHistory, TrustPaymentHistory, ReceiptPaymentCandidatesPipe],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section aria-label="TRUST bank verification">
@@ -45,6 +52,7 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
             · Partial payment · Expected balance after this receipt at verification AUD {{ difference | number:'1.2-2' }}
           }
           @if (receipt.reference) { · Bank reference · {{ receipt.reference }} }
+          @if (receipt.bankTransactionId) { <small>Bank transaction ID · {{ receipt.bankTransactionId }}</small> }
           @if (receipt.paymentPurpose) { <small>Payment purpose · {{ receipt.paymentPurpose }}</small> }
           <small>Verified by {{ receipt.verifiedByName || 'Staff member unavailable' }} · {{ receipt.verifiedAt | date:'medium' }} · Invoice balance at verification AUD {{ receipt.invoiceDue | number:'1.2-2' }}</small>
           @if (receipt.hasEvidence) { <button class="invoice-link" type="button" (click)="download(receipt.id)">Download screenshot</button> }
@@ -74,15 +82,22 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
           }
           @if (!receipt.candidateIds?.includes(receipt.linkedPaymentId)) {
             <p role="status">Review required. The linked payment no longer matches the imported invoice details.</p>
-            @if (importedPayments.get(receipt.linkedPaymentId); as payment) {
-              <p>Imported payment · {{ invoice.currencyCode || 'Currency unknown' }} {{ payment.amount | number:'1.2-4' }}
+            @if (importedPayments.get(receipt.linkedPaymentId.toLowerCase()); as group) {
+              @if (group.observations.size > 1) {
+                <p>Xero lists different amounts or dates for this payment ID. Compare the entries with the original receipt.</p>
+              }
+              @for (payment of group.observations.values(); track payment) {
+                <p>Imported payment · {{ invoice.currencyCode || 'Currency unknown' }} {{ payment.amount | number:'1.2-4' }}
                 · {{ payment.date || 'Date unavailable' }}</p>
+              }
               <p>At linking · AUD {{ receipt.linkedAmount | number:'1.2-2' }} · {{ receipt.receivedOn }}</p>
-            } @else if (invoice.settlement) {
+            } @else if (invoice.settlement && !invoice.settlement.allocationListsOmitted && !invoice.settlement.omittedKinds?.includes('payment')) {
               <p>The imported invoice has no payment with this ID.</p>
             } @else {
               <p>Imported settlement details are unavailable for this invoice.</p>
             }
+          } @else if (invoice.settlement?.allocationListsOmitted || invoice.settlement?.omittedKinds?.includes('payment')) {
+            <p>The latest invoice import omitted payment details. Check the current reconciliation status in Xero.</p>
           } @else if (receipt.linkedPaymentReconciled === true) {
             <p>Bank reconciliation confirmed in the latest imported Xero payment.</p>
           } @else if (receipt.reconciliationCheckedAt) {
@@ -112,6 +127,9 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
               <button class="btn" type="button" [disabled]="saving || !ready || !reconciledOn.validity.valid" (click)="attest(receipt.id, receipt.linkedPaymentId, reconciledOn.value)">I saw this payment reconciled in Xero</button>
             </details>
           }
+          @if (receipt.paymentObservations) {
+            <app-trust-payment-history [connection]="connection" [invoiceId]="invoice.xeroInvoiceId" [receipt]="receipt" />
+          }
           <app-trust-claim-history [connection]="connection" [invoiceId]="invoice.xeroInvoiceId"
             [receiptId]="receipt.id" [paymentId]="receipt.linkedPaymentId" [claimId]="receipt.reviewClaimId" />
         } @else if (receipt.candidateIds; as candidates) {
@@ -126,7 +144,11 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
               <ul>
                 @for (payment of ranked; track payment.id) {
                   <li>
-                    <p>Xero payment reference · {{ payment.importedReference || 'Unavailable' }}</p>
+                    @if (payment.references.length > 1) {
+                      <p>Conflicting Xero payment references · {{ payment.references.join(' · ') }}</p>
+                    } @else {
+                      <p>Xero payment reference · {{ payment.importedReference || 'Unavailable' }}</p>
+                    }
                     @if (payment.matchesReference) { <small>Matches bank reference</small> }
                     @else if (payment.differsFromReference) { <small>Differs from bank reference</small> }
                     @if (payment.id | xeroReviewUrl:'payment':shortCode; as paymentUrl) {
@@ -150,12 +172,13 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
       </button>
       @if (hasLoaded && invoice.status === 'AUTHORISED' && invoice.amountDue > 0) {
         <details><summary>Verify a TRUST bank deposit</summary>
-          <form #form="ngForm" (ngSubmit)="form.valid && save()" class="student-form">
+          <form (input)="duplicateReceipt = null" #form="ngForm" (ngSubmit)="form.valid && save()" class="student-form">
             <fieldset [disabled]="saving" class="form-grid">
               <label>Payment date<input type="date" name="date" required [(ngModel)]="date"></label>
               <label>Full bank receipt (AUD)<input type="text" inputmode="decimal" name="amount" pattern="(0|[1-9][0-9]{0,11})([.][0-9]{1,2})?" required [(ngModel)]="amount"></label>
               <label>Receiving TRUST account name<input name="account" maxlength="120" required [(ngModel)]="account"></label>
               <label>Bank reference (if shown)<input name="reference" maxlength="150" [(ngModel)]="reference"></label>
+              <label>Bank transaction ID (if shown)<input name="bankTransactionId" maxlength="150" [(ngModel)]="bankTransactionId"></label>
               <label>Payment purpose (optional)<input name="paymentPurpose" maxlength="240" placeholder="e.g. Tuition instalment" [(ngModel)]="paymentPurpose"></label>
               <label>Bank screenshot (optional, PNG or JPEG, up to 5 MB)<input #screenshotInput type="file" accept="image/png,image/jpeg" (change)="selectFile($event)"></label>
               @if (file) {
@@ -172,6 +195,17 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
             <button class="btn primary" type="submit" [disabled]="!ready || saving || form.invalid || !account.trim() || +amount <= 0 || fileError">Save verified receipt</button>
           </form>
         </details>
+      }
+      @if (duplicateReceipt; as existing) {
+        <div role="status">
+          <p>This bank transaction is already verified{{ existing.invoiceNumber ? ' on invoice ' + existing.invoiceNumber : '' }}.</p>
+          @if (existing.receivedOn && existing.amount) {
+            <p>Original receipt · AUD {{ existing.amount }} · {{ existing.receivedOn }}</p>
+          }
+          @if (existing.invoiceId | xeroReviewUrl:'invoice':shortCode; as url) {
+            <a class="invoice-link" [href]="url" target="_blank" rel="noopener noreferrer">View original invoice in Xero</a>
+          }
+        </div>
       }
       @if (message) { <p role="status">{{ message }}</p> }
     </section>
@@ -192,23 +226,34 @@ export class TrustReceiptForm implements OnInit, OnChanges {
   loadFailed = false;
   saving = false;
   message = '';
+  duplicateReceipt: {invoiceNumber?: string; invoiceId: string; receivedOn?: string; amount?: string} | null = null;
   date = '';
   amount = '';
   account = '';
   reference = '';
+  bankTransactionId = '';
   paymentPurpose = '';
   private readonly screenshotInput = viewChild<ElementRef<HTMLInputElement>>('screenshotInput');
   file?: File;
   fileError = false;
   private key = crypto.randomUUID();
 
-  importedPayments = new Map<string, ImportedPayment>();
+  importedPayments = new Map<string, ImportedPaymentGroup>();
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['invoice']) {
-      this.importedPayments = new Map<string, ImportedPayment>();
+      this.importedPayments = new Map<string, ImportedPaymentGroup>();
       for (const entry of this.invoice.settlement?.entries ?? []) {
-        if (entry.kind === 'payment') this.importedPayments.set(entry.id, entry);
+        if (entry.kind !== 'payment') continue;
+        const id = entry.id.toLowerCase();
+        let group = this.importedPayments.get(id);
+        if (!group) {
+          group = {observations:new Map(), references:new Map()};
+          this.importedPayments.set(id, group);
+        }
+        group.observations.set(JSON.stringify([entry.amount, entry.date]), entry);
+        const reference = entry.reference?.trim();
+        if (reference) group.references.set(reference.toLowerCase(), reference);
       }
     }
   }
@@ -273,15 +318,17 @@ export class TrustReceiptForm implements OnInit, OnChanges {
 
   save() {
     if (!this.ready || this.saving || this.fileError) return;
+    this.duplicateReceipt = null;
     const data = new FormData();
     for (const [name,value] of Object.entries({receivedOn:this.date, amount:this.amount, account:this.account, reference:this.reference})) data.append(name,value);
+    if (this.bankTransactionId.trim()) data.append('bankTransactionId',this.bankTransactionId.trim());
     if (this.paymentPurpose.trim()) data.append('paymentPurpose',this.paymentPurpose.trim());
     if (this.file) data.append('file',this.file);
     this.saving = true;
     this.api.verifyTrustReceipt(this.connection,this.invoice.xeroInvoiceId,data,this.key).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: () => {
         this.saving = false;
-        this.amount = this.date = this.reference = this.paymentPurpose = '';
+        this.amount = this.date = this.reference = this.bankTransactionId = this.paymentPurpose = '';
         this.clearScreenshot();
         this.key = crypto.randomUUID();
         this.receiptsChanged.emit();
@@ -290,6 +337,12 @@ export class TrustReceiptForm implements OnInit, OnChanges {
       },
       error: error => {
         this.saving = false;
+        if (error.status === 409 && error.error?.errorCode === 'trust_bank_transaction_already_verified') {
+          const {invoiceNumber, invoiceId, receivedOn, amount} = error.error;
+          this.message = '';
+          this.duplicateReceipt = {invoiceNumber, invoiceId:invoiceId ?? '', receivedOn, amount};
+          return;
+        }
         this.message = error.status === 409 ? 'Check existing verifications, the date and invoice status before retrying.' : 'Could not confirm the save. Retry with the same receipt details.';
       },
     });

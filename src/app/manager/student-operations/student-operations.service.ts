@@ -1,4 +1,4 @@
-import type { TrustClaimHistoryEntry, TrustReceiptVerification } from './student-operations.types';
+import type { TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { finalize, of, shareReplay, tap } from 'rxjs';
@@ -455,6 +455,12 @@ export class StudentOperationsService {
 
   verifyTrustReceipt(connection: string, invoice: string, receipt: FormData, key: string) {
     return this.http.post<{id: string}>(this.trustReceiptUrl(connection, invoice), receipt, {headers: this.writeHeaders(key)});
+  }
+
+  olderPaymentObservations(connection:string, invoice:string, receipt:string, payment:string, before:string) {
+    const url = this.trustReceiptUrl(connection,invoice) + '/' + encodeURIComponent(receipt) + '/payments/' + encodeURIComponent(payment) + '/observations';
+    return this.http.get<{entries:TrustPaymentObservation[]; nextCursor:string | null}>(url,
+      {headers:this.headers(), params:new HttpParams().set('before',before)});
   }
 
   trustClaimHistory(connection: string, invoice: string, receipt: string, payment: string, before?: string) {
