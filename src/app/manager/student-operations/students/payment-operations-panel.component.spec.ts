@@ -41,6 +41,10 @@ describe('PaymentOperationsPanel', () => {
     fixture.detectChanges();
     expect(invoices.calls.mostRecent().args[1].queue).toBe('excess_receipts');
     expect(fixture.nativeElement.querySelector('[data-label="Receipt excess"]').textContent).toContain('AUD 0.20');
+    fixture.nativeElement.querySelectorAll('header button')[2].click();
+    fixture.detectChanges();
+    expect(invoices.calls.mostRecent().args[1].queue).toBe('reconciliation_review');
+    expect(fixture.nativeElement.querySelector('.invoice-link').textContent).toContain('INV-10635');
   });
 
   it('discards a late response from the previous organisation', () => {

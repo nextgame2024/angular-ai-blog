@@ -427,7 +427,7 @@ export interface PaymentsRegisterBootstrap {
 }
 
 export interface XeroStudentInvoiceQuery {
-  queue?: 'outstanding_invoices' | 'receipts_awaiting_link' | 'excess_receipts';
+  queue?: 'outstanding_invoices' | 'receipts_awaiting_link' | 'excess_receipts' | 'reconciliation_review';
   supplierId?: string;
   page: number;
   limit: number;
@@ -512,5 +512,6 @@ export interface TrustReceiptVerification {
   hasEvidence: boolean;
   candidateIds?: string[];
   linkedPaymentId?: string | null;
+  linkedPaymentReconciled?: boolean | null;
   linkedAmount?: string | null;
 }

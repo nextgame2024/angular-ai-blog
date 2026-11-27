@@ -14,15 +14,19 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
     <section aria-label="TRUST bank verification">
       <h4>Bank verification in Sophia</h4>
       @for (receipt of receipts; track receipt.id) {
+        @let difference = balanceAfterReceipt(receipt.amount, receipt.invoiceDue);
         <p>Verified · AUD {{ receipt.amount }} · {{ receipt.receivedOn }} · {{ receipt.account }}
-          @if (excess(receipt.amount, receipt.invoiceDue) > 0) {
-            · Above invoice balance AUD {{ excess(receipt.amount, receipt.invoiceDue) | number:'1.2-2' }}
+          @if (difference !== null && difference < 0) {
+            · Above invoice balance AUD {{ -difference | number:'1.2-2' }}
+          }
+          @if (difference !== null && difference > 0) {
+            · Partial payment · Expected balance after this receipt at verification AUD {{ difference | number:'1.2-2' }}
           }
           @if (receipt.reference) { · {{ receipt.reference }} }
           <small>Recorded {{ receipt.verifiedAt | date:'medium' }} · Invoice balance at verification AUD {{ receipt.invoiceDue | number:'1.2-2' }}</small>
           @if (receipt.hasEvidence) { <button class="invoice-link" type="button" (click)="download(receipt.id)">Download screenshot</button> }
         </p>
-        @if (excess(receipt.amount, receipt.invoiceDue) > 0 && receipt.possibleOverpaymentIds; as credits) {
+        @if (difference !== null && difference < 0 && receipt.possibleOverpaymentIds; as credits) {
           @if (receipt.linkedOverpaymentId; as linked) {
             <p>Linked Xero overpayment · {{ linked }} · Confirmed {{ receipt.overpaymentLinkedAt | date:'medium' }}</p>
             @if (!credits.includes(linked)) { <p role="status">Review required. The linked overpayment no longer matches the imported records.</p> }
@@ -39,6 +43,12 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
           <p>Linked Xero invoice payment · AUD {{ receipt.linkedAmount }} · {{ receipt.linkedPaymentId }}</p>
           @if (!receipt.candidateIds?.includes(receipt.linkedPaymentId)) {
             <p role="status">Review required. The linked payment no longer matches the imported invoice details.</p>
+          } @else if (receipt.linkedPaymentReconciled === true) {
+            <p>Bank reconciliation confirmed in the latest imported Xero payment.</p>
+          } @else if (receipt.linkedPaymentReconciled === false) {
+            <p>Pending bank reconciliation. In the TRUST account in Xero, use Find &amp; Match to select the existing payment for the statement line.</p>
+          } @else {
+            <p>Bank reconciliation status unknown. Check the existing payment in the TRUST account in Xero.</p>
           }
         } @else if (receipt.candidateIds; as candidates) {
           @if (candidates.length) {
@@ -64,8 +74,11 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
               <label>Bank reference (if shown)<input name="reference" maxlength="150" [(ngModel)]="reference"></label>
               <label>Bank screenshot (optional, PNG or JPEG, up to 5 MB)<input type="file" accept="image/png,image/jpeg" (change)="selectFile($event)"></label>
             </fieldset>
-            @if (excess(amount, invoice.amountDue) > 0) {
-              <p>Amount above this invoice balance: AUD {{ excess(amount, invoice.amountDue) | number:'1.2-2' }}. Review the difference separately.</p>
+            @let difference = balanceAfterReceipt(amount, invoice.amountDue);
+            @if (difference !== null && difference > 0) {
+              <p>Partial payment · Expected invoice balance after this receipt AUD {{ difference | number:'1.2-2' }}</p>
+            } @else if (difference !== null && difference < 0) {
+              <p>Amount above this invoice balance: AUD {{ -difference | number:'1.2-2' }}. Review the difference separately.</p>
             }
             <p>Saving confirms you saw the deposit in online banking. Xero posting and bank reconciliation are separate steps.</p>
             <button class="btn primary" type="submit" [disabled]="saving || form.invalid || !account.trim() || +amount <= 0 || fileError">Save verified receipt</button>
@@ -97,9 +110,16 @@ export class TrustReceiptForm implements OnInit {
 
   ngOnInit() { this.load(); }
 
-  excess(receipt: string, invoiceDue: string | number): number {
-    const difference = Math.round(Number(receipt) * 100) - Math.round(Number(invoiceDue) * 100);
-    return Number.isSafeInteger(difference) ? Math.max(0, difference) / 100 : 0;
+  balanceAfterReceipt(receipt: string, invoiceDue: string | number): number | null {
+    if (!/^(0|[1-9][0-9]{0,11})([.][0-9]{1,2})?$/.test(receipt)) return null;
+    const due = /^(\d+)(?:\.(\d{1,4}))?$/.exec(String(invoiceDue));
+    if (!due) return null;
+
+    const fraction = (due[2] ?? '').padEnd(3, '0');
+    const dueCents = Number(due[1]) * 100 + Number(fraction.slice(0, 2)) + Number(fraction[2] >= '5');
+    const receiptCents = Math.round(Number(receipt) * 100);
+    if (!Number.isSafeInteger(dueCents) || receiptCents === 0) return null;
+    return (dueCents - receiptCents) / 100;
   }
 
   load() {

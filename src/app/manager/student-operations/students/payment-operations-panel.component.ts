@@ -6,6 +6,27 @@ import { StudentOperationsService } from '../student-operations.service';
 import { XeroConnectionSummary, XeroStudentInvoice, XeroStudentInvoiceResult, XeroStudentInvoiceQuery } from '../student-operations.types';
 import { ManagerListLoaderComponent } from '../../components/shared/manager-list-loader/manager-list-loader.component';
 
+type PaymentQueue = NonNullable<XeroStudentInvoiceQuery['queue']>;
+
+const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
+  outstanding_invoices: {
+    description: 'Sales invoices awaiting payment · earliest due first',
+    empty: 'No imported invoices awaiting payment.',
+  },
+  receipts_awaiting_link: {
+    description: 'Invoices with verified receipts awaiting a Xero payment link',
+    empty: 'No verified receipts awaiting a payment link.',
+  },
+  excess_receipts: {
+    description: 'Verified receipts above the invoice balance at verification',
+    empty: 'No verified receipts exceeded the invoice balance.',
+  },
+  reconciliation_review: {
+    description: 'Linked invoice payments awaiting confirmation of bank reconciliation in Xero',
+    empty: 'No linked invoice payments require reconciliation review.',
+  },
+};
+
 @Component({
   selector: 'app-payment-operations-panel',
   imports: [DatePipe, DecimalPipe, ManagerListLoaderComponent],
@@ -15,13 +36,16 @@ import { ManagerListLoaderComponent } from '../../components/shared/manager-list
       <header class="candidate-header">
         <div class="candidate-heading">
           <h4>{{ connection.organisationRole === 'trust' ? 'TRUST' : 'PTY' }} · {{ connection.tenantName }}</h4>
-          <p>{{ queue === 'excess_receipts' ? 'Verified receipts above the invoice balance at verification' : queue === 'receipts_awaiting_link' ? 'Invoices with verified receipts awaiting a Xero payment link' : 'Sales invoices awaiting payment · earliest due first' }}</p>
+          <p>{{ queueText[queue].description }}</p>
           @if (connection.organisationRole === 'trust') {
             <button type="button" class="btn small" (click)="toggleQueue('receipts_awaiting_link')">
               {{ queue === 'receipts_awaiting_link' ? 'Show outstanding invoices' : 'Review unlinked receipts' }}
             </button>
             <button type="button" class="btn small" (click)="toggleQueue('excess_receipts')">
               {{ queue === 'excess_receipts' ? 'Show outstanding invoices' : 'Review excess receipts' }}
+            </button>
+            <button type="button" class="btn small" (click)="toggleQueue('reconciliation_review')">
+              {{ queue === 'reconciliation_review' ? 'Show outstanding invoices' : 'Review bank reconciliation' }}
             </button>
           }
           <small>Last successful sync: {{ (lastSync() | date:'medium') || 'Unknown' }}</small>
@@ -48,7 +72,7 @@ import { ManagerListLoaderComponent } from '../../components/shared/manager-list
             <span>Page {{ data.page }} of {{ data.totalPages }} · {{ data.total }} documents</span>
             <button class="btn" type="button" [disabled]="data.page >= data.totalPages" (click)="load(data.page + 1)">Next</button>
           </footer>
-        } @else { <p class="candidate-empty">{{ search ? 'No invoices match this search.' : queue === 'excess_receipts' ? 'No verified receipts exceeded the invoice balance.' : queue === 'receipts_awaiting_link' ? 'No verified receipts awaiting a payment link.' : 'No imported invoices awaiting payment.' }}</p> }
+        } @else { <p class="candidate-empty">{{ search ? 'No invoices match this search.' : queueText[queue].empty }}</p> }
       }
     </section>
   `,
@@ -57,7 +81,8 @@ export class PaymentOperationsPanel implements OnChanges {
   @Input({ required: true }) connection!: XeroConnectionSummary;
   @Input() search = '';
   @Input() receiptRevision = 0;
-  queue: NonNullable<XeroStudentInvoiceQuery['queue']> = 'outstanding_invoices';
+  readonly queueText = queueText;
+  queue: PaymentQueue = 'outstanding_invoices';
   readonly review = output<XeroStudentInvoice>();
   readonly result = signal<XeroStudentInvoiceResult | null>(null);
   readonly loading = signal(false);
@@ -81,7 +106,7 @@ export class PaymentOperationsPanel implements OnChanges {
     this.load(1);
   }
 
-  toggleQueue(queue: 'receipts_awaiting_link' | 'excess_receipts'): void {
+  toggleQueue(queue: PaymentQueue): void {
     this.queue = this.queue === queue ? 'outstanding_invoices' : queue;
     this.load(1);
   }

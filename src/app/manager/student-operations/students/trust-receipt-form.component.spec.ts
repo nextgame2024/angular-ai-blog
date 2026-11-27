@@ -21,6 +21,13 @@ describe('TRUST receipt form', () => {
     fixture.detectChanges();
     expect(api.linkTrustPayment).toHaveBeenCalledWith('trust','invoice','receipt','payment');
     expect(fixture.nativeElement.textContent).toContain('Linked Xero invoice payment');
+    expect(fixture.nativeElement.textContent).toContain('Bank reconciliation status unknown');
+    fixture.componentInstance.receipts[0].linkedPaymentReconciled = false;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Find & Match');
+    fixture.componentInstance.receipts[0].linkedPaymentReconciled = true;
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Bank reconciliation confirmed');
     expect(fixture.nativeElement.textContent).toContain('Above invoice balance AUD 0.20');
   });
   it('records the excess link on confirmation and flags a missing imported credit', () => {
@@ -39,6 +46,26 @@ describe('TRUST receipt form', () => {
     expect(api.linkTrustOverpayment).toHaveBeenCalledWith('trust','invoice','r','credit');
     expect(fixture.nativeElement.textContent).toContain('Linked Xero overpayment');
     expect(fixture.nativeElement.textContent).toContain('no longer matches');
+  });
+
+  it('previews a partial receipt and preserves its original expected balance after a later Xero update', () => {
+    const receipt = {id:'r', amount:'3000.00', invoiceDue:'3500.0000'};
+    TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,
+      useValue:{trustReceipts:() => of([receipt])}}]});
+    const fixture = TestBed.createComponent(TrustReceiptForm);
+    fixture.componentRef.setInput('connection','trust');
+    fixture.componentRef.setInput('invoice',{xeroInvoiceId:'inv', amountDue:250, status:'AUTHORISED'});
+    fixture.detectChanges();
+    fixture.componentInstance.amount = '200.01';
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('after this receipt at verification AUD 500.00');
+    expect(fixture.nativeElement.textContent).toContain('after this receipt AUD 49.99');
+    const component = fixture.componentInstance;
+    expect(component.balanceAfterReceipt('1', '1.0050')).toBe(0.01);
+    expect(component.balanceAfterReceipt('250.00', 250)).toBe(0);
+    for (const invalid of ['', '0.00', '1.234', '-1']) {
+      expect(component.balanceAfterReceipt(invalid, 250)).toBeNull();
+    }
   });
 
   it('keeps the full receipt for a partly excess payment and permits a blank bank reference', async () => {
