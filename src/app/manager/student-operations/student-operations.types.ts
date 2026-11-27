@@ -638,3 +638,13 @@ export interface TrustReceiptVerification {
   linkedPaymentReconciled?: boolean | null;
   linkedAmount?: string | null;
 }
+
+export interface TrustResidualRow {
+  id:string;reservation:number;revision:number;bankId:string;date:string;days:number;amount:string;
+  studentId:string|null;student:string|null;reference:string|null;
+}
+export interface TrustResidualDetail {
+  reservation:number;revision:number;amount:string;
+  choices:{id:string;name:string;reference:string}[];
+  history:{revision:number;studentId:string|null;student:string|null;reason:string;reviewer:string;recordedAt:string}[];
+}

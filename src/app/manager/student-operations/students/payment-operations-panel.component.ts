@@ -1,3 +1,4 @@
+import { TrustResidualsPanel } from './trust-residuals.component';
 import { TrustMatchOutcomesPanel } from './trust-match-outcomes.component';
 import { TrustStagedDeposits } from './trust-staged-deposits.component';
 import { Component, DestroyRef, Input, OnChanges, SimpleChanges, inject, output, signal } from '@angular/core';
@@ -48,7 +49,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
 
 @Component({
   selector: 'app-payment-operations-panel',
-  imports: [TrustMatchOutcomesPanel, TrustStagedDeposits, DatePipe, DecimalPipe, FormsModule, ManagerSelectComponent, ManagerListLoaderComponent, PageJumpComponent],
+  imports: [TrustResidualsPanel, TrustMatchOutcomesPanel, TrustStagedDeposits, DatePipe, DecimalPipe, FormsModule, ManagerSelectComponent, ManagerListLoaderComponent, PageJumpComponent],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section class="xero-candidates">
@@ -107,6 +108,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
         </div>
       </header>
       @if (connection.organisationRole === 'trust') {
+        <app-trust-residuals [connection]="connection.connectionId" [revision]="receiptRevision + outcomeRevision" />
         <app-trust-match-outcomes [connection]="connection.connectionId" [revision]="receiptRevision + outcomeRevision" />
         <app-trust-staged-deposits (outcomesChanged)="outcomeRevision=outcomeRevision+1" [connection]="connection.connectionId" [revision]="receiptRevision" (review)="reviewSuggested.emit($event)" />
       }

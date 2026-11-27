@@ -1,4 +1,4 @@
-import type { TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
+import type { TrustResidualRow, TrustResidualDetail, TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { finalize, of, shareReplay, tap } from 'rxjs';
@@ -464,6 +464,21 @@ export class StudentOperationsService {
     const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/'+encodeURIComponent(deposit)+'/decisions';
     return this.http.get<{entries:TrustMatchReview[];next:number|null}>(url,{headers:this.headers(),
       params:before?new HttpParams().set('before',before):undefined});
+  }
+
+  trustResiduals(connection:string,params:{q:string;status:string;limit:number;page:number;sort:string;direction:string;studentId?:string}) {
+    const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/residuals';
+    return this.http.get<{count:number;total:string;rows:TrustResidualRow[]}>(url,{headers:this.headers(),params});
+  }
+
+  trustResidual(connection:string,deposit:string) {
+    const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/'+encodeURIComponent(deposit)+'/residual';
+    return this.http.get<TrustResidualDetail>(url,{headers:this.headers()});
+  }
+
+  reviewTrustResidual(connection:string,deposit:string,body:{reservation:number;revision:number;studentId:string|null;reason:string;requestId:string}) {
+    const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/'+encodeURIComponent(deposit)+'/residual';
+    return this.http.post<{revision:number}>(url,body,{headers:this.headers()});
   }
 
   trustSplitLines(connection:string,deposit:string,invoice:string) {

@@ -198,6 +198,7 @@ export class TrustInvoiceSuggestionPanel implements OnChanges {
           this.changing=false; this.reservationReason=''; this.reservationRetry=undefined;
           this.clearPreview(); this.split=[]; this.selectedForSplit.clear();
           this.feedback=release?'Split reservation released.':'Split reserved in Sophia.';
+          this.decisionSaved.emit();
           this.load(this.page);
         },
         error:err=>{
