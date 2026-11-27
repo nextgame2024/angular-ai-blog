@@ -2,7 +2,7 @@ import { Component, DestroyRef, Input, OnChanges, SimpleChanges, inject } from '
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subscription } from 'rxjs';
+import { Observable,Subscription } from 'rxjs';
 import { StudentOperationsService } from '../student-operations.service';
 import type { TrustReceiptProposal, TrustProposalAction, TrustReceiptVerification } from '../student-operations.types';
 
@@ -25,10 +25,16 @@ import type { TrustReceiptProposal, TrustProposalAction, TrustReceiptVerificatio
         }
         @if (d.releaseCheck) { <p>Release check · {{d.releaseCheck}}</p> }
         @else if (d.state==='approved') { <p>Local release checks passed. Posting to Xero is disabled.</p> }
+        @if (d.dispatch; as entry) {
+          <p>Dispatch {{entry.id}} · {{entry.cancelledAt ? 'Cancelled' : entry.expired ? 'Expired' : 'Recorded locally'}} · {{entry.queuedAt | date:'medium'}} · {{entry.actor}} · {{entry.reason}}</p>
+          @if (entry.cancelledAt) { <p>{{entry.cancelledBy}} · {{entry.cancelReason}}</p> }
+        }
         @if (d.blocked) { <p>{{d.blocked}}</p> }
         @if (canPrepare || canApprove || canWithdraw) {
           <p>Review records the decision in Sophia. Posting to Xero is a separate step.</p>
           <label>Reason for decision<textarea maxlength="500" [disabled]="saving" [(ngModel)]="reason" [ngModelOptions]="{standalone:true}"></textarea></label>
+          @if (canQueue) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('queue')">Queue payment locally</button> }
+          @if (d.dispatch && !d.dispatch.cancelledAt) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('cancel')">Cancel queued payment</button> }
           @if (canPrepare) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('prepare')">Prepare payment proposal</button> }
           @if (canApprove) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('approve')">Approve proposal in Sophia</button> }
           @if (canWithdraw) { <button class="btn small" type="button" [disabled]="saving || !reason.trim()" (click)="record('withdraw')">Withdraw proposal</button> }
@@ -57,7 +63,7 @@ export class TrustReceiptProposalPanel implements OnChanges {
   readonly actions={prepare:'Prepared',approve:'Approved',withdraw:'Withdrawn'};
   open=false;loading=false;saving=false;reason='';message='';
   detail?:TrustReceiptProposal;
-  canPrepare=false;canApprove=false;canWithdraw=false;
+  canQueue=false;canPrepare=false;canApprove=false;canWithdraw=false;
   private read?:Subscription;private write?:Subscription;
   private retry?:{key:string;id:string};
   private readonly api=inject(StudentOperationsService);
@@ -74,6 +80,7 @@ export class TrustReceiptProposalPanel implements OnChanges {
     this.read=this.api.trustReceiptProposal(this.connection,this.invoice,this.receipt.id).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next:d=>{
         this.detail=d;this.loading=false;
+        this.canQueue=d.state==='approved' && d.releaseCheck===null && d.dispatch?.revision!==d.revision;
         this.canPrepare=!d.blocked && !['prepared','approved'].includes(d.state);
         this.canApprove=!d.blocked && d.state==='prepared';
         this.canWithdraw=!!d.revision && d.state!=='withdrawn';
@@ -81,14 +88,18 @@ export class TrustReceiptProposalPanel implements OnChanges {
       error:()=>{this.loading=false;this.message='Could not load the proposal. Refresh to retry.';},
     });
   }
-  record(action:TrustProposalAction) {
+  record(action:TrustProposalAction|'queue'|'cancel') {
     const d=this.detail,reason=this.reason.trim();
-    if (!d || !reason || this.saving || !({prepare:this.canPrepare,approve:this.canApprove,withdraw:this.canWithdraw}[action])) return;
+    if (!d || !reason || this.saving || !({prepare:this.canPrepare,approve:this.canApprove,withdraw:this.canWithdraw,queue:this.canQueue,cancel:!!d.dispatch && !d.dispatch.cancelledAt}[action])) return;
     const token=action==='withdraw'?d.history[0].token:d.token;
     const body={action,reason,revision:d.revision,token},key=JSON.stringify(body);
     if (this.retry?.key!==key) this.retry={key,id:crypto.randomUUID()};
     this.saving=true;
-    this.write=this.api.changeTrustProposal(this.connection,this.invoice,this.receipt.id,{...body,requestId:this.retry.id})
+    const scope=[this.connection,this.invoice,this.receipt.id] as const;
+    const request:Observable<unknown>=action==='queue' ? this.api.enqueueTrustPayment(...scope,{reason,revision:d.revision,token,requestId:this.retry.id}) :
+      action==='cancel' ? this.api.cancelTrustDispatch(...scope,{reason,dispatchId:d.dispatch!.id}) :
+      this.api.changeTrustProposal(...scope,{...body,action,requestId:this.retry.id});
+    this.write=request
       .pipe(takeUntilDestroyed(this.destroy)).subscribe({
         next:()=>{this.saving=false;this.retry=undefined;this.message='Decision recorded in Sophia.';this.load();},
         error:err=>{

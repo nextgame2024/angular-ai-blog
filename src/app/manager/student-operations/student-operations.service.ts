@@ -1,4 +1,4 @@
-import type { TrustAccountMapping, TrustProposalAction, TrustReceiptProposal, TrustResidualRow, TrustResidualDetail, TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
+import type { TrustDispatchRow, TrustAccountMapping, TrustProposalAction, TrustReceiptProposal, TrustResidualRow, TrustResidualDetail, TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { finalize, of, shareReplay, tap } from 'rxjs';
@@ -529,6 +529,21 @@ export class StudentOperationsService {
 
   changeTrustReceiptAccount(connection:string,body:{accountId:string|null;receiptLabel:string|null;reason:string;requestId:string;revision:number;catalogueRevision:number}) {
     return this.http.post<{revision:number}>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/receipt-account',body,{headers:this.headers()});
+  }
+
+  trustDispatches(connection:string,params:{q:string;status:string;page:number;limit:number;direction:string}) {
+    return this.http.get<{count:number;rows:TrustDispatchRow[]}>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/dispatches',
+      {headers:this.headers(),params});
+  }
+
+  enqueueTrustPayment(connection:string,invoice:string,receipt:string,body:{reason:string;requestId:string;revision:number;token:string}) {
+    const url=this.trustReceiptUrl(connection,invoice)+'/'+encodeURIComponent(receipt)+'/dispatch';
+    return this.http.post<{id:string}>(url,body,{headers:this.headers()});
+  }
+
+  cancelTrustDispatch(connection:string,invoice:string,receipt:string,body:{reason:string;dispatchId:string}) {
+    const url=this.trustReceiptUrl(connection,invoice)+'/'+encodeURIComponent(receipt)+'/dispatch/cancel';
+    return this.http.post<{id:string}>(url,body,{headers:this.headers()});
   }
 
   trustReceiptProposal(connection:string,invoice:string,receipt:string) {

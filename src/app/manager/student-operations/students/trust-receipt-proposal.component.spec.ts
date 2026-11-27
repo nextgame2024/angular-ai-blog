@@ -11,14 +11,16 @@ describe('Verified TRUST receipt proposals',()=>{
   function setup() {
     const read=jasmine.createSpy().and.returnValues(of(initial),of(prepared),of({...prepared,state:'approved'}));
     const write=jasmine.createSpy().and.returnValues(throwError(()=>({status:503})),of({revision:1}),of({revision:2}));
+    const enqueue=jasmine.createSpy().and.returnValues(throwError(()=>({status:503})),of({id:'payment-key'}));
+    const cancel=jasmine.createSpy().and.returnValue(of({id:'payment-key'}));
     TestBed.configureTestingModule({imports:[TrustReceiptProposalPanel],providers:[{provide:StudentOperationsService,
-      useValue:{trustReceiptProposal:read,changeTrustProposal:write}}]});
+      useValue:{enqueueTrustPayment:enqueue,cancelTrustDispatch:cancel,trustReceiptProposal:read,changeTrustProposal:write}}]});
     const fixture=TestBed.createComponent(TrustReceiptProposalPanel);
     fixture.componentRef.setInput('connection','trust');fixture.componentRef.setInput('invoice','inv');fixture.componentRef.setInput('receipt',{id:'receipt'});
     fixture.detectChanges();
     const click=(label:string)=>{Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'))
       .find(b=>b.textContent?.trim()===label)!.click();fixture.detectChanges();};
-    return {read,write,fixture,click,panel:fixture.componentInstance};
+    return {read,write,enqueue,cancel,fixture,click,panel:fixture.componentInstance};
   }
   it('requires an explicit review, replays an uncertain save and binds approval to the reviewed revision',()=>{
     const {read,write,fixture,click,panel}=setup();
@@ -31,6 +33,18 @@ describe('Verified TRUST receipt proposals',()=>{
     expect(write.calls.mostRecent().args[3]).toEqual(jasmine.objectContaining({revision:1,action:'approve',token:'one'}));
     expect(fixture.nativeElement.textContent).toContain('Approved in Sophia');
   });
+  it('queues once on retry and cancels by durable dispatch ID',()=>{
+    const {read,enqueue,cancel,fixture,click,panel}=setup();
+    const approved={...prepared,state:'approved',releaseCheck:null,revision:2};
+    read.and.returnValues(of(approved),of({...approved,dispatch:{id:'payment-key',revision:2,actor:'Other',reason:'Release'}}),
+      of({...approved,dispatch:{id:'payment-key',revision:2,cancelledAt:'2026-11-28T00:00:00Z'}}));
+    click('Payment proposal');click('Queue payment locally');expect(enqueue).not.toHaveBeenCalled();
+    panel.reason='Release';fixture.detectChanges();click('Queue payment locally');click('Queue payment locally');
+    expect(enqueue.calls.argsFor(0)).toEqual(enqueue.calls.argsFor(1));expect(panel.canQueue).toBeFalse();
+    panel.reason='Correction';fixture.detectChanges();click('Cancel queued payment');
+    expect(cancel.calls.first().args[3]).toEqual({dispatchId:'payment-key',reason:'Correction'});expect(panel.canQueue).toBeFalse();
+  });
+
   it('keeps review controls visible on narrow and desktop screens in both themes',()=>{
     const {fixture,click}=setup();click('Payment proposal');
     const frame=document.createElement('iframe');document.body.appendChild(frame);

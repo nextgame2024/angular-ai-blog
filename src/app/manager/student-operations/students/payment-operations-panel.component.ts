@@ -1,3 +1,4 @@
+import { TrustDispatchRegister } from './trust-dispatch-register.component';
 import { TrustReceiptAccountPanel } from './trust-receipt-account.component';
 import { TrustResidualsPanel } from './trust-residuals.component';
 import { TrustMatchOutcomesPanel } from './trust-match-outcomes.component';
@@ -50,7 +51,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
 
 @Component({
   selector: 'app-payment-operations-panel',
-  imports: [TrustReceiptAccountPanel,TrustResidualsPanel, TrustMatchOutcomesPanel, TrustStagedDeposits, DatePipe, DecimalPipe, FormsModule, ManagerSelectComponent, ManagerListLoaderComponent, PageJumpComponent],
+  imports: [TrustDispatchRegister,TrustReceiptAccountPanel,TrustResidualsPanel, TrustMatchOutcomesPanel, TrustStagedDeposits, DatePipe, DecimalPipe, FormsModule, ManagerSelectComponent, ManagerListLoaderComponent, PageJumpComponent],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section class="xero-candidates">
@@ -109,6 +110,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
         </div>
       </header>
       @if (connection.organisationRole === 'trust') {
+        <app-trust-dispatch-register [connection]="connection.connectionId" (review)="reviewDispatch.emit($event)" />
         <app-trust-receipt-account [connection]="connection.connectionId" />
         <app-trust-residuals [connection]="connection.connectionId" [revision]="receiptRevision + outcomeRevision" />
         <app-trust-match-outcomes [connection]="connection.connectionId" [revision]="receiptRevision + outcomeRevision" />
@@ -266,6 +268,7 @@ export class PaymentOperationsPanel implements OnChanges {
   ];
   queue: PaymentQueue = 'outstanding_invoices';
   outcomeRevision=0;
+  readonly reviewDispatch=output<string>();
   readonly reviewSuggested=output<{invoice:string;deposit:StagedTrustDeposit}>();
   readonly review = output<XeroStudentInvoice>();
   readonly result = signal<XeroStudentInvoiceResult | null>(null);

@@ -122,6 +122,7 @@
       @for (connection of xeroConnections; track connection.connectionId) {
         <app-payment-operations-panel [connection]="connection" [search]="operationsQuery()" [receiptRevision]="receiptRevisions.get(connection.connectionId) ?? 0"
           [importTimestamp]="lastImportByConnection.get(connection.connectionId)"
+          (reviewDispatch)="reviewOperationsInvoice(connection.connectionId, {xeroInvoiceId:$event})"
           (reviewSuggested)="reviewOperationsInvoice(connection.connectionId, {xeroInvoiceId:$event.invoice}, $event.deposit)"
           (review)="reviewOperationsInvoice(connection.connectionId, $event)" />
       }
