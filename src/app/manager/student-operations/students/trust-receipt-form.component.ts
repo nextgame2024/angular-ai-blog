@@ -21,6 +21,23 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
           <small>Recorded {{ receipt.verifiedAt | date:'medium' }} · Invoice balance at verification AUD {{ receipt.invoiceDue | number:'1.2-2' }}</small>
           @if (receipt.hasEvidence) { <button class="invoice-link" type="button" (click)="download(receipt.id)">Download screenshot</button> }
         </p>
+        @if (receipt.linkedPaymentId) {
+          <p>Linked Xero invoice payment · AUD {{ receipt.linkedAmount }} · {{ receipt.linkedPaymentId }}</p>
+          @if (!receipt.candidateIds?.includes(receipt.linkedPaymentId)) {
+            <p role="status">Review required. The linked payment no longer matches the imported invoice details.</p>
+          }
+        } @else if (receipt.candidateIds; as candidates) {
+          @if (candidates.length) {
+            <details><summary>Review matching invoice payments ({{ candidates.length }})</summary>
+              <p>Same TRUST invoice, payment date and invoice payment amount. Check the payment ID against your evidence before linking.</p>
+              @for (payment of candidates; track payment) {
+                <button class="btn" type="button" [disabled]="saving || !ready" (click)="link(receipt.id, payment)">Confirm link · {{ payment }}</button>
+              }
+            </details>
+          } @else {
+            <small>Awaiting a matching imported Xero invoice payment.</small>
+          }
+        }
       }
       @if (loadFailed) { <button class="btn" type="button" (click)="load()">Retry loading bank verifications</button> }
       @if (ready && invoice.status === 'AUTHORISED' && invoice.amountDue > 0) {
@@ -104,6 +121,16 @@ export class TrustReceiptForm implements OnInit {
         this.message = error.status === 409 ? 'Check existing verifications, the date and invoice status before retrying.' : 'Could not confirm the save. Retry with the same receipt details.';
       },
     });
+  }
+
+  link(receipt: string, payment: string) {
+    if (this.saving || !this.ready) return;
+    this.saving = true;
+    this.api.linkTrustPayment(this.connection,this.invoice.xeroInvoiceId,receipt,payment)
+      .pipe(takeUntilDestroyed(this.destroy)).subscribe({
+        next: () => { this.saving = false; this.message = 'Xero invoice payment linked in Sophia.'; this.load(); },
+        error: () => { this.saving = false; this.message = 'Could not confirm the link. Review the refreshed payment details.'; this.load(); },
+      });
   }
 
   download(id: string) {

@@ -453,6 +453,11 @@ export class StudentOperationsService {
     return this.http.post<{id: string}>(this.trustReceiptUrl(connection, invoice), receipt, {headers: this.writeHeaders(key)});
   }
 
+  linkTrustPayment(connection: string, invoice: string, receipt: string, payment: string) {
+    const url = this.trustReceiptUrl(connection, invoice) + '/' + encodeURIComponent(receipt) + '/link/' + encodeURIComponent(payment);
+    return this.http.post<{paymentId: string}>(url, {}, {headers: this.headers()});
+  }
+
   trustReceiptEvidence(connection: string, invoice: string, id: string) {
     return this.http.get(this.trustReceiptUrl(connection, invoice) + '/' + encodeURIComponent(id) + '/evidence',
       {headers: this.headers(), responseType: 'blob'});

@@ -506,4 +506,7 @@ export interface TrustReceiptVerification {
   invoiceDue: string;
   verifiedAt: string;
   hasEvidence: boolean;
+  candidateIds?: string[];
+  linkedPaymentId?: string | null;
+  linkedAmount?: string | null;
 }

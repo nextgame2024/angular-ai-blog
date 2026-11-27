@@ -4,6 +4,25 @@ import { StudentOperationsService } from '../student-operations.service';
 import { TrustReceiptForm } from './trust-receipt-form.component';
 
 describe('TRUST receipt form', () => {
+  it('requires a manager click before linking and retains the excess after linking', () => {
+    const receipt = {id:'receipt', amount:'2742.00', invoiceDue:'2741.80', receivedOn:'2026-11-13',
+      account:'Trust', reference:'', verifiedAt:'2026-11-13', candidateIds:['payment']};
+    const api = {trustReceipts:jasmine.createSpy().and.returnValues(of([receipt]),
+      of([{...receipt,linkedPaymentId:'payment',linkedAmount:'2741.80'}])),
+      linkTrustPayment:jasmine.createSpy().and.returnValue(of({paymentId:'payment'}))};
+    TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,useValue:api}]});
+    const fixture=TestBed.createComponent(TrustReceiptForm);
+    fixture.componentRef.setInput('connection','trust');
+    fixture.componentRef.setInput('invoice',{xeroInvoiceId:'invoice',status:'PAID',amountDue:0});
+    fixture.detectChanges();
+    expect(api.linkTrustPayment).not.toHaveBeenCalled();
+    const button=fixture.nativeElement.querySelector('details button') as HTMLButtonElement;
+    button.click();
+    fixture.detectChanges();
+    expect(api.linkTrustPayment).toHaveBeenCalledWith('trust','invoice','receipt','payment');
+    expect(fixture.nativeElement.textContent).toContain('Linked Xero invoice payment');
+    expect(fixture.nativeElement.textContent).toContain('Above invoice balance AUD 0.20');
+  });
   it('keeps the full receipt for a partly excess payment and permits a blank bank reference', async () => {
     const api = {trustReceipts: jasmine.createSpy().and.returnValue(of([])),
       verifyTrustReceipt: jasmine.createSpy().and.returnValue(of({id:'receipt'}))};
