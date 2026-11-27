@@ -1,6 +1,7 @@
+import { TrustClaimHistory } from './trust-claim-history.component';
 import { XeroReviewUrlPipe } from './xero-review-url.pipe';
 import { forkJoin, map, type Observable } from 'rxjs';
-import { Component, DestroyRef, Input, OnInit, inject, output } from '@angular/core';
+import { Component, DestroyRef, Input, OnChanges, OnInit, SimpleChanges, inject, output } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -10,7 +11,7 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
 @Component({
   selector: 'app-trust-receipt-form',
   host: {'(document:visibilitychange)': 'onVisibilityChange()'},
-  imports: [FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe],
+  imports: [FormsModule, DatePipe, DecimalPipe, XeroReviewUrlPipe, TrustClaimHistory],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section aria-label="TRUST bank verification">
@@ -54,6 +55,15 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
           }
           @if (!receipt.candidateIds?.includes(receipt.linkedPaymentId)) {
             <p role="status">Review required. The linked payment no longer matches the imported invoice details.</p>
+            @if (importedPayments.get(receipt.linkedPaymentId); as payment) {
+              <p>Imported payment · {{ invoice.currencyCode || 'Currency unknown' }} {{ payment.amount | number:'1.2-4' }}
+                · {{ payment.date || 'Date unavailable' }}</p>
+              <p>At linking · AUD {{ receipt.linkedAmount | number:'1.2-2' }} · {{ receipt.receivedOn }}</p>
+            } @else if (invoice.settlement) {
+              <p>The imported invoice has no payment with this ID.</p>
+            } @else {
+              <p>Imported settlement details are unavailable for this invoice.</p>
+            }
           } @else if (receipt.linkedPaymentReconciled === true) {
             <p>Bank reconciliation confirmed in the latest imported Xero payment.</p>
           } @else if (receipt.reconciliationCheckedAt) {
@@ -81,6 +91,8 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
               <button class="btn" type="button" [disabled]="saving || !ready" (click)="attest(receipt.id, receipt.linkedPaymentId)">I saw this payment reconciled in Xero</button>
             </details>
           }
+          <app-trust-claim-history [connection]="connection" [invoiceId]="invoice.xeroInvoiceId"
+            [receiptId]="receipt.id" [paymentId]="receipt.linkedPaymentId" [claimId]="receipt.reviewClaimId" />
         } @else if (receipt.candidateIds; as candidates) {
           @if (candidates.length) {
             <details><summary>Review matching invoice payments ({{ candidates.length }})</summary>
@@ -129,7 +141,7 @@ import type { TrustReceiptVerification, XeroStudentInvoiceDetail } from '../stud
     </section>
   `,
 })
-export class TrustReceiptForm implements OnInit {
+export class TrustReceiptForm implements OnInit, OnChanges {
   @Input() shortCode: string | null = null;
   @Input({required:true}) connection!: string;
   @Input({required:true}) invoice!: XeroStudentInvoiceDetail;
@@ -152,6 +164,17 @@ export class TrustReceiptForm implements OnInit {
   file?: File;
   fileError = false;
   private key = crypto.randomUUID();
+
+  importedPayments = new Map<string, NonNullable<XeroStudentInvoiceDetail['settlement']>['entries'][number]>();
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['invoice']) {
+      this.importedPayments.clear();
+      for (const entry of this.invoice.settlement?.entries ?? []) {
+        if (entry.kind === 'payment') this.importedPayments.set(entry.id, entry);
+      }
+    }
+  }
 
   ngOnInit() { this.load(); }
 

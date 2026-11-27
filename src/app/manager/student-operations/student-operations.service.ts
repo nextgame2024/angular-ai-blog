@@ -1,4 +1,4 @@
-import type { TrustReceiptVerification } from './student-operations.types';
+import type { TrustClaimHistoryEntry, TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { finalize, of, shareReplay, tap } from 'rxjs';
@@ -422,6 +422,8 @@ export class StudentOperationsService {
 
   private invoiceParams(input: XeroStudentInvoiceQuery): HttpParams {
     let params = new HttpParams().set('page', String(input.page)).set('limit', String(input.limit));
+    if (input.reconciliationStatus) params = params.set('reconciliationStatus', input.reconciliationStatus);
+    if (input.followUpOwner) params = params.set('followUpOwner', input.followUpOwner);
     if (input.queue) params = params.set('queue', input.queue);
     if (input.supplierId) params = params.set('supplierId', input.supplierId);
     if (input.q) params = params.set('q', input.q);
@@ -451,6 +453,12 @@ export class StudentOperationsService {
 
   verifyTrustReceipt(connection: string, invoice: string, receipt: FormData, key: string) {
     return this.http.post<{id: string}>(this.trustReceiptUrl(connection, invoice), receipt, {headers: this.writeHeaders(key)});
+  }
+
+  trustClaimHistory(connection: string, invoice: string, receipt: string, payment: string, before?: string) {
+    const url = this.trustReceiptUrl(connection,invoice) + '/' + encodeURIComponent(receipt) + '/payments/' + encodeURIComponent(payment) + '/claims';
+    return this.http.get<{entries: TrustClaimHistoryEntry[]; nextCursor: string | null}>(url,
+      {headers:this.headers(), params:before ? new HttpParams().set('before',before) : new HttpParams()});
   }
 
   changeTrustReviewClaim(connection: string, invoice: string, receipt: string, payment: string, releaseClaim?: string) {

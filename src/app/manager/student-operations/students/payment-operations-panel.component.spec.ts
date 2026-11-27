@@ -55,6 +55,34 @@ describe('PaymentOperationsPanel', () => {
     expect(fixture.nativeElement.querySelector('[data-label="Manager checks"]').textContent).toContain('1 of 2');
   });
 
+  it('filters reconciliation by the selected owner from the first page', async () => {
+    const invoices = jasmine.createSpy().and.returnValue(of({invoices:[],page:1,total:0,totalPages:0}));
+    TestBed.configureTestingModule({imports:[PaymentOperationsPanel], providers:[{provide:StudentOperationsService,
+      useValue:{xeroStudentInvoices:invoices,xeroStudentSyncStatus:()=>of({lastSuccessfulSyncAt:null})}}]});
+    const fixture=TestBed.createComponent(PaymentOperationsPanel);
+    fixture.componentRef.setInput('connection',{connectionId:'trust',organisationRole:'trust'});
+    fixture.detectChanges();
+    fixture.nativeElement.querySelectorAll('header button')[2].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.nativeElement.querySelector('[aria-label="Follow-up owner"]').click();
+    fixture.detectChanges();
+    const options=Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('.select-option'));
+    options.find(b=>b.textContent?.trim()==='My follow-ups')!.click();
+    fixture.detectChanges();
+    expect(invoices.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({queue:'reconciliation_review',followUpOwner:'mine',page:1}));
+    expect(fixture.nativeElement.textContent).toContain('No follow-ups match this owner filter.');
+    fixture.nativeElement.querySelector('input[type=checkbox]').click();
+    fixture.detectChanges();
+    expect(invoices.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({
+      queue:'reconciliation_review', followUpOwner:'mine', reconciliationStatus:'link_mismatch', page:1
+    }));
+    expect(fixture.nativeElement.textContent).toContain('No mismatched links meet these filters.');
+    fixture.componentInstance.toggleQueue('excess_receipts');
+    expect(invoices.calls.mostRecent().args[1].followUpOwner).toBeUndefined();
+    expect(invoices.calls.mostRecent().args[1].reconciliationStatus).toBeUndefined();
+  });
+
   it('discards a late response from the previous organisation', () => {
     const first = new Subject<XeroStudentInvoiceResult>();
     const second = new Subject<XeroStudentInvoiceResult>();

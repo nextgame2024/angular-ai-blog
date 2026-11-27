@@ -428,6 +428,8 @@ export interface PaymentsRegisterBootstrap {
 }
 
 export interface XeroStudentInvoiceQuery {
+  reconciliationStatus?: 'link_mismatch';
+  followUpOwner?: 'mine' | 'unassigned';
   queue?: 'outstanding_invoices' | 'receipts_awaiting_link' | 'excess_receipts' | 'reconciliation_review';
   supplierId?: string;
   page: number;
@@ -497,6 +499,13 @@ export interface XeroConnectionTest {
     status: string | null;
     bankAccountType: string | null;
   }>;
+}
+
+export interface TrustClaimHistoryEntry {
+  id: string;
+  claimedAt: string;
+  releasedAt: string | null;
+  ownerName: string | null;
 }
 
 export interface TrustReceiptVerification {

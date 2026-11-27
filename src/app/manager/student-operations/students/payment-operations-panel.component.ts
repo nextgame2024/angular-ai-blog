@@ -1,6 +1,8 @@
 import { Component, DestroyRef, Input, OnChanges, SimpleChanges, inject, output, signal } from '@angular/core';
 import { DatePipe, DecimalPipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { FormsModule } from '@angular/forms';
+import { ManagerSelectComponent } from '../../components/shared/manager-select/manager-select.component';
 import { Subscription } from 'rxjs';
 import { StudentOperationsService } from '../student-operations.service';
 import { XeroConnectionSummary, XeroStudentInvoice, XeroStudentInvoiceResult, XeroStudentInvoiceQuery } from '../student-operations.types';
@@ -29,7 +31,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
 
 @Component({
   selector: 'app-payment-operations-panel',
-  imports: [DatePipe, DecimalPipe, ManagerListLoaderComponent],
+  imports: [DatePipe, DecimalPipe, FormsModule, ManagerSelectComponent, ManagerListLoaderComponent],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section class="xero-candidates">
@@ -47,6 +49,12 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
             <button type="button" class="btn small" (click)="toggleQueue('reconciliation_review')">
               {{ queue === 'reconciliation_review' ? 'Show outstanding invoices' : 'Review bank reconciliation' }}
             </button>
+          }
+          @if (queue === 'reconciliation_review') {
+            <app-manager-select ariaLabel="Follow-up owner" [options]="ownerOptions" [ngModel]="owner"
+              (ngModelChange)="setOwner($event)" />
+            <label><input type="checkbox" [(ngModel)]="mismatchesOnly" (change)="load(1)" />
+              Only links that no longer match</label>
           }
           <small>Last successful sync: {{ (lastSync() | date:'medium') || 'Unknown' }}</small>
         </div>
@@ -88,7 +96,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
             <span>Page {{ data.page }} of {{ data.totalPages }} · {{ data.total }} documents</span>
             <button class="btn" type="button" [disabled]="data.page >= data.totalPages" (click)="load(data.page + 1)">Next</button>
           </footer>
-        } @else { <p class="candidate-empty">{{ search ? 'No invoices match this search.' : queueText[queue].empty }}</p> }
+        } @else { <p class="candidate-empty">{{ search ? 'No invoices match this search.' : queue === 'reconciliation_review' && mismatchesOnly ? 'No mismatched links meet these filters.' : queue === 'reconciliation_review' && owner !== 'all' ? 'No follow-ups match this owner filter.' : queueText[queue].empty }}</p> }
       }
     </section>
   `,
@@ -98,6 +106,11 @@ export class PaymentOperationsPanel implements OnChanges {
   @Input() search = '';
   @Input() receiptRevision = 0;
   readonly queueText = queueText;
+  mismatchesOnly = false;
+  owner: 'all' | NonNullable<XeroStudentInvoiceQuery['followUpOwner']> = 'all';
+  readonly ownerOptions = [
+    {value:'all',label:'All follow-ups'}, {value:'mine',label:'My follow-ups'}, {value:'unassigned',label:'Unassigned'},
+  ];
   queue: PaymentQueue = 'outstanding_invoices';
   readonly review = output<XeroStudentInvoice>();
   readonly result = signal<XeroStudentInvoiceResult | null>(null);
@@ -113,6 +126,8 @@ export class PaymentOperationsPanel implements OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['connection']) {
       this.queue = 'outstanding_invoices';
+      this.owner = 'all';
+      this.mismatchesOnly = false;
       this.loadFreshness();
     }
     if (Object.keys(changes).length === 1 && changes['receiptRevision']) {
@@ -124,6 +139,11 @@ export class PaymentOperationsPanel implements OnChanges {
 
   toggleQueue(queue: PaymentQueue): void {
     this.queue = this.queue === queue ? 'outstanding_invoices' : queue;
+    this.load(1);
+  }
+
+  setOwner(owner: PaymentOperationsPanel['owner']): void {
+    this.owner = owner;
     this.load(1);
   }
 
@@ -145,6 +165,8 @@ export class PaymentOperationsPanel implements OnChanges {
     this.result.set(null);
     this.request = this.api.xeroStudentInvoices(this.connection.connectionId, {
       page, limit: 25, ...(this.search ? { q: this.search } : {}), queue: this.queue,
+      ...(this.queue === 'reconciliation_review' && this.mismatchesOnly ? {reconciliationStatus: 'link_mismatch' as const} : {}),
+      ...(this.queue === 'reconciliation_review' && this.owner !== 'all' ? {followUpOwner: this.owner} : {}),
       ...(this.queue === 'reconciliation_review' ? {} : {sort: 'dueDate' as const, direction: 'asc' as const}),
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: result => {

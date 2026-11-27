@@ -4,6 +4,32 @@ import { StudentOperationsService } from '../student-operations.service';
 import { TrustReceiptForm } from './trust-receipt-form.component';
 
 describe('TRUST receipt form', () => {
+  it('loads ownership history on demand and retries older claims without losing the current page', () => {
+    const receipt = {id:'receipt',amount:'10',invoiceDue:'10',linkedPaymentId:'payment',linkedPaymentReconciled:true,candidateIds:['payment']};
+    const entry = {id:'first',ownerName:'Fixture Reviewer',claimedAt:'2026-11-20T10:00:00Z',releasedAt:null};
+    const api = {trustReceipts:()=>of([receipt]),trustClaimHistory:jasmine.createSpy().and.returnValues(
+      of({entries:[entry],nextCursor:'first'}),throwError(()=>new Error('offline')),
+      of({entries:[{...entry,id:'older',ownerName:null,releasedAt:entry.claimedAt}],nextCursor:null}))};
+    TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,useValue:api}]});
+    const fixture=TestBed.createComponent(TrustReceiptForm);
+    fixture.componentRef.setInput('connection','trust');
+    fixture.componentRef.setInput('invoice',{xeroInvoiceId:'invoice',status:'PAID',amountDue:0});
+    fixture.detectChanges();
+    const section=fixture.nativeElement.querySelector('app-trust-claim-history');
+    const click = (label:string) => {
+      Array.from<HTMLButtonElement>(section.querySelectorAll('button')).find(b=>b.textContent?.trim()===label)!.click();
+      fixture.detectChanges();
+    };
+    expect(api.trustClaimHistory).not.toHaveBeenCalled();
+    click('Follow-up history');
+    click('Show older claims');
+    expect(section.textContent).toContain('Fixture Reviewer');
+    click('Retry loading history');
+    expect(section.querySelectorAll('li').length).toBe(2);
+    expect(section.textContent).toContain('Staff member unavailable');
+    expect(api.trustClaimHistory.calls.mostRecent().args).toEqual(['trust','invoice','receipt','payment','first']);
+  });
+
   it('refreshes the open invoice on return, preserving the draft and coalescing duplicate requests', () => {
     const receipt = {id:'receipt',amount:'10',invoiceDue:'50',linkedPaymentId:'payment',candidateIds:['payment']};
     const refreshed = new Subject<Array<typeof receipt & {linkedPaymentReconciled: boolean}>>();
@@ -141,6 +167,26 @@ describe('TRUST receipt form', () => {
     expect(fixture.nativeElement.textContent).toContain('Bank reconciliation confirmed');
     expect(fixture.nativeElement.textContent).toContain('Above invoice balance AUD 0.20');
   });
+  it('compares a mismatched payment by ID and refreshes the comparison when the invoice changes', () => {
+    const receipt = {id:'r', receivedOn:'2026-11-13', amount:'2742.00', invoiceDue:'2741.80',
+      linkedPaymentId:'linked', linkedAmount:'2741.80', candidateIds:[]};
+    TestBed.configureTestingModule({imports:[TrustReceiptForm], providers:[{provide:StudentOperationsService,
+      useValue:{trustReceipts:() => of([receipt])}}]});
+    const fixture = TestBed.createComponent(TrustReceiptForm);
+    const invoice = {xeroInvoiceId:'invoice', status:'PAID', amountDue:0, currencyCode:'AUD'};
+    const imported = {id:'linked', kind:'payment', date:'2026-11-14', amount:2740};
+    const show = (entries: (typeof imported)[] | null) => {
+      fixture.componentRef.setInput('invoice',{...invoice,settlement:entries && {entries}});
+      fixture.detectChanges();
+      return fixture.nativeElement.textContent.replace(/\s+/g,' ');
+    };
+    fixture.componentRef.setInput('connection','trust');
+    expect(show([{...imported,id:'another'},imported])).toContain('Imported payment · AUD 2,740.00 · 2026-11-14');
+    expect(fixture.nativeElement.textContent).toContain('At linking · AUD 2,741.80 · 2026-11-13');
+    expect(show([{...imported,kind:'credit_note'}])).toContain('no payment with this ID');
+    expect(show(null)).toContain('Imported settlement details are unavailable');
+  });
+
   it('records the excess link on confirmation and flags a missing imported credit', () => {
     const receipt = {id:'r', amount:'100.20', invoiceDue:'100', possibleOverpaymentIds:['credit']};
     const api = {trustReceipts:jasmine.createSpy().and.returnValues(of([receipt]),
