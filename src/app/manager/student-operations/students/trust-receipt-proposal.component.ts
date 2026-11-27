@@ -20,6 +20,11 @@ import type { TrustReceiptProposal, TrustProposalAction, TrustReceiptVerificatio
         <p>{{d.snapshot.invoiceNumber || d.snapshot.invoice}} · {{d.snapshot.contactName || d.snapshot.contactId || 'Contact unavailable'}}
           · Receipt AUD {{d.snapshot.amount}} · Imported balance {{d.snapshot.currency}} {{d.snapshot.due}}</p>
         <p>{{d.snapshot.organisation}} · {{d.snapshot.account}} · {{d.snapshot.date}} · {{d.snapshot.bankId}} {{d.snapshot.reference}}</p>
+        @if (d.snapshot.mappedAccount; as bank) {
+          <p>Mapped Xero bank · {{bank.name}} · {{bank.id}}</p>
+        }
+        @if (d.releaseCheck) { <p>Release check · {{d.releaseCheck}}</p> }
+        @else if (d.state==='approved') { <p>Local release checks passed. Posting to Xero is disabled.</p> }
         @if (d.blocked) { <p>{{d.blocked}}</p> }
         @if (canPrepare || canApprove || canWithdraw) {
           <p>Review records the decision in Sophia. Posting to Xero is a separate step.</p>
@@ -35,6 +40,7 @@ import type { TrustReceiptProposal, TrustProposalAction, TrustReceiptVerificatio
               <p>{{actions[e.action]}} · {{e.recordedAt | date:'medium'}} · {{e.actor}} · {{e.reason}}</p>
               <p>{{e.snapshot.invoiceNumber || e.snapshot.invoice}} · {{e.snapshot.contactName || e.snapshot.contactId}}
                 · AUD {{e.snapshot.amount}} · {{e.snapshot.organisation}} · {{e.snapshot.account}} · {{e.snapshot.date}} · {{e.snapshot.bankId}}</p>
+              @if (e.snapshot.mappedAccount; as bank) { <p>Approved account mapping {{bank.revision}} · {{bank.name}} · {{bank.id}}</p> }
             }
           </details>
         }

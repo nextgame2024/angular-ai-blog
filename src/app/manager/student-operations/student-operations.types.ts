@@ -649,13 +649,21 @@ export interface TrustResidualDetail {
   history:{revision:number;studentId:string|null;student:string|null;reason:string;reviewer:string;recordedAt:string}[];
 }
 
+export interface TrustAccountMapping {
+  revision:number;catalogueRevision:number;fresh:boolean;active:boolean;importedAt:string|null;
+  accounts:{id:string;name:string}[];
+  history:{revision:number;accountId:string|null;accountName:string|null;receiptLabel:string|null;actor:string;reason:string;recordedAt:string}[];
+}
+
 export interface TrustProposalSnapshot {
+  mappedAccount?:{id:string;name:string;revision:number};
   organisation:string;organisationId:string;
   invoice:string;invoiceNumber:string|null;contactId:string|null;contactName:string|null;receipt:string;connection:string;
   date:string;account:string;amount:string;due:string|null;currency:string|null;bankId:string|null;reference:string;
 }
 export type TrustProposalAction='prepare'|'approve'|'withdraw';
 export interface TrustReceiptProposal {
+  accountIssue:string|null;releaseCheck:string|null;
   state:'new'|'prepared'|'approved'|'withdrawn'|'stale'|'expired';blocked:string|null;
   revision:number;token:string;snapshot:TrustProposalSnapshot;
   history:{revision:number;actor:string;reason:string;action:TrustProposalAction;token:string;snapshot:TrustProposalSnapshot;

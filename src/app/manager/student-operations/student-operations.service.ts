@@ -1,4 +1,4 @@
-import type { TrustProposalAction, TrustReceiptProposal, TrustResidualRow, TrustResidualDetail, TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
+import type { TrustAccountMapping, TrustProposalAction, TrustReceiptProposal, TrustResidualRow, TrustResidualDetail, TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { finalize, of, shareReplay, tap } from 'rxjs';
@@ -521,6 +521,14 @@ export class StudentOperationsService {
 
   private trustReceiptUrl(connection: string, invoice: string): string {
     return this.workspaceBase + '/trust-receipts/' + encodeURIComponent(connection) + '/' + encodeURIComponent(invoice);
+  }
+
+  trustReceiptAccount(connection:string) {
+    return this.http.get<TrustAccountMapping>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/receipt-account',{headers:this.headers()});
+  }
+
+  changeTrustReceiptAccount(connection:string,body:{accountId:string|null;receiptLabel:string|null;reason:string;requestId:string;revision:number;catalogueRevision:number}) {
+    return this.http.post<{revision:number}>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/receipt-account',body,{headers:this.headers()});
   }
 
   trustReceiptProposal(connection:string,invoice:string,receipt:string) {
