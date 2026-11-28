@@ -1,3 +1,4 @@
+import {TrustSubmissionReview} from './trust-submission-review.component';
 import { XeroReviewUrlPipe } from './xero-review-url.pipe';
 import { Component,DestroyRef,Input,OnChanges,SimpleChanges,inject,output } from '@angular/core';
 import { DatePipe } from '@angular/common';
@@ -11,7 +12,7 @@ import type { TrustDispatchRow } from '../student-operations.types';
 import { StudentOperationsService } from '../student-operations.service';
 
 @Component({
-  selector:'app-trust-dispatch-register',imports:[XeroReviewUrlPipe,FormsModule,DatePipe,ManagerSelectComponent,ManagerListLoaderComponent,PageJumpComponent],
+  selector:'app-trust-dispatch-register',imports:[TrustSubmissionReview,XeroReviewUrlPipe,FormsModule,DatePipe,ManagerSelectComponent,ManagerListLoaderComponent,PageJumpComponent],
   styleUrls:['./student-operations-students.page.css'],
   styles:[':host {display:block;min-width:0;overflow-wrap:anywhere} .invoice-table.dispatch-table {min-width:0} input {max-width:100%;box-sizing:border-box}'],
   template:`
@@ -54,6 +55,9 @@ import { StudentOperationsService } from '../student-operations.service';
                       </details>
                     }
                   }
+                  @if (row.submittedAt && row.receipt && (row.status!=='confirmed' || row.reviewRevision)) {
+                    <app-trust-submission-review [connection]="connection" [row]="row" (changed)="load(page)" />
+                  }
                   @if (row.workerCheck; as check) {
                     <div>Invoice check {{check.attempt}} · {{checks[check.status]}} · {{check.at | date:'short'}}</div>
                     @if (check.detail) { <div>{{check.detail}}</div> }
@@ -78,7 +82,7 @@ export class TrustDispatchRegister implements OnChanges {
   @Input({required:true}) connection!:string;
   @Input() shortCode:string|null=null;
   readonly review=output<string>();
-  readonly labels={recorded:'Recorded locally',cancelled:'Cancelled',expired:'Expired',submitted:'Awaiting Xero verification',confirmed:'Confirmed in Xero'};
+  readonly labels={recorded:'Recorded locally',cancelled:'Cancelled',expired:'Expired',submitted:'Awaiting Xero verification',investigating:'Under investigation',review_closed:'Review closed · reservation retained',confirmed:'Confirmed in Xero'};
   readonly checks={matched:'Matched at check time',review:'Review required',retry:'Retry available',checking:'Checking',exhausted:'Attempts exhausted'};
   readonly bankLabels={pending:'Awaiting bank reconciliation',reconciled:'Reconciled in Xero',unknown:'Xero omitted the reconciliation status',
     deleted:'Xero payment deleted',changed:'Payment details differ from approval',missing:'Xero payment not found',unavailable:'Xero verification unavailable'};

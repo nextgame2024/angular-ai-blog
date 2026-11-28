@@ -1,3 +1,4 @@
+import type {SubmissionReview} from './student-operations.types';
 import type { TrustPayerRelationship } from './student-operations.types';
 import type { TrustDispatchRow, TrustAccountMapping, TrustProposalAction, TrustReceiptProposal, TrustResidualRow, TrustResidualDetail, TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
@@ -551,6 +552,20 @@ export class StudentOperationsService {
     return this.http.post<{revision:number}>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/receipt-account',body,{headers:this.headers()});
   }
 
+  private dispatchReviewsUrl(connection:string,dispatch:string) {
+    return this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/dispatches/'+encodeURIComponent(dispatch)+'/reviews';
+  }
+  submissionReviews(connection:string,dispatch:string,before?:number) {
+    const params=before?new HttpParams().set('before',before):new HttpParams();
+    return this.http.get<{entries:SubmissionReview[];next:number|null}>(this.dispatchReviewsUrl(connection,dispatch),{headers:this.headers(),params});
+  }
+  recordSubmissionReview(connection:string,dispatch:string,body:Pick<SubmissionReview,'revision'|'action'|'evidence'> & {requestId:string}) {
+    return this.http.post<{revision:number}>(this.dispatchReviewsUrl(connection,dispatch),body,{headers:this.headers()});
+  }
+  recoverTrustSubmission(connection:string,invoice:string,receipt:string,dispatch:string) {
+    const url=this.trustReceiptUrl(connection,invoice)+'/'+encodeURIComponent(receipt)+'/dispatch/'+encodeURIComponent(dispatch)+'/recover';
+    return this.http.post<{status:string;paymentId?:string}>(url,{},{headers:this.headers()});
+  }
   trustDispatches(connection:string,params:{q:string;status:string;page:number;limit:number;direction:string}) {
     return this.http.get<{count:number;rows:TrustDispatchRow[]}>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/dispatches',
       {headers:this.headers(),params});

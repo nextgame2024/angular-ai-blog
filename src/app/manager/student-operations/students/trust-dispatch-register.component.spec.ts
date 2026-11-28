@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { of,throwError } from 'rxjs';
+import {TrustSubmissionReview} from './trust-submission-review.component';
+import {By} from '@angular/platform-browser';
 import { StudentOperationsService } from '../student-operations.service';
 import { TrustDispatchRegister } from './trust-dispatch-register.component';
 
@@ -7,9 +9,12 @@ describe('TRUST payment dispatch register',()=>{
   function setup() {
     const read=jasmine.createSpy().and.returnValue(of({count:30,rows:[{id:'key',invoice:'inv',invoiceNumber:'INV-1',bankId:'B1',
       queuedAt:'2026-11-28T01:00:00Z',amount:'3000.00',status:'recorded',workerCheck:{status:'matched',attempt:2,at:'2026-11-28T01:00:00Z'},reviewer:'Reviewer'}]}));
-    TestBed.configureTestingModule({imports:[TrustDispatchRegister],providers:[{provide:StudentOperationsService,useValue:{trustDispatches:read}}]});
+    const history=jasmine.createSpy().and.returnValue(of({entries:[],next:null}));
+    const save=jasmine.createSpy().and.returnValue(of({revision:1}));
+    const recover=jasmine.createSpy().and.returnValue(of({status:'awaiting_verification'}));
+    TestBed.configureTestingModule({imports:[TrustDispatchRegister],providers:[{provide:StudentOperationsService,useValue:{trustDispatches:read,submissionReviews:history,recordSubmissionReview:save,recoverTrustSubmission:recover}}]});
     const fixture=TestBed.createComponent(TrustDispatchRegister);fixture.componentRef.setInput('connection','trust');fixture.detectChanges();
-    return {fixture,read,panel:fixture.componentInstance};
+    return {fixture,read,history,save,recover,panel:fixture.componentInstance};
   }
   it('loads on demand and preserves scoped search, ordering and pagination',()=>{
     const {read,fixture,panel}=setup();expect(read).not.toHaveBeenCalled();
@@ -31,8 +36,40 @@ describe('TRUST payment dispatch register',()=>{
     expect(fixture.nativeElement.textContent).toContain('Find & Match');
     expect(new URL(fixture.nativeElement.querySelector('a.invoice-link').href).searchParams.get('shortcode')).toBe('!fixture');
   });
+  it('checks only on request, preserves evidence on a lost response and refreshes after a recorded review',()=>{
+    const {fixture,panel,read,history,save,recover}=setup();
+    read.and.returnValue(of({count:1,rows:[{id:'dispatch',invoice:'inv',receipt:'receipt',submittedAt:'2026-11-28',status:'submitted',reviewRevision:0}]}));
+    panel.toggle();fixture.detectChanges();
+    const child=fixture.debugElement.query(By.directive(TrustSubmissionReview)).componentInstance as TrustSubmissionReview;
+    expect(recover).not.toHaveBeenCalled();expect(history).not.toHaveBeenCalled();
+    child.toggle();child.check();expect(recover).toHaveBeenCalledOnceWith('trust','inv','receipt','dispatch');
+    expect(child.message).toContain('could not be verified');
+    child.save('close');expect(save).not.toHaveBeenCalled();
+    save.and.returnValues(throwError(()=>({status:503})),of({revision:1}));
+    child.evidence='Reviewed bank and Xero';child.save('close');child.save('close');
+    expect(save.calls.argsFor(0)).toEqual(save.calls.argsFor(1));
+    expect(save.calls.argsFor(1)[2]).toEqual({requestId:jasmine.any(String),revision:0,evidence:'Reviewed bank and Xero',action:'close'});
+    expect(read.calls.count()).toBe(2);
+  });
+  it('keeps closed reviews available for rechecking and shows the audit trail after confirmation',()=>{
+    const {fixture,panel,read,history,save}=setup();
+    history.and.returnValue(of({entries:[{revision:1,action:'close',actor:'Reviewer',evidence:'Bank records checked'}],next:null}));
+    const row={id:'dispatch',invoice:'inv',receipt:'receipt',submittedAt:'2026-11-28',reviewRevision:1,status:'review_closed'};
+    read.and.returnValue(of({count:1,rows:[row]}));panel.toggle();fixture.detectChanges();
+    const child=fixture.debugElement.query(By.directive(TrustSubmissionReview)).componentInstance as TrustSubmissionReview;
+    child.toggle();fixture.detectChanges();expect(fixture.nativeElement.textContent).toContain('Reopen investigation');
+    save.and.returnValue(throwError(()=>({status:409})));child.evidence='New evidence';child.save('investigate');child.save('investigate');
+    expect(save).toHaveBeenCalledTimes(1);expect(child.stale).toBeTrue();
+    read.and.returnValue(of({count:1,rows:[{...row,status:'confirmed'}]}));panel.load(1);fixture.detectChanges();
+    fixture.debugElement.query(By.directive(TrustSubmissionReview)).componentInstance.toggle();fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Bank records checked');
+    expect(fixture.nativeElement.querySelector('textarea')).toBeNull();
+  });
   it('fits the queue on mobile and desktop in both themes',()=>{
-    const {fixture,panel}=setup();panel.toggle();fixture.detectChanges();
+    const {fixture,panel,read}=setup();
+    read.and.returnValue(of({count:1,rows:[{id:'dispatch',invoice:'inv',receipt:'receipt',submittedAt:'2026-11-28',status:'submitted'}]}));
+    panel.toggle();fixture.detectChanges();
+    fixture.debugElement.query(By.directive(TrustSubmissionReview)).componentInstance.toggle();fixture.detectChanges();
     const frame=document.createElement('iframe');document.body.appendChild(frame);
     try {
       const doc=frame.contentDocument!;
@@ -42,7 +79,7 @@ describe('TRUST payment dispatch register',()=>{
         frame.style.width=width+'px';
         for (const dark of [false,true]) {
           doc.documentElement.classList.toggle('dark',dark);
-          for (const control of doc.querySelectorAll('table,input[type=search]')) expect(control.getBoundingClientRect().right).toBeLessThanOrEqual(width);
+          for (const control of doc.querySelectorAll('table,input[type=search],textarea,button')) expect(control.getBoundingClientRect().right).toBeLessThanOrEqual(width);
         }
       }
     } finally {frame.remove();}

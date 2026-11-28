@@ -302,13 +302,16 @@
           <div><span>Advisor</span><strong>{{ selectedXeroInvoice.advisorName || '—' }}</strong></div>
           <div><span>Payment track</span><strong>{{ selectedXeroInvoice.paymentTrack || '—' }}</strong></div>
         </div>
+        @for (linked of selectedXeroInvoice.cases; track linked.id) {
+          <app-payment-case-invoices [caseId]="linked.id" [reference]="linked.reference" />
+        } @empty { <p>No confirmed case link available.</p> }
         @if (isChiefExecutive && xeroConnection?.organisationRole === 'trust' && selectedXeroInvoice.documentType === 'invoice') {
           @for (scope of [xeroConnection!.connectionId + selectedXeroInvoice.xeroInvoiceId]; track scope) {
           <app-trust-receipt-form [reviewDeposit]="suggestedDeposit" (invoiceRefreshed)="selectedXeroInvoice = $event" (receiptsChanged)="receiptChanged(xeroConnection!.connectionId)" [connection]="xeroConnection!.connectionId" [shortCode]="xeroConnection!.tenantShortCode" [invoice]="selectedXeroInvoice" />
           }
         }
         @if (!selectedXeroInvoice.receiptException) {
-        @if(selectedXeroInvoice.relatedInvoices?.length){<div class="invoice-summary" aria-label="Related invoices">@for(related of selectedXeroInvoice.relatedInvoices;track related.connectionId+related.invoiceId){<div><span>INV-{{related.sequence}} ({{related.role==='trust'?'TRUST':'PTY'}})</span><button type="button" class="invoice-link" (click)="openRelatedInvoice(related)" [disabled]="!related.indexed">{{related.invoiceNumber||'Awaiting synchronisation'}}</button><small>{{related.status||'Created in Xero'}} · Due {{related.currencyCode ? formatMoney(related.amountDue,related.currencyCode) : 'Unknown'}}</small></div>}</div>}
+        @if(selectedXeroInvoice.relatedInvoices?.length){<div class="invoice-summary" aria-label="Related invoices">@for(related of selectedXeroInvoice.relatedInvoices;track related.connectionId+related.invoiceId){<div><span>INV-{{related.sequence}} ({{related.role==='trust'?'TRUST':'PTY'}})</span><button type="button" class="invoice-link" (click)="openRelatedInvoice(related)" [disabled]="!related.indexed">{{related.invoiceNumber||'Awaiting synchronisation'}}</button><small>{{related.status||'Created in Xero'}} @if (!related.indexed) { · Current import unavailable } · Due {{related.currencyCode ? formatMoney(related.amountDue,related.currencyCode) : 'Unknown'}}</small></div>}</div>}
         @if(selectedXeroInvoice.settlement;as settlement){<div class="invoice-summary" aria-label="Payments and allocations"><div><span>Fully paid on</span><strong>{{formatDate(settlement.fullyPaidOnDate)}}</strong></div>@if (settlement.allocationListsOmitted) {<p>The latest invoice import omitted allocation details. Any entries shown are from an earlier import.</p>}@for(entry of settlement.entries;track $index){<div><span>{{entry.kind.replace('_',' ')}}</span><strong>{{formatDate(entry.date)}} · {{formatMoney(entry.amount,selectedXeroInvoice.currencyCode)}}</strong>@if (!settlement.allocationListsOmitted && settlement.omittedKinds?.includes(entry.kind)) {<small>From an earlier import</small>}@if (entry.kind === 'payment') {<small>{{ settlement.allocationListsOmitted || settlement.omittedKinds?.includes('payment') ? 'Current bank reconciliation status unavailable' : entry.isReconciled === true ? 'Reconciled in Xero' : entry.isReconciled === false ? 'Pending Xero reconciliation' : 'Bank reconciliation unknown' }}</small>}</div>}</div>}
         <div class="invoice-lines-wrap">
           <table class="invoice-lines">

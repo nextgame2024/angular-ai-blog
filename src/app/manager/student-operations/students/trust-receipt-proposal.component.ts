@@ -26,7 +26,7 @@ import type { TrustReceiptProposal, TrustProposalAction, TrustReceiptVerificatio
         @if (d.releaseCheck) { <p>Release check · {{d.releaseCheck}}</p> }
         @else if (d.state==='approved') { <p>Local release checks passed.</p> }
         @if (d.dispatch; as entry) {
-          <p>Dispatch {{entry.id}} · {{entry.paymentId ? 'Confirmed in Xero' : entry.submitted ? 'Awaiting Xero verification' : entry.cancelledAt ? 'Cancelled' : entry.expired ? 'Expired' : 'Recorded locally'}} · {{entry.queuedAt | date:'medium'}} · {{entry.actor}} · {{entry.reason}}</p>
+          <p>Dispatch {{entry.id}} · {{entry.paymentId ? 'Confirmed in Xero' : entry.reviewAction==='close' ? 'Review closed · reservation retained' : entry.reviewAction==='investigate' ? 'Under investigation' : entry.submitted ? 'Awaiting Xero verification' : entry.cancelledAt ? 'Cancelled' : entry.expired ? 'Expired' : 'Recorded locally'}} · {{entry.queuedAt | date:'medium'}} · {{entry.actor}} · {{entry.reason}}</p>
           @if (entry.paymentId) { <p>Xero payment {{entry.paymentId}}</p> }
           @if (!entry.submitted && d.state==='approved' && !d.accountIssue && !entry.expired && !entry.cancelledAt && entry.revision===d.revision) {
             <button type="button" class="btn small" [disabled]="saving" (click)="checkInvoice()">Check invoice in Xero</button>

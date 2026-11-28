@@ -183,7 +183,8 @@ export interface StudentCaseList {
 
 export interface StudentCaseInvoices {
   invoices: Array<{
-    organisation?:'TRUST'|'PTY';
+    organisation?:'TRUST'|'PTY'|null;
+    coverage?:'imported'|'historical'|'awaiting_import'; importedAt?:string|null;
     canEdit?:boolean;
     removalAction?:'delete'|'void'|null;
     invoiceId: string; connectionId?:string; invoiceNumber: string | null; type: string; status: string;
@@ -395,6 +396,7 @@ export interface XeroStudentInvoiceLineItem {
 }
 
 export interface XeroStudentInvoiceDetail extends XeroStudentInvoice {
+  cases?:Array<{id:string;reference:string}>;
   lineItems: XeroStudentInvoiceLineItem[];
   settlement?:{allocationListsOmitted?:boolean;omittedKinds?:string[];fullyPaidOnDate:string|null;entries:Array<{kind:string;id:string;date:string|null;amount:number;reference?:string;isReconciled?:boolean}>}|null;
   relatedInvoices?:Array<{caseId:string;sequence:number;role:'trust'|'operating';connectionId:string;invoiceId:string;invoiceNumber:string|null;status:string|null;date:string|null;dueDate:string|null;currencyCode?:string|null;amountPaid:string|number|null;amountDue:string|number|null;indexed:boolean}>;
@@ -672,17 +674,21 @@ export interface TrustProposalSnapshot {
 }
 export type TrustProposalAction='prepare'|'approve'|'withdraw';
 export type TrustBankOutcome='pending'|'reconciled'|'unknown'|'deleted'|'changed'|'missing'|'unavailable';
+export interface SubmissionReview {
+  revision:number;action:'investigate'|'close';actor:string;evidence:string;recordedAt:string;
+}
 export interface TrustDispatchRow {
+  receipt?:string;reviewRevision?:number;acknowledgedId?:string|null;
   bankStale?:boolean;daysSinceConfirmation?:number|null;assigned?:boolean;bankOwner?:string|null;
   bankOutcome?:TrustBankOutcome|null;bankCheckedAt?:string|null;staffReportedOn?:string|null;staffCheckedAt?:string|null;
   bankHistory?:{outcome:TrustBankOutcome;checkedAt:string}[]|null;
   submittedAt?:string|null;paymentId?:string|null;
   workerCheck?:{attempt:number;at:string;detail:string|null;status:'matched'|'review'|'retry'|'checking'|'exhausted'}|null;
   id:string;invoice:string;invoiceNumber:string|null;bankId:string;amount:string;queuedAt:string;approver:string;reviewer:string;
-  status:'recorded'|'expired'|'cancelled'|'submitted'|'confirmed';
+  status:'recorded'|'expired'|'cancelled'|'submitted'|'confirmed'|'investigating'|'review_closed';
 }
 export interface TrustReceiptProposal {
-  dispatch?:{id:string;submitted?:boolean;paymentId?:string|null;revision:number;actor:string;reason:string;queuedAt:string;expired:boolean;
+  dispatch?:{id:string;reviewAction?:SubmissionReview['action']|null;submitted?:boolean;paymentId?:string|null;revision:number;actor:string;reason:string;queuedAt:string;expired:boolean;
     cancelledAt:string|null;cancelledBy:string|null;cancelReason:string|null}|null;
   accountIssue:string|null;releaseCheck:string|null;
   state:'new'|'prepared'|'approved'|'withdrawn'|'stale'|'expired';blocked:string|null;
