@@ -511,12 +511,22 @@ export class StudentOperationsService {
       {headers:this.headers(),params:{q,page}});
   }
 
-  stageTrustDeposit(connection:string, deposit:Omit<StagedTrustDeposit,'id'>) {
+  stageTrustDeposit(connection:string, deposit:Omit<StagedTrustDeposit,'id'|'source'> & {source:NonNullable<StagedTrustDeposit['source']>}) {
     return this.http.post<{id:string;created:boolean}>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection),{
       account:deposit.account,receivedOn:deposit.date,amount:deposit.amount,reference:deposit.reference,
       bankTransactionId:deposit.transactionId,statementFileName:deposit.source.name,
       statementFileSha256:deposit.source.sha256,statementRecord:String(deposit.source.record),
     },{headers:this.headers()});
+  }
+
+  stageTrustScreenshot(connection:string,data:FormData) {
+    const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/screenshot';
+    return this.http.post<{id:string;created:boolean}>(url,data,{headers:this.headers()});
+  }
+
+  stagedTrustScreenshot(connection:string,id:string) {
+    const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/'+encodeURIComponent(id)+'/screenshot';
+    return this.http.get(url,{headers:this.headers(),responseType:'blob'});
   }
 
   private trustReceiptUrl(connection: string, invoice: string): string {

@@ -110,7 +110,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
         </div>
       </header>
       @if (connection.organisationRole === 'trust') {
-        <app-trust-dispatch-register [connection]="connection.connectionId" (review)="reviewDispatch.emit($event)" />
+        <app-trust-dispatch-register [shortCode]="connection.tenantShortCode" [connection]="connection.connectionId" (review)="reviewDispatch.emit($event)" />
         <app-trust-receipt-account [connection]="connection.connectionId" />
         <app-trust-residuals [connection]="connection.connectionId" [revision]="receiptRevision + outcomeRevision" />
         <app-trust-match-outcomes [connection]="connection.connectionId" [revision]="receiptRevision + outcomeRevision" />

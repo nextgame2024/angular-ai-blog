@@ -22,6 +22,16 @@ import { TrustStatementPreview } from './trust-statement-preview.component';
         <label>Receiving TRUST account name<input maxlength="120" [disabled]="saving" [(ngModel)]="account" (ngModelChange)="draft = undefined"></label>
         <app-trust-statement-preview [account]="account" [today]="today" [disabled]="saving"
           applyLabel="Review deposit for staging" (useDeposit)="draft = $event" />
+        <details><summary>Save a bank screenshot</summary>
+          <fieldset class="form-grid" [disabled]="saving">
+            <label>Bank date<input type="date" [max]="today" [(ngModel)]="imageDate" [ngModelOptions]="{standalone:true}"></label>
+            <label>Amount received (AUD)<input inputmode="decimal" [(ngModel)]="imageAmount" [ngModelOptions]="{standalone:true}"></label>
+            <label>Bank transaction ID<input maxlength="150" [(ngModel)]="imageId" [ngModelOptions]="{standalone:true}"></label>
+            <label>Bank reference (optional)<input maxlength="150" [(ngModel)]="imageReference" [ngModelOptions]="{standalone:true}"></label>
+            <label>Bank screenshot (PNG or JPEG, up to 5 MB)<input #upload type="file" accept="image/png,image/jpeg" (change)="selectImage(upload)"></label>
+            <button type="button" class="btn small" [disabled]="!imageReady()" (click)="saveImage(upload)">Save screenshot for invoice review</button>
+          </fieldset>
+        </details>
         @if (draft; as row) {
           <p>{{ row.date }} · AUD {{ row.amount }} · {{ account }} · {{ row.transactionId }} · {{ row.reference }}</p>
           <button class="btn small" type="button" [disabled]="saving" (click)="save()">Save deposit without an invoice</button>
@@ -38,7 +48,10 @@ import { TrustStatementPreview } from './trust-statement-preview.component';
           <app-manager-select ariaLabel="Saved TRUST deposit" placeholder="Select a saved deposit" [options]="options"
             [ngModel]="selected" (ngModelChange)="selected = $event" [ngModelOptions]="{standalone:true}" />
           @if (current(); as row) {
-            <p>{{ row.account }} · {{ row.source.name }} · Record {{ row.source.record }}</p>
+            <p>{{ row.account }} @if (row.source; as csv) { · {{ csv.name }} · Record {{ csv.record }} }</p>
+            @if (row.screenshotSha256) {
+              <button class="btn small" type="button" (click)="downloadImage(row.id)">Download saved bank screenshot</button>
+            }
             @if (!picker) {
               <app-trust-invoice-suggestions [connection]="connection" [deposit]="row"
                 (decisionSaved)="outcomesChanged.emit()" (review)="review.emit({invoice:$event,deposit:row})" />
@@ -71,7 +84,9 @@ export class TrustStagedDeposits implements OnChanges {
   page=1;
   rows:StagedTrustDeposit[]=[];
   options:ManagerSelectOption[]=[];
-  draft?:Omit<StagedTrustDeposit,'id'|'account'>;
+  draft?:Omit<StagedTrustDeposit,'id'|'account'|'source'> & {source:NonNullable<StagedTrustDeposit['source']>};
+  imageDate='';imageAmount='';imageId='';imageReference='';image?:File;
+  private downloadRequest?:Subscription;
   private appliedSearch='';
   private readonly api=inject(StudentOperationsService);
   private readonly destroy=inject(DestroyRef);
@@ -81,14 +96,17 @@ export class TrustStagedDeposits implements OnChanges {
   ngOnChanges(changes:SimpleChanges) {
     if (changes['connection']) {
       this.listRequest?.unsubscribe();
-      this.saveRequest?.unsubscribe();
+      this.saveRequest?.unsubscribe();this.downloadRequest?.unsubscribe();
+      this.image=undefined;this.imageDate=this.imageAmount=this.imageId=this.imageReference='';
       this.open=this.saving=this.loaded=this.loading=false;
       this.account=this.search=this.appliedSearch=this.selected=this.message=this.error='';
       this.rows=[]; this.options=[]; this.draft=undefined;
     } else if (changes['revision'] && this.open) this.load(this.page);
   }
   toggle() {
+    if(this.saving) return;
     this.open=!this.open;
+    if(!this.open) this.image=undefined;
     if (this.open) this.load(1);
   }
   find() { this.appliedSearch=this.search.trim(); this.load(1); }
@@ -111,6 +129,44 @@ export class TrustStagedDeposits implements OnChanges {
     if (this.disabled || !this.picker) return;
     this.picked.emit(row);
     this.open=false;
+  }
+  selectImage(input:HTMLInputElement) {
+    const candidate=input.files?.[0];
+    this.image=undefined;this.message='';
+    if (!candidate) return;
+    if (!['image/png','image/jpeg'].includes(candidate.type) || !candidate.size || candidate.size>5242880) {
+      input.value='';this.message='Select a nonempty PNG or JPEG up to 5 MB.';return;
+    }
+    this.image=candidate;
+  }
+  imageReady() {
+    return !!(this.image && this.account.trim() && this.imageId.trim() && this.imageDate && this.imageDate<=this.today &&
+      /^(0|[1-9]\d{0,11})(\.\d{1,2})?$/.test(this.imageAmount) && Number(this.imageAmount)>0);
+  }
+  saveImage(input:HTMLInputElement) {
+    if (!this.image || !this.imageReady() || this.saving || this.picker) return;
+    const data=new FormData();
+    for(const [key,value] of Object.entries({account:this.account.trim(),amount:this.imageAmount,receivedOn:this.imageDate,
+      bankTransactionId:this.imageId.trim(),reference:this.imageReference.trim()})) data.append(key,value);
+    data.append('file',this.image);this.saving=true;this.message='';
+    this.saveRequest=this.api.stageTrustScreenshot(this.connection,data).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next:result=>{
+        this.saving=false;this.image=undefined;input.value='';this.imageDate=this.imageAmount=this.imageId=this.imageReference='';
+        this.message=result.created?'Bank screenshot saved.':'This screenshot was already saved.';
+        this.search=this.appliedSearch='';this.outcomesChanged.emit();this.load(1);
+      },
+      error:err=>{this.saving=false;this.message=err.status===409?'Review the saved deposit for conflicting evidence.':'Could not save the bank screenshot. Retry with the same details.';},
+    });
+  }
+  downloadImage(id:string) {
+    this.downloadRequest?.unsubscribe();
+    this.downloadRequest=this.api.stagedTrustScreenshot(this.connection,id).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+      next:blob=>{
+        const url=URL.createObjectURL(blob),link=document.createElement('a');
+        link.href=url;link.download=blob.type==='image/png'?'bank-deposit.png':'bank-deposit.jpg';link.click();
+        setTimeout(()=>URL.revokeObjectURL(url),1000);
+      },error:()=>{this.message='The screenshot could not be downloaded.';},
+    });
   }
   save() {
     if (!this.draft || this.saving || this.picker) return;

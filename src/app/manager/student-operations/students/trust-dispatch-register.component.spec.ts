@@ -21,6 +21,16 @@ describe('TRUST payment dispatch register',()=>{
     expect(read.calls.mostRecent().args).toEqual(['trust',{q:'B1',status:'cancelled',page:2,limit:25,direction:'asc'}]);
     fixture.componentRef.setInput('connection','other');fixture.detectChanges();expect(panel.open).toBeFalse();expect(panel.data).toBeUndefined();
   });
+  it('shows the direct Xero check and staff report independently and links to the correct organisation',()=>{
+    const {fixture,panel,read}=setup(),payment='12345678-1234-4234-8234-123456789abc';
+    read.and.returnValue(of({count:1,rows:[{id:'dispatch',status:'confirmed',paymentId:payment,bankOutcome:'pending',
+      bankCheckedAt:'2026-11-28T01:00:00Z',staffCheckedAt:'2026-11-27T01:00:00Z'}]}));
+    fixture.componentRef.setInput('shortCode','!fixture');panel.toggle();fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Awaiting bank reconciliation');
+    expect(fixture.nativeElement.textContent).toContain('Staff reported reconciliation');
+    expect(fixture.nativeElement.textContent).toContain('Find & Match');
+    expect(new URL(fixture.nativeElement.querySelector('a.invoice-link').href).searchParams.get('shortcode')).toBe('!fixture');
+  });
   it('fits the queue on mobile and desktop in both themes',()=>{
     const {fixture,panel}=setup();panel.toggle();fixture.detectChanges();
     const frame=document.createElement('iframe');document.body.appendChild(frame);

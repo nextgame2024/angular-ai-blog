@@ -198,7 +198,7 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
         <details><summary>Verify a TRUST bank deposit</summary>
           <form (input)="duplicateReceipt = null" #form="ngForm" (ngSubmit)="form.valid && save()" class="student-form">
             <fieldset [disabled]="saving" class="form-grid">
-              <label>Receiving TRUST account name<input name="account" [readonly]="!!statementSource" maxlength="120" required [(ngModel)]="account"></label>
+              <label>Receiving TRUST account name<input name="account" [readonly]="!!statementSource || !!stagedScreenshotId" maxlength="120" required [(ngModel)]="account"></label>
               @if (reviewDeposit && !reviewDepositUsed) {
                 <button type="button" class="btn small" [disabled]="saving || !ready" (click)="useReviewDeposit()">
                   Use reviewed deposit · {{ reviewDeposit.transactionId }} · AUD {{ reviewDeposit.amount }}
@@ -211,7 +211,12 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
                 (useDeposit)="useStatementRow($event)" />
               @if (statementSource; as source) {
                 <p>Selected CSV · {{ source.name }} · Record {{ source.record }}
-                  <button type="button" class="btn small" (click)="statementSource = undefined">Detach source to edit bank details</button>
+                  <button type="button" class="btn small" (click)="statementSource = undefined; stagedScreenshotId = undefined">Detach source to edit bank details</button>
+                </p>
+              }
+              @if (stagedScreenshotId) {
+                <p>Saved bank screenshot selected for this receipt.
+                  @if (!statementSource) { <button class="btn small" type="button" (click)="stagedScreenshotId=undefined">Detach source to edit bank details</button> }
                 </p>
               }
               @if (paymentChoices.length || selectedPayment) {
@@ -221,12 +226,12 @@ class ReceiptPaymentCandidatesPipe implements PipeTransform {
                     [placeholder]="canVerify ? 'Verify before linking a payment' : 'Select the payment shown in Xero'" />
                 </label>
               }
-              <label>Payment date<input type="date" [max]="today" name="date" [readonly]="!!statementSource" required [(ngModel)]="date"></label>
-              <label>Full bank receipt (AUD)<input type="text" inputmode="decimal" name="amount" [readonly]="!!statementSource" pattern="(0|[1-9][0-9]{0,11})([.][0-9]{1,2})?" required [(ngModel)]="amount"></label>
-              <label>Bank reference (if shown)<input name="reference" [readonly]="!!statementSource" maxlength="150" [(ngModel)]="reference"></label>
-              <label>Bank transaction ID (if shown)<input name="bankTransactionId" [readonly]="!!statementSource" maxlength="150" [(ngModel)]="bankTransactionId"></label>
+              <label>Payment date<input type="date" [max]="today" name="date" [readonly]="!!statementSource || !!stagedScreenshotId" required [(ngModel)]="date"></label>
+              <label>Full bank receipt (AUD)<input type="text" inputmode="decimal" name="amount" [readonly]="!!statementSource || !!stagedScreenshotId" pattern="(0|[1-9][0-9]{0,11})([.][0-9]{1,2})?" required [(ngModel)]="amount"></label>
+              <label>Bank reference (if shown)<input name="reference" [readonly]="!!statementSource || !!stagedScreenshotId" maxlength="150" [(ngModel)]="reference"></label>
+              <label>Bank transaction ID (if shown)<input name="bankTransactionId" [readonly]="!!statementSource || !!stagedScreenshotId" maxlength="150" [(ngModel)]="bankTransactionId"></label>
               <label>Payment purpose (optional)<input name="paymentPurpose" maxlength="240" placeholder="e.g. Tuition instalment" [(ngModel)]="paymentPurpose"></label>
-              <label>Bank screenshot (optional, PNG or JPEG, up to 5 MB)<input #screenshotInput type="file" accept="image/png,image/jpeg" (change)="selectFile($event)"></label>
+              <label>Bank screenshot (optional, PNG or JPEG, up to 5 MB)<input #screenshotInput [disabled]="!!stagedScreenshotId" type="file" accept="image/png,image/jpeg" (change)="selectFile($event)"></label>
               @if (file) {
                 <button class="btn small" type="button" (click)="clearScreenshot()">Remove screenshot</button>
               }
@@ -419,11 +424,13 @@ export class TrustReceiptForm implements OnInit, OnChanges {
     this.reviewDepositUsed=true;
   }
 
+  stagedScreenshotId?:string;
   statementSource?: TrustStatementSource;
 
-  useStatementRow(row: Omit<StatementDeposit,'row'> & {source:TrustStatementSource}): void {
+  useStatementRow(row: Omit<StatementDeposit,'row'> & {source:TrustStatementSource|null;id?:string;screenshotSha256?:string|null}): void {
     if (!this.ready || this.saving) return;
-    this.statementSource = row.source;
+    this.statementSource = row.source??undefined;
+    this.stagedScreenshotId=row.screenshotSha256?row.id:undefined;
     this.date = row.date;
     this.amount = row.amount;
     this.reference = row.reference;
@@ -453,6 +460,7 @@ export class TrustReceiptForm implements OnInit, OnChanges {
     this.duplicateReceipt = null;
     const data = new FormData();
     for (const [name,value] of Object.entries({receivedOn:this.date, amount:this.amount, account:this.account, reference:this.reference})) data.append(name,value);
+    if (this.stagedScreenshotId) data.append('stagedScreenshotId',this.stagedScreenshotId);
     if (this.statementSource) {
       data.append('statementFileName',this.statementSource.name);
       data.append('statementFileSha256',this.statementSource.sha256);
@@ -469,7 +477,7 @@ export class TrustReceiptForm implements OnInit, OnChanges {
     this.api.verifyTrustReceipt(this.connection,this.invoice.xeroInvoiceId,data,this.key).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next: () => {
         this.saving = false;
-        this.statementSource = undefined;
+        this.statementSource = undefined;this.stagedScreenshotId=undefined;
         this.amount = this.date = this.reference = this.bankTransactionId = this.paymentPurpose = '';
         this.clearScreenshot();
         this.key = crypto.randomUUID();

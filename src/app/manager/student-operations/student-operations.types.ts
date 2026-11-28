@@ -593,7 +593,8 @@ export interface StagedTrustDeposit {
   amount:string;
   reference:string;
   transactionId:string;
-  source:TrustStatementSource;
+  source:TrustStatementSource|null;
+  screenshotSha256?:string|null;
 }
 
 export interface TrustStatementSource {
@@ -662,7 +663,11 @@ export interface TrustProposalSnapshot {
   date:string;account:string;amount:string;due:string|null;currency:string|null;bankId:string|null;reference:string;
 }
 export type TrustProposalAction='prepare'|'approve'|'withdraw';
+export type TrustBankOutcome='pending'|'reconciled'|'unknown'|'deleted'|'changed'|'missing'|'unavailable';
 export interface TrustDispatchRow {
+  bankStale?:boolean;daysSinceConfirmation?:number|null;assigned?:boolean;bankOwner?:string|null;
+  bankOutcome?:TrustBankOutcome|null;bankCheckedAt?:string|null;staffReportedOn?:string|null;staffCheckedAt?:string|null;
+  bankHistory?:{outcome:TrustBankOutcome;checkedAt:string}[]|null;
   submittedAt?:string|null;paymentId?:string|null;
   workerCheck?:{attempt:number;at:string;detail:string|null;status:'matched'|'review'|'retry'|'checking'|'exhausted'}|null;
   id:string;invoice:string;invoiceNumber:string|null;bankId:string;amount:string;queuedAt:string;approver:string;reviewer:string;

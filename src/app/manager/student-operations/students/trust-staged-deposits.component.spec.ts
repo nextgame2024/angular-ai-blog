@@ -38,6 +38,20 @@ describe('TRUST deposits awaiting an invoice',()=>{
     expect(fixture.nativeElement.textContent).toContain('Deposit saved for invoice review');
   });
 
+  it('saves the selected file only on submission and preserves it after a failed request',()=>{
+    const save=jasmine.createSpy().and.returnValues(throwError(()=>({status:503})),of({created:true,id:'saved'}));
+    TestBed.configureTestingModule({imports:[TrustStagedDeposits],providers:[{provide:StudentOperationsService,useValue:{
+      stageTrustScreenshot:save,stagedTrustDeposits:()=>of({deposits:[],hasMore:false})}}]});
+    const fixture=TestBed.createComponent(TrustStagedDeposits);fixture.componentRef.setInput('connection','trust');fixture.detectChanges();
+    const panel=fixture.componentInstance;panel.toggle();fixture.detectChanges();panel.account='TRUST';
+    panel.imageDate='2020-01-02';panel.imageId='BANK-ID';panel.imageAmount='50';
+    const input:HTMLInputElement=fixture.nativeElement.querySelector('input[accept="image/png,image/jpeg"]');
+    const transfer=new DataTransfer();transfer.items.add(new File(['fixture'],'bank.png',{type:'image/png'}));input.files=transfer.files;
+    const selectedFile=input.files![0];input.dispatchEvent(new Event('change'));expect(panel.imageReady()).toBeTrue();expect(save).not.toHaveBeenCalled();
+    panel.saveImage(input);expect(panel.image).toBeDefined();panel.saveImage(input);expect(panel.image).toBeUndefined();
+    const body=save.calls.mostRecent().args[1] as FormData;expect(body.get('file')).toBe(selectedFile);
+    expect(body.get('bankTransactionId')).toBe('BANK-ID');expect(body.has('statementRecord')).toBeFalse();
+  });
   it('keeps open staging and pagination controls within mobile and desktop widths in both themes',()=>{
     TestBed.configureTestingModule({imports:[TrustStagedDeposits],providers:[{provide:StudentOperationsService,useValue:{
       trustSplitLines:()=>of({lines:[{lineId:'id',token:'t',gross:'100.00',available:'90.00',label:'Materials fee'}]}),
@@ -225,6 +239,19 @@ describe('TRUST deposits awaiting an invoice',()=>{
     expect(fixture.componentInstance.bankTransactionId).toBe('BANK-1');
     expect(fixture.componentInstance.statementSource).toEqual(deposit.source);
     expect(verify).not.toHaveBeenCalled();
+  });
+
+  it('submits a saved screenshot by deposit ID without giving it statement provenance',()=>{
+    const verify=jasmine.createSpy().and.returnValue(of({id:'verified'}));
+    TestBed.configureTestingModule({imports:[TrustReceiptForm],providers:[{provide:StudentOperationsService,useValue:{
+      trustReceipts:()=>of([]),verifyTrustReceipt:verify}}]});
+    const fixture=TestBed.createComponent(TrustReceiptForm);fixture.componentRef.setInput('connection','trust');
+    fixture.componentRef.setInput('invoice',{xeroInvoiceId:'invoice',currencyCode:'AUD',amountDue:50,status:'AUTHORISED'});
+    fixture.componentRef.setInput('reviewDeposit',{...deposit,source:null,screenshotSha256:'abc'});fixture.detectChanges();
+    const panel=fixture.componentInstance;panel.useReviewDeposit();fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Saved bank screenshot selected');expect(verify).not.toHaveBeenCalled();
+    panel.save();const body=verify.calls.first().args[2] as FormData;
+    expect(body.get('stagedScreenshotId')).toBe(deposit.id);expect(body.has('statementRecord')).toBeFalse();expect(body.has('file')).toBeFalse();
   });
 
   it('carries a saved row and its source to an invoice and waits for explicit verification',()=>{
