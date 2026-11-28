@@ -4,18 +4,21 @@
   @else if(failed){<p role="alert">Could not load college settlements.</p><button class="btn" (click)="load(page)">Retry</button>}
   @else {
     @if(queue;as q){
+      <button class="btn" type="button" (click)="scope=scope==='open'?'commission':'open';load(1)">{{scope==='open'?'Review commission on confirmed settlements':'Show open college obligations'}}</button>
+      @if(scope==='commission'){<h4>Confirmed settlements for commission review</h4>}
       <table class="invoice-table"><thead><tr><th>College and instalment</th><th>Case</th>
         <th [attr.aria-sort]="direction==='asc'?'ascending':'descending'"><button class="invoice-link" (click)="direction=direction==='asc'?'desc':'asc';load(1)">Due date</button></th>
-        <th>Outstanding AUD</th><th>Unapplied refunds AUD</th></tr></thead>
+        <th>College balance AUD</th><th>Unapplied refunds AUD</th></tr></thead>
         <tbody>@for(r of q.rows;track r.id){<tr><td data-label="College">{{r.college}} · {{r.instalment}}</td>
         <td data-label="Case">@if(r.review){<small>Accountant review</small>}<a [routerLink]="['/manager/students/cases',r.caseId]" fragment="college-settlements">{{r.caseNumber}}</a></td><td data-label="Due date">{{r.due}}
         @if(r.fundingRisk){<small>Due before expected funding</small>}</td><td data-label="Outstanding AUD">{{r.balance}}</td><td data-label="Unapplied refunds AUD">{{r.unapplied}}</td></tr>}
-        @empty{<tr><td colspan="5">No outstanding college obligations or unapplied refunds.</td></tr>}</tbody></table>
+        @empty{<tr><td colspan="5">{{scope==='commission'?'No confirmed settlements.':'No outstanding college obligations or unapplied refunds.'}}</td></tr>}</tbody></table>
       <app-manager-select ariaLabel="Obligations per page" [options]="limits" [ngModel]="limit.toString()" (ngModelChange)="limit=+$event;load(1)" />
     }
     @if(data;as d){
       @if(d.row;as r){
         <h4>{{r.college}} · {{r.instalment}}</h4>
+        <app-commission-claim [caseId]="caseId" [obligation]="r.id" [readonly]="readonly || creating || editing" />
         <p>Contract {{r.policy}} · {{r.method}} · due {{r.due}} @if(r.funding){ · funding expected {{r.funding}} } @if(r.bill){ · {{r.billId?"Linked Xero bill":"Supplier bill reference"}} {{r.bill}} }</p>
         <p>Gross AUD {{r.gross}} · confirmed cash {{r.cash}} · offset {{r.usedOffset}} of {{r.offsetLimit}} · refunded {{r.refunded}} · <strong>Outstanding AUD {{r.balance}}</strong></p>
         @if(+r.unapplied){<p>Unapplied college refunds AUD {{r.unapplied}}</p>}

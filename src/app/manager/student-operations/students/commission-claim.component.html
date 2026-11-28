@@ -1,0 +1,42 @@
+<button class="btn small" type="button" [disabled]="busy" [attr.aria-expanded]="open" (click)="toggle()">Commission eligibility and collection</button>
+@if(open){
+@if(loading){<app-manager-list-loader label="Loading commission claim…" />}
+@else if(failed){<button class="btn" (click)="load()">Retry commission claim</button>}
+@else if(data;as d){
+  <button type="button" class="btn small" [disabled]="busy" (click)="load()">Reload claim</button>
+  @if(d.calculation;as calc){<p>{{calc.student}} · {{calc.college}} · Tuition base {{calc.base/100|currency:'AUD':'code'}} · Tax {{calc.tax/100|currency:'AUD':'code'}} · Calculated commission including tax <strong>{{calc.total/100|currency:'AUD':'code'}}</strong></p>}
+  @if(d.issue){<p>{{d.issue}}</p>}
+  @if(d.history.length){<details><summary>Eligibility · {{d.history[0].decision}}</summary>
+    @for(h of d.history;track h.revision){<p>Revision {{h.revision}} · {{h.decision}} · {{h.policy}} @if(h.date){ · earned {{h.date}} } · {{h.actor}}</p>}
+  </details>}
+  @if(d.stale){<p role="status">The calculation or supporting settlement has changed since approval.</p>}
+  @if(!readonly && !d.link){
+    <form #review="ngForm" class="student-form" (ngSubmit)="save(review,'review')"><fieldset [disabled]="busy"><legend>Review entitlement</legend>
+      <label>Decision<app-manager-select name="decision" ariaLabel="Eligibility decision" [options]="decisions" [(ngModel)]="decision" [disabled]="busy" /></label>
+      <label>Contract reference and reason<textarea name="policy" required maxlength="500" [(ngModel)]="policy"></textarea></label>
+      @if(decision==='eligible'){<label>Contractual earning date<input name="date" type="date" required [(ngModel)]="earnedOn"></label>}
+      <button class="btn" [disabled]="busy || (decision==='eligible' && !d.token)">Save eligibility decision</button>
+    </fieldset></form>
+  }
+  @if(d.totals;as t){
+    <p>Earned {{(d.earnedMinor??0)/100|currency:'AUD':'code'}} · PTY cash {{t.cash/100|currency:'AUD':'code'}} · Contractual offset {{t.offset/100|currency:'AUD':'code'}} · Outstanding <strong>{{t.outstanding/100|currency:'AUD':'code'}}</strong></p>
+    @if(t.allocations.length){<details><summary>Approved allocations</summary>@for(a of t.allocations;track a.id){<p>{{a.kind}} · {{a.minor/100|currency:'AUD':'code'}} · {{a.actor}} · {{a.recordedAt}} · {{a.source}}</p>}</details>}
+    @if(t.disputed){<p role="alert">Review {{t.disputed/100|currency:'AUD':'code'}} in previously approved allocations. Their imported evidence has changed.</p>}
+    @if(d.link?.id){<p>Linked PTY invoice · {{d.link?.id}}</p>}
+    @if(d.link?.status==='submitted'){<p role="status">Draft submission awaits verification. Refresh PTY and select the matching imported invoice.</p>}
+    @if(d.candidates.length>options.length){<p>Link the matching historical PTY invoice to this student case before confirming the commission invoice.</p>}
+    @if(!readonly && !d.link?.id && options.length){
+      <form #link="ngForm" (ngSubmit)="save(link,'link')"><label>Verified PTY invoice<app-manager-select name="invoice" ariaLabel="Verified PTY invoice" required [(ngModel)]="selected" [options]="options" [disabled]="busy" /></label>
+      <button class="btn" [disabled]="busy">Confirm invoice link</button></form>}
+    @if(!readonly && d.canCreate && !d.link && !d.stale && !d.candidates.length){
+      <form #create="ngForm" (ngSubmit)="save(create,'create')"><label><input type="checkbox" name="confirm" [(ngModel)]="confirmCreate" [disabled]="busy">Approve a Xero draft in PTY for this entitlement</label>
+      <button class="btn" [disabled]="busy || !confirmCreate">Create PTY draft</button></form>}
+    @if(!readonly && sources.length && t.outstanding && !t.disputed){
+      <form #approve="ngForm" (ngSubmit)="save(approve,'allocate')"><fieldset [disabled]="busy"><legend>Approve an allocation</legend>
+        <label>Source<app-manager-select name="source" ariaLabel="Collection source" required [(ngModel)]="source" [options]="sources" [disabled]="busy" /></label>
+        <label>Amount AUD<input name="amount" inputmode="decimal" required pattern="[0-9]+([.][0-9]{1,2})?" [(ngModel)]="amount"></label>
+        <button class="btn" [disabled]="busy">Approve allocation</button>
+      </fieldset></form>}
+  }
+}}
+@if(message){<app-manager-toast [message]="message" [tone]="tone" (closed)="message=''" />}

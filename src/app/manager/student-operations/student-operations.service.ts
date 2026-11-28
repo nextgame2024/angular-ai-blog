@@ -1,3 +1,4 @@
+import type {CommissionClaim,CommissionCommand} from './commission-claim.types';
 import type { CollegeObligationInput,CollegeEventInput,CollegeEvent,CollegeSettlementData,CollegeQueue } from './college-settlement.types';
 import type {TrustPaymentException} from './student-operations.types';
 import type {SubmissionReview} from './student-operations.types';
@@ -239,8 +240,14 @@ export class StudentOperationsService {
     });
   }
 
-  collegeQueue(page:number,limit:number,direction:'asc'|'desc') {
-    return this.http.get<CollegeQueue>(this.workspaceBase+'/college-obligations',{headers:this.headers(),params:{page,limit,direction}});
+  commissionClaim(caseId:string,id:string) {
+    return this.http.get<CommissionClaim>(this.collegeUrl(caseId)+'/'+encodeURIComponent(id)+'/commission',{headers:this.headers()});
+  }
+  commissionCommand(caseId:string,id:string,action:'review'|'invoice'|'allocate',body:CommissionCommand) {
+    return this.http.post(this.collegeUrl(caseId)+'/'+encodeURIComponent(id)+'/commission/'+action,body,{headers:this.headers()});
+  }
+  collegeQueue(page:number,limit:number,direction:'asc'|'desc',scope:'open'|'commission'='open') {
+    return this.http.get<CollegeQueue>(this.workspaceBase+'/college-obligations',{headers:this.headers(),params:{page,limit,direction,scope}});
   }
   private collegeUrl(caseId:string) {return this.workspaceBase+'/cases/'+encodeURIComponent(caseId)+'/college-obligations';}
   collegeObligations(caseId:string,page:number) {

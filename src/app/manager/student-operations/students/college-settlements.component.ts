@@ -1,3 +1,4 @@
+import {CommissionClaimComponent} from './commission-claim.component';
 import {Component,DestroyRef,Input,OnChanges,inject} from '@angular/core';
 import {FormsModule,NgForm} from '@angular/forms';
 import {RouterLink} from '@angular/router';
@@ -11,7 +12,7 @@ import type {CollegeEvent,CollegeEventInput,CollegeObligationInput,CollegeQueue,
 
 const newTerms=():CollegeObligationInput=>({collegeId:'',scheduleId:null,instalment:'',policy:'',method:'gross',gross:'',offsetLimit:'0',due:'',funding:null,bill:null});
 const newEvent=():CollegeEventInput=>({kind:'direct_proof',proof:null,amount:'',offset:'0',date:'',reference:'',evidence:''});
-@Component({selector:'app-college-settlements',imports:[FormsModule,RouterLink,ManagerSelectComponent,ManagerListLoaderComponent,ManagerToastComponent],
+@Component({selector:'app-college-settlements',imports:[CommissionClaimComponent,FormsModule,RouterLink,ManagerSelectComponent,ManagerListLoaderComponent,ManagerToastComponent],
   templateUrl:'./college-settlements.component.html',styleUrls:['./student-operations-students.page.css'],
   styles:[`:host{display:block;height:auto;min-width:0;overflow-wrap:anywhere}.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));gap:.65rem}input,textarea{max-width:100%;box-sizing:border-box}.ng-invalid.ng-touched{outline:2px solid #b42318}:host-context(html.dark) .ng-invalid.ng-touched{outline-color:#ff9990}.btn{min-height:40px}fieldset{min-width:0;border:0;padding:0}`]})
 export class CollegeSettlementsComponent implements OnChanges {
@@ -20,6 +21,7 @@ export class CollegeSettlementsComponent implements OnChanges {
   private requests=new Subscription();private historyRequest?:Subscription;
   open=false;loading=false;busy=false;failed=false;historyError=false;historyLoading=false;creating=false;editing=false;
   page=1;limit=25;direction:'asc'|'desc'='asc';historyPage=1;more=false;
+  scope:'open'|'commission'='open';
   data?:CollegeSettlementData;queue?:CollegeQueue;events:CollegeEvent[]=[];
   terms=newTerms();entry=newEvent();proofLabel='';toast='';tone:'success'|'error'='success';
   private retry?:{payload:string;id:string};
@@ -35,7 +37,7 @@ export class CollegeSettlementsComponent implements OnChanges {
   load(page:number){
     this.page=page;this.loading=true;this.failed=false;this.editing=this.creating=false;this.events=[];this.historyRequest?.unsubscribe();
     const error=()=>{this.failed=true;this.loading=false;};
-    if(!this.caseId)this.requests.add(this.api.collegeQueue(page,this.limit,this.direction).pipe(takeUntilDestroyed(this.destroy)).subscribe({
+    if(!this.caseId)this.requests.add(this.api.collegeQueue(page,this.limit,this.direction,this.scope).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next:q=>{this.queue=q;this.loading=false;},error}));
     else this.requests.add(this.api.collegeObligations(this.caseId,page).pipe(takeUntilDestroyed(this.destroy)).subscribe({
       next:d=>{this.data=d;this.loading=false;if(d.row)this.history(1);},error}));
