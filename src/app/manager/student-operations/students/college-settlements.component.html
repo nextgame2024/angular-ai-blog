@@ -1,0 +1,78 @@
+<button class="btn small" type="button" [disabled]="busy" [attr.aria-expanded]="open" (click)="toggle()">College settlements</button>
+@if(open){
+  @if(loading){<app-manager-list-loader label="Loading college settlements…" />}
+  @else if(failed){<p role="alert">Could not load college settlements.</p><button class="btn" (click)="load(page)">Retry</button>}
+  @else {
+    @if(queue;as q){
+      <table class="invoice-table"><thead><tr><th>College and instalment</th><th>Case</th>
+        <th [attr.aria-sort]="direction==='asc'?'ascending':'descending'"><button class="invoice-link" (click)="direction=direction==='asc'?'desc':'asc';load(1)">Due date</button></th>
+        <th>Outstanding AUD</th><th>Unapplied refunds AUD</th></tr></thead>
+        <tbody>@for(r of q.rows;track r.id){<tr><td data-label="College">{{r.college}} · {{r.instalment}}</td>
+        <td data-label="Case">@if(r.review){<small>Accountant review</small>}<a [routerLink]="['/manager/students/cases',r.caseId]" fragment="college-settlements">{{r.caseNumber}}</a></td><td data-label="Due date">{{r.due}}
+        @if(r.fundingRisk){<small>Due before expected funding</small>}</td><td data-label="Outstanding AUD">{{r.balance}}</td><td data-label="Unapplied refunds AUD">{{r.unapplied}}</td></tr>}
+        @empty{<tr><td colspan="5">No outstanding college obligations or unapplied refunds.</td></tr>}</tbody></table>
+      <app-manager-select ariaLabel="Obligations per page" [options]="limits" [ngModel]="limit.toString()" (ngModelChange)="limit=+$event;load(1)" />
+    }
+    @if(data;as d){
+      @if(d.row;as r){
+        <h4>{{r.college}} · {{r.instalment}}</h4>
+        <p>Contract {{r.policy}} · {{r.method}} · due {{r.due}} @if(r.funding){ · funding expected {{r.funding}} } @if(r.bill){ · {{r.billId?"Linked Xero bill":"Supplier bill reference"}} {{r.bill}} }</p>
+        <p>Gross AUD {{r.gross}} · confirmed cash {{r.cash}} · offset {{r.usedOffset}} of {{r.offsetLimit}} · refunded {{r.refunded}} · <strong>Outstanding AUD {{r.balance}}</strong></p>
+        @if(+r.unapplied){<p>Unapplied college refunds AUD {{r.unapplied}}</p>}
+        @if(r.fundingRisk){<p>College payment is due before expected funding.</p>}
+        @if(+r.direct>0 && r.trustDue!==null && +r.trustDue>0){<p role="status">Accountant review required. The linked TRUST invoice still shows AUD {{r.trustDue}} due.</p>} @else if(r.review){<p role="status">Accountant review required. Check the open TRUST invoices for this case against the confirmed college receipt.</p>}
+        @if(!readonly && !editing && !creating){<button class="btn" (click)="startEvent()">Record settlement evidence</button>}
+        @if(historyLoading){<app-manager-list-loader label="Loading settlement history…" />}
+        @else if(historyError){<button class="btn" (click)="history(historyPage)">Retry settlement history</button>}
+        @else {
+          @for(e of events;track e.id){<details><summary>{{e.date}} · {{labels[e.kind]}} · AUD {{e.amount}} · {{e.reference}}</summary>
+            <p>@if(e.document){Case document {{e.document.name}} · }{{e.evidence}} · recorded by {{e.actor}} @if(+e.offset){ · offset AUD {{e.offset}} }</p>
+            @if(e.remaining!==null && +e.remaining>0 && !readonly && !busy){<button class="btn" (click)="startEvent(e)">Confirm college receipt · AUD {{e.remaining}} available</button>}
+          </details>}
+          @if(historyPage>1 || more){<button class="btn" [disabled]="busy||historyPage===1" (click)="history(historyPage-1)">Newer events</button>
+            <button class="btn" [disabled]="busy||!more" (click)="history(historyPage+1)">Older events</button>}
+        }
+      } @else {<p>No college obligation recorded for this case.</p>}
+      @if(!readonly && !creating && !editing){
+        @if(d.colleges.length){<button class="btn" (click)="startTerms()">Add contractual obligation</button>}
+        @else{<p>Assign a college to this case to record an obligation.</p>}
+      }
+      @if(creating || editing){
+        <form class="student-form" #f="ngForm" (ngSubmit)="save(f)"><fieldset [disabled]="busy">
+          <legend>{{creating?'Contractual obligation':entry.proof?'Confirm payment received by college':'Settlement evidence'}}</legend>
+          <div class="form-grid">
+          @if(creating){
+            <label>College<app-manager-select name="college" ariaLabel="Case college" required [(ngModel)]="terms.collegeId" [options]="d.colleges" [disabled]="busy" /></label>
+            @if(d.offers?.length){<label>Reviewed offer instalment (optional)<app-manager-select name="offer" ariaLabel="Reviewed instalment" [options]="d.offers" [(ngModel)]="terms.offer" [disabled]="busy" /></label>}
+            <label>Offer and instalment reference<input required name="instalment" maxlength="200" [(ngModel)]="terms.instalment"></label>
+            <label>Approved contract or policy reference<input required name="policy" maxlength="200" [(ngModel)]="terms.policy"></label>
+            @if(d.schedules.length){<label>Linked case instalment (optional)<app-manager-select name="schedule" ariaLabel="Case instalment" [options]="d.schedules" [(ngModel)]="terms.scheduleId" [disabled]="busy" /></label>}
+            <label>Method<app-manager-select name="method" ariaLabel="Settlement method" [(ngModel)]="terms.method" [options]="methods" [disabled]="busy" /></label>
+            <label>Contractual gross AUD<input required inputmode="decimal" name="gross" [(ngModel)]="terms.gross" pattern="[0-9]+([.][0-9]{1,2})?"></label>
+            @if(terms.method==='net'){<label>Authorised offset limit AUD<input required inputmode="decimal" name="offsetLimit" [(ngModel)]="terms.offsetLimit" pattern="[0-9]+([.][0-9]{1,2})?"></label>}
+            <label>College due date<input required type="date" name="due" [(ngModel)]="terms.due"></label>
+            <label>Expected funding date (optional)<input type="date" name="funding" [(ngModel)]="terms.funding"></label>
+            <label>Supplier bill reference (optional)<input name="bill" maxlength="200" [(ngModel)]="terms.bill"></label>
+          } @else {
+            @if(entry.proof){<p>Student proof {{proofLabel}}</p>} @else {
+              <label>Event<app-manager-select name="kind" ariaLabel="Settlement event" [options]="kinds" [(ngModel)]="entry.kind" [disabled]="busy" /></label>}
+            <label>Amount AUD<input name="amount" required inputmode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" [(ngModel)]="entry.amount"></label>
+            @if(entry.kind==='agency_payment' && d.row?.method==='net'){<label>Offset applied AUD<input name="offset" required inputmode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" [(ngModel)]="entry.offset"></label>}
+            <label>Event date<input required type="date" name="date" [(ngModel)]="entry.date"></label>
+            <label>Transaction or acknowledgement reference<input required name="reference" maxlength="200" [(ngModel)]="entry.reference"></label>
+            <p>Use the case Documents section to upload a receipt, then reopen college settlements to select it.</p>
+            @if(d.documents?.length){<label>Supporting case document<app-manager-select name="document" ariaLabel="Supporting case document" [options]="d.documents" [(ngModel)]="entry.document" [disabled]="busy" /></label>}
+            <label>{{entry.proof?'College contact and confirmation evidence':'Receipt or evidence reference'}}<textarea required name="evidence" maxlength="500" [(ngModel)]="entry.evidence"></textarea></label>
+          }</div>
+          <button class="btn" type="submit" [disabled]="busy">{{busy?'Saving…':'Save to Sophia'}}</button>
+          <button class="btn" type="button" [disabled]="busy" (click)="editing=false;creating=false">Cancel</button>
+        </fieldset></form>
+      }
+    }
+    @if(lastPage>1){<nav aria-label="College obligations pages"><button class="btn" [disabled]="busy||page===1" (click)="load(1)">First</button>
+      <button class="btn" [disabled]="busy||page===1" (click)="load(page-1)">Previous</button> Page {{page}} of {{lastPage}}
+      <button class="btn" [disabled]="busy||page>=lastPage" (click)="load(page+1)">Next</button>
+      <button class="btn" [disabled]="busy||page>=lastPage" (click)="load(lastPage)">Last</button></nav>}
+  }
+}
+@if(toast){<app-manager-toast [message]="toast" [tone]="tone" (closed)="toast=''" />}

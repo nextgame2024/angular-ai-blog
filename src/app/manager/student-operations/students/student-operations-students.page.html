@@ -109,6 +109,7 @@
   @if (operationsOpen && viewMode === 'list' && isChiefExecutive) {
     <section aria-label="Payment operations">
       <h3>Payment operations</h3>
+        <app-college-settlements />
       <div class="candidate-header">
         <label>Organisation to refresh
           <app-manager-select [formControl]="organisation" [options]="organisationOptions" ariaLabel="Organisation to refresh" />

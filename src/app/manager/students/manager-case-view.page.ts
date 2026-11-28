@@ -1,3 +1,4 @@
+import { CollegeSettlementsComponent } from '../student-operations/students/college-settlements.component';
 import { PageJumpComponent } from '../../shared/components/page-jump/page-jump.component';
 import { CaseDocumentActionsComponent } from './case-document-actions.component';
 import { CaseDocumentAnalysisComponent } from './case-document-analysis.component';
@@ -25,7 +26,7 @@ import type {
 
 @Component({
   selector: 'app-manager-case-view',
-  imports: [CaseInvoiceDraftsComponent,CaseDocumentAnalysisComponent,CaseChecklistComponent,CaseDocumentActionsComponent,PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
+  imports: [CollegeSettlementsComponent,CaseInvoiceDraftsComponent,CaseDocumentAnalysisComponent,CaseChecklistComponent,CaseDocumentActionsComponent,PageJumpComponent, CommonModule, RouterModule, ReactiveFormsModule, ManagerListLoaderComponent, ManagerSelectComponent, ManagerToastComponent],
   templateUrl: './manager-case-view.page.html',
   styleUrls: ['./manager-case-view.page.css'],
 })

@@ -283,3 +283,5 @@ td small { margin-top:.2rem; color:#7a8aa0; font-size:.68rem }
 .student-overview.editing .trading-name-fact { grid-row:2; grid-column:1 }
 .student-overview.editing .trading-name-fact textarea { width:100%; resize:vertical; box-sizing:border-box; font:inherit }
 @media (max-width:640px) { .student-overview.editing .trading-name-fact { grid-row:auto; grid-column:auto } }
+
+.college-settlement-card { margin-top:.7rem }

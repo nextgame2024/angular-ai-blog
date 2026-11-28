@@ -1,3 +1,4 @@
+import { CollegeSettlementsComponent } from './college-settlements.component';
 import {PaymentCaseInvoices} from './payment-case-invoices.component';
 import type { StagedTrustDeposit } from '../student-operations.types';
 import { TrustReceiptForm } from './trust-receipt-form.component';
@@ -37,7 +38,7 @@ import type {
 
 @Component({
   selector: 'app-student-operations-students-page',
-  imports: [ PaymentCaseInvoices, TrustReceiptForm, PaymentOperationsPanel, InvoiceStudentLinkComponent, PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
+  imports: [CollegeSettlementsComponent, PaymentCaseInvoices, TrustReceiptForm, PaymentOperationsPanel, InvoiceStudentLinkComponent, PageJumpComponent, CommonModule, ReactiveFormsModule, RouterModule, ManagerSelectComponent, ManagerListLoaderComponent, DatePickerModule],
   templateUrl: './student-operations-students.page.html',
   styleUrls: ['./student-operations-students.page.css'],
 })

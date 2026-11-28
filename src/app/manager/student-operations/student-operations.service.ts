@@ -1,3 +1,4 @@
+import type { CollegeObligationInput,CollegeEventInput,CollegeEvent,CollegeSettlementData,CollegeQueue } from './college-settlement.types';
 import type {TrustPaymentException} from './student-operations.types';
 import type {SubmissionReview} from './student-operations.types';
 import type { TrustPayerRelationship } from './student-operations.types';
@@ -236,6 +237,23 @@ export class StudentOperationsService {
     return this.http.get<StudentCaseList>(`${this.workspaceBase}/cases`, {
       headers: this.headers(), params: new HttpParams().set('userId', userId).set('page', page).set('limit', 100),
     });
+  }
+
+  collegeQueue(page:number,limit:number,direction:'asc'|'desc') {
+    return this.http.get<CollegeQueue>(this.workspaceBase+'/college-obligations',{headers:this.headers(),params:{page,limit,direction}});
+  }
+  private collegeUrl(caseId:string) {return this.workspaceBase+'/cases/'+encodeURIComponent(caseId)+'/college-obligations';}
+  collegeObligations(caseId:string,page:number) {
+    return this.http.get<CollegeSettlementData>(this.collegeUrl(caseId),{headers:this.headers(),params:{page}});
+  }
+  collegeHistory(caseId:string,id:string,page:number) {
+    return this.http.get<{rows:CollegeEvent[];more:boolean}>(this.collegeUrl(caseId)+'/'+encodeURIComponent(id)+'/history',{headers:this.headers(),params:{page}});
+  }
+  createCollegeObligation(caseId:string,value:CollegeObligationInput,id:string) {
+    return this.http.post<{id:string}>(this.collegeUrl(caseId),{...value,id},{headers:this.writeHeaders(id)});
+  }
+  recordCollegeSettlement(caseId:string,obligation:string,value:CollegeEventInput,id:string) {
+    return this.http.post<{id:string}>(this.collegeUrl(caseId)+'/'+encodeURIComponent(obligation)+'/events',{...value,id},{headers:this.writeHeaders(id)});
   }
 
   caseInvoices(caseId: string, page = 1, organisation: 'both'|'trust'|'pty' = 'both'): Observable<StudentCaseInvoices> {

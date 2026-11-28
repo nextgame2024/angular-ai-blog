@@ -217,6 +217,11 @@
         </div>
       </section>
     </div>
+    @if(!creationMode && workspace?.role==='chief_executive'){
+      <section class="card college-settlement-card" id="college-settlements">
+        <app-college-settlements [caseId]="item.caseId" [readonly]="!canEditCases || editing || saving" />
+      </section>
+    }
     <dialog #caseDeleteDialog class="document-mutation-dialog" aria-labelledby="case-delete-heading" (cancel)="$event.preventDefault();closeCaseDelete()">
       <div class="document-mutation-panel">
         <h2 id="case-delete-heading">Delete case permanently</h2>
