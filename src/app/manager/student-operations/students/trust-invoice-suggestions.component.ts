@@ -1,3 +1,4 @@
+import { TrustPayerRelationships } from './trust-payer-relationships.component';
 import { TrustLinePurposes } from './trust-line-purposes.component';
 import { TrustMatchHistory } from './trust-match-history.component';
 import { Component, DestroyRef, Input, OnChanges, inject, output } from '@angular/core';
@@ -10,7 +11,7 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
 
 @Component({
   selector:'app-trust-invoice-suggestions',
-  imports:[TrustLinePurposes,TrustMatchHistory,FormsModule,DatePipe,DecimalPipe],
+  imports:[TrustPayerRelationships,TrustLinePurposes,TrustMatchHistory,FormsModule,DatePipe,DecimalPipe],
   styleUrls:['./student-operations-students.page.css'],
   styles:[`:host {display:block; min-width:0; overflow-wrap:anywhere;} fieldset {min-inline-size:0; max-width:100%; box-sizing:border-box;} input {max-width:100%; box-sizing:border-box;}`],
   template:`
@@ -18,7 +19,7 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
     <app-trust-match-history [connection]="connection" [depositId]="deposit.id" [revision]="historyRevision" />
     @if (open) {
       <p>Bank reference · {{ deposit.reference || 'Unavailable' }} · Deposit AUD {{ deposit.amount }}</p>
-      <label>Search open invoices by number, reference or contact
+      <label>Search open invoices by number, reference, contact or confirmed payer
         <input type="search" maxlength="150" [(ngModel)]="search" [ngModelOptions]="{standalone:true}"
           (keydown.enter)="$event.preventDefault(); find()">
       </label>
@@ -80,6 +81,14 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
           <div class="candidate-heading">
             <button type="button" class="invoice-link" (click)="review.emit(candidate.id)">Review {{ candidate.invoiceNumber || 'invoice' }}</button>
             <p>{{ candidate.contact || 'Contact unavailable' }} · AUD {{ candidate.balance }} due · Reference {{ candidate.reference || 'unavailable' }}</p>
+            @if (candidate.contactId) {
+              <app-trust-payer-relationships [connection]="connection" [contact]="candidate.contactId" (changed)="load(page)" />
+            }
+            @if (candidate.contactMatch) { <p>The bank description names the invoice contact.</p> }
+            @for (payer of candidate.payerMatches; track payer.name) {
+              <p>The bank description names {{payer.name}}, a confirmed {{payer.relationship}} for this contact.</p>
+            }
+            @if (candidate.contactConflict) { <p role="status">The bank details point to more than one invoice contact. Check the remittance before accepting a match.</p> }
             @if (candidate.numberMatch) { <span>Bank reference matches invoice number. </span> }
             @if (candidate.numberInReference) { <span>Bank reference contains the invoice number. </span> }
             @if (candidate.referenceMatch) { <span>Bank reference matches invoice reference. </span> }
@@ -104,7 +113,7 @@ import type { TrustSplitPreview, TrustSplitInput, StagedTrustDeposit, TrustMatch
             @if (candidate.peers > 1 && candidate.score > 0) { <p>{{ candidate.peers }} invoices have the same matching evidence.</p> }
           </div>
         } @empty {
-          <p>{{ query ? 'No open TRUST invoices match this search.' : 'No open TRUST invoice matches the bank reference or amount. Search by invoice or contact to investigate.' }}</p>
+          <p>{{ query ? 'No open TRUST invoices match this search.' : 'No open TRUST invoice matches the bank description or amount. Search by invoice or contact to investigate.' }}</p>
         }
         @if (page > 1 || data.hasMore) {
           <button class="btn small" type="button" [disabled]="page === 1" (click)="load(page-1)">Previous invoices</button>

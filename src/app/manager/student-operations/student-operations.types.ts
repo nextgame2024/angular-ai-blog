@@ -536,12 +536,20 @@ export interface TrustMatchOutcomes {
 }
 
 export type TrustMatchDecision = 'accepted' | 'dismissed';
+export interface TrustPayerRelationship {
+  name:string; relationship:'payer'|'sponsor'; revision:number; active:boolean; reason:string; actor:string; reviewedAt:string;
+}
+
 export interface TrustMatchReview {
   revision:number; decision:TrustMatchDecision; reason:string; reviewedAt:string; reviewer:string; ruleVersion:number;
-  evidence:Pick<TrustInvoiceSuggestion,'invoiceNumber'|'balance'|'score'|'peers'|'difference'|'numberMatch'|'numberInReference'|'referenceMatch'|'amountMatch'> & {lookup:'manual'|'suggested'; id:string};
+  evidence:Pick<TrustInvoiceSuggestion,'invoiceNumber'|'balance'|'score'|'peers'|'difference'|'numberMatch'|'numberInReference'|'referenceMatch'|'amountMatch'|'payerMatches'|'contactMatch'|'contactConflict'> & {lookup:'manual'|'suggested'; id:string};
 }
 
 export interface TrustInvoiceSuggestion {
+  contactId?:string;
+  payerMatches?:Pick<TrustPayerRelationship,'name'|'relationship'|'revision'>[];
+  contactMatch?:boolean;
+  contactConflict?:boolean;
   decision:TrustMatchDecision | 'superseded' | null;
   evidenceChanged:boolean;
   evidenceToken:string;

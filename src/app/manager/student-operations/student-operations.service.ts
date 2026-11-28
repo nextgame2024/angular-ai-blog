@@ -1,3 +1,4 @@
+import type { TrustPayerRelationship } from './student-operations.types';
 import type { TrustDispatchRow, TrustAccountMapping, TrustProposalAction, TrustReceiptProposal, TrustResidualRow, TrustResidualDetail, TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
@@ -497,6 +498,15 @@ export class StudentOperationsService {
     const base=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection);
     return this.http.post<TrustSplitPreview>(base+'/'+encodeURIComponent(deposit)+'/split-preview',
       {allocations},{headers:this.headers()});
+  }
+
+  trustPayers(connection:string,contact:string) {
+    return this.http.get<{relationships:TrustPayerRelationship[]}>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)
+      +'/contacts/'+encodeURIComponent(contact)+'/payers',{headers:this.headers()});
+  }
+  reviewTrustPayer(connection:string,contact:string,body:Omit<TrustPayerRelationship,'actor'|'reviewedAt'>) {
+    return this.http.post<{revision:number}>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)
+      +'/contacts/'+encodeURIComponent(contact)+'/payers',body,{headers:this.headers()});
   }
 
   trustInvoiceSuggestions(connection:string,deposit:string,q:string,page:number) {

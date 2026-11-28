@@ -1,3 +1,4 @@
+import { TrustPayerRelationships } from './trust-payer-relationships.component';
 import { TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { of, Subject, throwError } from 'rxjs';
@@ -54,8 +55,9 @@ describe('TRUST deposits awaiting an invoice',()=>{
   });
   it('keeps open staging and pagination controls within mobile and desktop widths in both themes',()=>{
     TestBed.configureTestingModule({imports:[TrustStagedDeposits],providers:[{provide:StudentOperationsService,useValue:{
+      trustPayers:()=>of({relationships:[]}),
       trustSplitLines:()=>of({lines:[{lineId:'id',token:'t',gross:'100.00',available:'90.00',label:'Materials fee'}]}),
-      trustInvoiceSuggestions:()=>of({page:1,hasMore:true,invoices:[{id:'inv',invoiceNumber:'INV-1',balance:'100.00',difference:'2642.00',score:2,referenceMatch:true}]}),
+      trustInvoiceSuggestions:()=>of({page:1,hasMore:true,invoices:[{id:'inv',contactId:'contact',invoiceNumber:'INV-1',balance:'100.00',difference:'2642.00',score:2,referenceMatch:true}]}),
       stagedTrustDeposits:()=>of({deposits:[deposit],hasMore:true})}}]});
     const fixture=TestBed.createComponent(TrustStagedDeposits);
     fixture.componentRef.setInput('connection','trust'); fixture.detectChanges();
@@ -64,6 +66,7 @@ describe('TRUST deposits awaiting an invoice',()=>{
     Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b=>b.textContent?.includes('Record match decision'))!.click(); fixture.detectChanges();
     Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b=>b.textContent?.includes('Add to split'))!.click(); fixture.detectChanges();
     Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b=>b.textContent?.includes('Choose invoice line purposes'))!.click(); fixture.detectChanges();
+    Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(b=>b.textContent?.includes('Review payers and sponsors'))!.click(); fixture.detectChanges();
     const frame=document.createElement('iframe');
     document.body.appendChild(frame);
     try {
@@ -74,7 +77,7 @@ describe('TRUST deposits awaiting an invoice',()=>{
         frame.style.width=width+'px';
         for (const dark of [false,true]) {
           doc.documentElement.classList.toggle('dark',dark);
-          for (const control of doc.querySelectorAll('button,input[type=search],input[inputmode=decimal]')) {
+          for (const control of doc.querySelectorAll('button,input,textarea')) {
             const rect=control.getBoundingClientRect();
             expect(rect.width).toBeGreaterThan(0);
             expect(rect.right).toBeLessThanOrEqual(width);
@@ -84,9 +87,30 @@ describe('TRUST deposits awaiting an invoice',()=>{
     } finally {frame.remove();}
   });
 
+  it('loads payer relationships on demand and requires a fresh review after a conflict',()=>{
+    const row={name:'Bank Payer',relationship:'payer',active:true,revision:2,reason:'Reviewed statement'};
+    const list=jasmine.createSpy().and.returnValue(of({relationships:[row]}));
+    const save=jasmine.createSpy().and.returnValues(throwError(()=>({status:409})),of({revision:3}));
+    TestBed.configureTestingModule({imports:[TrustPayerRelationships],providers:[{provide:StudentOperationsService,useValue:{
+      trustPayers:list,reviewTrustPayer:save}}]});
+    const fixture=TestBed.createComponent(TrustPayerRelationships),panel=fixture.componentInstance;
+    fixture.componentRef.setInput('connection','trust');fixture.componentRef.setInput('contact','contact');fixture.detectChanges();
+    const click=(label:string)=>{Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button'))
+      .find(button=>button.textContent?.trim()===label)!.click();fixture.detectChanges();};
+    expect(list).not.toHaveBeenCalled();
+    click('Review payers and sponsors');click('Review Bank Payer');
+    click('Withdraw relationship');expect(save).not.toHaveBeenCalled();
+    panel.reason='New instructions';fixture.detectChanges();click('Withdraw relationship');
+    expect(fixture.nativeElement.textContent).toContain('Relationships changed');
+    click('Reload relationships');click('Review Bank Payer');panel.reason='Confirmed end date';fixture.detectChanges();
+    const changed=jasmine.createSpy();panel.changed.subscribe(changed);click('Withdraw relationship');
+    expect(save.calls.mostRecent().args).toEqual(['trust','contact',{name:'Bank Payer',relationship:'payer',reason:'Confirmed end date',revision:2,active:false}]);
+    expect(changed).toHaveBeenCalledTimes(1);
+  });
+
   it('compares tied suggestions, supports manual search, and opens only the chosen invoice',()=>{
     const suggestion={id:'inv',invoiceNumber:'INV-2',reference:'Different',balance:'2742.00',difference:'0.00',
-      peers:2,score:1,contact:'Fixture',numberMatch:false,referenceMatch:false,amountMatch:true};
+      payerMatches:[{name:'Fixture Parent',relationship:'sponsor',revision:1}],contactConflict:true,peers:2,score:5,contact:'Fixture',numberMatch:false,referenceMatch:false,amountMatch:true};
     const lookup=jasmine.createSpy().and.returnValues(of({page:1,invoices:[suggestion]}),of({page:1,invoices:[]}));
     TestBed.configureTestingModule({imports:[TrustStagedDeposits],providers:[{provide:StudentOperationsService,useValue:{
       stagedTrustDeposits:()=>of({deposits:[deposit],hasMore:false}),trustInvoiceSuggestions:lookup}}]});
@@ -97,6 +121,8 @@ describe('TRUST deposits awaiting an invoice',()=>{
     expect(lookup).not.toHaveBeenCalled();
     const panel=fixture.debugElement.query(By.directive(TrustInvoiceSuggestionPanel)).componentInstance as TrustInvoiceSuggestionPanel;
     panel.toggle(); fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Fixture Parent, a confirmed sponsor');
+    expect(fixture.nativeElement.textContent).toContain('more than one invoice contact');
     expect(fixture.nativeElement.textContent).toContain('2 invoices have the same matching evidence');
     expect(fixture.nativeElement.textContent).toContain('Bank reference differs');
     expect(reviewed).not.toHaveBeenCalled();

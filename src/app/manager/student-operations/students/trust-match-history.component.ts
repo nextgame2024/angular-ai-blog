@@ -17,6 +17,9 @@ import type { TrustMatchReview } from '../student-operations.types';
           · {{ entry.reviewer }} · {{ entry.reviewedAt | date:'medium' }}</p>
         <p>{{ entry.reason }}</p>
         <p>
+          @if (entry.evidence.contactMatch) { Bank description named the invoice contact. }
+          @for (payer of entry.evidence.payerMatches; track payer.name) { Confirmed {{payer.relationship}} · {{payer.name}} (revision {{payer.revision}}). }
+          @if (entry.evidence.contactConflict) { The bank details pointed to more than one invoice contact. }
           @if (entry.evidence.numberMatch) { Bank reference matched invoice number. }
           @if (entry.evidence.numberInReference) { Bank description contained invoice number. }
           @if (entry.evidence.referenceMatch) { Invoice and bank references matched. }
