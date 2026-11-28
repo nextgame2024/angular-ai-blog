@@ -677,6 +677,14 @@ export type TrustBankOutcome='pending'|'reconciled'|'unknown'|'deleted'|'changed
 export interface SubmissionReview {
   revision:number;action:'investigate'|'close';actor:string;evidence:string;recordedAt:string;
 }
+export interface TrustPaymentException {
+  invoice:string;invoiceNumber:string|null;receipt:string;payment:string;dispatch:string|null;bankId:string|null;
+  amount:string;linkedAt:string;days:number;historical:boolean;
+  reason:'reversed'|'historical'|'changed'|'conflicting'|'stale'|'pending'|'unknown';
+  imported:'pending'|'reconciled'|'conflicting'|'unknown'|'awaiting_import'|'mismatch';importedAt:string|null;
+  direct:TrustBankOutcome|null;lastKnown:TrustBankOutcome|null;lastKnownAt:string|null;checkedAt:string|null;previousImportReconciled:boolean;previousDirectReconciled:boolean;
+  staffDate:string|null;staffAt:string|null;claimId:string|null;mine:boolean|null;ownerLabel:string|null;
+}
 export interface TrustDispatchRow {
   receipt?:string;reviewRevision?:number;acknowledgedId?:string|null;
   bankStale?:boolean;daysSinceConfirmation?:number|null;assigned?:boolean;bankOwner?:string|null;

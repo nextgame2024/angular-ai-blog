@@ -1,3 +1,4 @@
+import type {TrustPaymentException} from './student-operations.types';
 import type {SubmissionReview} from './student-operations.types';
 import type { TrustPayerRelationship } from './student-operations.types';
 import type { TrustDispatchRow, TrustAccountMapping, TrustProposalAction, TrustReceiptProposal, TrustResidualRow, TrustResidualDetail, TrustLineOption, TrustSplitCommand, TrustSplitPreview, TrustSplitInput, TrustMatchOutcomes, TrustOutcomeQuery, TrustMatchDecision, TrustMatchReview, TrustInvoiceSuggestions, StagedTrustDeposit, TrustClaimHistoryEntry, TrustPaymentObservation, TrustReceiptVerification } from './student-operations.types';
@@ -566,6 +567,11 @@ export class StudentOperationsService {
     const url=this.trustReceiptUrl(connection,invoice)+'/'+encodeURIComponent(receipt)+'/dispatch/'+encodeURIComponent(dispatch)+'/recover';
     return this.http.post<{status:string;paymentId?:string}>(url,{},{headers:this.headers()});
   }
+  trustPaymentExceptions(connection:string,params:{page:number;limit:number;q:string;direction:string;reason:string;owner:string}) {
+    const url=this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/payment-exceptions';
+    return this.http.get<{count:number;rows:TrustPaymentException[]}>(url,{headers:this.headers(),params});
+  }
+
   trustDispatches(connection:string,params:{q:string;status:string;page:number;limit:number;direction:string}) {
     return this.http.get<{count:number;rows:TrustDispatchRow[]}>(this.workspaceBase+'/trust-staged-deposits/'+encodeURIComponent(connection)+'/dispatches',
       {headers:this.headers(),params});

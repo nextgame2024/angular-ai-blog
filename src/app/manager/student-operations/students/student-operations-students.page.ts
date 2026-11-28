@@ -77,10 +77,10 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
   readonly operationsSearch = new FormControl('', { nonNullable: true });
   readonly operationsQuery = signal('');
 
-  reviewOperationsInvoice(connectionId: string, invoice: Pick<XeroStudentInvoice,'xeroInvoiceId'|'receiptException'>, deposit?:StagedTrustDeposit): void {
+  reviewOperationsInvoice(connectionId: string, invoice: Pick<XeroStudentInvoice,'xeroInvoiceId'|'receiptException'>, deposit?:StagedTrustDeposit,history=false): void {
     if (!this.xeroConnections.some(connection => connection.connectionId === connectionId)) return;
     if (this.xeroConnection?.connectionId !== connectionId) this.organisation.setValue(connectionId);
-    this.openInvoiceDetail(invoice,deposit);
+    this.openInvoiceDetail(invoice,deposit,history);
   }
 
   studentLinkInvoice:XeroStudentInvoice|null=null;
@@ -349,13 +349,13 @@ export class StudentOperationsStudentsPageComponent implements OnInit, AfterView
 
   suggestedDeposit?:StagedTrustDeposit;
 
-  openInvoiceDetail(invoice: Pick<XeroStudentInvoice,'xeroInvoiceId'|'receiptException'>, deposit?:StagedTrustDeposit): void {
+  openInvoiceDetail(invoice: Pick<XeroStudentInvoice,'xeroInvoiceId'|'receiptException'>, deposit?:StagedTrustDeposit,history=false): void {
     if (!this.xeroConnection || this.loadingInvoiceDetail) return;
     this.suggestedDeposit=deposit;
     this.loadingInvoiceDetail = true;
     this.invoiceDetailError = '';
     this.selectedXeroInvoice = null;
-    this.invoiceDetailRequest = this.api.xeroStudentInvoice(this.xeroConnection.connectionId, invoice.xeroInvoiceId, !!invoice.receiptException)
+    this.invoiceDetailRequest = this.api.xeroStudentInvoice(this.xeroConnection.connectionId, invoice.xeroInvoiceId, history || !!invoice.receiptException)
       .pipe(takeUntil(this.destroy$),takeUntil(this.organisationStop$)).subscribe({
         next: (detail) => {
           this.selectedXeroInvoice = detail;

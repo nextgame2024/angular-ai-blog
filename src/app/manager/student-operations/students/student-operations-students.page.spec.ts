@@ -131,6 +131,14 @@ describe('StudentOperationsStudentsPageComponent', () => {
     c.xeroConnection=trust;c.xeroConnections=[trust,pty];c.search.setValue('Trust Student',{emitEvent:false});c.invoiceStatus.setValue('PAID',{emitEvent:false});c.switchOrganisation('pty-filters');
     expect(c.search.value).toBe('');c.search.setValue('PTY College',{emitEvent:false});c.switchOrganisation('trust-filters');expect(c.search.value).toBe('Trust Student');expect(c.invoiceStatus.value).toBe('PAID');c.switchOrganisation('pty-filters');expect(c.search.value).toBe('PTY College');
   });
+  it('opens an exception through the history-aware invoice lookup for its organisation',()=>{
+    const c=fixture.componentInstance,trust={connectionId:'trust',organisationRole:'trust'} as never;
+    c.xeroConnection=trust;c.xeroConnections=[trust];api.xeroStudentInvoice.and.returnValue(of({xeroInvoiceId:'historical'}));
+    c.reviewOperationsInvoice('other',{xeroInvoiceId:'historical'},undefined,true);
+    expect(api.xeroStudentInvoice).not.toHaveBeenCalled();
+    c.reviewOperationsInvoice('trust',{xeroInvoiceId:'historical'},undefined,true);
+    expect(api.xeroStudentInvoice).toHaveBeenCalledOnceWith('trust','historical',true);
+  });
   it('opens the related invoice using its explicit organisation',()=>{
     const c=fixture.componentInstance,trust={connectionId:'trust',tenantName:'Trust',organisationRole:'trust',missingStudentDiscoveryScopes:[]} as never,pty={connectionId:'pty',tenantName:'PTY',organisationRole:'operating',missingStudentDiscoveryScopes:[]} as never;
     c.xeroConnection=trust;c.xeroConnections=[trust,pty];api.xeroStudentInvoice.and.returnValue(of({invoiceNumber:'PTY-42',lineItems:[]}));

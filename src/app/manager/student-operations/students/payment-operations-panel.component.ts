@@ -1,3 +1,4 @@
+import {TrustPaymentExceptions} from './trust-payment-exceptions.component';
 import { TrustDispatchRegister } from './trust-dispatch-register.component';
 import { TrustReceiptAccountPanel } from './trust-receipt-account.component';
 import { TrustResidualsPanel } from './trust-residuals.component';
@@ -51,7 +52,7 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
 
 @Component({
   selector: 'app-payment-operations-panel',
-  imports: [TrustDispatchRegister,TrustReceiptAccountPanel,TrustResidualsPanel, TrustMatchOutcomesPanel, TrustStagedDeposits, DatePipe, DecimalPipe, FormsModule, ManagerSelectComponent, ManagerListLoaderComponent, PageJumpComponent],
+  imports: [TrustPaymentExceptions,TrustDispatchRegister,TrustReceiptAccountPanel,TrustResidualsPanel, TrustMatchOutcomesPanel, TrustStagedDeposits, DatePipe, DecimalPipe, FormsModule, ManagerSelectComponent, ManagerListLoaderComponent, PageJumpComponent],
   styleUrls: ['./student-operations-students.page.css'],
   template: `
     <section class="xero-candidates">
@@ -110,6 +111,8 @@ const queueText: Record<PaymentQueue, {description: string; empty: string}> = {
         </div>
       </header>
       @if (connection.organisationRole === 'trust') {
+        <app-trust-payment-exceptions [connection]="connection.connectionId" [revision]="receiptRevision" [importTimestamp]="importTimestamp"
+          (review)="reviewException.emit($event)" />
         <app-trust-dispatch-register [shortCode]="connection.tenantShortCode" [connection]="connection.connectionId" (review)="reviewDispatch.emit($event)" />
         <app-trust-receipt-account [connection]="connection.connectionId" />
         <app-trust-residuals [connection]="connection.connectionId" [revision]="receiptRevision + outcomeRevision" />
@@ -270,6 +273,7 @@ export class PaymentOperationsPanel implements OnChanges {
   outcomeRevision=0;
   readonly reviewDispatch=output<string>();
   readonly reviewSuggested=output<{invoice:string;deposit:StagedTrustDeposit}>();
+  readonly reviewException=output<string>();
   readonly review = output<XeroStudentInvoice>();
   readonly result = signal<XeroStudentInvoiceResult | null>(null);
   readonly loading = signal(false);
